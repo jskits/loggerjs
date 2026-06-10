@@ -17,6 +17,7 @@ export function resetLoggerMetaStats(): void {
 
 function counterForDetail(detail: Record<string, unknown> | undefined): string {
   const phase = detail?.phase;
+  if (phase === "middleware") return "middleware.errors";
   if (phase === "processor") return "processor.errors";
   if (phase === "transport") return "transport.errors";
   if (phase === "integration-setup") return "integration.errors";
