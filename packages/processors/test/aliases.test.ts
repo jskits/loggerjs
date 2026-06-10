@@ -8,6 +8,7 @@ import {
   fingerprint,
   levelOverride,
   logType,
+  normalizeError,
   route,
   sample,
   tags,
@@ -59,5 +60,6 @@ describe("processor middleware aliases", () => {
     expect(fingerprint()(event, processorContext)).toMatchObject({
       tags: { fingerprint: expect.any(String) },
     });
+    expect(normalizeError()(event, processorContext)).toBe(event);
   });
 });
