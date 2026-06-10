@@ -2,7 +2,16 @@
   "name": "@loggerjs/sentry",
   "version": "0.1.0",
   "description": "Sentry adapter transport for loggerjs.",
+  "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/sentry#readme",
+  "bugs": {
+    "url": "https://github.com/jskits/loggerjs/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jskits/loggerjs.git",
+    "directory": "packages/sentry"
+  },
   "files": [
     "dist",
     "README.md",

@@ -2,6 +2,14 @@
   "name": "loggerjs-monorepo",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://github.com/jskits/loggerjs#readme",
+  "bugs": {
+    "url": "https://github.com/jskits/loggerjs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jskits/loggerjs.git"
+  },
   "workspaces": [
     "packages/*",
     "examples/*"
@@ -11,7 +19,7 @@
     "api:check": "node scripts/api-report.mjs --check",
     "api:report": "node scripts/api-report.mjs",
     "build": "turbo run build",
-    "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm verify:exports && pnpm typecheck:public && pnpm api:check",
+    "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm verify:exports && pnpm typecheck:public && pnpm api:check && pnpm pack:check",
     "clean": "turbo run clean && rm -rf .turbo",
     "clean:all": "pnpm clean && rm -rf node_modules",
     "commit": "cz",
@@ -19,8 +27,10 @@
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
+    "pack:check": "node scripts/verify-packages.mjs",
     "prepare": "simple-git-hooks",
-    "release": "pnpm build && changeset publish",
+    "release": "pnpm check && changeset publish",
+    "release:dry-run": "pnpm check && pnpm exec changeset status --verbose && pnpm publish -r --dry-run --access public --no-git-checks --json",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "typecheck:public": "node scripts/verify-public-types.mjs",

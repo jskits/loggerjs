@@ -2,7 +2,16 @@
   "name": "@loggerjs/node",
   "version": "0.1.0",
   "description": "Node.js transports and integrations for loggerjs.",
+  "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/node#readme",
+  "bugs": {
+    "url": "https://github.com/jskits/loggerjs/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jskits/loggerjs.git",
+    "directory": "packages/node"
+  },
   "files": [
     "dist",
     "README.md",

@@ -2,7 +2,16 @@
   "name": "@loggerjs/codecs",
   "version": "0.1.0",
   "description": "Serialization codecs for loggerjs.",
+  "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/codecs#readme",
+  "bugs": {
+    "url": "https://github.com/jskits/loggerjs/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jskits/loggerjs.git",
+    "directory": "packages/codecs"
+  },
   "files": [
     "dist",
     "README.md",

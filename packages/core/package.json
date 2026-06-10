@@ -2,7 +2,16 @@
   "name": "@loggerjs/core",
   "version": "0.1.0",
   "description": "Tiny isomorphic structured logger core for loggerjs.",
+  "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/jskits/loggerjs/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jskits/loggerjs.git",
+    "directory": "packages/core"
+  },
   "files": [
     "dist",
     "README.md",
