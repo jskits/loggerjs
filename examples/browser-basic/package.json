@@ -1,0 +1,16 @@
+{
+  "name": "loggerjs-browser-basic-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@loggerjs/browser": "workspace:*",
+    "@loggerjs/processors": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "typescript": "^5.5.0"
+  }
+}

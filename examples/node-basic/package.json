@@ -1,0 +1,15 @@
+{
+  "name": "loggerjs-node-basic-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@loggerjs/node": "workspace:*",
+    "@loggerjs/processors": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}
