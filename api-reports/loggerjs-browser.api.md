@@ -161,6 +161,7 @@ export declare function browserHttpTransport(options: BrowserHttpTransportOption
 export * from "@loggerjs/core";
 export * from "./broadcast-channel-transport.js";
 export * from "./http-transport.js";
+export * from "./websocket-transport.js";
 export * from "./indexeddb-offline-queue.js";
 export * from "./console-integration.js";
 export * from "./error-integration.js";
@@ -227,6 +228,47 @@ export interface CaptureWebVitalsOptions {
     removeEventListener?: typeof globalThis.removeEventListener;
 }
 export declare function captureWebVitalsIntegration(options?: CaptureWebVitalsOptions): Integration;
+```
+
+## websocket-transport.d.ts
+
+```ts
+import { type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+export type BrowserWebSocketDropPolicy = "drop-oldest" | "drop-newest";
+export type BrowserWebSocketPayload = string | Uint8Array;
+export type BrowserWebSocketEventType = "close" | "error" | "open";
+type BrowserWebSocketSendPayload = Parameters<WebSocket["send"]>[0];
+export interface BrowserWebSocketLike {
+    readonly readyState: number;
+    send: (data: BrowserWebSocketSendPayload) => void;
+    close: (code?: number, reason?: string) => void;
+    addEventListener: (type: BrowserWebSocketEventType, listener: (event: Event) => void) => void;
+    removeEventListener: (type: BrowserWebSocketEventType, listener: (event: Event) => void) => void;
+}
+export type BrowserWebSocketFactory = (url: string, protocols?: string | string[]) => BrowserWebSocketLike;
+export interface BrowserWebSocketErrorDetail {
+    operation: "close-socket" | "create-socket" | "send" | "socket-error" | "on-error";
+    droppedEvents: number;
+}
+export interface BrowserWebSocketTransportOptions {
+    url: string;
+    name?: string;
+    protocols?: string | string[];
+    minLevel?: LoggerLevel;
+    codec?: Codec<BrowserWebSocketPayload>;
+    maxQueueSize?: number;
+    dropPolicy?: BrowserWebSocketDropPolicy;
+    webSocketFactory?: BrowserWebSocketFactory;
+    closeCode?: number;
+    closeReason?: string;
+    onDrop?: (event: LogEvent, reason: string) => void;
+    onError?: (error: unknown, detail: BrowserWebSocketErrorDetail) => void;
+}
+export interface BrowserWebSocketTransport extends Transport {
+    queueSize: () => number;
+}
+export declare function browserWebSocketTransport(options: BrowserWebSocketTransportOptions): BrowserWebSocketTransport;
+export {};
 ```
 
 ## xhr-integration.d.ts

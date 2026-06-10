@@ -34,6 +34,7 @@ import { consoleTransport } from "@loggerjs/core/transport-console";
 import { testTransport } from "@loggerjs/core/transport-test";
 import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-broadcast-channel";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
+import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
@@ -76,6 +77,16 @@ browserBroadcastChannelTransport({
   channelFactory: () => ({ postMessage() {} }),
 });
 browserHttpTransport({ url: "/logs" });
+browserWebSocketTransport({
+  url: "wss://example.com/logs",
+  webSocketFactory: () => ({
+    readyState: 1,
+    addEventListener() {},
+    close() {},
+    removeEventListener() {},
+    send() {},
+  }),
+});
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 openTelemetryTraceProcessor();
 sentryTransport({ sentry: {} satisfies SentryLike });
