@@ -1,6 +1,7 @@
 export * from "./levels";
 export * from "./types";
 export * from "./record";
+export * from "./context";
 export * from "./logger";
 export * from "./registry";
 export * from "./meta";

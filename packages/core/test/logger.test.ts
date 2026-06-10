@@ -4,10 +4,13 @@ import {
   createLogger,
   getLoggerMetaStats,
   memoryTransport,
+  resetContextManager,
   resetLoggerMetaStats,
+  setContextProvider,
   type LogEvent,
   type Processor,
   type Transport,
+  withContext,
 } from "../src";
 
 const failingProcessor: Processor = () => {
@@ -21,6 +24,8 @@ function eventMessages(events: LogEvent[]): string[] {
 describe("logger core skeleton", () => {
   afterEach(() => {
     resetLoggerMetaStats();
+    setContextProvider(undefined);
+    resetContextManager();
   });
 
   it("prefers category over legacy name options", () => {
@@ -148,6 +153,39 @@ describe("logger core skeleton", () => {
     expect(processor).not.toHaveBeenCalled();
     expect(lazyMessage).not.toHaveBeenCalled();
     expect(transport.events).toEqual([]);
+  });
+
+  it("merges ambient context into emitted events", () => {
+    const transport = memoryTransport();
+    const logger = createLogger({
+      transports: [transport],
+    });
+
+    withContext({ requestId: "req-1" }, () => logger.info("created"));
+    logger.info("outside");
+
+    expect(transport.events[0]?.context).toEqual({ requestId: "req-1" });
+    expect(transport.events[1]?.context).toBeUndefined();
+  });
+
+  it("lets explicit bindings override ambient context conflicts", () => {
+    const transport = memoryTransport();
+    const logger = createLogger({
+      bindings: { requestId: "explicit", tenantId: "tenant-1" },
+      contextProvider: () => ({ providerKey: "provider", tenantId: "tenant-2" }),
+      transports: [transport],
+    });
+
+    setContextProvider(() => ({ requestId: "ambient", globalKey: "global" }));
+    withContext({ requestId: "scope", scopeKey: "scope" }, () => logger.info("created"));
+
+    expect(transport.events[0]?.context).toEqual({
+      requestId: "explicit",
+      globalKey: "global",
+      scopeKey: "scope",
+      tenantId: "tenant-2",
+      providerKey: "provider",
+    });
   });
 
   it("keeps dispatching when processors or transports fail", () => {

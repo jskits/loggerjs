@@ -6,6 +6,7 @@ import {
   type EnabledLogLevelName,
   type LoggerLevel,
 } from "./levels";
+import { getContext } from "./context";
 import { createIntegrationSetupContext, onceTeardown } from "./integration-api";
 import { reportLoggerMetaError } from "./meta";
 import { runMiddleware } from "./middleware";
@@ -249,7 +250,7 @@ export class Logger implements LoggerLike {
     const levelName = levelNameFor(level, levelValue);
     const time = this.clock();
     const seq = globalSeq++;
-    const context = mergeRecords(this.bindings, this.contextProvider?.());
+    const context = mergeRecords(getContext(), this.bindings, this.contextProvider?.());
     const normalized = normalizeLogArgs(message, data, props);
     const record = createRecord({
       time,
@@ -275,7 +276,7 @@ export class Logger implements LoggerLike {
     const levelName = levelNameFor(level, levelValue);
     const time = this.clock();
     const seq = globalSeq++;
-    const context = mergeRecords(this.bindings, this.contextProvider?.());
+    const context = mergeRecords(getContext(), this.bindings, this.contextProvider?.());
     const message = input.message;
     const record = createRecord({
       time,
