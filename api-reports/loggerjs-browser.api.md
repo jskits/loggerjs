@@ -169,6 +169,7 @@ export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
 export * from "./reporting-integration.js";
+export * from "./router-integration.js";
 export * from "./web-vitals-integration.js";
 export * from "./performance-integration.js";
 export * from "./page-lifecycle.js";
@@ -306,6 +307,44 @@ export interface CaptureReportingOptions {
     removeEventListener?: typeof globalThis.removeEventListener;
 }
 export declare function captureReportingIntegration(options?: CaptureReportingOptions): Integration;
+```
+
+## router-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface BrowserHistoryLike {
+    state?: unknown;
+    pushState?: (data: unknown, unused: string, url?: string | URL | null) => unknown;
+    replaceState?: (data: unknown, unused: string, url?: string | URL | null) => unknown;
+}
+export interface BrowserLocationLike {
+    href?: string;
+    pathname?: string;
+    search?: string;
+    hash?: string;
+}
+export type BrowserRouteTrigger = "initial" | "pushState" | "replaceState" | "popstate" | "hashchange";
+export type BrowserRouteUrlMode = "path" | "href";
+export interface BrowserRouteChangePayload {
+    trigger: BrowserRouteTrigger;
+    from?: string;
+    to: string;
+    state?: unknown;
+}
+export interface CaptureRouterOptions {
+    level?: LoggerLevel;
+    captureInitial?: boolean;
+    includeState?: boolean;
+    stateMaxDepth?: number;
+    urlMode?: BrowserRouteUrlMode;
+    sanitizeUrl?: (url: string) => string;
+    history?: BrowserHistoryLike;
+    location?: BrowserLocationLike;
+    addEventListener?: typeof globalThis.addEventListener;
+    removeEventListener?: typeof globalThis.removeEventListener;
+}
+export declare function captureRouterIntegration(options?: CaptureRouterOptions): Integration;
 ```
 
 ## service-worker-transport.d.ts

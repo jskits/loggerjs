@@ -41,6 +41,7 @@ import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-servi
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
 import { capturePerformanceIntegration } from "@loggerjs/browser/integration-performance";
 import { captureReportingIntegration } from "@loggerjs/browser/integration-reporting";
+import { captureRouterIntegration } from "@loggerjs/browser/integration-router";
 import { postgresTransport } from "@loggerjs/database/postgres";
 import { sqliteTransport } from "@loggerjs/database/sqlite";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
@@ -110,6 +111,7 @@ capturePerformanceIntegration({
   minDurationMs: { resource: 20 },
 });
 captureReportingIntegration({ reportTypes: ["csp-violation", "deprecation"] });
+captureRouterIntegration({ includeState: true, urlMode: "path" });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 sqliteTransport({
   database: {
