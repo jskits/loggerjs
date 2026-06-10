@@ -7,6 +7,7 @@ import {
   captureProcessIntegration,
   createLogger,
   expressIntegration,
+  fastifyIntegration,
   installAsyncLocalStorageContext,
   rotatingFileTransport,
   stdoutTransport,
@@ -35,4 +36,8 @@ const auditLogger = createLogger({
 app.use(expressIntegration(logger, { captureAll: true }));
 ```
 
-Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-worker`, `integration-process`, `integration-express`, `integration-diagnostics`, and `context`.
+```ts
+fastify.register(fastifyIntegration(logger, { captureAll: true }));
+```
+
+Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-worker`, `integration-process`, `integration-express`, `integration-fastify`, `integration-diagnostics`, and `context`.

@@ -6,5 +6,6 @@ export * from "./http-transport";
 export * from "./worker-transport";
 export * from "./context";
 export * from "./express-integration";
+export * from "./fastify-integration";
 export * from "./process-integration";
 export * from "./diagnostics-channel-integration";

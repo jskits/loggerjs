@@ -83,6 +83,54 @@ export interface ExpressIntegrationOptions {
 export declare function expressIntegration(logger: LoggerLike, options?: ExpressIntegrationOptions): ExpressRequestHandler;
 ```
 
+## fastify-integration.d.ts
+
+```ts
+import { type LoggerLevel, type LoggerLike } from "@loggerjs/core";
+export interface FastifyRequestLike {
+    id?: string;
+    method?: string;
+    url?: string;
+    headers?: Record<string, string | string[] | undefined>;
+    ip?: string;
+    routeOptions?: {
+        url?: string;
+    };
+    routerPath?: string;
+    [key: string]: unknown;
+}
+export interface FastifyReplyLike {
+    statusCode?: number;
+    getHeader?: (name: string) => number | string | string[] | undefined;
+    [key: string]: unknown;
+}
+export type FastifyDone = (error?: unknown) => void;
+export type FastifyOnRequestHook = (request: FastifyRequestLike, reply: FastifyReplyLike, done: FastifyDone) => void;
+export type FastifyOnResponseHook = (request: FastifyRequestLike, reply: FastifyReplyLike, done: FastifyDone) => void;
+export type FastifyOnErrorHook = (request: FastifyRequestLike, reply: FastifyReplyLike, error: unknown, done: FastifyDone) => void;
+export interface FastifyInstanceLike {
+    addHook: (name: "onRequest" | "onResponse" | "onError", hook: FastifyOnRequestHook | FastifyOnResponseHook | FastifyOnErrorHook) => unknown;
+}
+export type FastifyPluginCallback = (instance: FastifyInstanceLike, options: unknown, done?: FastifyDone) => void;
+export interface FastifyIntegrationOptions {
+    name?: string;
+    minStatus?: number;
+    captureAll?: boolean;
+    captureSuccessful?: boolean;
+    sampleRate?: number;
+    random?: () => number;
+    bindContext?: boolean;
+    captureRequestHeaders?: readonly string[];
+    captureResponseHeaders?: readonly string[];
+    sanitizeUrl?: (url: string) => string;
+    getRequestId?: (request: FastifyRequestLike, reply: FastifyReplyLike) => string | undefined;
+    getRoute?: (request: FastifyRequestLike) => string | undefined;
+    context?: (request: FastifyRequestLike, reply: FastifyReplyLike) => Record<string, unknown> | undefined;
+    level?: (status: number, request: FastifyRequestLike, reply: FastifyReplyLike, error: unknown) => LoggerLevel;
+}
+export declare function fastifyIntegration(logger: LoggerLike, options?: FastifyIntegrationOptions): FastifyPluginCallback;
+```
+
 ## file-transport.d.ts
 
 ```ts
@@ -129,6 +177,7 @@ export * from "./http-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
 export * from "./express-integration.js";
+export * from "./fastify-integration.js";
 export * from "./process-integration.js";
 export * from "./diagnostics-channel-integration.js";
 ```
