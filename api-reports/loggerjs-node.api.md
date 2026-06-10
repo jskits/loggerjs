@@ -32,6 +32,57 @@ export interface DiagnosticsChannelIntegrationOptions {
 export declare function diagnosticsChannelIntegration(options?: DiagnosticsChannelIntegrationOptions): Integration;
 ```
 
+## express-integration.d.ts
+
+```ts
+import { type LoggerLevel, type LoggerLike } from "@loggerjs/core";
+export interface ExpressRequestLike {
+    method?: string;
+    originalUrl?: string;
+    url?: string;
+    path?: string;
+    headers?: Record<string, string | string[] | undefined>;
+    ip?: string;
+    route?: {
+        path?: string;
+    };
+    socket?: {
+        remoteAddress?: string;
+    };
+    [key: string]: unknown;
+}
+export interface ExpressResponseLike {
+    statusCode?: number;
+    writableEnded?: boolean;
+    headersSent?: boolean;
+    getHeader?: (name: string) => number | string | string[] | undefined;
+    once?: (event: "finish" | "close", listener: () => void) => unknown;
+    on?: (event: "finish" | "close", listener: () => void) => unknown;
+    off?: (event: "finish" | "close", listener: () => void) => unknown;
+    removeListener?: (event: "finish" | "close", listener: () => void) => unknown;
+}
+export type ExpressNextFunction = (error?: unknown) => void;
+export type ExpressRequestHandler = (req: ExpressRequestLike, res: ExpressResponseLike, next: ExpressNextFunction) => void;
+export interface ExpressIntegrationOptions {
+    name?: string;
+    minStatus?: number;
+    captureAll?: boolean;
+    captureSuccessful?: boolean;
+    captureAborted?: boolean;
+    sampleRate?: number;
+    random?: () => number;
+    bindContext?: boolean;
+    captureRequestHeaders?: readonly string[];
+    captureResponseHeaders?: readonly string[];
+    sanitizeUrl?: (url: string) => string;
+    getRequestId?: (req: ExpressRequestLike, res: ExpressResponseLike) => string | undefined;
+    getRoute?: (req: ExpressRequestLike) => string | undefined;
+    context?: (req: ExpressRequestLike, res: ExpressResponseLike) => Record<string, unknown> | undefined;
+    level?: (status: number, req: ExpressRequestLike, res: ExpressResponseLike, aborted: boolean) => LoggerLevel;
+}
+export declare function expressIntegration(logger: LoggerLike, options?: ExpressIntegrationOptions): ExpressRequestHandler;
+```
+
 ## file-transport.d.ts
 
 ```ts
@@ -77,6 +128,7 @@ export * from "./rotating-file-transport.js";
 export * from "./http-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
+export * from "./express-integration.js";
 export * from "./process-integration.js";
 export * from "./diagnostics-channel-integration.js";
 ```

@@ -58,6 +58,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-express": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-diagnostics": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

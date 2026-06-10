@@ -6,6 +6,7 @@ Node transports, process integrations, diagnostics-channel capture, and AsyncLoc
 import {
   captureProcessIntegration,
   createLogger,
+  expressIntegration,
   installAsyncLocalStorageContext,
   rotatingFileTransport,
   stdoutTransport,
@@ -30,4 +31,8 @@ const auditLogger = createLogger({
 });
 ```
 
-Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-worker`, `integration-process`, `integration-diagnostics`, and `context`.
+```ts
+app.use(expressIntegration(logger, { captureAll: true }));
+```
+
+Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-worker`, `integration-process`, `integration-express`, `integration-diagnostics`, and `context`.

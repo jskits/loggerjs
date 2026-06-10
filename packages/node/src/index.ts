@@ -5,5 +5,6 @@ export * from "./rotating-file-transport";
 export * from "./http-transport";
 export * from "./worker-transport";
 export * from "./context";
+export * from "./express-integration";
 export * from "./process-integration";
 export * from "./diagnostics-channel-integration";
