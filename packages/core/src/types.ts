@@ -121,6 +121,7 @@ export interface Transport {
   log?: (event: LogEvent, context: TransportContext) => void | Promise<void>;
   logBatch?: (events: LogEvent[], context: TransportContext) => void | Promise<void>;
   flush?: () => void | Promise<void>;
+  flushSync?: () => void;
   close?: () => void | Promise<void>;
 }
 
@@ -144,6 +145,7 @@ export interface LoggerLike {
   fatal: (message: unknown, data?: LogData | string, props?: LogData) => void;
   captureException: (error: unknown, data?: LogData) => void;
   flush: () => Promise<void>;
+  flushSync?: () => void;
   close: () => Promise<void>;
 }
 

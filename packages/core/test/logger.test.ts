@@ -180,4 +180,32 @@ describe("logger core skeleton", () => {
       "transport.errors": 1,
     });
   });
+
+  it("flushes sync-capable transports without letting failures escape", () => {
+    const flushSync = vi.fn<() => void>();
+    const failingFlushSync = vi.fn<() => void>(() => {
+      throw new Error("flush failed");
+    });
+    const onInternalError = vi.fn<(error: unknown, detail?: Record<string, unknown>) => void>();
+    const logger = createLogger({
+      transports: [
+        { name: "sync", flushSync },
+        { name: "failing-sync", flushSync: failingFlushSync },
+      ],
+      onInternalError,
+    });
+
+    expect(() => logger.flushSync()).not.toThrow();
+
+    expect(flushSync).toHaveBeenCalledTimes(1);
+    expect(failingFlushSync).toHaveBeenCalledTimes(1);
+    expect(onInternalError).toHaveBeenCalledWith(expect.any(Error), {
+      phase: "transport",
+      transport: "failing-sync",
+      operation: "flushSync",
+    });
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.errors": 1,
+    });
+  });
 });

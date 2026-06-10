@@ -112,6 +112,7 @@ export function createIntegrationSetupContext(
     fatal: (...args) => options.logger.fatal(...args),
     captureException: (...args) => options.logger.captureException(...args),
     flush: () => options.logger.flush(),
+    flushSync: () => options.logger.flushSync?.(),
     close: () => options.logger.close(),
     capture(input) {
       options.capture({ ...input, source });

@@ -352,6 +352,20 @@ export class Logger implements LoggerLike {
     await Promise.all(this.transports.map((transport) => transport.flush?.()));
   }
 
+  flushSync() {
+    for (const transport of this.transports) {
+      try {
+        transport.flushSync?.();
+      } catch (error) {
+        this.reportInternalError(error, {
+          phase: "transport",
+          transport: transport.name,
+          operation: "flushSync",
+        });
+      }
+    }
+  }
+
   async close() {
     if (this.closed) return;
     this.closed = true;
