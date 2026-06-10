@@ -1,20 +1,44 @@
-import type { Integration, LoggerLike } from "@loggerjs/core";
+import type { Integration, IntegrationSetupContext } from "@loggerjs/core";
 
-export function pageLifecycleIntegration(): Integration {
+export interface PageLifecycleOptions {
+  flushOnPageHide?: boolean;
+  flushOnHidden?: boolean;
+  coalesceMs?: number;
+}
+
+export function pageLifecycleIntegration(options: PageLifecycleOptions = {}): Integration {
+  const flushOnPageHide = options.flushOnPageHide ?? true;
+  const flushOnHidden = options.flushOnHidden ?? true;
+  const coalesceMs = options.coalesceMs ?? 250;
+
   return {
     name: "page-lifecycle",
-    setup(logger: LoggerLike) {
+    setup(api: IntegrationSetupContext) {
+      if (typeof addEventListener === "undefined") return;
+      let disposed = false;
+      let flushInFlight: Promise<void> | undefined;
+      let lastFlushAt = 0;
+
       const flush = () => {
-        void logger.flush();
+        const now = Date.now();
+        if (flushInFlight || now - lastFlushAt < coalesceMs) return;
+        lastFlushAt = now;
+        flushInFlight = Promise.resolve(api.flush())
+          .catch(() => {})
+          .finally(() => {
+            flushInFlight = undefined;
+          });
       };
       const onVisibility = () => {
-        if (document.visibilityState === "hidden") flush();
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") flush();
       };
-      addEventListener("pagehide", flush);
-      addEventListener("visibilitychange", onVisibility);
+      if (flushOnPageHide) addEventListener("pagehide", flush);
+      if (flushOnHidden) addEventListener("visibilitychange", onVisibility);
       return () => {
-        removeEventListener("pagehide", flush);
-        removeEventListener("visibilitychange", onVisibility);
+        if (disposed) return;
+        disposed = true;
+        if (flushOnPageHide) removeEventListener("pagehide", flush);
+        if (flushOnHidden) removeEventListener("visibilitychange", onVisibility);
       };
     },
   };
