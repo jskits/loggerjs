@@ -1,5 +1,6 @@
 export * from "./levels";
 export * from "./types";
+export * from "./record";
 export * from "./logger";
 export * from "./utils/error";
 export * from "./utils/safe-stringify";
