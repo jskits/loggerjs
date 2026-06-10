@@ -16,6 +16,7 @@ const workspacePackages = {
   "@loggerjs/otel": "packages/otel",
   "@loggerjs/processors": "packages/processors",
   "@loggerjs/sentry": "packages/sentry",
+  "@loggerjs/loki": "packages/loki",
 };
 
 const typeTestSource = `
@@ -35,6 +36,7 @@ import { fastEventJsonCodec } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
 import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
 import { sentryTransport, type SentryLike } from "@loggerjs/sentry/transport";
+import { lokiTransport } from "@loggerjs/loki/transport";
 
 type LoginPayload = { userId: string; attempts?: number };
 
@@ -67,6 +69,7 @@ browserHttpTransport({ url: "/logs" });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 openTelemetryTraceProcessor();
 sentryTransport({ sentry: {} satisfies SentryLike });
+lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
 `;
 
 const tsconfigSource = {

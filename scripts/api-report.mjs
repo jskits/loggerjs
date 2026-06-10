@@ -14,6 +14,7 @@ const packages = [
   ["@loggerjs/processors", "packages/processors"],
   ["@loggerjs/otel", "packages/otel"],
   ["@loggerjs/sentry", "packages/sentry"],
+  ["@loggerjs/loki", "packages/loki"],
 ];
 
 function declarationFiles(dir, root = dir) {

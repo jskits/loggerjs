@@ -123,6 +123,12 @@ importers:
 
   packages/core: {}
 
+  packages/loki:
+    dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/node:
     dependencies:
       '@loggerjs/core':

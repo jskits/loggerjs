@@ -37,6 +37,8 @@ const checks = [
   ["@loggerjs/otel/trace", ["openTelemetryTraceProcessor"]],
   ["@loggerjs/sentry", ["sentryTransport"]],
   ["@loggerjs/sentry/transport", ["sentryTransport"]],
+  ["@loggerjs/loki", ["lokiTransport"]],
+  ["@loggerjs/loki/transport", ["lokiTransport"]],
 ];
 
 const workspacePackages = {
@@ -45,6 +47,7 @@ const workspacePackages = {
   "@loggerjs/node": "packages/node",
   "@loggerjs/otel": "packages/otel",
   "@loggerjs/sentry": "packages/sentry",
+  "@loggerjs/loki": "packages/loki",
 };
 
 const verifierSource = `
