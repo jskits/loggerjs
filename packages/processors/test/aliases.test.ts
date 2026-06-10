@@ -4,8 +4,10 @@ import {
   context,
   dedupe,
   enrich,
+  filter,
   levelOverride,
   logType,
+  route,
   sample,
   tags,
   traceContext,
@@ -48,6 +50,10 @@ describe("processor middleware aliases", () => {
     });
     expect(levelOverride("warn")(event, processorContext)).toMatchObject({
       levelName: "warn",
+    });
+    expect(filter(() => true)(event, processorContext)).toBe(event);
+    expect(route({ transports: ["remote"] })(event, processorContext)).toMatchObject({
+      message: "created",
     });
   });
 });

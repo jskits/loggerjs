@@ -29,6 +29,22 @@ export declare function getContext(): BoundContext | undefined;
 export declare function withContext<T>(context: Record<string, unknown>, fn: () => T): T;
 ```
 
+## event-route.d.ts
+
+```ts
+import type { LogEvent } from "./types.js";
+export declare const LOGGERJS_ROUTE: "__loggerjsRoute";
+export interface LogEventRoute {
+    transports?: readonly string[];
+    excludeTransports?: readonly string[];
+}
+export type RoutableLogEvent = LogEvent & {
+    [LOGGERJS_ROUTE]?: LogEventRoute;
+};
+export declare function getLogEventRoute(event: LogEvent): LogEventRoute | undefined;
+export declare function withLogEventRoute(event: LogEvent, route: LogEventRoute): LogEvent;
+```
+
 ## events.d.ts
 
 ```ts
@@ -44,6 +60,7 @@ export * from "./types.js";
 export * from "./record.js";
 export * from "./context.js";
 export * from "./events.js";
+export * from "./event-route.js";
 export * from "./logger.js";
 export * from "./registry.js";
 export * from "./meta.js";

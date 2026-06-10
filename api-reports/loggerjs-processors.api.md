@@ -32,6 +32,45 @@ export type EnrichInput = EnrichPatch | ((event: LogEvent, context: ProcessorCon
 export declare function enrichProcessor(input: EnrichInput): Processor;
 ```
 
+## filter-route.d.ts
+
+```ts
+import { type EnabledLogLevelName, type LogEvent, type LogEventRoute, type LoggerLevel, type Processor, type ProcessorContext, type Tags } from "@loggerjs/core";
+export type EventStringMatcher = string | RegExp | ((value: string | undefined, event: LogEvent) => boolean);
+export interface EventMatch {
+    when?: (event: LogEvent, context: ProcessorContext) => boolean;
+    logger?: EventStringMatcher | readonly EventStringMatcher[];
+    type?: EventStringMatcher | readonly EventStringMatcher[];
+    integration?: EventStringMatcher | readonly EventStringMatcher[];
+    runtime?: EventStringMatcher | readonly EventStringMatcher[];
+    levelName?: EnabledLogLevelName | readonly EnabledLogLevelName[];
+    tags?: Tags;
+    minLevel?: LoggerLevel;
+    maxLevel?: LoggerLevel;
+}
+export type FilterAction = "keep" | "drop";
+export type FilterPredicate = (event: LogEvent, context: ProcessorContext) => boolean;
+export interface FilterRule extends EventMatch {
+    action?: FilterAction;
+    reason?: string;
+}
+export interface FilterOptions {
+    rules: readonly FilterRule[];
+    defaultAction?: FilterAction;
+    onDrop?: (event: LogEvent, reason: string) => void;
+}
+export type FilterInput = FilterPredicate | readonly FilterRule[] | FilterOptions;
+export interface RouteRule extends EventMatch, LogEventRoute {
+}
+export interface RouteOptions {
+    rules: readonly RouteRule[];
+    defaultRoute?: LogEventRoute;
+}
+export type RouteInput = LogEventRoute | readonly RouteRule[] | RouteOptions;
+export declare function filterProcessor(input: FilterInput): Processor;
+export declare function routeProcessor(input: RouteInput): Processor;
+```
+
 ## fingers-crossed.d.ts
 
 ```ts
@@ -77,6 +116,7 @@ export * from "./rate-limit.js";
 export * from "./fingers-crossed.js";
 export * from "./enrich.js";
 export * from "./level-override.js";
+export * from "./filter-route.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -86,6 +126,7 @@ export { rateLimitProcessor as rateLimit } from "./rate-limit.js";
 export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed.js";
 export { enrichProcessor as enrich } from "./enrich.js";
 export { levelOverrideProcessor as levelOverride } from "./level-override.js";
+export { filterProcessor as filter, routeProcessor as route } from "./filter-route.js";
 ```
 
 ## level-override.d.ts

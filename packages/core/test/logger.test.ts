@@ -4,6 +4,7 @@ import {
   defineEvent,
   createLogger,
   getLoggerMetaStats,
+  LOGGERJS_ROUTE,
   memoryTransport,
   resetContextManager,
   resetLoggerMetaStats,
@@ -11,6 +12,7 @@ import {
   type LogEvent,
   type Processor,
   type Transport,
+  withLogEventRoute,
   withContext,
 } from "../src";
 
@@ -262,6 +264,35 @@ describe("logger core skeleton", () => {
       "processor.errors": 1,
       "transport.errors": 1,
     });
+  });
+
+  it("routes events to named transports from processor metadata", () => {
+    const local = memoryTransport({ name: "local" });
+    const remote = memoryTransport({ name: "remote" });
+    const logger = createLogger({
+      processors: [(event) => withLogEventRoute(event, { transports: ["remote"] })],
+      transports: [local, remote],
+    });
+
+    logger.info("created");
+
+    expect(local.events).toEqual([]);
+    expect(remote.events).toHaveLength(1);
+    expect(Object.keys(remote.events[0] ?? {})).not.toContain(LOGGERJS_ROUTE);
+  });
+
+  it("excludes named transports from processor route metadata", () => {
+    const local = memoryTransport({ name: "local" });
+    const remote = memoryTransport({ name: "remote" });
+    const logger = createLogger({
+      processors: [(event) => withLogEventRoute(event, { excludeTransports: ["remote"] })],
+      transports: [local, remote],
+    });
+
+    logger.info("created");
+
+    expect(local.events).toHaveLength(1);
+    expect(remote.events).toEqual([]);
   });
 
   it("flushes sync-capable transports without letting failures escape", () => {

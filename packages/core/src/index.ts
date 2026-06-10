@@ -3,6 +3,7 @@ export * from "./types";
 export * from "./record";
 export * from "./context";
 export * from "./events";
+export * from "./event-route";
 export * from "./logger";
 export * from "./registry";
 export * from "./meta";

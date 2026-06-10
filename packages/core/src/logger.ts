@@ -7,6 +7,7 @@ import {
   type LoggerLevel,
 } from "./levels";
 import { getContext } from "./context";
+import { getLogEventRoute } from "./event-route";
 import { createIntegrationSetupContext, onceTeardown } from "./integration-api";
 import { reportLoggerMetaError } from "./meta";
 import { runMiddleware } from "./middleware";
@@ -153,6 +154,20 @@ function mergeRecords(
     Object.assign(out, item);
   }
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function transportName(transport: Transport, index: number): string {
+  return transport.name ?? `transport-${index}`;
+}
+
+function shouldDispatchToTransport(event: LogEvent, transport: Transport, index: number): boolean {
+  const route = getLogEventRoute(event);
+  if (!route) return true;
+
+  const name = transportName(transport, index);
+  if (route.transports && !route.transports.includes(name)) return false;
+  if (route.excludeTransports?.includes(name)) return false;
+  return true;
 }
 
 function eventMessage<TPayload extends Record<string, unknown>>(
@@ -497,7 +512,9 @@ export class Logger implements LoggerLike {
       reportInternalError: (error, detail) => this.reportInternalError(error, detail),
     };
 
-    for (const transport of this.transports) {
+    for (let index = 0; index < this.transports.length; index += 1) {
+      const transport = this.transports[index];
+      if (!transport || !shouldDispatchToTransport(event, transport, index)) continue;
       if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel))
         continue;
       try {
