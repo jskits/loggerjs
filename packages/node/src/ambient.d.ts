@@ -32,3 +32,7 @@ declare module "os" {
 declare module "path" {
   export function join(...parts: string[]): string;
 }
+
+declare module "node:module" {
+  export function createRequire(url: string): (id: string) => unknown;
+}
