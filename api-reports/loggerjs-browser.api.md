@@ -123,6 +123,7 @@ export * from "./console-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
+export * from "./web-vitals-integration.js";
 export * from "./page-lifecycle.js";
 ```
 
@@ -156,6 +157,33 @@ export interface PageLifecycleOptions {
     coalesceMs?: number;
 }
 export declare function pageLifecycleIntegration(options?: PageLifecycleOptions): Integration;
+```
+
+## web-vitals-integration.d.ts
+
+```ts
+import type { Integration, LoggerLevel } from "@loggerjs/core";
+export type WebVitalName = "CLS" | "FCP" | "INP" | "LCP" | "TTFB";
+export type WebVitalRating = "good" | "needs-improvement" | "poor";
+export interface WebVitalMetric {
+    name: WebVitalName;
+    value: number;
+    delta: number;
+    rating: WebVitalRating;
+    id: string;
+    final: boolean;
+}
+export interface CaptureWebVitalsOptions {
+    metrics?: readonly WebVitalName[];
+    level?: LoggerLevel;
+    reportAllChanges?: boolean;
+    flushOnHidden?: boolean;
+    PerformanceObserver?: typeof PerformanceObserver;
+    performance?: Pick<Performance, "getEntriesByName" | "getEntriesByType">;
+    addEventListener?: typeof globalThis.addEventListener;
+    removeEventListener?: typeof globalThis.removeEventListener;
+}
+export declare function captureWebVitalsIntegration(options?: CaptureWebVitalsOptions): Integration;
 ```
 
 ## xhr-integration.d.ts
