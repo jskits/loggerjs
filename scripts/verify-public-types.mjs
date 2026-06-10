@@ -49,6 +49,7 @@ import { captureUserActionsIntegration } from "@loggerjs/browser/integration-use
 import { captureWebSocketIntegration } from "@loggerjs/browser/integration-websocket";
 import { postgresTransport } from "@loggerjs/database/postgres";
 import { sqliteTransport } from "@loggerjs/database/sqlite";
+import { databaseIntegration } from "@loggerjs/node/integration-database";
 import { nodeFetchIntegration } from "@loggerjs/node/integration-fetch";
 import { nodeHttpClientIntegration } from "@loggerjs/node/integration-http-client";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
@@ -125,6 +126,7 @@ const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" }
 frameworkErrors.reactComponentDidCatch(new Error("boom"), { componentStack: "App" });
 captureUserActionsIntegration({ events: ["click", "submit"], captureText: false });
 captureWebSocketIntegration({ captureMessages: true, captureSentMessages: true });
+databaseIntegration({ client: { query: async () => ({}) }, minDurationMs: 100 });
 nodeFetchIntegration({ captureResponseHeaders: ["x-trace-id"] });
 nodeHttpClientIntegration({ captureRequestHeaders: ["x-request-id"] });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });

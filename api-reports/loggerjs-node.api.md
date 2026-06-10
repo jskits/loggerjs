@@ -16,6 +16,44 @@ export declare function installAsyncLocalStorageContext(manager?: ContextManager
 }): () => void;
 ```
 
+## database-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface DatabaseClientLike {
+    [method: string]: unknown;
+}
+export interface DatabaseIntegrationTarget {
+    client: DatabaseClientLike;
+    name?: string;
+    system?: string;
+    methods?: readonly string[];
+}
+export interface DatabaseOperationInfo {
+    target: string;
+    system?: string;
+    method: string;
+    statement?: string;
+}
+export interface DatabaseIntegrationOptions {
+    client?: DatabaseClientLike;
+    targets?: readonly DatabaseIntegrationTarget[];
+    name?: string;
+    system?: string;
+    methods?: readonly string[];
+    captureAll?: boolean;
+    captureSuccessful?: boolean;
+    minDurationMs?: number;
+    sampleRate?: number;
+    random?: () => number;
+    captureParameters?: boolean;
+    sanitizeStatement?: (statement: string) => string;
+    getStatement?: (args: readonly unknown[], method: string) => string | undefined;
+    level?: (durationMs: number, error: unknown, info: DatabaseOperationInfo) => LoggerLevel;
+}
+export declare function databaseIntegration(options?: DatabaseIntegrationOptions): Integration;
+```
+
 ## diagnostics-channel-integration.d.ts
 
 ```ts
@@ -177,6 +215,7 @@ export * from "./http-transport.js";
 export * from "./syslog-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
+export * from "./database-integration.js";
 export * from "./express-integration.js";
 export * from "./fastify-integration.js";
 export * from "./node-fetch-integration.js";
