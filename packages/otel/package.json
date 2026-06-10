@@ -33,5 +33,13 @@
   },
   "dependencies": {
     "@loggerjs/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": ">=1 <2"
+  },
+  "peerDependenciesMeta": {
+    "@opentelemetry/api": {
+      "optional": true
+    }
   }
 }
