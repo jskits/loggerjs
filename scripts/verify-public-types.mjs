@@ -1,0 +1,115 @@
+import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const tempRoot = join(repoRoot, ".tmp", "verify-public-types");
+
+const workspacePackages = {
+  "@loggerjs/browser": "packages/browser",
+  "@loggerjs/codecs": "packages/codecs",
+  "@loggerjs/core": "packages/core",
+  "@loggerjs/node": "packages/node",
+  "@loggerjs/otel": "packages/otel",
+  "@loggerjs/processors": "packages/processors",
+  "@loggerjs/sentry": "packages/sentry",
+};
+
+const typeTestSource = `
+import {
+  createLogger,
+  defineEvent,
+  type EventDefinition,
+  type EventLogOptions,
+  type Transport,
+} from "@loggerjs/core";
+import { createMiddleware } from "@loggerjs/core/middleware";
+import { jsonCodec } from "@loggerjs/core/codec-json";
+import { consoleTransport } from "@loggerjs/core/transport-console";
+import { browserHttpTransport } from "@loggerjs/browser/transport-http";
+import { nodeHttpTransport } from "@loggerjs/node/transport-http";
+import { fastEventJsonCodec } from "@loggerjs/codecs";
+import { redact } from "@loggerjs/processors";
+import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
+import { sentryTransport, type SentryLike } from "@loggerjs/sentry/transport";
+
+type LoginPayload = { userId: string; attempts?: number };
+
+const loginEvent = defineEvent<LoginPayload>({
+  type: "auth.login",
+  message: (payload) => payload.userId,
+  tags: (payload) => ({ attempts: payload.attempts }),
+});
+
+const explicitDefinition: EventDefinition<LoginPayload> = loginEvent;
+const explicitOptions: EventLogOptions<LoginPayload> = {
+  message: (payload) => payload.userId,
+};
+
+const transport: Transport = consoleTransport();
+const logger = createLogger({ transports: [transport] });
+logger.event(explicitDefinition, { userId: "u1" }, explicitOptions);
+
+// @ts-expect-error missing required event payload field
+logger.event(loginEvent, {});
+
+// @ts-expect-error wrong event payload field type
+logger.event(loginEvent, { userId: 123 });
+
+createMiddleware("identity", (record) => record);
+jsonCodec().encode([]);
+fastEventJsonCodec().encode([]);
+redact({ paths: ["password"] });
+browserHttpTransport({ url: "/logs" });
+nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
+openTelemetryTraceProcessor();
+sentryTransport({ sentry: {} satisfies SentryLike });
+`;
+
+const tsconfigSource = {
+  compilerOptions: {
+    exactOptionalPropertyTypes: false,
+    lib: ["ES2022", "DOM"],
+    module: "NodeNext",
+    moduleResolution: "NodeNext",
+    noEmit: true,
+    preserveSymlinks: true,
+    skipLibCheck: true,
+    strict: true,
+    target: "ES2022",
+    types: ["node"],
+  },
+  include: ["index.ts"],
+};
+
+rmSync(tempRoot, { force: true, recursive: true });
+mkdirSync(join(tempRoot, "node_modules", "@loggerjs"), { recursive: true });
+
+for (const [packageName, packagePath] of Object.entries(workspacePackages)) {
+  const linkName = packageName.replace("@loggerjs/", "");
+  symlinkSync(
+    join(repoRoot, packagePath),
+    join(tempRoot, "node_modules", "@loggerjs", linkName),
+    "dir",
+  );
+}
+
+writeFileSync(join(tempRoot, "index.ts"), typeTestSource);
+writeFileSync(join(tempRoot, "tsconfig.json"), `${JSON.stringify(tsconfigSource, null, 2)}\n`);
+
+const tscBin = require.resolve("typescript/bin/tsc");
+const result = spawnSync(process.execPath, [tscBin, "-p", join(tempRoot, "tsconfig.json")], {
+  cwd: tempRoot,
+  stdio: "inherit",
+});
+
+rmSync(tempRoot, { force: true, recursive: true });
+
+if (result.status !== 0) {
+  process.exitCode = result.status ?? 1;
+} else {
+  console.log("Verified public package type surface.");
+}

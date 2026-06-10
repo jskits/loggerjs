@@ -1,0 +1,53 @@
+# API Report: @loggerjs/codecs
+
+Generated from `packages/codecs/dist/**/*.d.ts`.
+Update with `pnpm build && pnpm api:report` after intentional public API changes.
+
+## fast-event-json.d.ts
+
+```ts
+import { type Codec, type SafeStringifyOptions } from "@loggerjs/core";
+export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
+    includeContext?: boolean;
+    includeData?: boolean;
+    includeError?: boolean;
+    includeTrace?: boolean;
+    includeSource?: boolean;
+}
+export declare function fastEventJsonCodec(options?: FastEventJsonCodecOptions): Codec<string>;
+```
+
+## index.d.ts
+
+```ts
+export * from "@loggerjs/core";
+export * from "./fast-event-json.js";
+export * from "./msgpackr.js";
+export * from "./projector.js";
+```
+
+## msgpackr.d.ts
+
+```ts
+import { type Codec } from "@loggerjs/core";
+export interface MsgpackRuntime {
+    pack: (input: unknown) => Uint8Array;
+    unpack: (payload: Uint8Array) => unknown;
+}
+export declare function msgpackrCodec(runtime: MsgpackRuntime): Codec<Uint8Array>;
+```
+
+## projector.d.ts
+
+```ts
+import { type Codec, type LogEvent } from "@loggerjs/core";
+export interface ProjectorCodecOptions<TWire> {
+    name: string;
+    contentType: string;
+    project: (input: LogEvent | LogEvent[]) => TWire;
+    serialize: (wire: TWire) => string | Uint8Array;
+    parse?: (payload: string | Uint8Array) => TWire;
+    unproject?: (wire: TWire) => LogEvent | LogEvent[];
+}
+export declare function projectorCodec<TWire>(options: ProjectorCodecOptions<TWire>): Codec<string | Uint8Array>;
+```
