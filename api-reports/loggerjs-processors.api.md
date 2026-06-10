@@ -15,6 +15,39 @@ export interface DedupeOptions {
 export declare function dedupeProcessor(options?: DedupeOptions): Processor;
 ```
 
+## fingers-crossed.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Processor, type ProcessorContext, type Transport } from "@loggerjs/core";
+export type FingersCrossedDropReason = "buffer-full" | "bucket-pruned";
+export type FingersCrossedFlush = (events: readonly LogEvent[], context: ProcessorContext) => void | Promise<void>;
+export interface FingersCrossedState {
+    readonly key: string;
+    readonly buffered: number;
+    readonly activeUntilMs: number;
+    readonly lastSeenMs: number;
+}
+export interface FingersCrossedProcessor extends Processor {
+    states(): readonly FingersCrossedState[];
+    reset(key?: string): void;
+}
+export interface FingersCrossedOptions {
+    triggerLevel?: LoggerLevel;
+    shouldTrigger?: (event: LogEvent) => boolean;
+    bufferSize?: number;
+    activationMs?: number;
+    flushTo?: Transport | FingersCrossedFlush;
+    includeTrigger?: boolean;
+    passthroughTrigger?: boolean;
+    passthroughAfterTrigger?: boolean;
+    key?: (event: LogEvent) => string;
+    maxBuckets?: number;
+    onTrigger?: (event: LogEvent, buffered: readonly LogEvent[], key: string) => void;
+    onDrop?: (event: LogEvent, reason: FingersCrossedDropReason, key: string) => void;
+}
+export declare function fingersCrossedProcessor(options?: FingersCrossedOptions): FingersCrossedProcessor;
+```
+
 ## index.d.ts
 
 ```ts
@@ -24,12 +57,14 @@ export * from "./tags.js";
 export * from "./dedupe.js";
 export * from "./trace.js";
 export * from "./rate-limit.js";
+export * from "./fingers-crossed.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
 export { dedupeProcessor as dedupe } from "./dedupe.js";
 export { traceContextProcessor as traceContext } from "./trace.js";
 export { rateLimitProcessor as rateLimit } from "./rate-limit.js";
+export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed.js";
 ```
 
 ## rate-limit.d.ts
