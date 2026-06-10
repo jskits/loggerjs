@@ -12,6 +12,7 @@ const workspacePackages = {
   "@loggerjs/browser": "packages/browser",
   "@loggerjs/codecs": "packages/codecs",
   "@loggerjs/core": "packages/core",
+  "@loggerjs/database": "packages/database",
   "@loggerjs/node": "packages/node",
   "@loggerjs/otel": "packages/otel",
   "@loggerjs/processors": "packages/processors",
@@ -38,6 +39,8 @@ import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-br
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-service-worker";
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
+import { postgresTransport } from "@loggerjs/database/postgres";
+import { sqliteTransport } from "@loggerjs/database/sqlite";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
@@ -101,6 +104,18 @@ browserWebSocketTransport({
   }),
 });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
+sqliteTransport({
+  database: {
+    prepare: () => ({
+      run() {},
+    }),
+  },
+});
+postgresTransport({
+  client: {
+    async query() {},
+  },
+});
 nodeSyslogTransport({
   udpSocketFactory: () => ({
     send(_message, _port, _host, callback) {

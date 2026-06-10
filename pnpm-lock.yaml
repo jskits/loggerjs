@@ -129,6 +129,12 @@ importers:
 
   packages/core: {}
 
+  packages/database:
+    dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/datadog:
     dependencies:
       '@loggerjs/core':

@@ -9,6 +9,7 @@ const check = process.argv.includes("--check");
 const packages = [
   ["@loggerjs/core", "packages/core"],
   ["@loggerjs/browser", "packages/browser"],
+  ["@loggerjs/database", "packages/database"],
   ["@loggerjs/node", "packages/node"],
   ["@loggerjs/codecs", "packages/codecs"],
   ["@loggerjs/processors", "packages/processors"],

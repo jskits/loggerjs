@@ -29,6 +29,13 @@ const checks = [
   ["@loggerjs/node/transport-file", ["fileTransport"]],
   ["@loggerjs/node/transport-stdout", ["stdoutTransport", "stderrTransport"]],
   ["@loggerjs/node/transport-syslog", ["nodeSyslogTransport", "formatSyslogMessage"]],
+  ["@loggerjs/database", ["databaseTransport", "sqliteTransport", "postgresTransport"]],
+  [
+    "@loggerjs/database/transport",
+    ["databaseTransport", "createDatabaseLogRow", "createSQLiteDatabaseAdapter"],
+  ],
+  ["@loggerjs/database/sqlite", ["sqliteTransport", "createSQLiteDatabaseAdapter"]],
+  ["@loggerjs/database/postgres", ["postgresTransport", "createPostgresDatabaseAdapter"]],
   ["@loggerjs/node/transport-worker", ["workerTransport"]],
   ["@loggerjs/node/integration-process", ["captureProcessIntegration"]],
   ["@loggerjs/node/integration-diagnostics", ["diagnosticsChannelIntegration"]],
@@ -58,6 +65,7 @@ const checks = [
 const workspacePackages = {
   "@loggerjs/browser": "packages/browser",
   "@loggerjs/core": "packages/core",
+  "@loggerjs/database": "packages/database",
   "@loggerjs/node": "packages/node",
   "@loggerjs/otel": "packages/otel",
   "@loggerjs/sentry": "packages/sentry",
