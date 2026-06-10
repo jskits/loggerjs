@@ -37,3 +37,13 @@ declare module "path" {
 declare module "node:module" {
   export function createRequire(url: string): (id: string) => unknown;
 }
+
+declare module "node:worker_threads" {
+  export class Worker {
+    constructor(filename: string | URL, options?: unknown);
+    postMessage(value: unknown, transferList?: ArrayBuffer[]): void;
+    terminate(): Promise<number>;
+    on?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
+    off?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
+  }
+}
