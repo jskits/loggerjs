@@ -7,6 +7,7 @@ import {
   dedupeProcessor,
   enrichProcessor,
   filterProcessor,
+  fingerprintProcessor,
   fingersCrossedProcessor,
   levelOverrideProcessor,
   rateLimitProcessor,
@@ -19,6 +20,7 @@ import {
 const processors = [
   redactProcessor({ keys: ["password", "token", /secret/i] }),
   enrichProcessor({ tags: { service: "checkout" }, context: { region: "us-east-1" } }),
+  fingerprintProcessor({ parts: ["logger", "type", "message", "error.name", "error.message"] }),
   sampleProcessor({ rates: { debug: 0.1, info: 1, warn: 1, error: 1, fatal: 1, trace: 0.01 } }),
   tagsProcessor({ service: "checkout" }),
   levelOverrideProcessor([{ tags: { audit: true }, level: "warn" }]),

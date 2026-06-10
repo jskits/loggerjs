@@ -5,6 +5,7 @@ import {
   dedupe,
   enrich,
   filter,
+  fingerprint,
   levelOverride,
   logType,
   route,
@@ -54,6 +55,9 @@ describe("processor middleware aliases", () => {
     expect(filter(() => true)(event, processorContext)).toBe(event);
     expect(route({ transports: ["remote"] })(event, processorContext)).toMatchObject({
       message: "created",
+    });
+    expect(fingerprint()(event, processorContext)).toMatchObject({
+      tags: { fingerprint: expect.any(String) },
     });
   });
 });

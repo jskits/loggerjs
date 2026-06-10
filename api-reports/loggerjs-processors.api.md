@@ -71,6 +71,22 @@ export declare function filterProcessor(input: FilterInput): Processor;
 export declare function routeProcessor(input: RouteInput): Processor;
 ```
 
+## fingerprint.d.ts
+
+```ts
+import type { LogEvent, Processor, ProcessorContext } from "@loggerjs/core";
+export type FingerprintPart = "logger" | "level" | "type" | "message" | "error.name" | "error.message" | "source.integration" | "source.runtime" | "stack.top" | ((event: LogEvent, context: ProcessorContext) => unknown);
+export interface FingerprintOptions {
+    parts?: readonly FingerprintPart[];
+    hash?: (input: string) => string;
+    target?: "tags" | "context";
+    key?: string;
+    separator?: string;
+    prefix?: string;
+}
+export declare function fingerprintProcessor(options?: FingerprintOptions): Processor;
+```
+
 ## fingers-crossed.d.ts
 
 ```ts
@@ -117,6 +133,7 @@ export * from "./fingers-crossed.js";
 export * from "./enrich.js";
 export * from "./level-override.js";
 export * from "./filter-route.js";
+export * from "./fingerprint.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -127,6 +144,7 @@ export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed.js"
 export { enrichProcessor as enrich } from "./enrich.js";
 export { levelOverrideProcessor as levelOverride } from "./level-override.js";
 export { filterProcessor as filter, routeProcessor as route } from "./filter-route.js";
+export { fingerprintProcessor as fingerprint } from "./fingerprint.js";
 ```
 
 ## level-override.d.ts
