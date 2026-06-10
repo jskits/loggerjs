@@ -14,6 +14,7 @@ export interface BatchTransportOptions {
   maxBytes?: number;
   maxWaitMs?: number;
   flushIntervalMs?: number;
+  concurrency?: number;
   maxQueueSize?: number;
   dropPolicy?: DropPolicy;
   estimateEventBytes?: (event: LogEvent) => number;
@@ -106,6 +107,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   const maxBatchSize = options.maxRecords ?? options.maxBatchSize ?? 50;
   const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
   const flushIntervalMs = options.maxWaitMs ?? options.flushIntervalMs ?? 1000;
+  const concurrency = Math.max(1, Math.floor(options.concurrency ?? 1));
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
   const estimateEventBytes = options.estimateEventBytes ?? estimateLogEventBytes;
@@ -120,6 +122,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastContext: TransportContext | undefined;
   let flushing = false;
+  let activeFlush: Promise<void> | undefined;
   let consecutiveFailures = 0;
   let circuitOpenUntil = 0;
 
@@ -204,7 +207,53 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     return batch;
   };
 
+  const deliverBatchItems = async (batchItems: QueueItem[], context: TransportContext) => {
+    const batch = batchItems.map((item) => item.event);
+    try {
+      await deliverWithRetry(batch, context);
+    } catch (error) {
+      queue.unshift(...batchItems);
+      throw error;
+    }
+  };
+
+  const flushLoop = async (context: TransportContext) => {
+    const inFlight = new Set<Promise<void>>();
+
+    const launchAvailableBatches = () => {
+      while (queue.length > 0 && inFlight.size < concurrency) {
+        const now = Date.now();
+        if (circuitOpenUntil > now) {
+          schedule(circuitOpenUntil - now);
+          return;
+        }
+        const batchItems = takeBatch();
+        if (batchItems.length === 0) return;
+        let task: Promise<void>;
+        task = deliverBatchItems(batchItems, context).finally(() => {
+          inFlight.delete(task);
+        });
+        inFlight.add(task);
+      }
+    };
+
+    while (queue.length > 0 || inFlight.size > 0) {
+      launchAvailableBatches();
+      if (inFlight.size === 0) return;
+
+      try {
+        // oxlint-disable-next-line no-await-in-loop -- Wait for a delivery slot before launching more batches.
+        await Promise.race(inFlight);
+      } catch (error) {
+        // oxlint-disable-next-line no-await-in-loop -- Drain active deliveries before surfacing the first failure.
+        await Promise.allSettled(inFlight);
+        throw error;
+      }
+    }
+  };
+
   const flush = async () => {
+    if (activeFlush) return activeFlush;
     if (flushing || queue.length === 0) return;
     const context = lastContext;
     if (!context) return;
@@ -217,26 +266,12 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
 
     flushing = true;
     clearTimer();
+    activeFlush = flushLoop(context);
     try {
-      while (queue.length > 0) {
-        const nowDuringFlush = Date.now();
-        if (circuitOpenUntil > nowDuringFlush) {
-          schedule(circuitOpenUntil - nowDuringFlush);
-          return;
-        }
-        const batchItems = takeBatch();
-        if (batchItems.length === 0) return;
-        const batch = batchItems.map((item) => item.event);
-        try {
-          // oxlint-disable-next-line no-await-in-loop -- Batches must preserve delivery order.
-          await deliverWithRetry(batch, context);
-        } catch (error) {
-          queue.unshift(...batchItems);
-          throw error;
-        }
-      }
+      await activeFlush;
     } finally {
       flushing = false;
+      activeFlush = undefined;
       if (queue.length > 0) {
         const delay =
           circuitOpenUntil > Date.now() ? circuitOpenUntil - Date.now() : flushIntervalMs;

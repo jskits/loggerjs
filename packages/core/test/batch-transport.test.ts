@@ -146,6 +146,43 @@ describe("batchTransport", () => {
     });
   });
 
+  it("limits concurrent batch delivery", async () => {
+    const batches: string[][] = [];
+    let active = 0;
+    let maxActive = 0;
+    const transport = batchTransport(
+      {
+        name: "inner",
+        async logBatch(events) {
+          active += 1;
+          maxActive = Math.max(maxActive, active);
+          batches.push(events.map((item) => item.id));
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          active -= 1;
+        },
+      },
+      {
+        maxBatchSize: 10,
+        maxBytes: 1,
+        concurrency: 2,
+        flushIntervalMs: 0,
+        estimateEventBytes() {
+          return 1;
+        },
+      },
+    );
+
+    const context = createContext();
+    transport.log?.(event, context);
+    transport.log?.({ ...event, id: "evt-2", seq: 2 }, context);
+    transport.log?.({ ...event, id: "evt-3", seq: 3 }, context);
+    transport.log?.({ ...event, id: "evt-4", seq: 4 }, context);
+    await transport.flush?.();
+
+    expect(maxActive).toBe(2);
+    expect(batches).toEqual([["evt-1"], ["evt-2"], ["evt-3"], ["evt-4"]]);
+  });
+
   it("retries transient delivery failures", async () => {
     resetLoggerMetaStats();
     const logBatch = vi.fn<NonNullable<Transport["logBatch"]>>(async () => {
