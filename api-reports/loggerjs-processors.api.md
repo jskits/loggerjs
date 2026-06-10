@@ -23,11 +23,36 @@ export * from "./sample.js";
 export * from "./tags.js";
 export * from "./dedupe.js";
 export * from "./trace.js";
+export * from "./rate-limit.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
 export { dedupeProcessor as dedupe } from "./dedupe.js";
 export { traceContextProcessor as traceContext } from "./trace.js";
+export { rateLimitProcessor as rateLimit } from "./rate-limit.js";
+```
+
+## rate-limit.d.ts
+
+```ts
+import { type EnabledLogLevelName, type LogEvent, type Processor } from "@loggerjs/core";
+export interface RateLimitBucket {
+    readonly key: string;
+    readonly tokens: number;
+    readonly lastRefillMs: number;
+}
+export interface RateLimitProcessor extends Processor {
+    buckets(): readonly RateLimitBucket[];
+}
+export interface RateLimitOptions {
+    capacity?: number;
+    refillPerSecond?: number;
+    key?: (event: LogEvent) => string;
+    exemptLevels?: readonly EnabledLogLevelName[];
+    maxBuckets?: number;
+    onDrop?: (event: LogEvent, key: string) => void;
+}
+export declare function rateLimitProcessor(options?: RateLimitOptions): RateLimitProcessor;
 ```
 
 ## redact.d.ts
