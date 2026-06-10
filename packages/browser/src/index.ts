@@ -11,6 +11,7 @@ export * from "./xhr-integration";
 export * from "./framework-error-integration";
 export * from "./reporting-integration";
 export * from "./router-integration";
+export * from "./runtime-host-integration";
 export * from "./service-worker-integration";
 export * from "./user-action-integration";
 export * from "./websocket-integration";

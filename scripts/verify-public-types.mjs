@@ -43,6 +43,7 @@ import { captureFrameworkErrorsIntegration } from "@loggerjs/browser/integration
 import { capturePerformanceIntegration } from "@loggerjs/browser/integration-performance";
 import { captureReportingIntegration } from "@loggerjs/browser/integration-reporting";
 import { captureRouterIntegration } from "@loggerjs/browser/integration-router";
+import { captureRuntimeHostIntegration } from "@loggerjs/browser/integration-runtime-host";
 import { captureServiceWorkerIntegration } from "@loggerjs/browser/integration-service-worker";
 import { captureUserActionsIntegration } from "@loggerjs/browser/integration-user-actions";
 import { captureWebSocketIntegration } from "@loggerjs/browser/integration-websocket";
@@ -116,6 +117,7 @@ capturePerformanceIntegration({
 });
 captureReportingIntegration({ reportTypes: ["csp-violation", "deprecation"] });
 captureRouterIntegration({ includeState: true, urlMode: "path" });
+captureRuntimeHostIntegration({ electronChannels: ["main:error"] });
 captureServiceWorkerIntegration({ captureMessageData: false });
 const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
 frameworkErrors.reactComponentDidCatch(new Error("boom"), { componentStack: "App" });

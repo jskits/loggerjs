@@ -204,6 +204,7 @@ export * from "./xhr-integration.js";
 export * from "./framework-error-integration.js";
 export * from "./reporting-integration.js";
 export * from "./router-integration.js";
+export * from "./runtime-host-integration.js";
 export * from "./service-worker-integration.js";
 export * from "./user-action-integration.js";
 export * from "./websocket-integration.js";
@@ -382,6 +383,56 @@ export interface CaptureRouterOptions {
     removeEventListener?: typeof globalThis.removeEventListener;
 }
 export declare function captureRouterIntegration(options?: CaptureRouterOptions): Integration;
+```
+
+## runtime-host-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface BrowserExtensionEventLike<TListener extends (...args: never[]) => unknown> {
+    addListener?: (listener: TListener) => void;
+    removeListener?: (listener: TListener) => void;
+}
+export interface BrowserExtensionRuntimeLike {
+    id?: string;
+    getManifest?: () => {
+        name?: string;
+        version?: string;
+    };
+    onMessage?: BrowserExtensionEventLike<(message: unknown, sender?: BrowserExtensionMessageSenderLike) => unknown>;
+    onInstalled?: BrowserExtensionEventLike<(details: unknown) => void>;
+}
+export interface BrowserExtensionMessageSenderLike {
+    id?: string;
+    origin?: string;
+    url?: string;
+    tab?: {
+        id?: number;
+        url?: string;
+    };
+}
+export interface ElectronIpcRendererLike {
+    on?: (channel: string, listener: (...args: unknown[]) => void) => unknown;
+    off?: (channel: string, listener: (...args: unknown[]) => void) => unknown;
+    removeListener?: (channel: string, listener: (...args: unknown[]) => void) => unknown;
+    send?: (channel: string, ...args: unknown[]) => void;
+    invoke?: (channel: string, ...args: unknown[]) => Promise<unknown>;
+}
+export interface CaptureRuntimeHostOptions {
+    level?: LoggerLevel;
+    captureExtensionMessages?: boolean;
+    captureExtensionInstalled?: boolean;
+    captureExtensionMessageData?: boolean;
+    captureElectronMessages?: boolean;
+    captureElectronSend?: boolean;
+    captureElectronInvoke?: boolean;
+    captureElectronMessageData?: boolean;
+    electronChannels?: readonly string[];
+    extensionRuntime?: BrowserExtensionRuntimeLike;
+    ipcRenderer?: ElectronIpcRendererLike;
+    sanitizeUrl?: (url: string) => string;
+}
+export declare function captureRuntimeHostIntegration(options?: CaptureRuntimeHostOptions): Integration;
 ```
 
 ## service-worker-integration.d.ts

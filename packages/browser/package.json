@@ -88,6 +88,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-runtime-host": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-service-worker": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
