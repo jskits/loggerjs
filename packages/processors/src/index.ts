@@ -12,6 +12,7 @@ export * from "./fingerprint";
 export * from "./normalize-error";
 export * from "./stack-parser";
 export * from "./privacy-guard";
+export * from "./schema-dev-check";
 
 export { redactProcessor as redact } from "./redact";
 export { sampleProcessor as sample } from "./sample";
@@ -31,3 +32,4 @@ export { fingerprintProcessor as fingerprint } from "./fingerprint";
 export { normalizeErrorProcessor as normalizeError } from "./normalize-error";
 export { stackParserProcessor as stackParser } from "./stack-parser";
 export { privacyGuardProcessor as privacyGuard } from "./privacy-guard";
+export { schemaDevCheckProcessor as schemaDevCheck } from "./schema-dev-check";

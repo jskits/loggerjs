@@ -16,6 +16,7 @@ import {
   redactProcessor,
   routeProcessor,
   sampleProcessor,
+  schemaDevCheckProcessor,
   stackParserProcessor,
   tagsProcessor,
 } from "@loggerjs/processors";
@@ -23,6 +24,9 @@ import {
 const processors = [
   redactProcessor({ keys: ["password", "token", /secret/i] }),
   privacyGuardProcessor({ maxStringLength: 8192, allowKeys: ["publicToken"] }),
+  schemaDevCheckProcessor({
+    validators: { "order.created": (data) => (typeof data === "object" && data ? true : "bad payload") },
+  }),
   enrichProcessor({ tags: { service: "checkout" }, context: { region: "us-east-1" } }),
   normalizeErrorProcessor({ maxStackLines: 40, dataErrorKeys: ["failure"] }),
   stackParserProcessor({ dropInternal: true, includeRaw: false }),

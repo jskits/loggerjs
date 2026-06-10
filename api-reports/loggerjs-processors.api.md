@@ -137,6 +137,7 @@ export * from "./fingerprint.js";
 export * from "./normalize-error.js";
 export * from "./stack-parser.js";
 export * from "./privacy-guard.js";
+export * from "./schema-dev-check.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -151,6 +152,7 @@ export { fingerprintProcessor as fingerprint } from "./fingerprint.js";
 export { normalizeErrorProcessor as normalizeError } from "./normalize-error.js";
 export { stackParserProcessor as stackParser } from "./stack-parser.js";
 export { privacyGuardProcessor as privacyGuard } from "./privacy-guard.js";
+export { schemaDevCheckProcessor as schemaDevCheck } from "./schema-dev-check.js";
 ```
 
 ## level-override.d.ts
@@ -268,6 +270,26 @@ export interface SampleOptions {
     random?: () => number;
 }
 export declare function sampleProcessor(options?: SampleOptions): Processor;
+```
+
+## schema-dev-check.d.ts
+
+```ts
+import type { LogEvent, Processor, ProcessorContext } from "@loggerjs/core";
+export type SchemaCheckResult = true | false | string | readonly string[] | void;
+export type SchemaValidator = (data: unknown, event: LogEvent, context: ProcessorContext) => SchemaCheckResult;
+export type SchemaDevCheckAction = "report" | "tag" | "drop";
+export interface SchemaDevCheckOptions {
+    enabled?: boolean;
+    action?: SchemaDevCheckAction;
+    validators?: Readonly<Record<string, SchemaValidator>>;
+    validate?: SchemaValidator;
+    select?: (event: LogEvent, context: ProcessorContext) => SchemaValidator | undefined;
+    tagKey?: string;
+    contextKey?: string;
+    onInvalid?: (event: LogEvent, errors: readonly string[]) => void;
+}
+export declare function schemaDevCheckProcessor(options?: SchemaDevCheckOptions): Processor;
 ```
 
 ## stack-parser.d.ts
