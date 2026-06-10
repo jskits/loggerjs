@@ -13,4 +13,5 @@ export * from "./node-fetch-integration";
 export * from "./node-http-client-integration";
 export * from "./process-integration";
 export * from "./queue-integration";
+export * from "./serverless-integration";
 export * from "./diagnostics-channel-integration";

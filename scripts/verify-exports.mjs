@@ -54,6 +54,7 @@ const checks = [
   ["@loggerjs/node/integration-diagnostics", ["diagnosticsChannelIntegration"]],
   ["@loggerjs/node/integration-fetch", ["nodeFetchIntegration"]],
   ["@loggerjs/node/integration-http-client", ["nodeHttpClientIntegration"]],
+  ["@loggerjs/node/integration-serverless", ["serverlessIntegration"]],
   [
     "@loggerjs/node/context",
     ["createAsyncLocalStorageContextManager", "installAsyncLocalStorageContext"],

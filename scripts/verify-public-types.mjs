@@ -53,6 +53,7 @@ import { databaseIntegration } from "@loggerjs/node/integration-database";
 import { nodeFetchIntegration } from "@loggerjs/node/integration-fetch";
 import { nodeHttpClientIntegration } from "@loggerjs/node/integration-http-client";
 import { queueIntegration } from "@loggerjs/node/integration-queue";
+import { serverlessIntegration } from "@loggerjs/node/integration-serverless";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
@@ -131,6 +132,7 @@ databaseIntegration({ client: { query: async () => ({}) }, minDurationMs: 100 })
 nodeFetchIntegration({ captureResponseHeaders: ["x-trace-id"] });
 nodeHttpClientIntegration({ captureRequestHeaders: ["x-request-id"] });
 queueIntegration({ client: { send: async () => ({}) }, capturePayload: false });
+serverlessIntegration(logger, async () => ({ ok: true }), { captureResult: true });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 sqliteTransport({
   database: {

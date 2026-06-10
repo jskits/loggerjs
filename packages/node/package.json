@@ -68,6 +68,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-serverless": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-database": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

@@ -222,6 +222,7 @@ export * from "./node-fetch-integration.js";
 export * from "./node-http-client-integration.js";
 export * from "./process-integration.js";
 export * from "./queue-integration.js";
+export * from "./serverless-integration.js";
 export * from "./diagnostics-channel-integration.js";
 ```
 
@@ -405,6 +406,60 @@ export interface RotatingFileTransport extends Transport {
     currentBytes: () => number;
 }
 export declare function rotatingFileTransport(options: RotatingFileTransportOptions): RotatingFileTransport;
+```
+
+## serverless-integration.d.ts
+
+```ts
+import { type LoggerLevel, type LoggerLike } from "@loggerjs/core";
+export type ServerlessCallback<TResult> = (error?: unknown, result?: TResult) => void;
+export type ServerlessHandler<TEvent, TContext, TResult> = (event: TEvent, context: TContext, callback?: ServerlessCallback<TResult>) => TResult | Promise<TResult> | void;
+export interface ServerlessContextLike {
+    awsRequestId?: string;
+    functionName?: string;
+    functionVersion?: string;
+    invokedFunctionArn?: string;
+    [key: string]: unknown;
+}
+export interface ServerlessEventLike {
+    httpMethod?: string;
+    path?: string;
+    rawPath?: string;
+    routeKey?: string;
+    headers?: Record<string, string | undefined>;
+    requestContext?: {
+        requestId?: string;
+        http?: {
+            method?: string;
+            path?: string;
+        };
+        routeKey?: string;
+    };
+    [key: string]: unknown;
+}
+export interface ServerlessInvocationInfo<TEvent, TContext> {
+    event: TEvent;
+    context: TContext;
+    requestId?: string;
+    operation?: string;
+}
+export interface ServerlessIntegrationOptions<TEvent, TContext, TResult> {
+    name?: string;
+    platform?: string;
+    captureSuccessful?: boolean;
+    captureAll?: boolean;
+    sampleRate?: number;
+    random?: () => number;
+    captureEvent?: boolean;
+    captureResult?: boolean;
+    bindContext?: boolean;
+    getRequestId?: (event: TEvent, context: TContext) => string | undefined;
+    getOperation?: (event: TEvent, context: TContext) => string | undefined;
+    level?: (error: unknown, durationMs: number, info: ServerlessInvocationInfo<TEvent, TContext>) => LoggerLevel;
+    normalizeEvent?: (event: TEvent) => unknown;
+    normalizeResult?: (result: TResult) => unknown;
+}
+export declare function serverlessIntegration<TEvent, TContext, TResult>(logger: LoggerLike, handler: ServerlessHandler<TEvent, TContext, TResult>, options?: ServerlessIntegrationOptions<TEvent, TContext, TResult>): ServerlessHandler<TEvent, TContext, TResult>;
 ```
 
 ## stdout-transport.d.ts
