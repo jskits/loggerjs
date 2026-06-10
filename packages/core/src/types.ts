@@ -127,7 +127,10 @@ export interface Transport {
 export interface Codec<TPayload = string | Uint8Array> {
   name: string;
   contentType: string;
-  encode: (input: LogEvent | LogEvent[]) => TPayload;
+  encode: (
+    input: LogEvent | readonly LogEvent[] | readonly LogRecord[],
+    context?: EncodeContext,
+  ) => TPayload;
   decode?: (payload: TPayload) => LogEvent | LogEvent[];
 }
 

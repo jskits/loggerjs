@@ -36,6 +36,8 @@ export interface RecordToEventOptions {
   source?: LogSource;
 }
 
+export type CodecInput = LogEvent | readonly LogEvent[] | readonly LogRecord[];
+
 const defaultCategory = Object.freeze(["app"]);
 
 export function normalizeCategory(category: LoggerCategory | undefined): readonly string[] {
@@ -145,4 +147,23 @@ export function recordToEvent(record: LogRecord, options: RecordToEventOptions =
     trace: options.trace,
     source: options.source ?? sourceForRecord(record),
   };
+}
+
+export function isLogRecord(value: unknown): value is LogRecord {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    "category" in value &&
+    "msg" in value &&
+    "lazy" in value &&
+    "seq" in value
+  );
+}
+
+export function normalizeCodecInput(input: CodecInput): LogEvent | LogEvent[] {
+  if (Array.isArray(input)) {
+    const items = input as readonly (LogEvent | LogRecord)[];
+    return items.map((item) => (isLogRecord(item) ? recordToEvent(item) : item));
+  }
+  return input as LogEvent;
 }

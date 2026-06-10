@@ -1,5 +1,11 @@
-import type { Codec, LogEvent } from "@loggerjs/core";
-import { safeJsonStringify, type SafeStringifyOptions } from "@loggerjs/core";
+import {
+  normalizeCodecInput,
+  safeJsonStringify,
+  type Codec,
+  type CodecInput,
+  type LogEvent,
+  type SafeStringifyOptions,
+} from "@loggerjs/core";
 
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
   includeContext?: boolean;
@@ -40,10 +46,11 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
   return {
     name: "fast-event-json",
     contentType: "application/json",
-    encode(input) {
-      if (Array.isArray(input))
-        return `[${input.map((event) => encodeEvent(event, options)).join(",")}]`;
-      return encodeEvent(input, options);
+    encode(input: CodecInput) {
+      const normalized = normalizeCodecInput(input);
+      if (Array.isArray(normalized))
+        return `[${normalized.map((event) => encodeEvent(event, options)).join(",")}]`;
+      return encodeEvent(normalized, options);
     },
     decode(payload) {
       return JSON.parse(payload) as LogEvent | LogEvent[];

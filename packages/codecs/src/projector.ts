@@ -1,4 +1,4 @@
-import type { Codec, LogEvent } from "@loggerjs/core";
+import { normalizeCodecInput, type Codec, type CodecInput, type LogEvent } from "@loggerjs/core";
 
 export interface ProjectorCodecOptions<TWire> {
   name: string;
@@ -15,8 +15,8 @@ export function projectorCodec<TWire>(
   return {
     name: options.name,
     contentType: options.contentType,
-    encode(input) {
-      return options.serialize(options.project(input));
+    encode(input: CodecInput) {
+      return options.serialize(options.project(normalizeCodecInput(input)));
     },
     decode:
       options.parse && options.unproject

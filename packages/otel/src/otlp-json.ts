@@ -1,4 +1,11 @@
-import { normalizeValue, safeJsonStringify, type Codec, type LogEvent } from "@loggerjs/core";
+import {
+  normalizeCodecInput,
+  normalizeValue,
+  safeJsonStringify,
+  type Codec,
+  type CodecInput,
+  type LogEvent,
+} from "@loggerjs/core";
 import { otelSeverityNumber, otelSeverityText } from "./severity";
 
 export type OtlpAnyValue =
@@ -121,8 +128,11 @@ export function otlpJsonCodec(options: OtlpResourceOptions = {}): Codec<string> 
   return {
     name: "otlp-json",
     contentType: "application/json",
-    encode(input) {
-      return safeJsonStringify(toOtlpJson(Array.isArray(input) ? input : [input], options));
+    encode(input: CodecInput) {
+      const normalized = normalizeCodecInput(input);
+      return safeJsonStringify(
+        toOtlpJson(Array.isArray(normalized) ? normalized : [normalized], options),
+      );
     },
     decode(payload) {
       return JSON.parse(payload) as never;
