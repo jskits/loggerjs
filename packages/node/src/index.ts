@@ -6,6 +6,7 @@ export * from "./http-transport";
 export * from "./syslog-transport";
 export * from "./worker-transport";
 export * from "./context";
+export * from "./cli-integration";
 export * from "./database-integration";
 export * from "./express-integration";
 export * from "./fastify-integration";

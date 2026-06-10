@@ -49,6 +49,7 @@ const checks = [
   ["@loggerjs/database/postgres", ["postgresTransport", "createPostgresDatabaseAdapter"]],
   ["@loggerjs/node/transport-worker", ["workerTransport"]],
   ["@loggerjs/node/integration-process", ["captureProcessIntegration"]],
+  ["@loggerjs/node/integration-cli", ["captureCliIntegration"]],
   ["@loggerjs/node/integration-queue", ["queueIntegration"]],
   ["@loggerjs/node/integration-database", ["databaseIntegration"]],
   ["@loggerjs/node/integration-diagnostics", ["diagnosticsChannelIntegration"]],

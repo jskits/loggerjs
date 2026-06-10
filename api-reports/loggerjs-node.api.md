@@ -3,6 +3,35 @@
 Generated from `packages/node/dist/**/*.d.ts`.
 Update with `pnpm build && pnpm api:report` after intentional public API changes.
 
+## cli-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface CliProcessLike {
+    argv?: readonly string[];
+    env?: Record<string, string | undefined>;
+    exitCode?: number | string | null;
+    cwd?: () => string;
+    on?: (event: string, listener: (...args: unknown[]) => void) => unknown;
+    off?: (event: string, listener: (...args: unknown[]) => void) => unknown;
+    removeListener?: (event: string, listener: (...args: unknown[]) => void) => unknown;
+}
+export interface CaptureCliOptions {
+    name?: string;
+    process?: CliProcessLike;
+    captureStart?: boolean;
+    captureExit?: boolean;
+    captureSignals?: boolean;
+    captureCwd?: boolean;
+    captureEnv?: readonly string[];
+    signals?: readonly string[];
+    level?: LoggerLevel | ((event: "start" | "exit" | "signal", code?: number | string) => LoggerLevel);
+    getCommand?: (argv: readonly string[]) => string | undefined;
+    sanitizeArg?: (arg: string, index: number, argv: readonly string[]) => string;
+}
+export declare function captureCliIntegration(options?: CaptureCliOptions): Integration;
+```
+
 ## context.d.ts
 
 ```ts
@@ -215,6 +244,7 @@ export * from "./http-transport.js";
 export * from "./syslog-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
+export * from "./cli-integration.js";
 export * from "./database-integration.js";
 export * from "./express-integration.js";
 export * from "./fastify-integration.js";
