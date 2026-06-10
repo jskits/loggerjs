@@ -3,6 +3,8 @@ import type { LoggerLevel } from "./levels";
 import { normalizeCategory } from "./record";
 import type {
   ChildLoggerOptions,
+  EventDefinition,
+  EventLogOptions,
   Integration,
   LogData,
   LoggerCategory,
@@ -213,6 +215,14 @@ export class RegistryLogger implements LoggerLike {
 
   captureException(error: unknown, data?: LogData): void {
     getRuntimeLogger(this.category)?.captureException(error, data);
+  }
+
+  event<TPayload extends Record<string, unknown>>(
+    definition: EventDefinition<TPayload>,
+    payload: TPayload,
+    options?: EventLogOptions<TPayload>,
+  ): void {
+    getRuntimeLogger(this.category)?.event(definition, payload, options);
   }
 
   async flush(): Promise<void> {

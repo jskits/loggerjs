@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createMiddleware,
+  defineEvent,
   createLogger,
   getLoggerMetaStats,
   memoryTransport,
@@ -186,6 +187,50 @@ describe("logger core skeleton", () => {
       tenantId: "tenant-2",
       providerKey: "provider",
     });
+  });
+
+  it("emits typed event definitions with payload data and event type", () => {
+    const transport = memoryTransport();
+    const logger = createLogger({
+      tags: { service: "checkout" },
+      transports: [transport],
+    });
+    const orderCreated = defineEvent<{ orderId: string; total: number }>({
+      type: "order.created",
+      level: "info",
+      message: (payload) => `Order ${payload.orderId} created`,
+      tags: (payload) => ({ highValue: payload.total > 100 }),
+    });
+
+    logger.event(orderCreated, { orderId: "ord-1", total: 125 }, { tags: { region: "us" } });
+
+    expect(transport.events[0]).toMatchObject({
+      levelName: "info",
+      type: "order.created",
+      message: "Order ord-1 created",
+      data: { orderId: "ord-1", total: 125 },
+      tags: {
+        service: "checkout",
+        highValue: true,
+        region: "us",
+      },
+    });
+  });
+
+  it("type-checks event payloads", () => {
+    const logger = createLogger();
+    const orderCreated = defineEvent<{ orderId: string }>({
+      type: "order.created",
+    });
+    const typeCheckOnly = false as boolean;
+
+    if (typeCheckOnly) {
+      logger.event(orderCreated, { orderId: "ord-1" });
+      // @ts-expect-error missing required event payload field
+      logger.event(orderCreated, {});
+    }
+
+    expect(orderCreated.type).toBe("order.created");
   });
 
   it("keeps dispatching when processors or transports fail", () => {

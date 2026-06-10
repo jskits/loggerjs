@@ -25,6 +25,7 @@ function createLogger(overrides: Partial<LoggerLike> = {}): LoggerLike {
     flush: vi.fn<LoggerLike["flush"]>(async () => {}),
     close: vi.fn<LoggerLike["close"]>(async () => {}),
     ...overrides,
+    event: overrides.event ?? (() => {}),
   };
 }
 

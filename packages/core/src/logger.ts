@@ -10,11 +10,19 @@ import { getContext } from "./context";
 import { createIntegrationSetupContext, onceTeardown } from "./integration-api";
 import { reportLoggerMetaError } from "./meta";
 import { runMiddleware } from "./middleware";
-import { createBoundContext, createRecord, normalizeCategory, recordToEvent } from "./record";
+import {
+  createBoundContext,
+  createRecord,
+  normalizeCategory,
+  recordToEvent,
+  type RecordToEventOptions,
+} from "./record";
 import { valueToMessage } from "./utils/error";
 import type {
   ChildLoggerOptions,
   CaptureInput,
+  EventDefinition,
+  EventLogOptions,
   Integration,
   LogData,
   LogEvent,
@@ -145,6 +153,25 @@ function mergeRecords(
     Object.assign(out, item);
   }
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function eventMessage<TPayload extends Record<string, unknown>>(
+  definition: EventDefinition<TPayload>,
+  payload: TPayload,
+  options?: EventLogOptions<TPayload>,
+): { msg: string | null; lazy: (() => string) | null } {
+  const message = options?.message ?? definition.message;
+  if (typeof message === "function") return { msg: null, lazy: () => message(payload) };
+  return { msg: message ?? definition.type, lazy: null };
+}
+
+function eventTags<TPayload extends Record<string, unknown>>(
+  definition: EventDefinition<TPayload>,
+  payload: TPayload,
+  options?: EventLogOptions<TPayload>,
+): Tags | undefined {
+  const tags = typeof definition.tags === "function" ? definition.tags(payload) : definition.tags;
+  return mergeTags(tags, options?.tags);
 }
 
 export class Logger implements LoggerLike {
@@ -299,7 +326,42 @@ export class Logger implements LoggerLike {
     this.emitRecord(record, levelName);
   }
 
-  private emitRecord(record: ReturnType<typeof createRecord>, levelName: EnabledLogLevelName) {
+  event<TPayload extends Record<string, unknown>>(
+    definition: EventDefinition<TPayload>,
+    payload: TPayload,
+    options?: EventLogOptions<TPayload>,
+  ) {
+    if (this.closed) return;
+    const level = options?.level ?? definition.level ?? "info";
+    const levelValue = toLevelValue(level);
+    if (levelValue < this.minimumLevelValue) return;
+    const levelName = levelNameFor(level, levelValue);
+    const time = this.clock();
+    const seq = globalSeq++;
+    const context = mergeRecords(getContext(), this.bindings, this.contextProvider?.());
+    const message = eventMessage(definition, payload, options);
+    const record = createRecord({
+      time,
+      level: levelValue,
+      category: this.category,
+      msg: message.msg,
+      lazy: message.lazy,
+      props: payload,
+      ctx: createBoundContext(context),
+      source: "app",
+      seq,
+    });
+    this.emitRecord(record, levelName, {
+      type: definition.type,
+      tags: eventTags(definition, payload, options),
+    });
+  }
+
+  private emitRecord(
+    record: ReturnType<typeof createRecord>,
+    levelName: EnabledLogLevelName,
+    options: Pick<RecordToEventOptions, "type" | "tags"> = {},
+  ) {
     const processedRecord = runMiddleware(record, this.middleware, {
       now: this.clock,
       reportInternalError: (error, detail) => this.reportInternalError(error, detail),
@@ -310,8 +372,8 @@ export class Logger implements LoggerLike {
       id: "",
       levelName,
       logger: processedRecord.category.join("."),
-      type: this.type,
-      tags: this.tags,
+      type: options.type ?? this.type,
+      tags: mergeTags(this.tags, options.tags),
     });
     event.id = this.idFactory(event);
 

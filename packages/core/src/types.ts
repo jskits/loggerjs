@@ -65,6 +65,23 @@ export interface CaptureInput {
   stack?: string | null;
 }
 
+export interface EventDefinition<
+  TPayload extends Record<string, unknown> = Record<string, unknown>,
+> {
+  readonly type: string;
+  readonly level?: LoggerLevel;
+  readonly message?: string | ((payload: TPayload) => string);
+  readonly tags?: Tags | ((payload: TPayload) => Tags | undefined);
+}
+
+export interface EventLogOptions<
+  TPayload extends Record<string, unknown> = Record<string, unknown>,
+> {
+  level?: LoggerLevel;
+  message?: string | ((payload: TPayload) => string);
+  tags?: Tags;
+}
+
 export interface MiddlewareContext {
   now: () => number;
   reportInternalError: (error: unknown, detail?: Record<string, unknown>) => void;
@@ -144,6 +161,11 @@ export interface LoggerLike {
   error: (message: unknown, data?: LogData | string, props?: LogData) => void;
   fatal: (message: unknown, data?: LogData | string, props?: LogData) => void;
   captureException: (error: unknown, data?: LogData) => void;
+  event: <TPayload extends Record<string, unknown>>(
+    definition: EventDefinition<TPayload>,
+    payload: TPayload,
+    options?: EventLogOptions<TPayload>,
+  ) => void;
   flush: () => Promise<void>;
   flushSync?: () => void;
   close: () => Promise<void>;
