@@ -11,6 +11,7 @@ const checks = [
   ["@loggerjs/core/codec-json", ["jsonCodec", "safeJsonCodec", "ndjsonCodec"]],
   ["@loggerjs/core/transport-console", ["consoleTransport"]],
   ["@loggerjs/core/transport-batch", ["batchTransport", "estimateLogEventBytes"]],
+  ["@loggerjs/core/transport-test", ["testTransport"]],
   ["@loggerjs/core/context", ["withContext", "getContext"]],
   ["@loggerjs/core/events", ["defineEvent"]],
   ["@loggerjs/browser", ["browserHttpTransport"]],

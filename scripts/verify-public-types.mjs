@@ -31,6 +31,7 @@ import {
 import { createMiddleware } from "@loggerjs/core/middleware";
 import { jsonCodec } from "@loggerjs/core/codec-json";
 import { consoleTransport } from "@loggerjs/core/transport-console";
+import { testTransport } from "@loggerjs/core/transport-test";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
@@ -54,7 +55,9 @@ const explicitOptions: EventLogOptions<LoginPayload> = {
 };
 
 const transport: Transport = consoleTransport();
+const test = testTransport();
 const logger = createLogger({ transports: [transport] });
+await test.waitFor((event) => event.levelName === "info", { timeoutMs: 1 }).catch(() => {});
 logger.event(explicitDefinition, { userId: "u1" }, explicitOptions);
 
 // @ts-expect-error missing required event payload field

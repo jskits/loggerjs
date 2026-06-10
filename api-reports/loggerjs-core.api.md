@@ -72,6 +72,7 @@ export * from "./codecs/json.js";
 export * from "./transports/console.js";
 export * from "./transports/memory.js";
 export * from "./transports/batch.js";
+export * from "./transports/test.js";
 ```
 
 ## integration-api.d.ts
@@ -325,6 +326,43 @@ export declare function memoryTransport(options?: {
     maxEvents?: number;
     name?: string;
 }): MemoryTransport;
+```
+
+## transports/test.d.ts
+
+```ts
+import type { LogEvent, Transport } from "../types.js";
+export type TestTransportMatcher = (event: LogEvent) => boolean;
+export interface TestTransportWaitOptions {
+    timeoutMs?: number;
+    signal?: AbortSignal;
+}
+export interface TestTransportWaitForCountOptions extends TestTransportWaitOptions {
+    matcher?: TestTransportMatcher;
+}
+export interface TestTransportStats {
+    logCalls: number;
+    logBatchCalls: number;
+    flushCalls: number;
+    closeCalls: number;
+    droppedEvents: number;
+}
+export interface TestTransportOptions {
+    name?: string;
+    maxEvents?: number;
+    cloneEvent?: (event: LogEvent) => LogEvent;
+}
+export interface TestTransport extends Transport {
+    events: LogEvent[];
+    batches: LogEvent[][];
+    stats: TestTransportStats;
+    clear: () => void;
+    reset: () => void;
+    failNext: (error?: unknown) => void;
+    waitFor: (matcher?: TestTransportMatcher, options?: TestTransportWaitOptions) => Promise<LogEvent>;
+    waitForCount: (count: number, options?: TestTransportWaitForCountOptions) => Promise<LogEvent[]>;
+}
+export declare function testTransport(transportOptions?: TestTransportOptions): TestTransport;
 ```
 
 ## types.d.ts
