@@ -3,6 +3,8 @@ import type { EnabledLogLevelName, LoggerLevel } from "./levels";
 export type Primitive = string | number | boolean | null | undefined | bigint | symbol;
 export type Jsonish = Primitive | Jsonish[] | { [key: string]: Jsonish };
 export type Tags = Record<string, string | number | boolean | null | undefined>;
+export type LoggerCategory = string | readonly string[];
+export type BoundContext = Readonly<Record<string, unknown>>;
 export type LogData =
   | Record<string, unknown>
   | unknown[]
@@ -37,6 +39,48 @@ export interface LogSource {
   line?: number;
   column?: number;
   [key: string]: unknown;
+}
+
+export interface LogRecord {
+  time: number;
+  level: number;
+  category: readonly string[];
+  msg: string | null;
+  lazy: (() => string) | null;
+  props: Record<string, unknown> | null;
+  err: unknown;
+  ctx: BoundContext | null;
+  source: string;
+  stack: string | null;
+  seq: number;
+}
+
+export interface CaptureInput {
+  level?: LoggerLevel;
+  category?: LoggerCategory;
+  message?: string | (() => string) | null;
+  props?: Record<string, unknown> | null;
+  error?: unknown;
+  source?: string;
+  stack?: string | null;
+}
+
+export interface MiddlewareContext {
+  now: () => number;
+  reportInternalError: (error: unknown, detail?: Record<string, unknown>) => void;
+}
+
+export type MiddlewareResult = LogRecord | null;
+
+export interface Middleware {
+  readonly name: string;
+  process: (record: LogRecord, context: MiddlewareContext) => MiddlewareResult;
+}
+
+export interface EncodeContext {
+  levelName: (level: number) => EnabledLogLevelName;
+  ctxCache: WeakMap<object, unknown>;
+  schemaCache: WeakMap<object, unknown>;
 }
 
 export interface LogEvent<TData = unknown> {
