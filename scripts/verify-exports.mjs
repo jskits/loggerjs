@@ -45,6 +45,8 @@ const checks = [
   ["@loggerjs/loki/transport", ["lokiTransport"]],
   ["@loggerjs/datadog", ["datadogLogsTransport"]],
   ["@loggerjs/datadog/transport", ["datadogLogsTransport"]],
+  ["@loggerjs/elastic", ["elasticTransport"]],
+  ["@loggerjs/elastic/transport", ["elasticTransport", "createElasticBulkPayload"]],
 ];
 
 const workspacePackages = {
@@ -55,6 +57,7 @@ const workspacePackages = {
   "@loggerjs/sentry": "packages/sentry",
   "@loggerjs/loki": "packages/loki",
   "@loggerjs/datadog": "packages/datadog",
+  "@loggerjs/elastic": "packages/elastic",
 };
 
 const verifierSource = `

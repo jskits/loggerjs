@@ -18,6 +18,7 @@ const workspacePackages = {
   "@loggerjs/sentry": "packages/sentry",
   "@loggerjs/loki": "packages/loki",
   "@loggerjs/datadog": "packages/datadog",
+  "@loggerjs/elastic": "packages/elastic",
 };
 
 const typeTestSource = `
@@ -43,6 +44,7 @@ import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
 import { sentryTransport, type SentryLike } from "@loggerjs/sentry/transport";
 import { lokiTransport } from "@loggerjs/loki/transport";
 import { datadogLogsTransport } from "@loggerjs/datadog/transport";
+import { elasticTransport } from "@loggerjs/elastic/transport";
 
 type LoginPayload = { userId: string; attempts?: number };
 
@@ -100,6 +102,7 @@ openTelemetryTraceProcessor();
 sentryTransport({ sentry: {} satisfies SentryLike });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
 datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
+elasticTransport({ url: "http://localhost:9200", fetchFn: async () => new Response(JSON.stringify({ errors: false }), { status: 200 }) });
 `;
 
 const tsconfigSource = {

@@ -129,6 +129,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/elastic:
+    dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/loki:
     dependencies:
       '@loggerjs/core':
