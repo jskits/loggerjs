@@ -6,6 +6,7 @@ export * from "./trace";
 export * from "./rate-limit";
 export * from "./fingers-crossed";
 export * from "./enrich";
+export * from "./level-override";
 
 export { redactProcessor as redact } from "./redact";
 export { sampleProcessor as sample } from "./sample";
@@ -19,3 +20,4 @@ export { traceContextProcessor as traceContext } from "./trace";
 export { rateLimitProcessor as rateLimit } from "./rate-limit";
 export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed";
 export { enrichProcessor as enrich } from "./enrich";
+export { levelOverrideProcessor as levelOverride } from "./level-override";

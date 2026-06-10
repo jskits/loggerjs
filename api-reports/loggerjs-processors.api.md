@@ -76,6 +76,7 @@ export * from "./trace.js";
 export * from "./rate-limit.js";
 export * from "./fingers-crossed.js";
 export * from "./enrich.js";
+export * from "./level-override.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -84,6 +85,31 @@ export { traceContextProcessor as traceContext } from "./trace.js";
 export { rateLimitProcessor as rateLimit } from "./rate-limit.js";
 export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed.js";
 export { enrichProcessor as enrich } from "./enrich.js";
+export { levelOverrideProcessor as levelOverride } from "./level-override.js";
+```
+
+## level-override.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Processor, type ProcessorContext, type Tags } from "@loggerjs/core";
+export type LevelOverrideStringMatcher = string | RegExp | ((value: string | undefined, event: LogEvent) => boolean);
+export type LevelOverrideValue = LoggerLevel | false | undefined | ((event: LogEvent, context: ProcessorContext) => LoggerLevel | false | void);
+export interface LevelOverrideRule {
+    level: LevelOverrideValue;
+    when?: (event: LogEvent, context: ProcessorContext) => boolean;
+    logger?: LevelOverrideStringMatcher | readonly LevelOverrideStringMatcher[];
+    type?: LevelOverrideStringMatcher | readonly LevelOverrideStringMatcher[];
+    integration?: LevelOverrideStringMatcher | readonly LevelOverrideStringMatcher[];
+    runtime?: LevelOverrideStringMatcher | readonly LevelOverrideStringMatcher[];
+    tags?: Tags;
+    minLevel?: LoggerLevel;
+    maxLevel?: LoggerLevel;
+}
+export interface LevelOverrideOptions {
+    rules: readonly LevelOverrideRule[];
+}
+export type LevelOverrideInput = LevelOverrideValue | readonly LevelOverrideRule[] | LevelOverrideOptions;
+export declare function levelOverrideProcessor(input: LevelOverrideInput): Processor;
 ```
 
 ## rate-limit.d.ts

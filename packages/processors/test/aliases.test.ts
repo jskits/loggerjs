@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { LogEvent, ProcessorContext } from "@loggerjs/core";
-import { context, dedupe, enrich, logType, sample, tags, traceContext } from "../src";
+import {
+  context,
+  dedupe,
+  enrich,
+  levelOverride,
+  logType,
+  sample,
+  tags,
+  traceContext,
+} from "../src";
 
 const event: LogEvent = {
   id: "evt-1",
@@ -36,6 +45,9 @@ describe("processor middleware aliases", () => {
     });
     expect(enrich({ data: { feature: "checkout" } })(event, processorContext)).toMatchObject({
       data: { feature: "checkout" },
+    });
+    expect(levelOverride("warn")(event, processorContext)).toMatchObject({
+      levelName: "warn",
     });
   });
 });
