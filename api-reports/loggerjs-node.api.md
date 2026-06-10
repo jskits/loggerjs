@@ -179,6 +179,7 @@ export * from "./worker-transport.js";
 export * from "./context.js";
 export * from "./express-integration.js";
 export * from "./fastify-integration.js";
+export * from "./node-http-client-integration.js";
 export * from "./process-integration.js";
 export * from "./diagnostics-channel-integration.js";
 ```
@@ -191,6 +192,49 @@ export interface WritableLike {
     once?: (event: "drain", listener: () => void) => unknown;
     end?: (callback?: (error?: Error | null) => void) => unknown;
 }
+```
+
+## node-http-client-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface NodeHttpClientRequestLike {
+    once?: (event: "response" | "error", listener: (...args: unknown[]) => void) => unknown;
+    on?: (event: "response" | "error", listener: (...args: unknown[]) => void) => unknown;
+    off?: (event: "response" | "error", listener: (...args: unknown[]) => void) => unknown;
+    removeListener?: (event: "response" | "error", listener: (...args: unknown[]) => void) => unknown;
+    end?: (...args: unknown[]) => unknown;
+}
+export interface NodeHttpIncomingMessageLike {
+    statusCode?: number;
+    headers?: Record<string, number | string | string[] | undefined>;
+}
+export type NodeHttpRequestFunction = (this: unknown, ...args: unknown[]) => NodeHttpClientRequestLike;
+export interface NodeHttpModuleLike {
+    request?: NodeHttpRequestFunction;
+    get?: NodeHttpRequestFunction;
+}
+export interface NodeHttpClientRequestInfo {
+    protocol: "http:" | "https:" | string;
+    method: string;
+    url: string;
+    requestHeaders?: Record<string, string | string[]>;
+}
+export interface NodeHttpClientIntegrationOptions {
+    name?: string;
+    minStatus?: number;
+    captureAll?: boolean;
+    captureSuccessful?: boolean;
+    sampleRate?: number;
+    random?: () => number;
+    captureRequestHeaders?: readonly string[];
+    captureResponseHeaders?: readonly string[];
+    sanitizeUrl?: (url: string) => string;
+    level?: (status: number | undefined, error: unknown, info: NodeHttpClientRequestInfo) => LoggerLevel;
+    httpModule?: NodeHttpModuleLike | null;
+    httpsModule?: NodeHttpModuleLike | null;
+}
+export declare function nodeHttpClientIntegration(options?: NodeHttpClientIntegrationOptions): Integration;
 ```
 
 ## process-integration.d.ts
