@@ -47,3 +47,11 @@ declare module "node:worker_threads" {
     off?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
   }
 }
+
+declare module "node:async_hooks" {
+  export class AsyncLocalStorage<T> {
+    getStore(): T | undefined;
+    run<R>(store: T, callback: () => R): R;
+    disable(): void;
+  }
+}
