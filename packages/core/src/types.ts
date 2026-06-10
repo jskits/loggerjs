@@ -156,6 +156,7 @@ export interface LoggerOptions {
   type?: string;
   tags?: Tags;
   bindings?: Record<string, unknown>;
+  middleware?: Middleware[];
   processors?: Processor[];
   transports?: Transport[];
   integrations?: Integration[];
@@ -172,6 +173,7 @@ export interface ChildLoggerOptions {
   type?: string;
   tags?: Tags;
   bindings?: Record<string, unknown>;
+  middleware?: Middleware[];
   processors?: Processor[];
   transports?: Transport[];
   integrations?: Integration[];

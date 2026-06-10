@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createMiddleware,
   createLogger,
   getLoggerMetaStats,
   memoryTransport,
@@ -84,6 +85,43 @@ describe("logger core skeleton", () => {
         message: "database timeout",
       },
     });
+  });
+
+  it("runs record middleware before compatibility event projection", () => {
+    const transport = memoryTransport();
+    const logger = createLogger({
+      middleware: [
+        createMiddleware("enrich", (record) => {
+          record.props = { ...record.props, requestId: "req-1" };
+          return record;
+        }),
+      ],
+      transports: [transport],
+    });
+
+    logger.info("created", { orderId: "ord-1" });
+
+    expect(transport.events[0]?.data).toEqual({
+      orderId: "ord-1",
+      requestId: "req-1",
+    });
+  });
+
+  it("stops dispatch when record middleware drops", () => {
+    const transport = memoryTransport();
+    const idFactory = vi.fn<
+      (event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">) => string
+    >(() => "id-1");
+    const logger = createLogger({
+      idFactory,
+      middleware: [createMiddleware("drop", () => null)],
+      transports: [transport],
+    });
+
+    logger.info("created");
+
+    expect(idFactory).not.toHaveBeenCalled();
+    expect(transport.events).toEqual([]);
   });
 
   it("returns before expensive work for disabled levels", () => {

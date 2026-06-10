@@ -7,6 +7,7 @@ import {
   type LoggerLevel,
 } from "./levels";
 import { reportLoggerMetaError } from "./meta";
+import { runMiddleware } from "./middleware";
 import { createBoundContext, createRecord, normalizeCategory, recordToEvent } from "./record";
 import { valueToMessage } from "./utils/error";
 import type {
@@ -17,6 +18,7 @@ import type {
   LoggerLike,
   LoggerCategory,
   LoggerOptions,
+  Middleware,
   Processor,
   ProcessorContext,
   Tags,
@@ -143,6 +145,7 @@ export class Logger implements LoggerLike {
   private type?: string;
   private tags?: Tags;
   private bindings?: Record<string, unknown>;
+  private middleware: Middleware[];
   private processors: Processor[];
   private transports: Transport[];
   private integrations: Integration[];
@@ -161,6 +164,7 @@ export class Logger implements LoggerLike {
     this.type = options.type;
     this.tags = mergeTags(options.tags);
     this.bindings = mergeRecords(options.bindings);
+    this.middleware = [...(options.middleware ?? [])];
     this.processors = [...(options.processors ?? [])];
     this.transports = [...(options.transports ?? [])];
     this.integrations = [...(options.integrations ?? [])];
@@ -196,6 +200,7 @@ export class Logger implements LoggerLike {
       type: options.type ?? this.type,
       tags: mergeTags(this.tags, options.tags),
       bindings: mergeRecords(this.bindings, options.bindings),
+      middleware: [...this.middleware, ...(options.middleware ?? [])],
       processors: [...this.processors, ...(options.processors ?? [])],
       transports: [...this.transports, ...(options.transports ?? [])],
       integrations: options.integrations ?? [],
@@ -252,8 +257,13 @@ export class Logger implements LoggerLike {
       source: "app",
       seq,
     });
+    const processedRecord = runMiddleware(record, this.middleware, {
+      now: this.clock,
+      reportInternalError: (error, detail) => this.reportInternalError(error, detail),
+    });
+    if (!processedRecord) return;
 
-    let event: LogEvent = recordToEvent(record, {
+    let event: LogEvent = recordToEvent(processedRecord, {
       id: "",
       levelName,
       logger: this.name,

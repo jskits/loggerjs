@@ -3,14 +3,22 @@ import {
   createMiddleware,
   createRecord,
   getLoggerMetaStats,
+  reportLoggerMetaError,
   resetLoggerMetaStats,
   runMiddleware,
   type MiddlewareContext,
 } from "../src";
 
-const context: MiddlewareContext = {
+const noopContext: MiddlewareContext = {
   now: () => 1,
   reportInternalError() {},
+};
+
+const metaContext: MiddlewareContext = {
+  now: () => 1,
+  reportInternalError(error, detail) {
+    reportLoggerMetaError(error, detail, () => {});
+  },
 };
 
 describe("middleware runner", () => {
@@ -34,7 +42,7 @@ describe("middleware runner", () => {
           return current;
         }),
       ],
-      context,
+      noopContext,
     );
 
     expect(result).toMatchObject({
@@ -60,7 +68,7 @@ describe("middleware runner", () => {
           return current;
         }),
       ],
-      context,
+      noopContext,
     );
 
     expect(result).toBeNull();
@@ -87,7 +95,7 @@ describe("middleware runner", () => {
           return current;
         }),
       ],
-      context,
+      metaContext,
     );
 
     expect(result?.source).toBe("middleware:after");

@@ -1,4 +1,3 @@
-import { reportLoggerMetaError } from "./meta";
 import type { LogRecord, Middleware, MiddlewareContext } from "./types";
 
 export type MiddlewareProcess = Middleware["process"];
@@ -19,11 +18,7 @@ export function runMiddleware(
     try {
       current = item.process(current, context);
     } catch (error) {
-      reportLoggerMetaError(
-        error,
-        { phase: "middleware", middleware: item.name },
-        context.reportInternalError,
-      );
+      context.reportInternalError(error, { phase: "middleware", middleware: item.name });
     }
   }
 
