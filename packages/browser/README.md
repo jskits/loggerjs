@@ -11,6 +11,7 @@ import {
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
   captureFetchIntegration,
+  captureFrameworkErrorsIntegration,
   capturePerformanceIntegration,
   captureReportingIntegration,
   captureRouterIntegration,
@@ -20,6 +21,8 @@ import {
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+
+const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
 
 const logger = createLogger({
   name: "web",
@@ -37,6 +40,7 @@ const logger = createLogger({
     captureConsoleIntegration({ levels: ["warn", "error"] }),
     captureBrowserErrorsIntegration(),
     captureFetchIntegration(),
+    frameworkErrors,
     captureReportingIntegration(),
     captureRouterIntegration(),
     captureWebVitalsIntegration(),
@@ -46,9 +50,13 @@ const logger = createLogger({
 });
 
 logger.info("page loaded");
+
+// React ErrorBoundary: componentDidCatch(error, info) {
+//   frameworkErrors.reactComponentDidCatch(error, info);
+// }
 ```
 
 Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
 `indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
 
-Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-reporting`, `integration-router`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.
+Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-framework-errors`, `integration-reporting`, `integration-router`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.

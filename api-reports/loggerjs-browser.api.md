@@ -91,6 +91,39 @@ export interface CaptureFetchOptions {
 export declare function captureFetchIntegration(options?: CaptureFetchOptions): Integration;
 ```
 
+## framework-error-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export type BrowserFrameworkName = "angular" | "react" | "solid" | "svelte" | "vue" | string;
+export interface BrowserFrameworkErrorInfo {
+    framework?: BrowserFrameworkName;
+    componentName?: string;
+    componentStack?: string;
+    info?: unknown;
+    props?: Record<string, unknown>;
+    [key: string]: unknown;
+}
+export interface CaptureFrameworkErrorsOptions {
+    name?: string;
+    framework?: BrowserFrameworkName;
+    level?: LoggerLevel;
+    maxPending?: number;
+    infoMaxDepth?: number;
+    getMessage?: (error: unknown, info: BrowserFrameworkErrorInfo) => string;
+}
+export interface BrowserFrameworkErrorIntegration extends Integration {
+    capture: (error: unknown, info?: BrowserFrameworkErrorInfo | string) => void;
+    reactComponentDidCatch: (error: unknown, errorInfo?: {
+        componentStack?: string;
+    }) => void;
+    vueErrorHandler: (error: unknown, instance?: unknown, info?: string) => void;
+    solidErrorHandler: (error: unknown) => void;
+    svelteErrorHandler: (error: unknown, info?: BrowserFrameworkErrorInfo | string) => void;
+}
+export declare function captureFrameworkErrorsIntegration(options?: CaptureFrameworkErrorsOptions): BrowserFrameworkErrorIntegration;
+```
+
 ## http-capture-utils.d.ts
 
 ```ts
@@ -168,6 +201,7 @@ export * from "./console-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
+export * from "./framework-error-integration.js";
 export * from "./reporting-integration.js";
 export * from "./router-integration.js";
 export * from "./web-vitals-integration.js";

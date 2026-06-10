@@ -39,6 +39,7 @@ import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-br
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-service-worker";
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
+import { captureFrameworkErrorsIntegration } from "@loggerjs/browser/integration-framework-errors";
 import { capturePerformanceIntegration } from "@loggerjs/browser/integration-performance";
 import { captureReportingIntegration } from "@loggerjs/browser/integration-reporting";
 import { captureRouterIntegration } from "@loggerjs/browser/integration-router";
@@ -112,6 +113,8 @@ capturePerformanceIntegration({
 });
 captureReportingIntegration({ reportTypes: ["csp-violation", "deprecation"] });
 captureRouterIntegration({ includeState: true, urlMode: "path" });
+const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
+frameworkErrors.reactComponentDidCatch(new Error("boom"), { componentStack: "App" });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 sqliteTransport({
   database: {
