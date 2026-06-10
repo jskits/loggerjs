@@ -63,6 +63,7 @@ const checks = [
   ["@loggerjs/otel/transport-http", ["otlpHttpTransport"]],
   ["@loggerjs/otel/codec-otlp-json", ["toOtlpJson", "otlpJsonCodec"]],
   ["@loggerjs/otel/trace", ["openTelemetryTraceProcessor"]],
+  ["@loggerjs/otel/log-bridge", ["openTelemetryLogBridgeTransport"]],
   ["@loggerjs/sentry", ["sentryTransport"]],
   ["@loggerjs/sentry/transport", ["sentryTransport"]],
   ["@loggerjs/loki", ["lokiTransport"]],

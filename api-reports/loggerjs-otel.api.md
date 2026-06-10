@@ -10,6 +10,47 @@ export * from "./severity.js";
 export * from "./otlp-json.js";
 export * from "./transport.js";
 export * from "./trace.js";
+export * from "./log-bridge.js";
+```
+
+## log-bridge.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+export interface OpenTelemetryLogBridgeRecord {
+    timestamp: number;
+    observedTimestamp: number;
+    severityNumber: number;
+    severityText: string;
+    body: unknown;
+    attributes: Record<string, unknown>;
+    traceId?: string;
+    spanId?: string;
+    traceFlags?: number;
+}
+export interface OpenTelemetryLoggerLike {
+    emit: (record: OpenTelemetryLogBridgeRecord) => void;
+}
+export interface OpenTelemetryLoggerProviderLike {
+    getLogger: (name: string, version?: string, options?: Record<string, unknown>) => OpenTelemetryLoggerLike;
+    forceFlush?: () => void | Promise<void>;
+    shutdown?: () => void | Promise<void>;
+}
+export interface OpenTelemetryLogBridgeOptions {
+    name?: string;
+    minLevel?: LoggerLevel;
+    logger?: OpenTelemetryLoggerLike;
+    loggerProvider?: OpenTelemetryLoggerProviderLike;
+    loggerName?: string;
+    loggerVersion?: string;
+    loggerOptions?: Record<string, unknown>;
+    includeData?: boolean;
+    includeContext?: boolean;
+    includeTags?: boolean;
+    attributes?: Record<string, unknown>;
+}
+export declare function toOpenTelemetryLogBridgeRecord(event: LogEvent, options?: OpenTelemetryLogBridgeOptions, observedTimestamp?: number): OpenTelemetryLogBridgeRecord;
+export declare function openTelemetryLogBridgeTransport(options?: OpenTelemetryLogBridgeOptions): Transport;
 ```
 
 ## otlp-json.d.ts

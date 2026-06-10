@@ -58,6 +58,7 @@ import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
+import { openTelemetryLogBridgeTransport } from "@loggerjs/otel/log-bridge";
 import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
 import { sentryTransport, type SentryLike } from "@loggerjs/sentry/transport";
 import { lokiTransport } from "@loggerjs/loki/transport";
@@ -153,6 +154,7 @@ nodeSyslogTransport({
     },
   }),
 });
+openTelemetryLogBridgeTransport({ logger: { emit() {} } });
 openTelemetryTraceProcessor();
 sentryTransport({ sentry: {} satisfies SentryLike });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });

@@ -4,7 +4,7 @@ OpenTelemetry helpers for LoggerJS.
 
 ```ts
 import { createLogger } from "@loggerjs/core";
-import { openTelemetryTraceProcessor, otlpHttpTransport } from "@loggerjs/otel";
+import { openTelemetryLogBridgeTransport, openTelemetryTraceProcessor, otlpHttpTransport } from "@loggerjs/otel";
 
 const logger = createLogger({
   name: "api",
@@ -15,8 +15,9 @@ const logger = createLogger({
       resource: { "service.name": "checkout-api" },
       maxRecords: 100,
     }),
+    openTelemetryLogBridgeTransport({ loggerProvider: logsProvider }),
   ],
 });
 ```
 
-Subpaths expose `transport-http`, `codec-otlp-json`, and `trace`.
+Subpaths expose `transport-http`, `codec-otlp-json`, `trace`, and `log-bridge`.
