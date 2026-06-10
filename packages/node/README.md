@@ -50,4 +50,4 @@ app.use(expressIntegration(logger, { captureAll: true }));
 fastify.register(fastifyIntegration(logger, { captureAll: true }));
 ```
 
-Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-database`, `integration-express`, `integration-fastify`, `integration-fetch`, `integration-http-client`, `integration-diagnostics`, and `context`.
+Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-queue`, `integration-database`, `integration-express`, `integration-fastify`, `integration-fetch`, `integration-http-client`, `integration-diagnostics`, and `context`.

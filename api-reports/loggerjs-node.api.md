@@ -221,6 +221,7 @@ export * from "./fastify-integration.js";
 export * from "./node-fetch-integration.js";
 export * from "./node-http-client-integration.js";
 export * from "./process-integration.js";
+export * from "./queue-integration.js";
 export * from "./diagnostics-channel-integration.js";
 ```
 
@@ -338,6 +339,50 @@ export interface CaptureProcessOptions {
     exitFn?: (code: number) => void;
 }
 export declare function captureProcessIntegration(options?: CaptureProcessOptions): Integration;
+```
+
+## queue-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export type QueueOperation = "publish" | "consume" | "ack" | "nack" | "other";
+export interface QueueClientLike {
+    [method: string]: unknown;
+}
+export interface QueueIntegrationTarget {
+    client: QueueClientLike;
+    name?: string;
+    system?: string;
+    queueName?: string;
+    methods?: readonly string[];
+}
+export interface QueueOperationInfo {
+    target: string;
+    system?: string;
+    queueName?: string;
+    method: string;
+    operation: QueueOperation;
+}
+export interface QueueIntegrationOptions {
+    client?: QueueClientLike;
+    targets?: readonly QueueIntegrationTarget[];
+    name?: string;
+    system?: string;
+    queueName?: string;
+    methods?: readonly string[];
+    captureAll?: boolean;
+    captureSuccessful?: boolean;
+    minDurationMs?: number;
+    sampleRate?: number;
+    random?: () => number;
+    capturePayload?: boolean;
+    getOperation?: (method: string, args: readonly unknown[]) => QueueOperation;
+    getQueueName?: (args: readonly unknown[], method: string) => string | undefined;
+    getMessageId?: (args: readonly unknown[], method: string) => string | undefined;
+    getPayload?: (args: readonly unknown[], method: string) => unknown;
+    level?: (durationMs: number, error: unknown, info: QueueOperationInfo) => LoggerLevel;
+}
+export declare function queueIntegration(options?: QueueIntegrationOptions): Integration;
 ```
 
 ## rotating-file-transport.d.ts
