@@ -9,6 +9,7 @@ declare const process: {
   env: Record<string, string | undefined>;
   on: (event: string, listener: (...args: any[]) => void) => void;
   off: (event: string, listener: (...args: any[]) => void) => void;
+  exit: (code?: number) => never;
 };
 
 declare module "fs" {
