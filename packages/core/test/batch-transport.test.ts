@@ -86,6 +86,66 @@ describe("batchTransport", () => {
     });
   });
 
+  it("splits flushes by estimated byte budget", async () => {
+    const batches: string[][] = [];
+    const transport = batchTransport(
+      {
+        name: "inner",
+        logBatch(events) {
+          batches.push(events.map((item) => item.id));
+        },
+      },
+      {
+        maxBatchSize: 10,
+        maxBytes: 5,
+        flushIntervalMs: 0,
+        estimateEventBytes(item) {
+          return item.seq === 3 ? 2 : 3;
+        },
+      },
+    );
+
+    const context = createContext();
+    transport.log?.(event, context);
+    transport.log?.({ ...event, id: "evt-2", seq: 2 }, context);
+    transport.log?.({ ...event, id: "evt-3", seq: 3 }, context);
+    await transport.flush?.();
+
+    expect(batches).toEqual([["evt-1"], ["evt-2", "evt-3"]]);
+  });
+
+  it("drops records larger than the byte budget", async () => {
+    resetLoggerMetaStats();
+    const dropped: LogEvent[] = [];
+    const logBatch = vi.fn<NonNullable<Transport["logBatch"]>>();
+    const transport = batchTransport(
+      {
+        name: "inner",
+        logBatch,
+      },
+      {
+        maxBytes: 4,
+        flushIntervalMs: 0,
+        estimateEventBytes() {
+          return 5;
+        },
+        onDrop(droppedEvent) {
+          dropped.push(droppedEvent);
+        },
+      },
+    );
+
+    transport.log?.(event, createContext());
+    await transport.flush?.();
+
+    expect(dropped.map((item) => item.id)).toEqual(["evt-1"]);
+    expect(logBatch).not.toHaveBeenCalled();
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.dropped": 1,
+      "transport.dropped.record-too-large": 1,
+    });
+  });
+
   it("retries transient delivery failures", async () => {
     resetLoggerMetaStats();
     const logBatch = vi.fn<NonNullable<Transport["logBatch"]>>(async () => {

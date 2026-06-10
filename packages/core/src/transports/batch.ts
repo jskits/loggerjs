@@ -11,10 +11,12 @@ export interface BatchTransportOptions {
   name?: string;
   maxRecords?: number;
   maxBatchSize?: number;
+  maxBytes?: number;
   maxWaitMs?: number;
   flushIntervalMs?: number;
   maxQueueSize?: number;
   dropPolicy?: DropPolicy;
+  estimateEventBytes?: (event: LogEvent) => number;
   maxRetries?: number;
   retryBaseDelayMs?: number;
   retryMaxDelayMs?: number;
@@ -24,18 +26,96 @@ export interface BatchTransportOptions {
   onDrop?: (event: LogEvent, reason: string) => void;
 }
 
+interface QueueItem {
+  event: LogEvent;
+  estimatedBytes: number;
+}
+
+const MAX_ESTIMATE_DEPTH = 4;
+const MAX_ESTIMATE_KEYS = 64;
+
+function estimateUtf8ByteLength(value: string): number {
+  let bytes = 0;
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff) {
+      bytes += 4;
+      index += 1;
+    } else bytes += 3;
+  }
+  return bytes;
+}
+
+function estimateValueBytes(
+  value: unknown,
+  depth = 0,
+  seen: WeakSet<object> = new WeakSet(),
+): number {
+  if (value === null) return 4;
+
+  switch (typeof value) {
+    case "string":
+      return estimateUtf8ByteLength(value) + 2;
+    case "number":
+      return Number.isFinite(value) ? 8 : 4;
+    case "boolean":
+      return value ? 4 : 5;
+    case "bigint":
+      return value.toString().length + 2;
+    case "undefined":
+    case "function":
+    case "symbol":
+      return 0;
+    case "object":
+      break;
+  }
+
+  if (seen.has(value)) return 16;
+  if (depth >= MAX_ESTIMATE_DEPTH) return 32;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    let bytes = 2;
+    const limit = Math.min(value.length, MAX_ESTIMATE_KEYS);
+    for (let index = 0; index < limit; index++) {
+      bytes += estimateValueBytes(value[index], depth + 1, seen) + 1;
+    }
+    return bytes + Math.max(0, value.length - limit) * 8;
+  }
+
+  let bytes = 2;
+  let count = 0;
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (count >= MAX_ESTIMATE_KEYS) {
+      bytes += 64;
+      break;
+    }
+    bytes += estimateUtf8ByteLength(key) + 3 + estimateValueBytes(item, depth + 1, seen);
+    count += 1;
+  }
+  return bytes;
+}
+
+export function estimateLogEventBytes(event: LogEvent): number {
+  return estimateValueBytes(event);
+}
+
 export function batchTransport(inner: Transport, options: BatchTransportOptions = {}): Transport {
   const maxBatchSize = options.maxRecords ?? options.maxBatchSize ?? 50;
+  const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
   const flushIntervalMs = options.maxWaitMs ?? options.flushIntervalMs ?? 1000;
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
+  const estimateEventBytes = options.estimateEventBytes ?? estimateLogEventBytes;
   const maxRetries = options.maxRetries ?? 0;
   const retryBaseDelayMs = options.retryBaseDelayMs ?? 100;
   const retryMaxDelayMs = options.retryMaxDelayMs ?? 1000;
   const random = options.random ?? Math.random;
   const circuitBreakerFailureThreshold = options.circuitBreakerFailureThreshold ?? Infinity;
   const circuitBreakerResetMs = options.circuitBreakerResetMs ?? 30_000;
-  const queue: LogEvent[] = [];
+  const queue: QueueItem[] = [];
   const transportName = options.name ?? `batch(${inner.name ?? "transport"})`;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastContext: TransportContext | undefined;
@@ -107,6 +187,23 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     }
   };
 
+  const takeBatch = (): QueueItem[] => {
+    const batch: QueueItem[] = [];
+    let bytes = 0;
+
+    while (queue.length > 0 && batch.length < maxBatchSize) {
+      const next = queue[0];
+      if (!next) break;
+      if (batch.length > 0 && bytes + next.estimatedBytes > maxBytes) break;
+      const item = queue.shift();
+      if (!item) break;
+      batch.push(item);
+      bytes += item.estimatedBytes;
+    }
+
+    return batch;
+  };
+
   const flush = async () => {
     if (flushing || queue.length === 0) return;
     const context = lastContext;
@@ -120,12 +217,24 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
 
     flushing = true;
     clearTimer();
-    const batch = queue.splice(0, queue.length);
     try {
-      await deliverWithRetry(batch, context);
-    } catch (error) {
-      queue.unshift(...batch);
-      throw error;
+      while (queue.length > 0) {
+        const nowDuringFlush = Date.now();
+        if (circuitOpenUntil > nowDuringFlush) {
+          schedule(circuitOpenUntil - nowDuringFlush);
+          return;
+        }
+        const batchItems = takeBatch();
+        if (batchItems.length === 0) return;
+        const batch = batchItems.map((item) => item.event);
+        try {
+          // oxlint-disable-next-line no-await-in-loop -- Batches must preserve delivery order.
+          await deliverWithRetry(batch, context);
+        } catch (error) {
+          queue.unshift(...batchItems);
+          throw error;
+        }
+      }
     } finally {
       flushing = false;
       if (queue.length > 0) {
@@ -165,6 +274,11 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     log(event, context) {
       if (inner.minLevel !== undefined && event.level < toLevelValue(inner.minLevel)) return;
       lastContext = context;
+      const estimatedBytes = estimateEventBytes(event);
+      if (estimatedBytes > maxBytes) {
+        reportDrop(event, "record-too-large", context);
+        return;
+      }
       if (queue.length >= maxQueueSize) {
         if (dropPolicy === "drop-newest") {
           reportDrop(event, "queue-full", context);
@@ -172,13 +286,13 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
         }
         if (dropPolicy === "drop-oldest") {
           const dropped = queue.shift();
-          if (dropped) reportDrop(dropped, "queue-full", context);
+          if (dropped) reportDrop(dropped.event, "queue-full", context);
         } else {
           reportDrop(event, "queue-full", context);
           return;
         }
       }
-      queue.push(event);
+      queue.push({ event, estimatedBytes });
       if (queue.length >= maxBatchSize) flushAndReport(context);
       else schedule();
     },
