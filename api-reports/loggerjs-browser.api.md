@@ -3,6 +3,48 @@
 Generated from `packages/browser/dist/**/*.d.ts`.
 Update with `pnpm build && pnpm api:report` after intentional public API changes.
 
+## broadcast-channel-transport.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+export interface BrowserBroadcastChannelLike {
+    postMessage: (message: unknown) => void;
+    close?: () => void;
+}
+export type BrowserBroadcastChannelFactory = (channelName: string) => BrowserBroadcastChannelLike;
+export interface BrowserBroadcastChannelEventMessage {
+    type: "loggerjs.event";
+    source: string;
+    event: LogEvent;
+}
+export interface BrowserBroadcastChannelBatchMessage {
+    type: "loggerjs.batch";
+    source: string;
+    events: readonly LogEvent[];
+}
+export type BrowserBroadcastChannelMessage = BrowserBroadcastChannelEventMessage | BrowserBroadcastChannelBatchMessage;
+export interface BrowserBroadcastChannelMapContext {
+    channelName: string;
+    source: string;
+}
+export interface BrowserBroadcastChannelErrorDetail {
+    operation: "create-channel" | "post-message" | "close-channel" | "on-error";
+    droppedEvents: number;
+}
+export interface BrowserBroadcastChannelTransportOptions {
+    channelName: string;
+    name?: string;
+    source?: string;
+    minLevel?: LoggerLevel;
+    channelFactory?: BrowserBroadcastChannelFactory;
+    closeChannelOnClose?: boolean;
+    mapEvent?: (event: LogEvent, context: BrowserBroadcastChannelMapContext) => unknown;
+    mapBatch?: (events: readonly LogEvent[], context: BrowserBroadcastChannelMapContext) => unknown;
+    onError?: (error: unknown, detail: BrowserBroadcastChannelErrorDetail) => void;
+}
+export declare function browserBroadcastChannelTransport(options: BrowserBroadcastChannelTransportOptions): Transport;
+```
+
 ## console-integration.d.ts
 
 ```ts
@@ -117,6 +159,7 @@ export declare function browserHttpTransport(options: BrowserHttpTransportOption
 
 ```ts
 export * from "@loggerjs/core";
+export * from "./broadcast-channel-transport.js";
 export * from "./http-transport.js";
 export * from "./indexeddb-offline-queue.js";
 export * from "./console-integration.js";

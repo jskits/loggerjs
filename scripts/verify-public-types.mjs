@@ -32,6 +32,7 @@ import { createMiddleware } from "@loggerjs/core/middleware";
 import { jsonCodec } from "@loggerjs/core/codec-json";
 import { consoleTransport } from "@loggerjs/core/transport-console";
 import { testTransport } from "@loggerjs/core/transport-test";
+import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-broadcast-channel";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
@@ -70,6 +71,10 @@ createMiddleware("identity", (record) => record);
 jsonCodec().encode([]);
 fastEventJsonCodec().encode([]);
 redact({ paths: ["password"] });
+browserBroadcastChannelTransport({
+  channelName: "logs",
+  channelFactory: () => ({ postMessage() {} }),
+});
 browserHttpTransport({ url: "/logs" });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 openTelemetryTraceProcessor();

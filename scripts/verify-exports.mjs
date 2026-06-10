@@ -16,6 +16,7 @@ const checks = [
   ["@loggerjs/core/events", ["defineEvent"]],
   ["@loggerjs/browser", ["browserHttpTransport"]],
   ["@loggerjs/browser/transport-http", ["browserHttpTransport"]],
+  ["@loggerjs/browser/transport-broadcast-channel", ["browserBroadcastChannelTransport"]],
   ["@loggerjs/browser/integration-console", ["captureConsoleIntegration"]],
   ["@loggerjs/browser/integration-errors", ["captureBrowserErrorsIntegration"]],
   ["@loggerjs/browser/integration-fetch", ["captureFetchIntegration"]],

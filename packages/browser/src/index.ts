@@ -1,4 +1,5 @@
 export * from "@loggerjs/core";
+export * from "./broadcast-channel-transport";
 export * from "./http-transport";
 export * from "./indexeddb-offline-queue";
 export * from "./console-integration";
