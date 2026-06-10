@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   batchTransport,
   getLoggerMetaStats,
   resetLoggerMetaStats,
   type LogEvent,
+  type Transport,
   type TransportContext,
 } from "../src";
 
@@ -82,6 +83,65 @@ describe("batchTransport", () => {
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.dropped": 1,
       "transport.dropped.queue-full": 1,
+    });
+  });
+
+  it("retries transient delivery failures", async () => {
+    resetLoggerMetaStats();
+    const logBatch = vi.fn<NonNullable<Transport["logBatch"]>>(async () => {
+      if (logBatch.mock.calls.length === 1) throw new Error("temporary failure");
+    });
+    const transport = batchTransport(
+      {
+        name: "inner",
+        logBatch,
+      },
+      {
+        maxBatchSize: 10,
+        flushIntervalMs: 0,
+        maxRetries: 1,
+        retryBaseDelayMs: 0,
+      },
+    );
+
+    transport.log?.(event, createContext());
+    await transport.flush?.();
+
+    expect(logBatch).toHaveBeenCalledTimes(2);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.retry": 1,
+    });
+  });
+
+  it("opens the circuit after retry exhaustion and keeps queued records", async () => {
+    resetLoggerMetaStats();
+    const logBatch = vi.fn<NonNullable<Transport["logBatch"]>>(async () => {
+      throw new Error("delivery down");
+    });
+    const transport = batchTransport(
+      {
+        name: "inner",
+        logBatch,
+      },
+      {
+        maxBatchSize: 10,
+        flushIntervalMs: 0,
+        maxRetries: 1,
+        retryBaseDelayMs: 0,
+        circuitBreakerFailureThreshold: 1,
+        circuitBreakerResetMs: 10_000,
+      },
+    );
+
+    transport.log?.(event, createContext());
+    await expect(transport.flush?.()).rejects.toThrow("delivery down");
+    await transport.flush?.();
+
+    expect(logBatch).toHaveBeenCalledTimes(2);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.retry": 1,
+      "transport.retry.exhausted": 1,
+      "transport.circuit.open": 1,
     });
   });
 });
