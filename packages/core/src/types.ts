@@ -151,6 +151,7 @@ export interface Integration {
 
 export interface LoggerOptions {
   name?: string;
+  category?: LoggerCategory;
   level?: LoggerLevel;
   type?: string;
   tags?: Tags;
@@ -166,6 +167,7 @@ export interface LoggerOptions {
 
 export interface ChildLoggerOptions {
   name?: string;
+  category?: LoggerCategory;
   level?: LoggerLevel;
   type?: string;
   tags?: Tags;

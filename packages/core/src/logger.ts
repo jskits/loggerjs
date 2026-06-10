@@ -6,6 +6,7 @@ import {
   type EnabledLogLevelName,
   type LoggerLevel,
 } from "./levels";
+import { normalizeCategory } from "./record";
 import { normalizeError, valueToMessage } from "./utils/error";
 import type {
   ChildLoggerOptions,
@@ -13,6 +14,7 @@ import type {
   LogData,
   LogEvent,
   LoggerLike,
+  LoggerCategory,
   LoggerOptions,
   Processor,
   ProcessorContext,
@@ -29,6 +31,11 @@ function defaultClock() {
 
 function defaultIdFactory(event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">): string {
   return `${event.time.toString(36)}-${event.seq.toString(36)}-${event.levelName}`;
+}
+
+function categoryToName(category: LoggerCategory | undefined): string | undefined {
+  if (category === undefined) return undefined;
+  return normalizeCategory(category).join(".");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -88,7 +95,7 @@ export class Logger implements LoggerLike {
   private closed = false;
 
   constructor(options: LoggerOptions = {}) {
-    this.name = options.name ?? "app";
+    this.name = categoryToName(options.category) ?? options.name ?? "app";
     this.minimumLevel = options.level ?? "info";
     this.type = options.type;
     this.tags = mergeTags(options.tags);
@@ -117,7 +124,7 @@ export class Logger implements LoggerLike {
 
   child(options: ChildLoggerOptions = {}): Logger {
     return new Logger({
-      name: options.name ?? this.name,
+      name: categoryToName(options.category) ?? options.name ?? this.name,
       level: options.level ?? this.minimumLevel,
       type: options.type ?? this.type,
       tags: mergeTags(this.tags, options.tags),

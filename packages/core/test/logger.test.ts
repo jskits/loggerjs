@@ -16,6 +16,32 @@ function eventMessages(events: LogEvent[]): string[] {
 }
 
 describe("logger core skeleton", () => {
+  it("prefers category over legacy name options", () => {
+    const transport = memoryTransport();
+
+    const logger = createLogger({
+      name: "legacy",
+      category: ["api", "orders"],
+      transports: [transport],
+    });
+
+    logger.info("created");
+
+    expect(transport.events[0]?.logger).toBe("api.orders");
+  });
+
+  it("lets child loggers override the category", () => {
+    const transport = memoryTransport();
+    const logger = createLogger({
+      category: "api",
+      transports: [transport],
+    });
+
+    logger.child({ category: ["api", "checkout"] }).info("paid");
+
+    expect(transport.events[0]?.logger).toBe("api.checkout");
+  });
+
   it("returns before expensive work for disabled levels", () => {
     const transport = memoryTransport();
     const contextProvider = vi.fn<() => Record<string, unknown>>(() => ({ requestId: "req-1" }));
