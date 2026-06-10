@@ -3,3 +3,13 @@ export * from "./sample";
 export * from "./tags";
 export * from "./dedupe";
 export * from "./trace";
+
+export { redactProcessor as redact } from "./redact";
+export { sampleProcessor as sample } from "./sample";
+export {
+  tagsProcessor as tags,
+  typeProcessor as logType,
+  contextProcessor as context,
+} from "./tags";
+export { dedupeProcessor as dedupe } from "./dedupe";
+export { traceContextProcessor as traceContext } from "./trace";
