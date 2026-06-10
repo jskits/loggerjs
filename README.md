@@ -96,6 +96,7 @@ logger.event(CheckoutCompleted, { orderId: "ord_123", amountCents: 4999 });
 - [Architecture](docs/ARCHITECTURE.md)
 - [Privacy, offline queue, and crash-path guidance](docs/OPERATIONS.md)
 - [Benchmarks and size budgets](docs/BENCHMARKS.md)
+- [Migration notes](docs/MIGRATION.md)
 - [Release workflow](docs/RELEASE.md)
 
 ## Development

@@ -10,7 +10,20 @@ Run the full release dry-run before cutting a release:
 pnpm release:dry-run
 ```
 
-This runs the normal quality gate, verifies public exports and API reports, checks every package with `npm pack --dry-run --json`, prints Changesets status, and runs `pnpm publish -r --dry-run --access public --no-git-checks --json`.
+This runs the normal quality gate, verifies public exports and API reports, checks every package with `npm pack --dry-run --json`, installs publish-style tarballs into a temporary consumer smoke project, prints Changesets status, and runs `pnpm publish -r --dry-run --access public --no-git-checks --json`.
+
+For canary validation without publishing:
+
+```bash
+pnpm release:canary:dry-run
+```
+
+Use the real `canary` dist-tag only from a versioned prerelease branch or workflow:
+
+```bash
+pnpm check
+changeset publish --tag canary
+```
 
 ## Trusted Publishing
 
