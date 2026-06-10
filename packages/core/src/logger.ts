@@ -6,6 +6,7 @@ import {
   type EnabledLogLevelName,
   type LoggerLevel,
 } from "./levels";
+import { reportLoggerMetaError } from "./meta";
 import { createBoundContext, createRecord, normalizeCategory, recordToEvent } from "./record";
 import { valueToMessage } from "./utils/error";
 import type {
@@ -375,19 +376,7 @@ export class Logger implements LoggerLike {
   }
 
   private reportInternalError(error: unknown, detail?: Record<string, unknown>) {
-    if (this.onInternalError) {
-      try {
-        this.onInternalError(error, detail);
-        return;
-      } catch {
-        // fall through to console
-      }
-    }
-    try {
-      console.error("[loggerjs internal error]", error, detail ?? {});
-    } catch {
-      // no-op
-    }
+    reportLoggerMetaError(error, detail, this.onInternalError);
   }
 }
 

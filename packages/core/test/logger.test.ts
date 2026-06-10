@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createLogger,
+  getLoggerMetaStats,
   memoryTransport,
+  resetLoggerMetaStats,
   type LogEvent,
   type Processor,
   type Transport,
@@ -16,6 +18,10 @@ function eventMessages(events: LogEvent[]): string[] {
 }
 
 describe("logger core skeleton", () => {
+  afterEach(() => {
+    resetLoggerMetaStats();
+  });
+
   it("prefers category over legacy name options", () => {
     const transport = memoryTransport();
 
@@ -131,5 +137,9 @@ describe("logger core skeleton", () => {
       { phase: "processor" },
       { phase: "transport", transport: "failing" },
     ]);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "processor.errors": 1,
+      "transport.errors": 1,
+    });
   });
 });
