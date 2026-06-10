@@ -4,6 +4,7 @@ Compatibility processor package for common synchronous middleware behavior.
 
 ```ts
 import {
+  breadcrumbBufferProcessor,
   dedupeProcessor,
   dynamicSamplerProcessor,
   enrichProcessor,
@@ -41,6 +42,7 @@ const processors = [
   dedupeProcessor(),
   rateLimitProcessor({ capacity: 100, refillPerSecond: 100 }),
   fingersCrossedProcessor({ triggerLevel: "error", bufferSize: 100 }),
+  breadcrumbBufferProcessor({ bufferSize: 50, triggerLevel: "error" }),
 ];
 ```
 

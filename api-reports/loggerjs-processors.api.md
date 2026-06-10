@@ -3,6 +3,44 @@
 Generated from `packages/processors/dist/**/*.d.ts`.
 Update with `pnpm build && pnpm api:report` after intentional public API changes.
 
+## breadcrumb-buffer.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Processor } from "@loggerjs/core";
+export interface Breadcrumb {
+    time: number;
+    levelName: LogEvent["levelName"];
+    logger: string;
+    message: string;
+    type?: string;
+    tags?: LogEvent["tags"];
+    source?: LogEvent["source"];
+}
+export interface BreadcrumbBufferState {
+    readonly key: string;
+    readonly buffered: number;
+    readonly lastSeenMs: number;
+}
+export interface BreadcrumbBufferProcessor extends Processor {
+    states(): readonly BreadcrumbBufferState[];
+    reset(key?: string): void;
+}
+export interface BreadcrumbBufferOptions<TBreadcrumb = Breadcrumb> {
+    triggerLevel?: LoggerLevel;
+    shouldAttach?: (event: LogEvent) => boolean;
+    shouldBuffer?: (event: LogEvent) => boolean;
+    bufferSize?: number;
+    maxBuckets?: number;
+    key?: (event: LogEvent) => string;
+    map?: (event: LogEvent) => TBreadcrumb;
+    target?: "context" | "data";
+    field?: string;
+    includeTrigger?: boolean;
+    clearOnTrigger?: boolean;
+}
+export declare function breadcrumbBufferProcessor<TBreadcrumb = Breadcrumb>(options?: BreadcrumbBufferOptions<TBreadcrumb>): BreadcrumbBufferProcessor;
+```
+
 ## dedupe.d.ts
 
 ```ts
@@ -177,6 +215,7 @@ export * from "./stack-parser.js";
 export * from "./privacy-guard.js";
 export * from "./schema-dev-check.js";
 export * from "./dynamic-sampler.js";
+export * from "./breadcrumb-buffer.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -193,6 +232,7 @@ export { stackParserProcessor as stackParser } from "./stack-parser.js";
 export { privacyGuardProcessor as privacyGuard } from "./privacy-guard.js";
 export { schemaDevCheckProcessor as schemaDevCheck } from "./schema-dev-check.js";
 export { dynamicSamplerProcessor as dynamicSampler } from "./dynamic-sampler.js";
+export { breadcrumbBufferProcessor as breadcrumbBuffer } from "./breadcrumb-buffer.js";
 ```
 
 ## level-override.d.ts

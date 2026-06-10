@@ -14,6 +14,7 @@ export * from "./stack-parser";
 export * from "./privacy-guard";
 export * from "./schema-dev-check";
 export * from "./dynamic-sampler";
+export * from "./breadcrumb-buffer";
 
 export { redactProcessor as redact } from "./redact";
 export { sampleProcessor as sample } from "./sample";
@@ -35,3 +36,4 @@ export { stackParserProcessor as stackParser } from "./stack-parser";
 export { privacyGuardProcessor as privacyGuard } from "./privacy-guard";
 export { schemaDevCheckProcessor as schemaDevCheck } from "./schema-dev-check";
 export { dynamicSamplerProcessor as dynamicSampler } from "./dynamic-sampler";
+export { breadcrumbBufferProcessor as breadcrumbBuffer } from "./breadcrumb-buffer";

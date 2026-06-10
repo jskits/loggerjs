@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { LogEvent, ProcessorContext } from "@loggerjs/core";
 import {
+  breadcrumbBuffer,
   context,
   dedupe,
   dynamicSampler,
@@ -69,5 +70,6 @@ describe("processor middleware aliases", () => {
     expect(privacyGuard()(event, processorContext)).toBe(event);
     expect(schemaDevCheck()(event, processorContext)).toBe(event);
     expect(dynamicSampler({ defaultRate: 1 })(event, processorContext)).toBe(event);
+    expect(breadcrumbBuffer()(event, processorContext)).toBe(event);
   });
 });
