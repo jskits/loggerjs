@@ -7,7 +7,7 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
   ["@loggerjs/core", "packages/core/dist/index.js", 48_000, 12_000],
-  ["@loggerjs/browser", "packages/browser/dist/index.js", 60_000, 14_000],
+  ["@loggerjs/browser", "packages/browser/dist/index.js", 68_000, 14_000],
   ["@loggerjs/node", "packages/node/dist/index.js", 33_000, 8_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 4_000, 1_400],

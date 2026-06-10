@@ -204,6 +204,7 @@ export * from "./xhr-integration.js";
 export * from "./framework-error-integration.js";
 export * from "./reporting-integration.js";
 export * from "./router-integration.js";
+export * from "./user-action-integration.js";
 export * from "./web-vitals-integration.js";
 export * from "./performance-integration.js";
 export * from "./page-lifecycle.js";
@@ -434,6 +435,47 @@ export interface BrowserServiceWorkerTransportOptions {
 export declare function browserServiceWorkerTransport(options?: BrowserServiceWorkerTransportOptions): Transport & {
     queueSize: () => number;
 };
+```
+
+## user-action-integration.d.ts
+
+```ts
+import type { Integration, LoggerLevel } from "@loggerjs/core";
+export type BrowserUserActionEventName = "change" | "click" | "dblclick" | "input" | "keydown" | "submit";
+export interface BrowserUserActionTarget {
+    tagName?: string;
+    id?: string;
+    name?: string;
+    role?: string;
+    type?: string;
+    href?: string;
+    label?: string;
+    text?: string;
+    value?: string;
+}
+export interface BrowserUserActionPayload {
+    type: BrowserUserActionEventName | string;
+    target: BrowserUserActionTarget;
+}
+export interface BrowserEventTargetLike {
+    addEventListener: typeof globalThis.addEventListener;
+    removeEventListener: typeof globalThis.removeEventListener;
+}
+export interface CaptureUserActionsOptions {
+    events?: readonly BrowserUserActionEventName[];
+    level?: LoggerLevel;
+    listenerCapture?: boolean;
+    throttleMs?: number;
+    captureText?: boolean;
+    captureValue?: boolean;
+    maxTextLength?: number;
+    labelAttributes?: readonly string[];
+    root?: BrowserEventTargetLike;
+    clock?: () => number;
+    sanitize?: (value: string, field: keyof BrowserUserActionTarget) => string;
+    ignore?: (event: Event, target: BrowserUserActionTarget) => boolean;
+}
+export declare function captureUserActionsIntegration(options?: CaptureUserActionsOptions): Integration;
 ```
 
 ## web-vitals-integration.d.ts
