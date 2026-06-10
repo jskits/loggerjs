@@ -1,5 +1,12 @@
 import { createWriteStream, type WriteStream } from "fs";
-import { ndjsonCodec, toLevelValue, type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  ndjsonCodec,
+  toLevelValue,
+  type Codec,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+} from "@loggerjs/core";
 
 export interface FileTransportOptions {
   path: string;
@@ -33,6 +40,6 @@ export function fileTransport(options: FileTransportOptions): FileTransport {
       return new Promise<void>((resolve, reject) => {
         stream.end?.((error?: Error | null) => (error ? reject(error) : resolve()));
       });
-    }
+    },
   };
 }

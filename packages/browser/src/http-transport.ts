@@ -1,4 +1,11 @@
-import { safeJsonCodec, toLevelValue, type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  safeJsonCodec,
+  toLevelValue,
+  type Codec,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+} from "@loggerjs/core";
 
 export type BrowserHttpDropPolicy = "drop-oldest" | "drop-newest";
 
@@ -22,7 +29,7 @@ export interface BrowserHttpTransportOptions {
 
 function payloadToBody(payload: string | Uint8Array): BodyInit {
   if (typeof payload === "string") return payload;
-  return payload;
+  return Uint8Array.from(payload);
 }
 
 export function browserHttpTransport(options: BrowserHttpTransportOptions): Transport {
@@ -38,7 +45,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
   const headers = () => ({
     "content-type": codec.contentType,
-    ...(options.headers ?? {})
+    ...options.headers,
   });
 
   const clearTimer = () => {
@@ -54,7 +61,12 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     const payload = codec.encode(batch);
 
     try {
-      if (preferBeacon && typeof navigator !== "undefined" && navigator.sendBeacon && typeof payload === "string") {
+      if (
+        preferBeacon &&
+        typeof navigator !== "undefined" &&
+        navigator.sendBeacon &&
+        typeof payload === "string"
+      ) {
         const blob = new Blob([payload], { type: codec.contentType });
         const ok = navigator.sendBeacon(options.url, blob);
         if (ok) return;
@@ -66,7 +78,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         headers: headers(),
         body: payloadToBody(payload),
         credentials: options.credentials,
-        keepalive: options.keepalive ?? true
+        keepalive: options.keepalive ?? true,
       });
     } finally {
       flushing = false;
@@ -88,7 +100,8 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   if (options.useBeaconOnPageHide ?? true) {
     globalThis.addEventListener?.("pagehide", onPageHide);
     globalThis.addEventListener?.("visibilitychange", () => {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") void flush(true);
+      if (typeof document !== "undefined" && document.visibilityState === "hidden")
+        void flush(true);
     });
   }
 
@@ -115,6 +128,6 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     close() {
       globalThis.removeEventListener?.("pagehide", onPageHide);
       return flush(true);
-    }
+    },
   };
 }

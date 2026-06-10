@@ -29,7 +29,9 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
 
       if (unhandledRejection) {
         const onUnhandledRejection = (reason: unknown) => {
-          logger.captureException(reason, { source: { integration: "process.unhandledRejection" } });
+          logger.captureException(reason, {
+            source: { integration: "process.unhandledRejection" },
+          });
           void logger.flush();
         };
         process.on("unhandledRejection", onUnhandledRejection);
@@ -55,6 +57,6 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
       return () => {
         for (const dispose of disposers) dispose();
       };
-    }
+    },
   };
 }

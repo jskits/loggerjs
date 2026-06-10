@@ -10,7 +10,7 @@ export function jsonCodec(): Codec<string> {
     },
     decode(payload: string) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
-    }
+    },
   };
 }
 
@@ -23,7 +23,7 @@ export function safeJsonCodec(options: SafeStringifyOptions = {}): Codec<string>
     },
     decode(payload: string) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
-    }
+    },
   };
 }
 
@@ -40,6 +40,6 @@ export function ndjsonCodec(options: SafeStringifyOptions = {}): Codec<string> {
         .split("\n")
         .filter(Boolean)
         .map((line) => JSON.parse(line) as LogEvent);
-    }
+    },
   };
 }

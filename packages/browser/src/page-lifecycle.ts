@@ -16,6 +16,6 @@ export function pageLifecycleIntegration(): Integration {
         removeEventListener("pagehide", flush);
         removeEventListener("visibilitychange", onVisibility);
       };
-    }
+    },
   };
 }

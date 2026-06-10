@@ -1,4 +1,12 @@
-import { batchTransport, safeJsonCodec, type BatchTransportOptions, type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  batchTransport,
+  safeJsonCodec,
+  type BatchTransportOptions,
+  type Codec,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+} from "@loggerjs/core";
 
 export interface NodeHttpTransportOptions extends BatchTransportOptions {
   url: string;
@@ -12,7 +20,7 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
 
 function payloadToBody(payload: string | Uint8Array): BodyInit {
   if (typeof payload === "string") return payload;
-  return payload;
+  return Uint8Array.from(payload);
 }
 
 export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport {
@@ -27,11 +35,11 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
         method: options.method ?? "POST",
         headers: {
           "content-type": codec.contentType,
-          ...(options.headers ?? {})
+          ...options.headers,
         },
-        body: payloadToBody(codec.encode(events))
+        body: payloadToBody(codec.encode(events)),
       });
-    }
+    },
   };
   return batchTransport(inner, {
     name: options.name ?? "node-http",
@@ -39,6 +47,6 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
     flushIntervalMs: options.flushIntervalMs,
     maxQueueSize: options.maxQueueSize,
     dropPolicy: options.dropPolicy,
-    onDrop: options.onDrop
+    onDrop: options.onDrop,
   });
 }

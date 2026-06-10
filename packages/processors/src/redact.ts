@@ -1,6 +1,9 @@
 import type { LogEvent, Processor } from "@loggerjs/core";
 
-export type RedactMatcher = string | RegExp | ((key: string, path: string, value: unknown) => boolean);
+export type RedactMatcher =
+  | string
+  | RegExp
+  | ((key: string, path: string, value: unknown) => boolean);
 
 export interface RedactOptions {
   keys?: RedactMatcher[];
@@ -21,7 +24,14 @@ function pathMatches(path: string, paths: string[]): boolean {
   return paths.includes(path);
 }
 
-function redactValue(value: unknown, options: Required<Pick<RedactOptions, "replacement" | "maxDepth">> & Pick<RedactOptions, "keys" | "paths">, path = "", depth = 0, seen = new WeakMap<object, unknown>()): unknown {
+function redactValue(
+  value: unknown,
+  options: Required<Pick<RedactOptions, "replacement" | "maxDepth">> &
+    Pick<RedactOptions, "keys" | "paths">,
+  path = "",
+  depth = 0,
+  seen = new WeakMap<object, unknown>(),
+): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value !== "object") return value;
   if (depth >= options.maxDepth) return value;
@@ -44,7 +54,10 @@ function redactValue(value: unknown, options: Required<Pick<RedactOptions, "repl
   seen.set(value, out);
   for (const [key, child] of Object.entries(input)) {
     const childPath = path ? `${path}.${key}` : key;
-    if (matchesKey(key, childPath, child, options.keys ?? []) || pathMatches(childPath, options.paths ?? [])) {
+    if (
+      matchesKey(key, childPath, child, options.keys ?? []) ||
+      pathMatches(childPath, options.paths ?? [])
+    ) {
       out[key] = options.replacement;
     } else {
       out[key] = redactValue(child, options, childPath, depth + 1, seen);
@@ -55,10 +68,20 @@ function redactValue(value: unknown, options: Required<Pick<RedactOptions, "repl
 
 export function redactProcessor(options: RedactOptions = {}): Processor {
   const normalized = {
-    keys: options.keys ?? ["password", "passwd", "secret", "token", "authorization", "cookie", "set-cookie", "apiKey", "api_key"],
+    keys: options.keys ?? [
+      "password",
+      "passwd",
+      "secret",
+      "token",
+      "authorization",
+      "cookie",
+      "set-cookie",
+      "apiKey",
+      "api_key",
+    ],
     paths: options.paths ?? [],
     replacement: options.replacement ?? "[REDACTED]",
-    maxDepth: options.maxDepth ?? 8
+    maxDepth: options.maxDepth ?? 8,
   };
 
   return (event: LogEvent): LogEvent => ({
@@ -66,6 +89,6 @@ export function redactProcessor(options: RedactOptions = {}): Processor {
     data: redactValue(event.data, normalized),
     context: redactValue(event.context, normalized) as Record<string, unknown> | undefined,
     tags: redactValue(event.tags, normalized) as LogEvent["tags"],
-    error: redactValue(event.error, normalized) as LogEvent["error"]
+    error: redactValue(event.error, normalized) as LogEvent["error"],
   });
 }

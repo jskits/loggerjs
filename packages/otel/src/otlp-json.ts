@@ -38,7 +38,11 @@ function toNanos(ms: number): string {
 }
 
 function toAnyValue(value: unknown): OtlpAnyValue {
-  const normalized = normalizeValue(value, { maxDepth: 8, maxArrayLength: 100, maxObjectKeys: 100 });
+  const normalized = normalizeValue(value, {
+    maxDepth: 8,
+    maxArrayLength: 100,
+    maxObjectKeys: 100,
+  });
   if (normalized === undefined || normalized === null) return {};
   if (typeof normalized === "string") return { stringValue: normalized };
   if (typeof normalized === "boolean") return { boolValue: normalized };
@@ -51,8 +55,11 @@ function toAnyValue(value: unknown): OtlpAnyValue {
   if (typeof normalized === "object") {
     return {
       kvlistValue: {
-        values: Object.entries(normalized as Record<string, unknown>).map(([key, child]) => ({ key, value: toAnyValue(child) }))
-      }
+        values: Object.entries(normalized as Record<string, unknown>).map(([key, child]) => ({
+          key,
+          value: toAnyValue(child),
+        })),
+      },
     };
   }
   return { stringValue: String(normalized) };
@@ -73,8 +80,8 @@ export function toOtlpLogRecord(event: LogEvent, observedTime = Date.now()): Otl
     "log.tags": event.tags,
     "log.context": event.context,
     "log.data": event.data,
-    "exception": event.error,
-    "log.source": event.source
+    exception: event.error,
+    "log.source": event.source,
   };
 
   return {
@@ -86,7 +93,7 @@ export function toOtlpLogRecord(event: LogEvent, observedTime = Date.now()): Otl
     attributes: attrs(attributes),
     traceId: event.trace?.traceId,
     spanId: event.trace?.spanId,
-    flags: event.trace?.sampled ? 1 : undefined
+    flags: event.trace?.sampled ? 1 : undefined,
   };
 }
 
@@ -100,13 +107,13 @@ export function toOtlpJson(events: LogEvent[], options: OtlpResourceOptions = {}
           {
             scope: {
               name: options.scopeName ?? "loggerjs",
-              version: options.scopeVersion
+              version: options.scopeVersion,
             },
-            logRecords: events.map((event) => toOtlpLogRecord(event, observedTime))
-          }
-        ]
-      }
-    ]
+            logRecords: events.map((event) => toOtlpLogRecord(event, observedTime)),
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -119,6 +126,6 @@ export function otlpJsonCodec(options: OtlpResourceOptions = {}): Codec<string> 
     },
     decode(payload) {
       return JSON.parse(payload) as never;
-    }
+    },
   };
 }

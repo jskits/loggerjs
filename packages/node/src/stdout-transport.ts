@@ -1,4 +1,11 @@
-import { ndjsonCodec, toLevelValue, type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  ndjsonCodec,
+  toLevelValue,
+  type Codec,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+} from "@loggerjs/core";
 import type { WritableLike } from "./internal-types";
 
 export interface StdoutTransportOptions {
@@ -30,7 +37,7 @@ export function stdoutTransport(options: StdoutTransportOptions = {}): Transport
           resolve();
         }
       });
-    }
+    },
   };
 }
 

@@ -3,7 +3,15 @@ import type { EnabledLogLevelName, LoggerLevel } from "./levels";
 export type Primitive = string | number | boolean | null | undefined | bigint | symbol;
 export type Jsonish = Primitive | Jsonish[] | { [key: string]: Jsonish };
 export type Tags = Record<string, string | number | boolean | null | undefined>;
-export type LogData = Record<string, unknown> | unknown[] | string | number | boolean | Error | null | undefined;
+export type LogData =
+  | Record<string, unknown>
+  | unknown[]
+  | string
+  | number
+  | boolean
+  | Error
+  | null
+  | undefined;
 
 export interface SerializedError {
   name?: string;

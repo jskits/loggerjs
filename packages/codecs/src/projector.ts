@@ -9,15 +9,18 @@ export interface ProjectorCodecOptions<TWire> {
   unproject?: (wire: TWire) => LogEvent | LogEvent[];
 }
 
-export function projectorCodec<TWire>(options: ProjectorCodecOptions<TWire>): Codec<string | Uint8Array> {
+export function projectorCodec<TWire>(
+  options: ProjectorCodecOptions<TWire>,
+): Codec<string | Uint8Array> {
   return {
     name: options.name,
     contentType: options.contentType,
     encode(input) {
       return options.serialize(options.project(input));
     },
-    decode: options.parse && options.unproject
-      ? (payload) => options.unproject!(options.parse!(payload))
-      : undefined
+    decode:
+      options.parse && options.unproject
+        ? (payload) => options.unproject!(options.parse!(payload))
+        : undefined,
   };
 }

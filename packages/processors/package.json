@@ -2,9 +2,14 @@
   "name": "@loggerjs/processors",
   "version": "0.1.0",
   "description": "Reusable loggerjs event processors.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "type": "module",
   "sideEffects": false,
-  "license": "MIT",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,9 +20,13 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "build": "pnpm run clean && pnpm run build:js && pnpm run build:types",
+    "build:js": "rolldown -c ../../rolldown.config.mjs",
+    "build:types": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"

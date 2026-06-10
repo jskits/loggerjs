@@ -1,16 +1,16 @@
 import { createLogger, stdoutTransport, captureProcessIntegration } from "@loggerjs/node";
 import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
 
+const logLevels = ["trace", "debug", "info", "warn", "error", "fatal", "silent"] as const;
+const level = logLevels.find((candidate) => candidate === process.env.LOG_LEVEL) ?? "info";
+
 const logger = createLogger({
   name: "api",
-  level: process.env.LOG_LEVEL ?? "info",
+  level,
   tags: { service: "checkout", env: process.env.NODE_ENV ?? "dev" },
-  processors: [
-    redactProcessor(),
-    tagsProcessor({ runtime: "node" })
-  ],
+  processors: [redactProcessor(), tagsProcessor({ runtime: "node" })],
   transports: [stdoutTransport()],
-  integrations: [captureProcessIntegration()]
+  integrations: [captureProcessIntegration()],
 });
 
 logger.info("server started", { port: 3000 });

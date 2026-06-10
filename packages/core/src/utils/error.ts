@@ -11,7 +11,10 @@ function stackWithLimit(stack: string | undefined, maxStackLines: number): strin
   return stack.split("\n").slice(0, maxStackLines).join("\n");
 }
 
-export function normalizeError(error: unknown, options: NormalizeErrorOptions = {}): SerializedError {
+export function normalizeError(
+  error: unknown,
+  options: NormalizeErrorOptions = {},
+): SerializedError {
   const maxStackLines = options.maxStackLines ?? 80;
   const includeEnumerableProperties = options.includeEnumerableProperties ?? true;
 
@@ -19,7 +22,7 @@ export function normalizeError(error: unknown, options: NormalizeErrorOptions = 
     const out: SerializedError = {
       name: error.name,
       message: error.message,
-      stack: stackWithLimit(error.stack, maxStackLines)
+      stack: stackWithLimit(error.stack, maxStackLines),
     };
 
     const maybeError = error as Error & { cause?: unknown; code?: string | number };
@@ -40,8 +43,9 @@ export function normalizeError(error: unknown, options: NormalizeErrorOptions = 
     return {
       name: typeof record.name === "string" ? record.name : undefined,
       message: typeof record.message === "string" ? record.message : String(error),
-      stack: typeof record.stack === "string" ? stackWithLimit(record.stack, maxStackLines) : undefined,
-      ...record
+      stack:
+        typeof record.stack === "string" ? stackWithLimit(record.stack, maxStackLines) : undefined,
+      ...record,
     };
   }
 

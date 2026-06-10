@@ -4,7 +4,7 @@ import {
   captureConsoleIntegration,
   captureFetchIntegration,
   createLogger,
-  pageLifecycleIntegration
+  pageLifecycleIntegration,
 } from "@loggerjs/browser";
 import { redactProcessor, sampleProcessor } from "@loggerjs/processors";
 
@@ -14,22 +14,22 @@ const logger = createLogger({
   tags: { app: "demo", env: "local" },
   processors: [
     redactProcessor(),
-    sampleProcessor({ rates: { debug: 0.2, info: 1, warn: 1, error: 1, fatal: 1, trace: 0.05 } })
+    sampleProcessor({ rates: { debug: 0.2, info: 1, warn: 1, error: 1, fatal: 1, trace: 0.05 } }),
   ],
   transports: [
     browserHttpTransport({
       url: "/api/logs",
       maxBatchSize: 20,
       flushIntervalMs: 1500,
-      useBeaconOnPageHide: true
-    })
+      useBeaconOnPageHide: true,
+    }),
   ],
   integrations: [
     captureConsoleIntegration({ levels: ["warn", "error"] }),
     captureBrowserErrorsIntegration(),
     captureFetchIntegration(),
-    pageLifecycleIntegration()
-  ]
+    pageLifecycleIntegration(),
+  ],
 });
 
 document.querySelector("#manual")?.addEventListener("click", () => {

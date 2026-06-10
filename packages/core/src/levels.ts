@@ -5,7 +5,7 @@ export const levelValues = {
   warn: 40,
   error: 50,
   fatal: 60,
-  silent: Number.POSITIVE_INFINITY
+  silent: Number.POSITIVE_INFINITY,
 } as const;
 
 export type EnabledLogLevelName = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
@@ -18,10 +18,13 @@ export const enabledLevelNames: readonly EnabledLogLevelName[] = [
   "info",
   "warn",
   "error",
-  "fatal"
+  "fatal",
 ] as const;
 
-export function toLevelValue(level: LoggerLevel | undefined, fallback: number = levelValues.info): number {
+export function toLevelValue(
+  level: LoggerLevel | undefined,
+  fallback: number = levelValues.info,
+): number {
   if (level === undefined || level === null) return fallback;
   if (typeof level === "number") return level;
   return levelValues[level] ?? fallback;

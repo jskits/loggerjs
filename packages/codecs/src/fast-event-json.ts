@@ -23,7 +23,7 @@ function encodeEvent(event: LogEvent, options: FastEventJsonCodecOptions): strin
     `,"level":${event.level}`,
     `,"levelName":${JSON.stringify(event.levelName)}`,
     `,"logger":${JSON.stringify(event.logger)}`,
-    `,"message":${JSON.stringify(event.message)}`
+    `,"message":${JSON.stringify(event.message)}`,
   ];
   appendField(parts, "type", event.type, safeOptions);
   appendField(parts, "tags", event.tags, safeOptions);
@@ -41,11 +41,12 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
     name: "fast-event-json",
     contentType: "application/json",
     encode(input) {
-      if (Array.isArray(input)) return `[${input.map((event) => encodeEvent(event, options)).join(",")}]`;
+      if (Array.isArray(input))
+        return `[${input.map((event) => encodeEvent(event, options)).join(",")}]`;
       return encodeEvent(input, options);
     },
     decode(payload) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
-    }
+    },
   };
 }

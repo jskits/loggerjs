@@ -6,7 +6,7 @@ export const otelSeverityNumber: Record<EnabledLogLevelName, number> = {
   info: 9,
   warn: 13,
   error: 17,
-  fatal: 21
+  fatal: 21,
 };
 
 export function otelSeverityText(level: EnabledLogLevelName): string {

@@ -5,7 +5,9 @@ export interface MemoryTransport extends Transport {
   clear: () => void;
 }
 
-export function memoryTransport(options: { maxEvents?: number; name?: string } = {}): MemoryTransport {
+export function memoryTransport(
+  options: { maxEvents?: number; name?: string } = {},
+): MemoryTransport {
   const events: LogEvent[] = [];
   const maxEvents = options.maxEvents ?? 1000;
   return {
@@ -17,6 +19,6 @@ export function memoryTransport(options: { maxEvents?: number; name?: string } =
     log(event) {
       events.push(event);
       if (events.length > maxEvents) events.splice(0, events.length - maxEvents);
-    }
+    },
   };
 }

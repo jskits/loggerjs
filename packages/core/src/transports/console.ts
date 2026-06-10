@@ -14,8 +14,13 @@ function methodForEvent(event: LogEvent): ConsoleMethod {
 
 function getConsoleMethod(method: ConsoleMethod): (...args: unknown[]) => void {
   const g = globalThis as unknown as Record<string, unknown>;
-  const original = g[ORIGINAL_CONSOLE_KEY] as Partial<Record<ConsoleMethod, (...args: unknown[]) => void>> | undefined;
-  const writer = original?.[method] ?? (console as unknown as Record<ConsoleMethod, (...args: unknown[]) => void>)[method] ?? console.log;
+  const original = g[ORIGINAL_CONSOLE_KEY] as
+    | Partial<Record<ConsoleMethod, (...args: unknown[]) => void>>
+    | undefined;
+  const writer =
+    original?.[method] ??
+    (console as unknown as Record<ConsoleMethod, (...args: unknown[]) => void>)[method] ??
+    console.log;
   return writer.bind(console);
 }
 
@@ -37,6 +42,6 @@ export function consoleTransport(options: ConsoleTransportOptions = {}): Transpo
       } else {
         writer(safeJsonStringify(event));
       }
-    }
+    },
   };
 }

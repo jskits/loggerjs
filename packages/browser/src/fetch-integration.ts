@@ -15,7 +15,8 @@ function requestUrl(input: RequestInfo | URL): string {
 
 function requestMethod(input: RequestInfo | URL, init?: RequestInit): string {
   if (init?.method) return init.method.toUpperCase();
-  if (typeof input === "object" && "method" in input && input.method) return input.method.toUpperCase();
+  if (typeof input === "object" && "method" in input && input.method)
+    return input.method.toUpperCase();
   return "GET";
 }
 
@@ -36,34 +37,48 @@ export function captureFetchIntegration(options: CaptureFetchOptions = {}): Inte
       const original = globalThis.fetch;
       if (!original) return;
 
-      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      globalThis.fetch = async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ): Promise<Response> => {
         const started = typeof performance !== "undefined" ? performance.now() : Date.now();
         const url = requestUrl(input);
         const method = requestMethod(input, init);
         try {
           const response = await original(input, init);
-          const durationMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - started;
+          const durationMs =
+            (typeof performance !== "undefined" ? performance.now() : Date.now()) - started;
           if (options.captureSuccessful || response.status >= minStatus) {
-            logger.log(response.status >= minStatus ? "warn" : "debug", `Fetch ${response.status} ${method} ${url}`, {
-              http: {
-                method,
-                url,
-                status: response.status,
-                ok: response.ok,
-                durationMs,
-                requestHeaders: options.captureRequestHeaders && init?.headers instanceof Headers ? headersToObject(init.headers) : undefined,
-                responseHeaders: options.captureResponseHeaders ? headersToObject(response.headers) : undefined
+            logger.log(
+              response.status >= minStatus ? "warn" : "debug",
+              `Fetch ${response.status} ${method} ${url}`,
+              {
+                http: {
+                  method,
+                  url,
+                  status: response.status,
+                  ok: response.ok,
+                  durationMs,
+                  requestHeaders:
+                    options.captureRequestHeaders && init?.headers instanceof Headers
+                      ? headersToObject(init.headers)
+                      : undefined,
+                  responseHeaders: options.captureResponseHeaders
+                    ? headersToObject(response.headers)
+                    : undefined,
+                },
+                source: { integration: "fetch" },
               },
-              source: { integration: "fetch" }
-            });
+            );
           }
           return response;
         } catch (error) {
-          const durationMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - started;
+          const durationMs =
+            (typeof performance !== "undefined" ? performance.now() : Date.now()) - started;
           logger.captureException(error, {
             http: { method, url, durationMs },
             source: { integration: "fetch" },
-            input: normalizeValue(input, { maxDepth: 3 })
+            input: normalizeValue(input, { maxDepth: 3 }),
           });
           throw error;
         }
@@ -72,6 +87,6 @@ export function captureFetchIntegration(options: CaptureFetchOptions = {}): Inte
       return () => {
         globalThis.fetch = original;
       };
-    }
+    },
   };
 }

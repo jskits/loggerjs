@@ -1,4 +1,9 @@
-import { batchTransport, type BatchTransportOptions, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  batchTransport,
+  type BatchTransportOptions,
+  type LoggerLevel,
+  type Transport,
+} from "@loggerjs/core";
 import { otlpJsonCodec, type OtlpResourceOptions } from "./otlp-json";
 
 export interface OtlpHttpTransportOptions extends BatchTransportOptions, OtlpResourceOptions {
@@ -21,11 +26,11 @@ export function otlpHttpTransport(options: OtlpHttpTransportOptions): Transport 
         method: "POST",
         headers: {
           "content-type": codec.contentType,
-          ...(options.headers ?? {})
+          ...options.headers,
         },
-        body: codec.encode(events)
+        body: codec.encode(events),
       });
-    }
+    },
   };
 
   return batchTransport(inner, {
@@ -34,6 +39,6 @@ export function otlpHttpTransport(options: OtlpHttpTransportOptions): Transport 
     flushIntervalMs: options.flushIntervalMs,
     maxQueueSize: options.maxQueueSize,
     dropPolicy: options.dropPolicy,
-    onDrop: options.onDrop
+    onDrop: options.onDrop,
   });
 }

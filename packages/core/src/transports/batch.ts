@@ -46,7 +46,10 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
       if (inner.logBatch && context) {
         await inner.logBatch(batch, context);
       } else if (inner.log && context) {
-        for (const event of batch) await inner.log(event, context);
+        for (const event of batch) {
+          // oxlint-disable-next-line no-await-in-loop -- Preserve transport write order.
+          await inner.log(event, context);
+        }
       }
     } finally {
       flushing = false;
@@ -83,6 +86,6 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     async close() {
       await flush();
       await inner.close?.();
-    }
+    },
   };
 }

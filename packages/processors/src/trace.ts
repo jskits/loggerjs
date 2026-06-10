@@ -9,9 +9,9 @@ export function traceContextProcessor(provider: TraceContextProvider): Processor
     return {
       ...event,
       trace: {
-        ...(event.trace ?? {}),
-        ...trace
-      }
+        ...event.trace,
+        ...trace,
+      },
     };
   };
 }

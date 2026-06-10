@@ -7,15 +7,23 @@ export interface CaptureBrowserErrorsOptions {
 }
 
 function resourceInfo(target: unknown): Record<string, unknown> {
-  const element = target as { tagName?: string; src?: string; href?: string; currentSrc?: string; outerHTML?: string } | null;
+  const element = target as {
+    tagName?: string;
+    src?: string;
+    href?: string;
+    currentSrc?: string;
+    outerHTML?: string;
+  } | null;
   return {
     tagName: element?.tagName,
     url: element?.src || element?.currentSrc || element?.href,
-    html: element?.outerHTML?.slice(0, 500)
+    html: element?.outerHTML?.slice(0, 500),
   };
 }
 
-export function captureBrowserErrorsIntegration(options: CaptureBrowserErrorsOptions = {}): Integration {
+export function captureBrowserErrorsIntegration(
+  options: CaptureBrowserErrorsOptions = {},
+): Integration {
   const captureWindowError = options.captureWindowError ?? true;
   const captureUnhandledRejection = options.captureUnhandledRejection ?? true;
   const captureResourceErrors = options.captureResourceErrors ?? true;
@@ -33,8 +41,8 @@ export function captureBrowserErrorsIntegration(options: CaptureBrowserErrorsOpt
                 integration: "window.error",
                 file: event.filename,
                 line: event.lineno,
-                column: event.colno
-              }
+                column: event.colno,
+              },
             });
             return;
           }
@@ -43,8 +51,8 @@ export function captureBrowserErrorsIntegration(options: CaptureBrowserErrorsOpt
             logger.error("Browser resource load error", {
               source: {
                 integration: "resource.error",
-                ...resourceInfo((event as Event).target)
-              }
+                ...resourceInfo((event as Event).target),
+              },
             });
           }
         };
@@ -60,7 +68,7 @@ export function captureBrowserErrorsIntegration(options: CaptureBrowserErrorsOpt
           } else {
             logger.error("Unhandled promise rejection", {
               source: { integration: "unhandledrejection" },
-              reason: normalizeValue(reason, { maxDepth: 5 })
+              reason: normalizeValue(reason, { maxDepth: 5 }),
             });
           }
         };
@@ -71,6 +79,6 @@ export function captureBrowserErrorsIntegration(options: CaptureBrowserErrorsOpt
       return () => {
         for (const dispose of disposers) dispose();
       };
-    }
+    },
   };
 }

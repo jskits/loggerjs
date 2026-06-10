@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@loggerjs/node": "workspace:*",
     "@loggerjs/processors": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.0.0"
+    "tsx": "^4.22.4"
   }
 }

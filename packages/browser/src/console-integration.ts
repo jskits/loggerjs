@@ -11,7 +11,7 @@ const levelMap: Record<ConsoleLevel, "debug" | "info" | "warn" | "error"> = {
   info: "info",
   log: "info",
   warn: "warn",
-  error: "error"
+  error: "error",
 };
 
 export interface CaptureConsoleOptions {
@@ -26,7 +26,9 @@ function formatConsoleMessage(args: unknown[]): string {
       if (typeof arg === "string") return arg;
       if (arg instanceof Error) return arg.message;
       try {
-        return JSON.stringify(normalizeValue(arg, { maxDepth: 3, maxArrayLength: 20, maxObjectKeys: 40 }));
+        return JSON.stringify(
+          normalizeValue(arg, { maxDepth: 3, maxArrayLength: 20, maxObjectKeys: 40 }),
+        );
       } catch {
         return String(arg);
       }
@@ -68,8 +70,8 @@ export function captureConsoleIntegration(options: CaptureConsoleOptions = {}): 
             logger.log(levelMap[level], formatConsoleMessage(args), {
               console: {
                 level,
-                arguments: captureArguments ? normalizeValue(args, { maxDepth: 4 }) : undefined
-              }
+                arguments: captureArguments ? normalizeValue(args, { maxDepth: 4 }) : undefined,
+              },
             });
           } finally {
             guard = false;
@@ -83,6 +85,6 @@ export function captureConsoleIntegration(options: CaptureConsoleOptions = {}): 
           if (originals[level]) (console as unknown as ConsoleRecord)[level] = originals[level];
         }
       };
-    }
+    },
   };
 }

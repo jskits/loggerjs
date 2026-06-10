@@ -29,7 +29,7 @@ export function normalizeValue(value: unknown, options: SafeStringifyOptions = {
     if (input instanceof Error) {
       const errorOut: Record<string, unknown> = {
         name: input.name,
-        message: input.message
+        message: input.message,
       };
       if (includeStack && input.stack) errorOut.stack = input.stack;
       const record = input as unknown as Record<string, unknown>;
@@ -46,7 +46,8 @@ export function normalizeValue(value: unknown, options: SafeStringifyOptions = {
       const out: unknown[] = [];
       const length = Math.min(input.length, maxArrayLength);
       for (let i = 0; i < length; i += 1) out.push(walk(input[i], depth + 1));
-      if (input.length > maxArrayLength) out.push(`[Truncated ${input.length - maxArrayLength} items]`);
+      if (input.length > maxArrayLength)
+        out.push(`[Truncated ${input.length - maxArrayLength} items]`);
       return out;
     }
 
@@ -66,7 +67,7 @@ export function normalizeValue(value: unknown, options: SafeStringifyOptions = {
       const key = keys[i]!;
       out[key] = walk(record[key], depth + 1);
     }
-    if (keys.length > maxObjectKeys) out.__truncatedKeys = keys.length - maxObjectKeys;
+    if (keys.length > maxObjectKeys) out["__truncatedKeys"] = keys.length - maxObjectKeys;
     return out;
   };
 

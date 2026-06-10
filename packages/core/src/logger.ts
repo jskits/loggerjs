@@ -1,4 +1,11 @@
-import { enabledLevelNames, levelValues, toLevelName, toLevelValue, type EnabledLogLevelName, type LoggerLevel } from "./levels";
+import {
+  enabledLevelNames,
+  levelValues,
+  toLevelName,
+  toLevelValue,
+  type EnabledLogLevelName,
+  type LoggerLevel,
+} from "./levels";
 import { normalizeError, valueToMessage } from "./utils/error";
 import type {
   ChildLoggerOptions,
@@ -11,7 +18,7 @@ import type {
   ProcessorContext,
   Tags,
   Transport,
-  TransportContext
+  TransportContext,
 } from "./types";
 
 let globalSeq = 0;
@@ -25,7 +32,12 @@ function defaultIdFactory(event: Pick<LogEvent, "time" | "seq" | "levelName" | "
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value) && !(value instanceof Error);
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    !(value instanceof Error)
+  );
 }
 
 function mergeTags(...items: Array<Tags | undefined>): Tags | undefined {
@@ -39,7 +51,9 @@ function mergeTags(...items: Array<Tags | undefined>): Tags | undefined {
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function mergeRecords(...items: Array<Record<string, unknown> | undefined>): Record<string, unknown> | undefined {
+function mergeRecords(
+  ...items: Array<Record<string, unknown> | undefined>
+): Record<string, unknown> | undefined {
   const out: Record<string, unknown> = {};
   for (const item of items) {
     if (!item) continue;
@@ -114,7 +128,7 @@ export class Logger implements LoggerLike {
       contextProvider: this.contextProvider,
       clock: this.clock,
       idFactory: this.idFactory,
-      onInternalError: this.onInternalError
+      onInternalError: this.onInternalError,
     });
   }
 
@@ -144,9 +158,10 @@ export class Logger implements LoggerLike {
     if (this.closed) return;
     const levelValue = toLevelValue(level);
     if (levelValue < toLevelValue(this.minimumLevel)) return;
-    const levelName = typeof level === "string" && enabledLevelNames.includes(level as EnabledLogLevelName)
-      ? (level as EnabledLogLevelName)
-      : toLevelName(levelValue);
+    const levelName =
+      typeof level === "string" && enabledLevelNames.includes(level as EnabledLogLevelName)
+        ? (level as EnabledLogLevelName)
+        : toLevelName(levelValue);
     const time = this.clock();
     const seq = globalSeq++;
     const normalized = normalizeData(data);
@@ -163,7 +178,7 @@ export class Logger implements LoggerLike {
       type: this.type,
       tags: this.tags,
       context,
-      ...normalized
+      ...normalized,
     };
     event.id = this.idFactory(event);
 
@@ -220,7 +235,9 @@ export class Logger implements LoggerLike {
         this.reportInternalError(error, { phase: "dispose" });
       }
     }
-    await Promise.all(this.transports.map((transport) => transport.close?.() ?? transport.flush?.()));
+    await Promise.all(
+      this.transports.map((transport) => transport.close?.() ?? transport.flush?.()),
+    );
   }
 
   private installIntegrations() {
@@ -229,7 +246,10 @@ export class Logger implements LoggerLike {
         const dispose = integration.setup(this);
         if (typeof dispose === "function") this.disposers.push(dispose);
       } catch (error) {
-        this.reportInternalError(error, { phase: "integration-setup", integration: integration.name });
+        this.reportInternalError(error, {
+          phase: "integration-setup",
+          integration: integration.name,
+        });
       }
     }
   }
@@ -239,7 +259,7 @@ export class Logger implements LoggerLike {
     const context: ProcessorContext = {
       loggerName: this.name,
       now: this.clock,
-      reportInternalError: (error, detail) => this.reportInternalError(error, detail)
+      reportInternalError: (error, detail) => this.reportInternalError(error, detail),
     };
 
     for (const processor of this.processors) {
@@ -258,11 +278,12 @@ export class Logger implements LoggerLike {
     const context: TransportContext = {
       loggerName: this.name,
       now: this.clock,
-      reportInternalError: (error, detail) => this.reportInternalError(error, detail)
+      reportInternalError: (error, detail) => this.reportInternalError(error, detail),
     };
 
     for (const transport of this.transports) {
-      if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel)) continue;
+      if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel))
+        continue;
       try {
         if (transport.log) {
           void Promise.resolve(transport.log(event, context)).catch((error) => {

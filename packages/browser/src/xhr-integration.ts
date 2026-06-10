@@ -23,41 +23,60 @@ export function captureXHRIntegration(options: CaptureXHROptions = {}): Integrat
       const originalOpen = proto.open;
       const originalSend = proto.send;
 
-      proto.open = function patchedOpen(this: XMLHttpRequest, method: string, url: string | URL, ...rest: unknown[]) {
+      proto.open = function patchedOpen(
+        this: XMLHttpRequest,
+        method: string,
+        url: string | URL,
+        ...rest: unknown[]
+      ) {
         (this as unknown as Record<string, XHRMeta>)[XHR_META] = {
           method: method.toUpperCase(),
           url: String(url),
-          started: 0
+          started: 0,
         };
-        return (originalOpen as unknown as (...args: unknown[]) => void).apply(this, [method, url, ...rest]);
+        return (originalOpen as unknown as (...args: unknown[]) => void).apply(this, [
+          method,
+          url,
+          ...rest,
+        ]);
       };
 
-      proto.send = function patchedSend(this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+      proto.send = function patchedSend(
+        this: XMLHttpRequest,
+        body?: Document | XMLHttpRequestBodyInit | null,
+      ) {
         const meta = (this as unknown as Record<string, XHRMeta>)[XHR_META];
-        if (meta) meta.started = typeof performance !== "undefined" ? performance.now() : Date.now();
+        if (meta)
+          meta.started = typeof performance !== "undefined" ? performance.now() : Date.now();
 
         const onLoadEnd = () => {
           if (!meta) return;
-          const durationMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - meta.started;
+          const durationMs =
+            (typeof performance !== "undefined" ? performance.now() : Date.now()) - meta.started;
           if (options.captureSuccessful || this.status >= minStatus) {
-            logger.log(this.status >= minStatus ? "warn" : "debug", `XHR ${this.status} ${meta.method} ${meta.url}`, {
-              http: {
-                method: meta.method,
-                url: meta.url,
-                status: this.status,
-                durationMs
+            logger.log(
+              this.status >= minStatus ? "warn" : "debug",
+              `XHR ${this.status} ${meta.method} ${meta.url}`,
+              {
+                http: {
+                  method: meta.method,
+                  url: meta.url,
+                  status: this.status,
+                  durationMs,
+                },
+                source: { integration: "xhr" },
               },
-              source: { integration: "xhr" }
-            });
+            );
           }
         };
 
         const onError = () => {
           if (!meta) return;
-          const durationMs = (typeof performance !== "undefined" ? performance.now() : Date.now()) - meta.started;
+          const durationMs =
+            (typeof performance !== "undefined" ? performance.now() : Date.now()) - meta.started;
           logger.error(`XHR network error ${meta.method} ${meta.url}`, {
             http: { method: meta.method, url: meta.url, durationMs },
-            source: { integration: "xhr" }
+            source: { integration: "xhr" },
           });
         };
 
@@ -70,6 +89,6 @@ export function captureXHRIntegration(options: CaptureXHROptions = {}): Integrat
         proto.open = originalOpen;
         proto.send = originalSend;
       };
-    }
+    },
   };
 }

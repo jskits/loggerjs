@@ -14,6 +14,6 @@ export function msgpackrCodec(runtime: MsgpackRuntime): Codec<Uint8Array> {
     },
     decode(payload: Uint8Array) {
       return runtime.unpack(payload) as LogEvent | LogEvent[];
-    }
+    },
   };
 }
