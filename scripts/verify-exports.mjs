@@ -50,6 +50,7 @@ const checks = [
   ["@loggerjs/node/transport-worker", ["workerTransport"]],
   ["@loggerjs/node/integration-process", ["captureProcessIntegration"]],
   ["@loggerjs/node/integration-diagnostics", ["diagnosticsChannelIntegration"]],
+  ["@loggerjs/node/integration-fetch", ["nodeFetchIntegration"]],
   ["@loggerjs/node/integration-http-client", ["nodeHttpClientIntegration"]],
   [
     "@loggerjs/node/context",

@@ -5,6 +5,7 @@ Node transports, process integrations, diagnostics-channel capture, and AsyncLoc
 ```ts
 import {
   nodeHttpClientIntegration,
+  nodeFetchIntegration,
   captureProcessIntegration,
   createLogger,
   expressIntegration,
@@ -20,7 +21,7 @@ installAsyncLocalStorageContext();
 const logger = createLogger({
   name: "api",
   transports: [stdoutTransport()],
-  integrations: [captureProcessIntegration(), nodeHttpClientIntegration()],
+  integrations: [captureProcessIntegration(), nodeHttpClientIntegration(), nodeFetchIntegration()],
 });
 
 logger.info("server started", { port: 3000 });
@@ -49,4 +50,4 @@ app.use(expressIntegration(logger, { captureAll: true }));
 fastify.register(fastifyIntegration(logger, { captureAll: true }));
 ```
 
-Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-express`, `integration-fastify`, `integration-http-client`, `integration-diagnostics`, and `context`.
+Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-express`, `integration-fastify`, `integration-fetch`, `integration-http-client`, `integration-diagnostics`, and `context`.

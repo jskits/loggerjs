@@ -179,6 +179,7 @@ export * from "./worker-transport.js";
 export * from "./context.js";
 export * from "./express-integration.js";
 export * from "./fastify-integration.js";
+export * from "./node-fetch-integration.js";
 export * from "./node-http-client-integration.js";
 export * from "./process-integration.js";
 export * from "./diagnostics-channel-integration.js";
@@ -192,6 +193,52 @@ export interface WritableLike {
     once?: (event: "drain", listener: () => void) => unknown;
     end?: (callback?: (error?: Error | null) => void) => unknown;
 }
+```
+
+## node-fetch-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface NodeFetchHeadersLike {
+    get?: (name: string) => string | null;
+    [key: string]: unknown;
+}
+export interface NodeFetchRequestLike {
+    url?: string;
+    method?: string;
+    headers?: NodeFetchHeadersLike | Record<string, unknown>;
+}
+export interface NodeFetchInitLike {
+    method?: string;
+    headers?: NodeFetchHeadersLike | Record<string, unknown>;
+}
+export interface NodeFetchResponseLike {
+    status?: number;
+    headers?: NodeFetchHeadersLike | Record<string, unknown>;
+}
+export type NodeFetchFunction = (input: string | URL | NodeFetchRequestLike, init?: NodeFetchInitLike) => Promise<NodeFetchResponseLike>;
+export interface NodeFetchTargetLike {
+    fetch?: NodeFetchFunction;
+}
+export interface NodeFetchRequestInfo {
+    method: string;
+    url: string;
+    requestHeaders?: Record<string, string>;
+}
+export interface NodeFetchIntegrationOptions {
+    name?: string;
+    minStatus?: number;
+    captureAll?: boolean;
+    captureSuccessful?: boolean;
+    sampleRate?: number;
+    random?: () => number;
+    captureRequestHeaders?: readonly string[];
+    captureResponseHeaders?: readonly string[];
+    sanitizeUrl?: (url: string) => string;
+    level?: (status: number | undefined, error: unknown, info: NodeFetchRequestInfo) => LoggerLevel;
+    target?: NodeFetchTargetLike;
+}
+export declare function nodeFetchIntegration(options?: NodeFetchIntegrationOptions): Integration;
 ```
 
 ## node-http-client-integration.d.ts

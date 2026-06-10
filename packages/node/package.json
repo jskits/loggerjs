@@ -73,6 +73,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-fetch": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-http-client": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
