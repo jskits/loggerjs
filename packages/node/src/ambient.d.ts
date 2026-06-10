@@ -20,6 +20,9 @@ declare module "fs" {
   export function writeSync(fd: number, buffer: string | Uint8Array): number;
   export function closeSync(fd: number): void;
   export function existsSync(path: string): boolean;
+  export function renameSync(oldPath: string, newPath: string): void;
+  export function statSync(path: string): { size: number };
+  export function unlinkSync(path: string): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): string | undefined;
   export function mkdtempSync(prefix: string): string;
   export function readFileSync(path: string, encoding: "utf8"): string;

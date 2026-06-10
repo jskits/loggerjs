@@ -73,6 +73,7 @@ export declare function nodeHttpTransport(options: NodeHttpTransportOptions): Tr
 export * from "@loggerjs/core";
 export * from "./stdout-transport.js";
 export * from "./file-transport.js";
+export * from "./rotating-file-transport.js";
 export * from "./http-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
@@ -105,6 +106,28 @@ export interface CaptureProcessOptions {
     exitFn?: (code: number) => void;
 }
 export declare function captureProcessIntegration(options?: CaptureProcessOptions): Integration;
+```
+
+## rotating-file-transport.d.ts
+
+```ts
+import { type Codec, type LoggerLevel, type Transport } from "@loggerjs/core";
+export interface RotatingFileTransportOptions {
+    path: string;
+    name?: string;
+    codec?: Codec<string | Uint8Array>;
+    minLevel?: LoggerLevel;
+    flags?: string;
+    maxBytes?: number;
+    maxFiles?: number;
+    archivePath?: (path: string, index: number) => string;
+}
+export interface RotatingFileTransport extends Transport {
+    rotate: () => void;
+    flushSync: () => void;
+    currentBytes: () => number;
+}
+export declare function rotatingFileTransport(options: RotatingFileTransportOptions): RotatingFileTransport;
 ```
 
 ## stdout-transport.d.ts
