@@ -1,7 +1,6 @@
 import {
   normalizeCodecInput,
   normalizeValue,
-  safeJsonStringify,
   type Codec,
   type CodecInput,
   type LogEvent,
@@ -78,6 +77,26 @@ function attrs(record: Record<string, unknown>): OtlpAttribute[] {
     .map(([key, value]) => ({ key, value: toAnyValue(value) }));
 }
 
+function exceptionAttributes(error: LogEvent["error"]): Record<string, unknown> {
+  if (!error) return {};
+  return {
+    "exception.type": error.name,
+    "exception.message": error.message,
+    "exception.stacktrace": error.stack,
+    "exception.code": error.code,
+    "exception.cause": error.cause,
+  };
+}
+
+function flagsFromTrace(trace: LogEvent["trace"]): number | undefined {
+  if (!trace) return undefined;
+  if (typeof trace.traceFlags === "string") {
+    const flags = Number.parseInt(trace.traceFlags, 16);
+    if (Number.isFinite(flags)) return flags;
+  }
+  return trace.sampled ? 1 : undefined;
+}
+
 export function toOtlpLogRecord(event: LogEvent, observedTime = Date.now()): OtlpLogRecord {
   const attributes: Record<string, unknown> = {
     "loggerjs.event_id": event.id,
@@ -87,8 +106,8 @@ export function toOtlpLogRecord(event: LogEvent, observedTime = Date.now()): Otl
     "log.tags": event.tags,
     "log.context": event.context,
     "log.data": event.data,
-    exception: event.error,
     "log.source": event.source,
+    ...exceptionAttributes(event.error),
   };
 
   return {
@@ -100,25 +119,39 @@ export function toOtlpLogRecord(event: LogEvent, observedTime = Date.now()): Otl
     attributes: attrs(attributes),
     traceId: event.trace?.traceId,
     spanId: event.trace?.spanId,
-    flags: event.trace?.sampled ? 1 : undefined,
+    flags: flagsFromTrace(event.trace),
   };
+}
+
+function groupedByCategory(events: LogEvent[]): Map<string, LogEvent[]> {
+  const groups = new Map<string, LogEvent[]>();
+  for (const event of events) {
+    const category = event.logger || "app";
+    const group = groups.get(category);
+    if (group) group.push(event);
+    else groups.set(category, [event]);
+  }
+  return groups;
 }
 
 export function toOtlpJson(events: LogEvent[], options: OtlpResourceOptions = {}) {
   const observedTime = Date.now();
+  const scopeLogs = [...groupedByCategory(events)].map(([category, categoryEvents]) => ({
+    scope: {
+      name: options.scopeName ?? "loggerjs",
+      version: options.scopeVersion,
+      attributes: attrs({
+        "loggerjs.category": category,
+      }),
+    },
+    logRecords: categoryEvents.map((event) => toOtlpLogRecord(event, observedTime)),
+  }));
+
   return {
     resourceLogs: [
       {
         resource: { attributes: attrs(options.resource ?? {}) },
-        scopeLogs: [
-          {
-            scope: {
-              name: options.scopeName ?? "loggerjs",
-              version: options.scopeVersion,
-            },
-            logRecords: events.map((event) => toOtlpLogRecord(event, observedTime)),
-          },
-        ],
+        scopeLogs,
       },
     ],
   };
@@ -130,7 +163,7 @@ export function otlpJsonCodec(options: OtlpResourceOptions = {}): Codec<string> 
     contentType: "application/json",
     encode(input: CodecInput) {
       const normalized = normalizeCodecInput(input);
-      return safeJsonStringify(
+      return JSON.stringify(
         toOtlpJson(Array.isArray(normalized) ? normalized : [normalized], options),
       );
     },
