@@ -17,6 +17,7 @@ const checks = [
   ["@loggerjs/browser", ["browserHttpTransport"]],
   ["@loggerjs/browser/transport-http", ["browserHttpTransport"]],
   ["@loggerjs/browser/transport-broadcast-channel", ["browserBroadcastChannelTransport"]],
+  ["@loggerjs/browser/transport-service-worker", ["browserServiceWorkerTransport"]],
   ["@loggerjs/browser/transport-websocket", ["browserWebSocketTransport"]],
   ["@loggerjs/browser/integration-console", ["captureConsoleIntegration"]],
   ["@loggerjs/browser/integration-errors", ["captureBrowserErrorsIntegration"]],

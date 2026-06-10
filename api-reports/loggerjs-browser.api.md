@@ -161,6 +161,7 @@ export declare function browserHttpTransport(options: BrowserHttpTransportOption
 export * from "@loggerjs/core";
 export * from "./broadcast-channel-transport.js";
 export * from "./http-transport.js";
+export * from "./service-worker-transport.js";
 export * from "./websocket-transport.js";
 export * from "./indexeddb-offline-queue.js";
 export * from "./console-integration.js";
@@ -201,6 +202,61 @@ export interface PageLifecycleOptions {
     coalesceMs?: number;
 }
 export declare function pageLifecycleIntegration(options?: PageLifecycleOptions): Integration;
+```
+
+## service-worker-transport.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+export type BrowserServiceWorkerDropPolicy = "drop-oldest" | "drop-newest";
+export type BrowserServiceWorkerTarget = "controller" | "ready";
+export interface BrowserServiceWorkerLike {
+    postMessage: (message: unknown, transfer?: Transferable[] | StructuredSerializeOptions) => void;
+}
+export interface BrowserServiceWorkerRegistrationLike {
+    active?: BrowserServiceWorkerLike | null;
+    waiting?: BrowserServiceWorkerLike | null;
+    installing?: BrowserServiceWorkerLike | null;
+}
+export interface BrowserServiceWorkerContainerLike {
+    controller?: BrowserServiceWorkerLike | null;
+    ready?: Promise<BrowserServiceWorkerRegistrationLike>;
+}
+export interface BrowserServiceWorkerEventMessage {
+    type: "loggerjs.event";
+    source: string;
+    event: LogEvent;
+}
+export interface BrowserServiceWorkerBatchMessage {
+    type: "loggerjs.batch";
+    source: string;
+    events: readonly LogEvent[];
+}
+export type BrowserServiceWorkerMessage = BrowserServiceWorkerEventMessage | BrowserServiceWorkerBatchMessage;
+export interface BrowserServiceWorkerMapContext {
+    source: string;
+    target: BrowserServiceWorkerTarget;
+}
+export interface BrowserServiceWorkerTransportOptions {
+    name?: string;
+    minLevel?: LoggerLevel;
+    source?: string;
+    target?: BrowserServiceWorkerTarget;
+    serviceWorker?: BrowserServiceWorkerContainerLike;
+    maxQueueSize?: number;
+    dropPolicy?: BrowserServiceWorkerDropPolicy;
+    transfer?: (message: unknown) => Transferable[] | StructuredSerializeOptions | undefined;
+    mapEvent?: (event: LogEvent, context: BrowserServiceWorkerMapContext) => unknown;
+    mapBatch?: (events: readonly LogEvent[], context: BrowserServiceWorkerMapContext) => unknown;
+    onDrop?: (event: LogEvent, reason: string) => void;
+    onError?: (error: unknown, detail: {
+        operation: string;
+        droppedEvents: number;
+    }) => void;
+}
+export declare function browserServiceWorkerTransport(options?: BrowserServiceWorkerTransportOptions): Transport & {
+    queueSize: () => number;
+};
 ```
 
 ## web-vitals-integration.d.ts

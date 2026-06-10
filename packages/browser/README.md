@@ -6,6 +6,7 @@ Browser transports and integrations for automatic client-side collection.
 import {
   browserHttpTransport,
   browserBroadcastChannelTransport,
+  browserServiceWorkerTransport,
   browserWebSocketTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
@@ -26,6 +27,7 @@ const logger = createLogger({
       useBeaconOnPageHide: true,
     }),
     browserBroadcastChannelTransport({ channelName: "loggerjs" }),
+    browserServiceWorkerTransport(),
     browserWebSocketTransport({ url: "wss://example.com/logs" }),
   ],
   integrations: [
@@ -43,4 +45,4 @@ logger.info("page loaded");
 Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
 `indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
 
-Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-websocket`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-web-vitals`, and `integration-page-lifecycle`.
+Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-web-vitals`, and `integration-page-lifecycle`.

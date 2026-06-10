@@ -36,6 +36,7 @@ import { consoleTransport } from "@loggerjs/core/transport-console";
 import { testTransport } from "@loggerjs/core/transport-test";
 import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-broadcast-channel";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
+import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-service-worker";
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
@@ -82,6 +83,13 @@ browserBroadcastChannelTransport({
   channelFactory: () => ({ postMessage() {} }),
 });
 browserHttpTransport({ url: "/logs" });
+browserServiceWorkerTransport({
+  serviceWorker: {
+    controller: {
+      postMessage() {},
+    },
+  },
+});
 browserWebSocketTransport({
   url: "wss://example.com/logs",
   webSocketFactory: () => ({
