@@ -11,6 +11,7 @@ import {
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
   captureFetchIntegration,
+  capturePerformanceIntegration,
   captureWebVitalsIntegration,
   createLogger,
   indexedDbBrowserHttpOfflineQueue,
@@ -35,6 +36,7 @@ const logger = createLogger({
     captureBrowserErrorsIntegration(),
     captureFetchIntegration(),
     captureWebVitalsIntegration(),
+    capturePerformanceIntegration({ entryTypes: ["navigation", "resource", "longtask"] }),
     pageLifecycleIntegration(),
   ],
 });
@@ -45,4 +47,4 @@ logger.info("page loaded");
 Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
 `indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
 
-Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-web-vitals`, and `integration-page-lifecycle`.
+Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.

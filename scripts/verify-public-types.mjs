@@ -39,6 +39,7 @@ import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-br
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-service-worker";
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
+import { capturePerformanceIntegration } from "@loggerjs/browser/integration-performance";
 import { postgresTransport } from "@loggerjs/database/postgres";
 import { sqliteTransport } from "@loggerjs/database/sqlite";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
@@ -102,6 +103,10 @@ browserWebSocketTransport({
     removeEventListener() {},
     send() {},
   }),
+});
+capturePerformanceIntegration({
+  entryTypes: ["navigation", "resource", "longtask"],
+  minDurationMs: { resource: 20 },
 });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 sqliteTransport({

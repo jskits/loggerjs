@@ -169,6 +169,7 @@ export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
 export * from "./web-vitals-integration.js";
+export * from "./performance-integration.js";
 export * from "./page-lifecycle.js";
 ```
 
@@ -202,6 +203,55 @@ export interface PageLifecycleOptions {
     coalesceMs?: number;
 }
 export declare function pageLifecycleIntegration(options?: PageLifecycleOptions): Integration;
+```
+
+## performance-integration.d.ts
+
+```ts
+import type { Integration, LoggerLevel } from "@loggerjs/core";
+export type BrowserPerformanceEntryType = "element" | "event" | "longtask" | "mark" | "measure" | "navigation" | "paint" | "resource" | string;
+export interface BrowserPerformanceEntryPayload {
+    name: string;
+    entryType: string;
+    startTime: number;
+    duration: number;
+    initiatorType?: string;
+    nextHopProtocol?: string;
+    renderBlockingStatus?: string;
+    responseStatus?: number;
+    transferSize?: number;
+    encodedBodySize?: number;
+    decodedBodySize?: number;
+    workerStart?: number;
+    redirectStart?: number;
+    redirectEnd?: number;
+    fetchStart?: number;
+    domainLookupStart?: number;
+    domainLookupEnd?: number;
+    connectStart?: number;
+    connectEnd?: number;
+    requestStart?: number;
+    responseStart?: number;
+    responseEnd?: number;
+    detail?: unknown;
+}
+export interface CapturePerformanceOptions {
+    entryTypes?: readonly BrowserPerformanceEntryType[];
+    level?: LoggerLevel | ((entry: BrowserPerformanceEntryPayload) => LoggerLevel);
+    buffered?: boolean;
+    emitExisting?: boolean;
+    maxEntries?: number;
+    minDurationMs?: number | Partial<Record<string, number>>;
+    sampleRate?: number;
+    random?: () => number;
+    captureDetail?: boolean;
+    sanitizeName?: (name: string, entryType: string) => string;
+    ignore?: (entry: BrowserPerformanceEntryPayload) => boolean;
+    PerformanceObserver?: typeof PerformanceObserver;
+    performance?: Pick<Performance, "getEntriesByType">;
+}
+export declare function normalizeBrowserPerformanceEntry(entry: PerformanceEntry, options?: Pick<CapturePerformanceOptions, "captureDetail" | "sanitizeName">): BrowserPerformanceEntryPayload;
+export declare function capturePerformanceIntegration(options?: CapturePerformanceOptions): Integration;
 ```
 
 ## service-worker-transport.d.ts

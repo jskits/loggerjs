@@ -24,6 +24,10 @@ const checks = [
   ["@loggerjs/browser/integration-fetch", ["captureFetchIntegration"]],
   ["@loggerjs/browser/integration-xhr", ["captureXHRIntegration"]],
   ["@loggerjs/browser/integration-page-lifecycle", ["pageLifecycleIntegration"]],
+  [
+    "@loggerjs/browser/integration-performance",
+    ["capturePerformanceIntegration", "normalizeBrowserPerformanceEntry"],
+  ],
   ["@loggerjs/node", ["stdoutTransport"]],
   ["@loggerjs/node/transport-http", ["nodeHttpTransport"]],
   ["@loggerjs/node/transport-file", ["fileTransport"]],
