@@ -1,0 +1,45 @@
+{
+  "name": "@loggerjs/sentry",
+  "version": "0.1.0",
+  "description": "Sentry adapter transport for loggerjs.",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm run clean && pnpm run build:js && pnpm run build:types",
+    "build:js": "rolldown -c ../../rolldown.config.mjs",
+    "build:types": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@loggerjs/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@sentry/core": ">=8 <11"
+  },
+  "peerDependenciesMeta": {
+    "@sentry/core": {
+      "optional": true
+    }
+  }
+}

@@ -20,7 +20,8 @@
       "@loggerjs/node": ["./packages/node/src/index.ts"],
       "@loggerjs/processors": ["./packages/processors/src/index.ts"],
       "@loggerjs/codecs": ["./packages/codecs/src/index.ts"],
-      "@loggerjs/otel": ["./packages/otel/src/index.ts"]
+      "@loggerjs/otel": ["./packages/otel/src/index.ts"],
+      "@loggerjs/sentry": ["./packages/sentry/src/index.ts"]
     }
   }
 }

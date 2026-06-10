@@ -115,6 +115,15 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/sentry:
+    dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
+      '@sentry/core':
+        specifier: '>=8 <11'
+        version: 10.57.0
+
 packages:
 
   '@babel/code-frame@7.29.7':
@@ -914,6 +923,10 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@sentry/core@10.57.0':
+    resolution: {integrity: sha512-kntItTA2kiT0YpL7encXaF6mkdZMB+y48lwj8w1wkfBpfJAC7sifdgrzLQZqmsqVNE3crg9VfufaAGA+78uFMg==}
+    engines: {node: '>=18'}
 
   '@simple-libs/child-process-utils@1.0.2':
     resolution: {integrity: sha512-/4R8QKnd/8agJynkNdJmNw2MBxuFTRcNFnE5Sg/G+jkSsV8/UBgULMzhizWWW42p8L5H7flImV2ATi79Ove2Tw==}
@@ -2867,6 +2880,8 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.1': {}
+
+  '@sentry/core@10.57.0': {}
 
   '@simple-libs/child-process-utils@1.0.2':
     dependencies:
