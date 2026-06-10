@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LoggerLike } from "@loggerjs/core";
+import { createIntegrationSetupContext, type CaptureInput, type LoggerLike } from "@loggerjs/core";
 import { captureProcessIntegration } from "../src";
 
 const nodeProcess = process as typeof process & {
@@ -21,6 +21,15 @@ function createLogger(): LoggerLike {
   };
 }
 
+function createIntegrationContext(logger: LoggerLike) {
+  return createIntegrationSetupContext({
+    name: "capture-process",
+    logger,
+    capture: vi.fn<(input: CaptureInput) => void>(),
+    getLogger: () => logger,
+  });
+}
+
 describe("captureProcessIntegration", () => {
   const teardowns: Array<() => void> = [];
 
@@ -37,7 +46,7 @@ describe("captureProcessIntegration", () => {
       unhandledRejection: false,
       warning: true,
       beforeExitFlush: false,
-    }).setup(createLogger());
+    }).setup(createIntegrationContext(createLogger()));
 
     expect(typeof teardown).toBe("function");
     if (typeof teardown === "function") teardowns.push(teardown);

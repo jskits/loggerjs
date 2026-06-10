@@ -147,9 +147,30 @@ export interface LoggerLike {
   close: () => Promise<void>;
 }
 
+export type Teardown = () => void;
+
+export type ConsoleMethod = "debug" | "error" | "info" | "log" | "trace" | "warn";
+
+export interface UnpatchedRegistry {
+  readonly console: Partial<Record<ConsoleMethod, (...args: unknown[]) => void>>;
+  fetch?: typeof fetch;
+  XMLHttpRequest?: typeof XMLHttpRequest;
+  get: <T = unknown>(key: string) => T | undefined;
+  set: <T = unknown>(key: string, value: T) => T;
+}
+
+export interface IntegrationAPI {
+  capture: (input: CaptureInput) => void;
+  getLogger: (category: LoggerCategory) => LoggerLike;
+  readonly unpatched: UnpatchedRegistry;
+  guard: <T extends (...args: never[]) => unknown>(fn: T) => T;
+}
+
+export type IntegrationSetupContext = LoggerLike & IntegrationAPI;
+
 export interface Integration {
   name: string;
-  setup: (logger: LoggerLike) => void | (() => void);
+  setup: (api: IntegrationSetupContext) => void | Teardown;
 }
 
 export interface LoggerOptions {

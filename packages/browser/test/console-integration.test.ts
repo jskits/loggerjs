@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LoggerLike } from "@loggerjs/core";
+import { createIntegrationSetupContext, type CaptureInput, type LoggerLike } from "@loggerjs/core";
 import { captureConsoleIntegration } from "../src";
 
 const originalWarn = console.warn;
@@ -19,6 +19,15 @@ function createLogger(): LoggerLike {
   };
 }
 
+function createIntegrationContext(logger: LoggerLike) {
+  return createIntegrationSetupContext({
+    name: "capture-console",
+    logger,
+    capture: vi.fn<(input: CaptureInput) => void>(),
+    getLogger: () => logger,
+  });
+}
+
 describe("captureConsoleIntegration", () => {
   afterEach(() => {
     console.warn = originalWarn;
@@ -33,7 +42,7 @@ describe("captureConsoleIntegration", () => {
     const teardown = captureConsoleIntegration({
       levels: ["warn"],
       preserveConsole: false,
-    }).setup(logger);
+    }).setup(createIntegrationContext(logger));
 
     expect(console.warn).not.toBe(replacementWarn);
 

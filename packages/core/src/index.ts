@@ -5,6 +5,7 @@ export * from "./logger";
 export * from "./registry";
 export * from "./meta";
 export * from "./middleware";
+export * from "./integration-api";
 export * from "./utils/error";
 export * from "./utils/safe-stringify";
 export * from "./codecs/json";

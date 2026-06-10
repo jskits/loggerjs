@@ -6,12 +6,14 @@ import {
   type EnabledLogLevelName,
   type LoggerLevel,
 } from "./levels";
+import { createIntegrationSetupContext, onceTeardown } from "./integration-api";
 import { reportLoggerMetaError } from "./meta";
 import { runMiddleware } from "./middleware";
 import { createBoundContext, createRecord, normalizeCategory, recordToEvent } from "./record";
 import { valueToMessage } from "./utils/error";
 import type {
   ChildLoggerOptions,
+  CaptureInput,
   Integration,
   LogData,
   LogEvent,
@@ -41,6 +43,13 @@ function defaultClock() {
 
 function defaultIdFactory(event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">): string {
   return `${event.time.toString(36)}-${event.seq.toString(36)}-${event.levelName}`;
+}
+
+function levelNameFor(level: LoggerLevel, levelValue: number): EnabledLogLevelName {
+  if (typeof level === "string" && enabledLevelNames.includes(level as EnabledLogLevelName)) {
+    return level as EnabledLogLevelName;
+  }
+  return toLevelName(levelValue);
 }
 
 function categoryToName(category: LoggerCategory | undefined): string | undefined {
@@ -149,6 +158,7 @@ export class Logger implements LoggerLike {
   private processors: Processor[];
   private transports: Transport[];
   private integrations: Integration[];
+  private installedIntegrations = new WeakSet<Integration>();
   private disposers: Array<() => void> = [];
   private contextProvider?: () => Record<string, unknown> | undefined;
   private clock: () => number;
@@ -229,18 +239,14 @@ export class Logger implements LoggerLike {
 
   addIntegration(integration: Integration) {
     this.integrations.push(integration);
-    const dispose = integration.setup(this);
-    if (typeof dispose === "function") this.disposers.push(dispose);
+    this.setupIntegration(integration);
   }
 
   log(level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) {
     if (this.closed) return;
     const levelValue = toLevelValue(level);
     if (levelValue < this.minimumLevelValue) return;
-    const levelName =
-      typeof level === "string" && enabledLevelNames.includes(level as EnabledLogLevelName)
-        ? (level as EnabledLogLevelName)
-        : toLevelName(levelValue);
+    const levelName = levelNameFor(level, levelValue);
     const time = this.clock();
     const seq = globalSeq++;
     const context = mergeRecords(this.bindings, this.contextProvider?.());
@@ -257,6 +263,42 @@ export class Logger implements LoggerLike {
       source: "app",
       seq,
     });
+    this.emitRecord(record, levelName);
+  }
+
+  capture(input: CaptureInput) {
+    if (this.closed) return;
+    const hasError = input.error !== undefined && input.error !== null;
+    const level = input.level ?? (hasError ? "error" : "info");
+    const levelValue = toLevelValue(level);
+    if (levelValue < this.minimumLevelValue) return;
+    const levelName = levelNameFor(level, levelValue);
+    const time = this.clock();
+    const seq = globalSeq++;
+    const context = mergeRecords(this.bindings, this.contextProvider?.());
+    const message = input.message;
+    const record = createRecord({
+      time,
+      level: levelValue,
+      category: input.category ?? this.category,
+      msg:
+        typeof message === "string"
+          ? message
+          : message === undefined && hasError
+            ? valueToMessage(input.error)
+            : null,
+      lazy: typeof message === "function" ? message : null,
+      props: input.props ?? null,
+      err: input.error ?? null,
+      ctx: createBoundContext(context),
+      source: input.source ?? "capture",
+      stack: input.stack ?? null,
+      seq,
+    });
+    this.emitRecord(record, levelName);
+  }
+
+  private emitRecord(record: ReturnType<typeof createRecord>, levelName: EnabledLogLevelName) {
     const processedRecord = runMiddleware(record, this.middleware, {
       now: this.clock,
       reportInternalError: (error, detail) => this.reportInternalError(error, detail),
@@ -266,7 +308,7 @@ export class Logger implements LoggerLike {
     let event: LogEvent = recordToEvent(processedRecord, {
       id: "",
       levelName,
-      logger: this.name,
+      logger: processedRecord.category.join("."),
       type: this.type,
       tags: this.tags,
     });
@@ -327,15 +369,27 @@ export class Logger implements LoggerLike {
 
   private installIntegrations() {
     for (const integration of this.integrations) {
-      try {
-        const dispose = integration.setup(this);
-        if (typeof dispose === "function") this.disposers.push(dispose);
-      } catch (error) {
-        this.reportInternalError(error, {
-          phase: "integration-setup",
-          integration: integration.name,
-        });
-      }
+      this.setupIntegration(integration);
+    }
+  }
+
+  private setupIntegration(integration: Integration) {
+    if (this.installedIntegrations.has(integration)) return;
+    this.installedIntegrations.add(integration);
+    try {
+      const context = createIntegrationSetupContext({
+        name: integration.name,
+        logger: this,
+        capture: (input) => this.capture(input),
+        getLogger: (category) => this.child({ category }),
+      });
+      const dispose = integration.setup(context);
+      if (typeof dispose === "function") this.disposers.push(onceTeardown(dispose));
+    } catch (error) {
+      this.reportInternalError(error, {
+        phase: "integration-setup",
+        integration: integration.name,
+      });
     }
   }
 
