@@ -61,6 +61,7 @@ import { redactProcessor } from "@loggerjs/processors";
 import { otlpJsonCodec } from "@loggerjs/otel/codec-otlp-json";
 import { sentryTransport } from "@loggerjs/sentry/transport";
 import { lokiTransport } from "@loggerjs/loki/transport";
+import { datadogLogsTransport } from "@loggerjs/datadog/transport";
 
 const Event = defineEvent({ type: "smoke.event", message: "smoke" });
 const logger = createLogger({
@@ -74,6 +75,7 @@ browserHttpTransport({ url: "http://localhost/logs", fetchFn: async () => new Re
 stdoutTransport();
 sentryTransport({ sentry: {} });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
+datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
 await logger.flush();
 `,
   );
@@ -85,12 +87,14 @@ const { createLogger } = require("@loggerjs/core");
 const { stdoutTransport } = require("@loggerjs/node/transport-stdout");
 const { sentryTransport } = require("@loggerjs/sentry/transport");
 const { lokiTransport } = require("@loggerjs/loki/transport");
+const { datadogLogsTransport } = require("@loggerjs/datadog/transport");
 
 const logger = createLogger({ transports: [{ log() {} }] });
 logger.info("cjs smoke");
 stdoutTransport();
 sentryTransport({ sentry: {} });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
+datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
 `,
   );
 
