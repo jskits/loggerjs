@@ -11,6 +11,7 @@ import {
   fingersCrossedProcessor,
   levelOverrideProcessor,
   normalizeErrorProcessor,
+  privacyGuardProcessor,
   rateLimitProcessor,
   redactProcessor,
   routeProcessor,
@@ -21,6 +22,7 @@ import {
 
 const processors = [
   redactProcessor({ keys: ["password", "token", /secret/i] }),
+  privacyGuardProcessor({ maxStringLength: 8192, allowKeys: ["publicToken"] }),
   enrichProcessor({ tags: { service: "checkout" }, context: { region: "us-east-1" } }),
   normalizeErrorProcessor({ maxStackLines: 40, dataErrorKeys: ["failure"] }),
   stackParserProcessor({ dropInternal: true, includeRaw: false }),

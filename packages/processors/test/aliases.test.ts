@@ -9,6 +9,7 @@ import {
   levelOverride,
   logType,
   normalizeError,
+  privacyGuard,
   route,
   sample,
   stackParser,
@@ -63,5 +64,6 @@ describe("processor middleware aliases", () => {
     });
     expect(normalizeError()(event, processorContext)).toBe(event);
     expect(stackParser()(event, processorContext)).toBe(event);
+    expect(privacyGuard()(event, processorContext)).toBe(event);
   });
 });

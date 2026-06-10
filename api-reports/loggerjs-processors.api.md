@@ -136,6 +136,7 @@ export * from "./filter-route.js";
 export * from "./fingerprint.js";
 export * from "./normalize-error.js";
 export * from "./stack-parser.js";
+export * from "./privacy-guard.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -149,6 +150,7 @@ export { filterProcessor as filter, routeProcessor as route } from "./filter-rou
 export { fingerprintProcessor as fingerprint } from "./fingerprint.js";
 export { normalizeErrorProcessor as normalizeError } from "./normalize-error.js";
 export { stackParserProcessor as stackParser } from "./stack-parser.js";
+export { privacyGuardProcessor as privacyGuard } from "./privacy-guard.js";
 ```
 
 ## level-override.d.ts
@@ -191,6 +193,32 @@ export interface NormalizedError extends SerializedError {
     errors?: NormalizedError[];
 }
 export declare function normalizeErrorProcessor(options?: NormalizeErrorProcessorOptions): Processor;
+```
+
+## privacy-guard.d.ts
+
+```ts
+import type { Processor } from "@loggerjs/core";
+export type PrivacyGuardMatcher = string | RegExp | ((key: string, path: string, value: unknown) => boolean);
+export type PrivacyGuardTarget = "message" | "data" | "context" | "tags" | "error";
+export interface PrivacyPattern {
+    name: string;
+    pattern: RegExp;
+    replacement?: string;
+    validate?: (match: string) => boolean;
+}
+export interface PrivacyGuardOptions {
+    targets?: readonly PrivacyGuardTarget[];
+    denyKeys?: readonly PrivacyGuardMatcher[];
+    allowKeys?: readonly PrivacyGuardMatcher[];
+    patterns?: readonly PrivacyPattern[];
+    replacement?: string;
+    maxDepth?: number;
+    maxStringLength?: number;
+    truncateSuffix?: string;
+    onRedact?: (path: string, reason: string) => void;
+}
+export declare function privacyGuardProcessor(options?: PrivacyGuardOptions): Processor;
 ```
 
 ## rate-limit.d.ts

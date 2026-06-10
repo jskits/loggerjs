@@ -11,6 +11,7 @@ export * from "./filter-route";
 export * from "./fingerprint";
 export * from "./normalize-error";
 export * from "./stack-parser";
+export * from "./privacy-guard";
 
 export { redactProcessor as redact } from "./redact";
 export { sampleProcessor as sample } from "./sample";
@@ -29,3 +30,4 @@ export { filterProcessor as filter, routeProcessor as route } from "./filter-rou
 export { fingerprintProcessor as fingerprint } from "./fingerprint";
 export { normalizeErrorProcessor as normalizeError } from "./normalize-error";
 export { stackParserProcessor as stackParser } from "./stack-parser";
+export { privacyGuardProcessor as privacyGuard } from "./privacy-guard";
