@@ -168,6 +168,7 @@ export * from "./console-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
+export * from "./reporting-integration.js";
 export * from "./web-vitals-integration.js";
 export * from "./performance-integration.js";
 export * from "./page-lifecycle.js";
@@ -252,6 +253,59 @@ export interface CapturePerformanceOptions {
 }
 export declare function normalizeBrowserPerformanceEntry(entry: PerformanceEntry, options?: Pick<CapturePerformanceOptions, "captureDetail" | "sanitizeName">): BrowserPerformanceEntryPayload;
 export declare function capturePerformanceIntegration(options?: CapturePerformanceOptions): Integration;
+```
+
+## reporting-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface BrowserReportLike {
+    type?: string;
+    url?: string;
+    body?: unknown;
+    toJSON?: () => unknown;
+}
+export interface BrowserReportingObserverLike {
+    observe: () => void;
+    disconnect: () => void;
+    takeRecords?: () => BrowserReportLike[];
+}
+export interface BrowserReportingObserverConstructor {
+    new (callback: (reports: BrowserReportLike[], observer: BrowserReportingObserverLike) => void, options?: {
+        buffered?: boolean;
+        types?: readonly string[];
+    }): BrowserReportingObserverLike;
+}
+export interface BrowserReportPayload {
+    type: string;
+    url?: string;
+    body?: unknown;
+}
+export interface BrowserCspViolationPayload {
+    type: "securitypolicyviolation";
+    blockedURI?: string;
+    documentURI?: string;
+    effectiveDirective?: string;
+    violatedDirective?: string;
+    disposition?: string;
+    sourceFile?: string;
+    lineNumber?: number;
+    columnNumber?: number;
+    statusCode?: number;
+    sample?: string;
+}
+export interface CaptureReportingOptions {
+    captureSecurityPolicyViolation?: boolean;
+    captureReportingObserver?: boolean;
+    reportTypes?: readonly string[];
+    level?: LoggerLevel | ((report: BrowserReportPayload | BrowserCspViolationPayload) => LoggerLevel);
+    buffered?: boolean;
+    sanitizeUrl?: (url: string) => string;
+    ReportingObserver?: BrowserReportingObserverConstructor;
+    addEventListener?: typeof globalThis.addEventListener;
+    removeEventListener?: typeof globalThis.removeEventListener;
+}
+export declare function captureReportingIntegration(options?: CaptureReportingOptions): Integration;
 ```
 
 ## service-worker-transport.d.ts

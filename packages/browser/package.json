@@ -73,6 +73,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-reporting": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-web-vitals": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

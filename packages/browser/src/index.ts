@@ -8,6 +8,7 @@ export * from "./console-integration";
 export * from "./error-integration";
 export * from "./fetch-integration";
 export * from "./xhr-integration";
+export * from "./reporting-integration";
 export * from "./web-vitals-integration";
 export * from "./performance-integration";
 export * from "./page-lifecycle";

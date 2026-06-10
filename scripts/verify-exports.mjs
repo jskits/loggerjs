@@ -23,6 +23,7 @@ const checks = [
   ["@loggerjs/browser/integration-errors", ["captureBrowserErrorsIntegration"]],
   ["@loggerjs/browser/integration-fetch", ["captureFetchIntegration"]],
   ["@loggerjs/browser/integration-xhr", ["captureXHRIntegration"]],
+  ["@loggerjs/browser/integration-reporting", ["captureReportingIntegration"]],
   ["@loggerjs/browser/integration-page-lifecycle", ["pageLifecycleIntegration"]],
   [
     "@loggerjs/browser/integration-performance",
