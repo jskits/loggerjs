@@ -31,7 +31,7 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
     minLevel: options.minLevel,
     async logBatch(events: LogEvent[]) {
       if (!fetchFn) throw new Error("fetch is not available. Use Node.js 18+ or pass fetchFn.");
-      await fetchFn(options.url, {
+      const response = await fetchFn(options.url, {
         method: options.method ?? "POST",
         headers: {
           "content-type": codec.contentType,
@@ -39,14 +39,26 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
         },
         body: payloadToBody(codec.encode(events)),
       });
+      if (!response.ok) throw new Error(`nodeHttpTransport failed with status ${response.status}`);
     },
   };
   return batchTransport(inner, {
     name: options.name ?? "node-http",
+    maxRecords: options.maxRecords,
     maxBatchSize: options.maxBatchSize,
+    maxBytes: options.maxBytes,
+    maxWaitMs: options.maxWaitMs,
     flushIntervalMs: options.flushIntervalMs,
+    concurrency: options.concurrency,
     maxQueueSize: options.maxQueueSize,
     dropPolicy: options.dropPolicy,
+    estimateEventBytes: options.estimateEventBytes,
+    maxRetries: options.maxRetries,
+    retryBaseDelayMs: options.retryBaseDelayMs,
+    retryMaxDelayMs: options.retryMaxDelayMs,
+    random: options.random,
+    circuitBreakerFailureThreshold: options.circuitBreakerFailureThreshold,
+    circuitBreakerResetMs: options.circuitBreakerResetMs,
     onDrop: options.onDrop,
   });
 }
