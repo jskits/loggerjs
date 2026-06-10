@@ -52,17 +52,19 @@ export function captureConsoleIntegration(options: CaptureConsoleOptions = {}): 
     setup(logger: LoggerLike) {
       if (typeof console === "undefined") return;
       const originals: ConsoleRecord = {};
+      const boundOriginals: ConsoleRecord = {};
       const registry = originalRegistry();
       let guard = false;
 
       for (const level of levels) {
         const original = (console as unknown as ConsoleRecord)[level] ?? console.log.bind(console);
-        originals[level] = original.bind(console);
-        if (!registry[level]) registry[level] = originals[level];
+        originals[level] = original;
+        boundOriginals[level] = original.bind(console);
+        if (!registry[level]) registry[level] = boundOriginals[level];
 
         (console as unknown as ConsoleRecord)[level] = (...args: unknown[]) => {
           if (guard) {
-            originals[level]?.(...args);
+            boundOriginals[level]?.(...args);
             return;
           }
           guard = true;
@@ -76,7 +78,7 @@ export function captureConsoleIntegration(options: CaptureConsoleOptions = {}): 
           } finally {
             guard = false;
           }
-          if (preserveConsole) originals[level]?.(...args);
+          if (preserveConsole) boundOriginals[level]?.(...args);
         };
       }
 

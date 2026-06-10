@@ -1,0 +1,71 @@
+import { describe, expect, it, vi } from "vitest";
+import {
+  createLogger,
+  memoryTransport,
+  type LogEvent,
+  type Processor,
+  type Transport,
+} from "../src";
+
+const failingProcessor: Processor = () => {
+  throw new Error("processor failed");
+};
+
+function eventMessages(events: LogEvent[]): string[] {
+  return events.map((event) => event.message);
+}
+
+describe("logger core skeleton", () => {
+  it("returns before expensive work for disabled levels", () => {
+    const transport = memoryTransport();
+    const contextProvider = vi.fn<() => Record<string, unknown>>(() => ({ requestId: "req-1" }));
+    const idFactory = vi.fn<
+      (event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">) => string
+    >(() => "id-1");
+    const processor = vi.fn<Processor>((event) => event);
+    const lazyMessage = vi.fn<() => string>(() => "debug details");
+
+    const logger = createLogger({
+      level: "warn",
+      contextProvider,
+      idFactory,
+      processors: [processor],
+      transports: [transport],
+    });
+
+    logger.debug(lazyMessage);
+
+    expect(contextProvider).not.toHaveBeenCalled();
+    expect(idFactory).not.toHaveBeenCalled();
+    expect(processor).not.toHaveBeenCalled();
+    expect(lazyMessage).not.toHaveBeenCalled();
+    expect(transport.events).toEqual([]);
+  });
+
+  it("keeps dispatching when processors or transports fail", () => {
+    const internalErrors: Array<Record<string, unknown> | undefined> = [];
+    const transport = memoryTransport();
+    const failingTransport: Transport = {
+      name: "failing",
+      log() {
+        throw new Error("transport failed");
+      },
+    };
+
+    const logger = createLogger({
+      processors: [failingProcessor],
+      transports: [failingTransport, transport],
+      onInternalError: (_error, detail) => {
+        internalErrors.push(detail);
+      },
+    });
+
+    logger.info("order created");
+
+    expect(eventMessages(transport.events)).toEqual(["order created"]);
+    expect(internalErrors).toEqual([
+      { phase: "processor" },
+      { phase: "transport", transport: "failing" },
+    ]);
+  });
+});
