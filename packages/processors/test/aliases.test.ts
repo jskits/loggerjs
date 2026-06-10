@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LogEvent, ProcessorContext } from "@loggerjs/core";
-import { context, dedupe, logType, sample, tags, traceContext } from "../src";
+import { context, dedupe, enrich, logType, sample, tags, traceContext } from "../src";
 
 const event: LogEvent = {
   id: "evt-1",
@@ -33,6 +33,9 @@ describe("processor middleware aliases", () => {
     });
     expect(traceContext(() => ({ traceId: "trace-1" }))(event, processorContext)).toMatchObject({
       trace: { traceId: "trace-1" },
+    });
+    expect(enrich({ data: { feature: "checkout" } })(event, processorContext)).toMatchObject({
+      data: { feature: "checkout" },
     });
   });
 });

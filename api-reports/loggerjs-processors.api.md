@@ -15,6 +15,23 @@ export interface DedupeOptions {
 export declare function dedupeProcessor(options?: DedupeOptions): Processor;
 ```
 
+## enrich.d.ts
+
+```ts
+import type { LogEvent, Processor, ProcessorContext, Tags, TraceContext } from "@loggerjs/core";
+export interface EnrichPatch {
+    message?: string;
+    type?: string;
+    tags?: Tags;
+    data?: unknown;
+    context?: Record<string, unknown>;
+    trace?: TraceContext;
+    source?: LogEvent["source"];
+}
+export type EnrichInput = EnrichPatch | ((event: LogEvent, context: ProcessorContext) => EnrichPatch | false | void);
+export declare function enrichProcessor(input: EnrichInput): Processor;
+```
+
 ## fingers-crossed.d.ts
 
 ```ts
@@ -58,6 +75,7 @@ export * from "./dedupe.js";
 export * from "./trace.js";
 export * from "./rate-limit.js";
 export * from "./fingers-crossed.js";
+export * from "./enrich.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -65,6 +83,7 @@ export { dedupeProcessor as dedupe } from "./dedupe.js";
 export { traceContextProcessor as traceContext } from "./trace.js";
 export { rateLimitProcessor as rateLimit } from "./rate-limit.js";
 export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed.js";
+export { enrichProcessor as enrich } from "./enrich.js";
 ```
 
 ## rate-limit.d.ts

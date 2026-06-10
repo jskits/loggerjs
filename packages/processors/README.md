@@ -5,6 +5,7 @@ Compatibility processor package for common synchronous middleware behavior.
 ```ts
 import {
   dedupeProcessor,
+  enrichProcessor,
   fingersCrossedProcessor,
   rateLimitProcessor,
   redactProcessor,
@@ -14,6 +15,7 @@ import {
 
 const processors = [
   redactProcessor({ keys: ["password", "token", /secret/i] }),
+  enrichProcessor({ tags: { service: "checkout" }, context: { region: "us-east-1" } }),
   sampleProcessor({ rates: { debug: 0.1, info: 1, warn: 1, error: 1, fatal: 1, trace: 0.01 } }),
   tagsProcessor({ service: "checkout" }),
   dedupeProcessor(),
