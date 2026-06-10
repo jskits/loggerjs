@@ -15,6 +15,7 @@ import {
   redactProcessor,
   routeProcessor,
   sampleProcessor,
+  stackParserProcessor,
   tagsProcessor,
 } from "@loggerjs/processors";
 
@@ -22,6 +23,7 @@ const processors = [
   redactProcessor({ keys: ["password", "token", /secret/i] }),
   enrichProcessor({ tags: { service: "checkout" }, context: { region: "us-east-1" } }),
   normalizeErrorProcessor({ maxStackLines: 40, dataErrorKeys: ["failure"] }),
+  stackParserProcessor({ dropInternal: true, includeRaw: false }),
   fingerprintProcessor({ parts: ["logger", "type", "message", "error.name", "error.message"] }),
   sampleProcessor({ rates: { debug: 0.1, info: 1, warn: 1, error: 1, fatal: 1, trace: 0.01 } }),
   tagsProcessor({ service: "checkout" }),

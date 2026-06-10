@@ -135,6 +135,7 @@ export * from "./level-override.js";
 export * from "./filter-route.js";
 export * from "./fingerprint.js";
 export * from "./normalize-error.js";
+export * from "./stack-parser.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -147,6 +148,7 @@ export { levelOverrideProcessor as levelOverride } from "./level-override.js";
 export { filterProcessor as filter, routeProcessor as route } from "./filter-route.js";
 export { fingerprintProcessor as fingerprint } from "./fingerprint.js";
 export { normalizeErrorProcessor as normalizeError } from "./normalize-error.js";
+export { stackParserProcessor as stackParser } from "./stack-parser.js";
 ```
 
 ## level-override.d.ts
@@ -238,6 +240,29 @@ export interface SampleOptions {
     random?: () => number;
 }
 export declare function sampleProcessor(options?: SampleOptions): Processor;
+```
+
+## stack-parser.d.ts
+
+```ts
+import type { Processor } from "@loggerjs/core";
+export interface StackFrame {
+    raw?: string;
+    function?: string;
+    file?: string;
+    line?: number;
+    column?: number;
+}
+export interface StackParserOptions {
+    maxFrames?: number;
+    dropInternal?: boolean;
+    includeRaw?: boolean;
+    target?: "error" | "context";
+    key?: string;
+    parser?: (stack: string) => readonly StackFrame[];
+}
+export declare function parseStack(stack: string): StackFrame[];
+export declare function stackParserProcessor(options?: StackParserOptions): Processor;
 ```
 
 ## tags.d.ts

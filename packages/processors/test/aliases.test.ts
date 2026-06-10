@@ -11,6 +11,7 @@ import {
   normalizeError,
   route,
   sample,
+  stackParser,
   tags,
   traceContext,
 } from "../src";
@@ -61,5 +62,6 @@ describe("processor middleware aliases", () => {
       tags: { fingerprint: expect.any(String) },
     });
     expect(normalizeError()(event, processorContext)).toBe(event);
+    expect(stackParser()(event, processorContext)).toBe(event);
   });
 });
