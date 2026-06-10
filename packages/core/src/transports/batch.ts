@@ -1,4 +1,5 @@
 import type { LogEvent, Transport, TransportContext } from "../types";
+import { incrementLoggerMetaCounter } from "../meta";
 import { toLevelValue } from "../levels";
 
 export type DropPolicy = "drop-oldest" | "drop-newest" | "throw";
@@ -18,6 +19,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
   const queue: LogEvent[] = [];
+  const transportName = options.name ?? `batch(${inner.name ?? "transport"})`;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastContext: TransportContext | undefined;
   let flushing = false;
@@ -30,7 +32,14 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   const schedule = () => {
     if (timer || flushIntervalMs <= 0) return;
     timer = setTimeout(() => {
-      void flush();
+      const context = lastContext;
+      void flush().catch((error: unknown) => {
+        context?.reportInternalError(error, {
+          phase: "transport",
+          transport: transportName,
+          operation: "flush",
+        });
+      });
     }, flushIntervalMs);
     const maybeNodeTimer = timer as unknown as { unref?: () => void };
     maybeNodeTimer.unref?.();
@@ -57,26 +66,50 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     }
   };
 
+  const reportDrop = (event: LogEvent, reason: string, context: TransportContext) => {
+    incrementLoggerMetaCounter("transport.dropped");
+    incrementLoggerMetaCounter(`transport.dropped.${reason}`);
+    options.onDrop?.(event, reason);
+    if (dropPolicy === "throw") {
+      context.reportInternalError(new Error(`loggerjs batch transport dropped log: ${reason}`), {
+        phase: "transport",
+        transport: transportName,
+        reason,
+      });
+    }
+  };
+
+  const flushAndReport = (context: TransportContext) => {
+    void flush().catch((error: unknown) => {
+      context.reportInternalError(error, {
+        phase: "transport",
+        transport: transportName,
+        operation: "flush",
+      });
+    });
+  };
+
   return {
-    name: options.name ?? `batch(${inner.name ?? "transport"})`,
+    name: transportName,
     minLevel: inner.minLevel,
     log(event, context) {
       if (inner.minLevel !== undefined && event.level < toLevelValue(inner.minLevel)) return;
       lastContext = context;
       if (queue.length >= maxQueueSize) {
         if (dropPolicy === "drop-newest") {
-          options.onDrop?.(event, "queue-full");
+          reportDrop(event, "queue-full", context);
           return;
         }
         if (dropPolicy === "drop-oldest") {
           const dropped = queue.shift();
-          if (dropped) options.onDrop?.(dropped, "queue-full");
+          if (dropped) reportDrop(dropped, "queue-full", context);
         } else {
-          throw new Error(`loggerjs batch transport queue exceeded ${maxQueueSize}`);
+          reportDrop(event, "queue-full", context);
+          return;
         }
       }
       queue.push(event);
-      if (queue.length >= maxBatchSize) void flush();
+      if (queue.length >= maxBatchSize) flushAndReport(context);
       else schedule();
     },
     async flush() {
