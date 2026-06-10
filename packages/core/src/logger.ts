@@ -6,8 +6,8 @@ import {
   type EnabledLogLevelName,
   type LoggerLevel,
 } from "./levels";
-import { normalizeCategory } from "./record";
-import { normalizeError, valueToMessage } from "./utils/error";
+import { createBoundContext, createRecord, normalizeCategory, recordToEvent } from "./record";
+import { valueToMessage } from "./utils/error";
 import type {
   ChildLoggerOptions,
   Integration,
@@ -24,6 +24,13 @@ import type {
 } from "./types";
 
 let globalSeq = 0;
+
+interface NormalizedLogArgs {
+  msg: string | null;
+  lazy: (() => string) | null;
+  props: Record<string, unknown> | null;
+  err: unknown;
+}
 
 function defaultClock() {
   return Date.now();
@@ -45,6 +52,64 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     !Array.isArray(value) &&
     !(value instanceof Error)
   );
+}
+
+function dataToProps(data: LogData | undefined): Record<string, unknown> | null {
+  if (data === undefined) return null;
+  if (isRecord(data)) return data;
+  return { value: data };
+}
+
+function normalizePropsAndError(data: LogData | undefined): {
+  props: Record<string, unknown> | null;
+  err: unknown;
+} {
+  if (data instanceof Error) return { props: null, err: data };
+  if (isRecord(data) && data.error instanceof Error) {
+    const { error, ...rest } = data;
+    return {
+      props: Object.keys(rest).length > 0 ? rest : null,
+      err: error,
+    };
+  }
+  return { props: dataToProps(data), err: null };
+}
+
+function normalizeLogArgs(
+  message: unknown,
+  data?: LogData | string,
+  props?: LogData,
+): NormalizedLogArgs {
+  if (typeof message === "string") {
+    const normalized = normalizePropsAndError(data as LogData | undefined);
+    return {
+      msg: message,
+      lazy: null,
+      props: normalized.props,
+      err: normalized.err,
+    };
+  }
+
+  if (typeof message === "function") {
+    const normalized = normalizePropsAndError(data as LogData | undefined);
+    return {
+      msg: null,
+      lazy: message as () => string,
+      props: normalized.props,
+      err: normalized.err,
+    };
+  }
+
+  const hasExplicitMessage = typeof data === "string";
+  const normalized = normalizePropsAndError(
+    hasExplicitMessage ? props : (data as LogData | undefined),
+  );
+  return {
+    msg: hasExplicitMessage ? data : valueToMessage(message),
+    lazy: null,
+    props: normalized.props,
+    err: message ?? normalized.err,
+  };
 }
 
 function mergeTags(...items: Array<Tags | undefined>): Tags | undefined {
@@ -69,18 +134,11 @@ function mergeRecords(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function normalizeData(data: LogData | undefined): { data?: unknown; error?: LogEvent["error"] } {
-  if (data instanceof Error) return { error: normalizeError(data) };
-  if (isRecord(data) && data.error instanceof Error) {
-    const { error, ...rest } = data;
-    return { data: rest, error: normalizeError(error) };
-  }
-  return data === undefined ? {} : { data };
-}
-
 export class Logger implements LoggerLike {
   readonly name: string;
+  private readonly category: readonly string[];
   private minimumLevel: LoggerLevel;
+  private minimumLevelValue: number;
   private type?: string;
   private tags?: Tags;
   private bindings?: Record<string, unknown>;
@@ -96,7 +154,9 @@ export class Logger implements LoggerLike {
 
   constructor(options: LoggerOptions = {}) {
     this.name = categoryToName(options.category) ?? options.name ?? "app";
+    this.category = normalizeCategory(options.category ?? this.name);
     this.minimumLevel = options.level ?? "info";
+    this.minimumLevelValue = toLevelValue(this.minimumLevel);
     this.type = options.type;
     this.tags = mergeTags(options.tags);
     this.bindings = mergeRecords(options.bindings);
@@ -112,6 +172,7 @@ export class Logger implements LoggerLike {
 
   setLevel(level: LoggerLevel) {
     this.minimumLevel = level;
+    this.minimumLevelValue = toLevelValue(level);
   }
 
   getLevel(): LoggerLevel {
@@ -119,11 +180,16 @@ export class Logger implements LoggerLike {
   }
 
   isEnabled(level: LoggerLevel): boolean {
-    return toLevelValue(level) >= toLevelValue(this.minimumLevel);
+    return this.isLevelEnabled(level);
+  }
+
+  isLevelEnabled(level: LoggerLevel): boolean {
+    return toLevelValue(level) >= this.minimumLevelValue;
   }
 
   child(options: ChildLoggerOptions = {}): Logger {
     return new Logger({
+      category: options.category ?? this.category,
       name: categoryToName(options.category) ?? options.name ?? this.name,
       level: options.level ?? this.minimumLevel,
       type: options.type ?? this.type,
@@ -161,66 +227,67 @@ export class Logger implements LoggerLike {
     if (typeof dispose === "function") this.disposers.push(dispose);
   }
 
-  log(level: LoggerLevel, message: unknown, data?: LogData) {
+  log(level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) {
     if (this.closed) return;
     const levelValue = toLevelValue(level);
-    if (levelValue < toLevelValue(this.minimumLevel)) return;
+    if (levelValue < this.minimumLevelValue) return;
     const levelName =
       typeof level === "string" && enabledLevelNames.includes(level as EnabledLogLevelName)
         ? (level as EnabledLogLevelName)
         : toLevelName(levelValue);
     const time = this.clock();
     const seq = globalSeq++;
-    const normalized = normalizeData(data);
     const context = mergeRecords(this.bindings, this.contextProvider?.());
-
-    let event: LogEvent = {
-      id: "",
+    const normalized = normalizeLogArgs(message, data, props);
+    const record = createRecord({
       time,
-      seq,
       level: levelValue,
+      category: this.category,
+      msg: normalized.msg,
+      lazy: normalized.lazy,
+      props: normalized.props,
+      err: normalized.err,
+      ctx: createBoundContext(context),
+      source: "app",
+      seq,
+    });
+
+    let event: LogEvent = recordToEvent(record, {
+      id: "",
       levelName,
       logger: this.name,
-      message: valueToMessage(message),
       type: this.type,
       tags: this.tags,
-      context,
-      ...normalized,
-    };
+    });
     event.id = this.idFactory(event);
-
-    if (message instanceof Error && !event.error) {
-      event.error = normalizeError(message);
-      if (data === undefined) event.data = undefined;
-    }
 
     const processed = this.applyProcessors(event);
     if (!processed) return;
     this.dispatch(processed);
   }
 
-  trace(message: unknown, data?: LogData) {
-    this.log("trace", message, data);
+  trace(message: unknown, data?: LogData | string, props?: LogData) {
+    this.log("trace", message, data, props);
   }
 
-  debug(message: unknown, data?: LogData) {
-    this.log("debug", message, data);
+  debug(message: unknown, data?: LogData | string, props?: LogData) {
+    this.log("debug", message, data, props);
   }
 
-  info(message: unknown, data?: LogData) {
-    this.log("info", message, data);
+  info(message: unknown, data?: LogData | string, props?: LogData) {
+    this.log("info", message, data, props);
   }
 
-  warn(message: unknown, data?: LogData) {
-    this.log("warn", message, data);
+  warn(message: unknown, data?: LogData | string, props?: LogData) {
+    this.log("warn", message, data, props);
   }
 
-  error(message: unknown, data?: LogData) {
-    this.log("error", message, data);
+  error(message: unknown, data?: LogData | string, props?: LogData) {
+    this.log("error", message, data, props);
   }
 
-  fatal(message: unknown, data?: LogData) {
-    this.log("fatal", message, data);
+  fatal(message: unknown, data?: LogData | string, props?: LogData) {
+    this.log("fatal", message, data, props);
   }
 
   captureException(error: unknown, data?: LogData) {

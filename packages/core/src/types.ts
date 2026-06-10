@@ -132,13 +132,13 @@ export interface Codec<TPayload = string | Uint8Array> {
 }
 
 export interface LoggerLike {
-  log: (level: LoggerLevel, message: unknown, data?: LogData) => void;
-  trace: (message: unknown, data?: LogData) => void;
-  debug: (message: unknown, data?: LogData) => void;
-  info: (message: unknown, data?: LogData) => void;
-  warn: (message: unknown, data?: LogData) => void;
-  error: (message: unknown, data?: LogData) => void;
-  fatal: (message: unknown, data?: LogData) => void;
+  log: (level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) => void;
+  trace: (message: unknown, data?: LogData | string, props?: LogData) => void;
+  debug: (message: unknown, data?: LogData | string, props?: LogData) => void;
+  info: (message: unknown, data?: LogData | string, props?: LogData) => void;
+  warn: (message: unknown, data?: LogData | string, props?: LogData) => void;
+  error: (message: unknown, data?: LogData | string, props?: LogData) => void;
+  fatal: (message: unknown, data?: LogData | string, props?: LogData) => void;
   captureException: (error: unknown, data?: LogData) => void;
   flush: () => Promise<void>;
   close: () => Promise<void>;

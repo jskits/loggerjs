@@ -42,6 +42,44 @@ describe("logger core skeleton", () => {
     expect(transport.events[0]?.logger).toBe("api.checkout");
   });
 
+  it("resolves enabled lazy messages once through the record path", () => {
+    const transport = memoryTransport();
+    const lazyMessage = vi.fn<() => string>(() => "debug details");
+    const logger = createLogger({
+      level: "debug",
+      transports: [transport],
+    });
+
+    logger.debug(lazyMessage, { state: "ready" });
+
+    expect(lazyMessage).toHaveBeenCalledTimes(1);
+    expect(transport.events[0]).toMatchObject({
+      levelName: "debug",
+      message: "debug details",
+      data: { state: "ready" },
+    });
+  });
+
+  it("supports error-first logging with explicit message and props", () => {
+    const transport = memoryTransport();
+    const error = new Error("database timeout");
+    const logger = createLogger({
+      transports: [transport],
+    });
+
+    logger.error(error, "save failed", { orderId: "ord-1" });
+
+    expect(transport.events[0]).toMatchObject({
+      levelName: "error",
+      message: "save failed",
+      data: { orderId: "ord-1" },
+      error: {
+        name: "Error",
+        message: "database timeout",
+      },
+    });
+  });
+
   it("returns before expensive work for disabled levels", () => {
     const transport = memoryTransport();
     const contextProvider = vi.fn<() => Record<string, unknown>>(() => ({ requestId: "req-1" }));
