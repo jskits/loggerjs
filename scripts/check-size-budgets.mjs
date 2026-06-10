@@ -16,6 +16,7 @@ const budgets = [
   ["@loggerjs/loki", "packages/loki/dist/index.js", 8_000, 3_000],
   ["@loggerjs/datadog", "packages/datadog/dist/index.js", 8_000, 3_000],
   ["@loggerjs/elastic", "packages/elastic/dist/index.js", 8_000, 3_000],
+  ["@loggerjs/cloudwatch", "packages/cloudwatch/dist/index.js", 12_000, 4_500],
 ];
 
 const failures = [];

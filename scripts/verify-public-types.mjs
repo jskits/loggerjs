@@ -19,6 +19,7 @@ const workspacePackages = {
   "@loggerjs/loki": "packages/loki",
   "@loggerjs/datadog": "packages/datadog",
   "@loggerjs/elastic": "packages/elastic",
+  "@loggerjs/cloudwatch": "packages/cloudwatch",
 };
 
 const typeTestSource = `
@@ -45,6 +46,7 @@ import { sentryTransport, type SentryLike } from "@loggerjs/sentry/transport";
 import { lokiTransport } from "@loggerjs/loki/transport";
 import { datadogLogsTransport } from "@loggerjs/datadog/transport";
 import { elasticTransport } from "@loggerjs/elastic/transport";
+import { cloudWatchLogsTransport } from "@loggerjs/cloudwatch/transport";
 
 type LoginPayload = { userId: string; attempts?: number };
 
@@ -103,6 +105,14 @@ sentryTransport({ sentry: {} satisfies SentryLike });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
 datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
 elasticTransport({ url: "http://localhost:9200", fetchFn: async () => new Response(JSON.stringify({ errors: false }), { status: 200 }) });
+cloudWatchLogsTransport({
+  credentials: { accessKeyId: "test", secretAccessKey: "test" },
+  logGroupName: "group",
+  logStreamName: "stream",
+  region: "us-east-1",
+  signer: async (request) => request.headers,
+  fetchFn: async () => new Response("{}", { status: 200 }),
+});
 `;
 
 const tsconfigSource = {

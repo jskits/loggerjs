@@ -22,7 +22,8 @@
       "@loggerjs/codecs": ["./packages/codecs/src/index.ts"],
       "@loggerjs/otel": ["./packages/otel/src/index.ts"],
       "@loggerjs/sentry": ["./packages/sentry/src/index.ts"],
-      "@loggerjs/elastic": ["./packages/elastic/src/index.ts"]
+      "@loggerjs/elastic": ["./packages/elastic/src/index.ts"],
+      "@loggerjs/cloudwatch": ["./packages/cloudwatch/src/index.ts"]
     }
   }
 }

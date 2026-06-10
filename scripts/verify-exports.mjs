@@ -47,6 +47,11 @@ const checks = [
   ["@loggerjs/datadog/transport", ["datadogLogsTransport"]],
   ["@loggerjs/elastic", ["elasticTransport"]],
   ["@loggerjs/elastic/transport", ["elasticTransport", "createElasticBulkPayload"]],
+  ["@loggerjs/cloudwatch", ["cloudWatchLogsTransport"]],
+  [
+    "@loggerjs/cloudwatch/transport",
+    ["cloudWatchLogsTransport", "createCloudWatchPutLogEventsRequest", "signAwsV4Request"],
+  ],
 ];
 
 const workspacePackages = {
@@ -58,6 +63,7 @@ const workspacePackages = {
   "@loggerjs/loki": "packages/loki",
   "@loggerjs/datadog": "packages/datadog",
   "@loggerjs/elastic": "packages/elastic",
+  "@loggerjs/cloudwatch": "packages/cloudwatch",
 };
 
 const verifierSource = `

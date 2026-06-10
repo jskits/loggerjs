@@ -17,6 +17,7 @@ const packages = [
   ["@loggerjs/loki", "packages/loki"],
   ["@loggerjs/datadog", "packages/datadog"],
   ["@loggerjs/elastic", "packages/elastic"],
+  ["@loggerjs/cloudwatch", "packages/cloudwatch"],
 ];
 
 function declarationFiles(dir, root = dir) {
