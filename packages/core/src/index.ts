@@ -2,6 +2,7 @@ export * from "./levels";
 export * from "./types";
 export * from "./record";
 export * from "./logger";
+export * from "./registry";
 export * from "./utils/error";
 export * from "./utils/safe-stringify";
 export * from "./codecs/json";
