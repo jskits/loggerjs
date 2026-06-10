@@ -9,6 +9,7 @@ import {
   expressIntegration,
   fastifyIntegration,
   installAsyncLocalStorageContext,
+  nodeSyslogTransport,
   rotatingFileTransport,
   stdoutTransport,
 } from "@loggerjs/node";
@@ -26,6 +27,13 @@ await logger.flush();
 ```
 
 ```ts
+const infraLogger = createLogger({
+  name: "infra",
+  transports: [nodeSyslogTransport({ host: "127.0.0.1", port: 514, facility: 16 })],
+});
+```
+
+```ts
 const auditLogger = createLogger({
   name: "audit",
   transports: [rotatingFileTransport({ path: "audit.log", maxBytes: 10 * 1024 * 1024 })],
@@ -40,4 +48,4 @@ app.use(expressIntegration(logger, { captureAll: true }));
 fastify.register(fastifyIntegration(logger, { captureAll: true }));
 ```
 
-Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-worker`, `integration-process`, `integration-express`, `integration-fastify`, `integration-diagnostics`, and `context`.
+Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-express`, `integration-fastify`, `integration-diagnostics`, and `context`.

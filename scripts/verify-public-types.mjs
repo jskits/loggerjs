@@ -36,6 +36,7 @@ import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-br
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
+import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
 import { fastEventJsonCodec } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
 import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
@@ -88,6 +89,13 @@ browserWebSocketTransport({
   }),
 });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
+nodeSyslogTransport({
+  udpSocketFactory: () => ({
+    send(_message, _port, _host, callback) {
+      callback?.(undefined);
+    },
+  }),
+});
 openTelemetryTraceProcessor();
 sentryTransport({ sentry: {} satisfies SentryLike });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });

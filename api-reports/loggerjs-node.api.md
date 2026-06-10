@@ -174,6 +174,7 @@ export * from "./stdout-transport.js";
 export * from "./file-transport.js";
 export * from "./rotating-file-transport.js";
 export * from "./http-transport.js";
+export * from "./syslog-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
 export * from "./express-integration.js";
@@ -244,6 +245,57 @@ export interface StdoutTransportOptions {
 }
 export declare function stdoutTransport(options?: StdoutTransportOptions): Transport;
 export declare function stderrTransport(options?: Omit<StdoutTransportOptions, "stream">): Transport;
+```
+
+## syslog-transport.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+export type NodeSyslogProtocol = "tcp" | "udp4" | "udp6";
+export type NodeSyslogTcpFraming = "newline" | "octet-counting";
+export interface NodeSyslogUdpSocket {
+    send: (message: string | Uint8Array, port: number, host: string, callback?: (error: Error | null | undefined) => void) => void;
+    close?: () => void;
+    on?: (event: "error", listener: (error: Error) => void) => void;
+    unref?: () => void;
+}
+export interface NodeSyslogTcpSocket {
+    write: (message: string | Uint8Array, callback?: (error?: Error | null) => void) => boolean;
+    end?: () => void;
+    destroy?: () => void;
+    on?: (event: "error", listener: (error: Error) => void) => void;
+    unref?: () => void;
+}
+export type NodeSyslogUdpSocketFactory = (protocol: "udp4" | "udp6") => NodeSyslogUdpSocket;
+export type NodeSyslogTcpSocketFactory = (options: {
+    host: string;
+    port: number;
+}) => NodeSyslogTcpSocket;
+export interface NodeSyslogFormatOptions {
+    facility?: number;
+    hostname?: string;
+    appName?: string | ((event: LogEvent) => string);
+    procId?: string | number | ((event: LogEvent) => string | number);
+    msgId?: string | ((event: LogEvent) => string);
+    structuredData?: string | ((event: LogEvent) => string);
+    formatMessage?: (event: LogEvent) => string;
+}
+export interface NodeSyslogTransportOptions extends NodeSyslogFormatOptions {
+    name?: string;
+    minLevel?: LoggerLevel;
+    protocol?: NodeSyslogProtocol;
+    host?: string;
+    port?: number;
+    tcpFraming?: NodeSyslogTcpFraming;
+    unref?: boolean;
+    udpSocketFactory?: NodeSyslogUdpSocketFactory;
+    tcpSocketFactory?: NodeSyslogTcpSocketFactory;
+    onError?: (error: unknown, detail: {
+        operation: string;
+    }) => void;
+}
+export declare function formatSyslogMessage(event: LogEvent, options?: NodeSyslogFormatOptions): string;
+export declare function nodeSyslogTransport(options?: NodeSyslogTransportOptions): Transport;
 ```
 
 ## worker-transport.d.ts

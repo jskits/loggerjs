@@ -29,7 +29,32 @@ declare module "fs" {
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
 }
 
+declare module "dgram" {
+  export function createSocket(type: "udp4" | "udp6"): {
+    send: (
+      message: string | Uint8Array,
+      port: number,
+      host: string,
+      callback?: (error: Error | null | undefined) => void,
+    ) => void;
+    close?: () => void;
+    on?: (event: "error", listener: (error: Error) => void) => void;
+    unref?: () => void;
+  };
+}
+
+declare module "net" {
+  export function createConnection(options: { host: string; port: number }): {
+    write: (message: string | Uint8Array, callback?: (error?: Error | null) => void) => boolean;
+    end?: () => void;
+    destroy?: () => void;
+    on?: (event: "error", listener: (error: Error) => void) => void;
+    unref?: () => void;
+  };
+}
+
 declare module "os" {
+  export function hostname(): string;
   export function tmpdir(): string;
 }
 

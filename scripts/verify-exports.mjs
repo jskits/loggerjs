@@ -27,6 +27,7 @@ const checks = [
   ["@loggerjs/node/transport-http", ["nodeHttpTransport"]],
   ["@loggerjs/node/transport-file", ["fileTransport"]],
   ["@loggerjs/node/transport-stdout", ["stdoutTransport", "stderrTransport"]],
+  ["@loggerjs/node/transport-syslog", ["nodeSyslogTransport", "formatSyslogMessage"]],
   ["@loggerjs/node/transport-worker", ["workerTransport"]],
   ["@loggerjs/node/integration-process", ["captureProcessIntegration"]],
   ["@loggerjs/node/integration-diagnostics", ["diagnosticsChannelIntegration"]],
