@@ -118,11 +118,32 @@ export declare function browserHttpTransport(options: BrowserHttpTransportOption
 ```ts
 export * from "@loggerjs/core";
 export * from "./http-transport.js";
+export * from "./indexeddb-offline-queue.js";
 export * from "./console-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
 export * from "./page-lifecycle.js";
+```
+
+## indexeddb-offline-queue.d.ts
+
+```ts
+import type { BrowserHttpDropPolicy, BrowserHttpOfflineEntry, BrowserHttpOfflineQueue } from "./http-transport.js";
+export interface IndexedDbBrowserHttpOfflineQueueOptions {
+    dbName?: string;
+    storeName?: string;
+    maxEntries?: number;
+    dropPolicy?: BrowserHttpDropPolicy;
+    indexedDB?: IDBFactory;
+    onDrop?: (entry: BrowserHttpOfflineEntry, reason: string) => void;
+}
+export interface IndexedDbBrowserHttpOfflineQueue extends BrowserHttpOfflineQueue {
+    size: () => Promise<number>;
+    clear: () => Promise<void>;
+    close: () => void;
+}
+export declare function indexedDbBrowserHttpOfflineQueue(options?: IndexedDbBrowserHttpOfflineQueueOptions): IndexedDbBrowserHttpOfflineQueue;
 ```
 
 ## page-lifecycle.d.ts

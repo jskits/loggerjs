@@ -9,6 +9,7 @@ import {
   captureConsoleIntegration,
   captureFetchIntegration,
   createLogger,
+  indexedDbBrowserHttpOfflineQueue,
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
@@ -18,7 +19,7 @@ const logger = createLogger({
   transports: [
     browserHttpTransport({
       url: "/api/logs",
-      offlineQueue: memoryBrowserHttpOfflineQueue({ maxEntries: 500 }),
+      offlineQueue: indexedDbBrowserHttpOfflineQueue({ maxEntries: 500 }),
       useBeaconOnPageHide: true,
     }),
   ],
@@ -33,4 +34,7 @@ const logger = createLogger({
 logger.info("page loaded");
 ```
 
-Subpaths expose `transport-http`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, and `integration-page-lifecycle`.
+Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
+`indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
+
+Subpaths expose `transport-http`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, and `integration-page-lifecycle`.
