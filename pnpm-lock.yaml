@@ -83,6 +83,32 @@ importers:
         specifier: ^4.22.4
         version: 4.22.4
 
+  examples/otel-basic:
+    dependencies:
+      '@loggerjs/node':
+        specifier: workspace:*
+        version: link:../../packages/node
+      '@loggerjs/otel':
+        specifier: workspace:*
+        version: link:../../packages/otel
+    devDependencies:
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
+
+  examples/sentry-basic:
+    dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@loggerjs/sentry':
+        specifier: workspace:*
+        version: link:../../packages/sentry
+    devDependencies:
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
+
   packages/browser:
     dependencies:
       '@loggerjs/core':

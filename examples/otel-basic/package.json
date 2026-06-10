@@ -1,0 +1,16 @@
+{
+  "name": "loggerjs-otel-basic-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@loggerjs/node": "workspace:*",
+    "@loggerjs/otel": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
+  }
+}

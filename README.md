@@ -1,53 +1,56 @@
 # loggerjs
 
-`loggerjs` is a proposed isomorphic structured logging SDK for the `@loggerjs/*` npm organization.
+`loggerjs` is an isomorphic structured logging SDK for browser and server-side JavaScript. It is built around three user-facing concepts plus one transport-owned serialization boundary:
 
-It is designed around four explicit extension points:
+- **Integrations** automatically collect logs from platform behavior, such as browser console calls, script errors, fetch/XHR failures, page lifecycle flushes, Node process errors, and diagnostics channels.
+- **Middleware/processors** synchronously enrich, redact, sample, tag, type, dedupe, or attach trace context before logs reach transports.
+- **Transports** deliver logs to a destination, such as console, stdout, file, HTTP, OTLP, Sentry, a worker, or a custom sink.
+- **Codecs** belong to transports and own serialization. Middleware keeps raw values and does not stringify the record.
 
-1. **Core logger**: tiny hot-path logging API and event model.
-2. **Processors**: synchronous event pipeline for redact, enrich, sample, normalize, dedupe, trace attach.
-3. **Transports**: console, stdout, file, HTTP batch, OTLP, or any custom sink.
-4. **Integrations**: automatic collection for console, browser errors, fetch, XHR, process errors, page lifecycle.
-5. **Codecs**: JSON, safe JSON, NDJSON, fast fixed-shape JSON, and pluggable binary codecs.
+The core package is dependency-free and platform-neutral. Browser, Node, OTLP, Sentry, codecs, and processor packages layer on top.
 
 ## Packages
 
 ```txt
-@loggerjs/core        Core logger, event model, codecs, console/memory/batch transports
-@loggerjs/browser     Browser HTTP transport and browser integrations
-@loggerjs/node        Node stdout/file/http transports and process integration
+@loggerjs/core        Logger, event model, context, codecs, console/memory/batch transports
+@loggerjs/browser     Browser HTTP transport and console/error/fetch/XHR/page lifecycle integrations
+@loggerjs/node        stdout/stderr/file/http/worker transports, AsyncLocalStorage context, process and diagnostics integrations
 @loggerjs/processors  Redact, sample, tags, type, dedupe, trace processors
 @loggerjs/codecs      Fast fixed-shape JSON, msgpackr adapter, projector codec
-@loggerjs/otel        OTLP JSON mapping and transport
+@loggerjs/otel        OTLP JSON mapping, OTLP HTTP transport, active span trace processor
+@loggerjs/sentry      Sentry structured logs, breadcrumbs, exception/message capture transport
 ```
 
-## Basic Node usage
+## Basic Node Usage
 
 ```ts
-import { createLogger, stdoutTransport, captureProcessIntegration } from "@loggerjs/node";
-import { redactProcessor } from "@loggerjs/processors";
+import { captureProcessIntegration, createLogger, stdoutTransport } from "@loggerjs/node";
+import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
   name: "api",
   level: "info",
-  tags: { service: "checkout", env: "prod" },
-  processors: [redactProcessor()],
+  tags: { service: "checkout", env: process.env.NODE_ENV ?? "dev" },
+  processors: [redactProcessor(), tagsProcessor({ runtime: "node" })],
   transports: [stdoutTransport()],
-  integrations: [captureProcessIntegration()]
+  integrations: [captureProcessIntegration()],
 });
 
 logger.info("order created", { orderId: "ord_123", token: "secret" });
+await logger.flush();
 ```
 
-## Basic browser usage
+## Basic Browser Usage
 
 ```ts
 import {
-  createLogger,
   browserHttpTransport,
-  captureConsoleIntegration,
   captureBrowserErrorsIntegration,
-  captureFetchIntegration
+  captureConsoleIntegration,
+  captureFetchIntegration,
+  createLogger,
+  memoryBrowserHttpOfflineQueue,
+  pageLifecycleIntegration,
 } from "@loggerjs/browser";
 import { redactProcessor } from "@loggerjs/processors";
 
@@ -55,39 +58,53 @@ const logger = createLogger({
   name: "web",
   level: "info",
   processors: [redactProcessor()],
-  transports: [browserHttpTransport({ url: "/api/logs" })],
+  transports: [
+    browserHttpTransport({
+      url: "/api/logs",
+      offlineQueue: memoryBrowserHttpOfflineQueue({ maxEntries: 500 }),
+      useBeaconOnPageHide: true,
+    }),
+  ],
   integrations: [
     captureConsoleIntegration({ levels: ["warn", "error"] }),
     captureBrowserErrorsIntegration(),
-    captureFetchIntegration()
-  ]
+    captureFetchIntegration(),
+    pageLifecycleIntegration(),
+  ],
 });
 
 logger.info("page loaded");
 ```
 
-## Build
+## Typed Events
+
+```ts
+import { createLogger, defineEvent } from "@loggerjs/core";
+
+const CheckoutCompleted = defineEvent<{ orderId: string; amountCents: number }>({
+  type: "checkout.completed",
+  message: (event) => `checkout completed ${event.orderId}`,
+  tags: { domain: "checkout" },
+});
+
+const logger = createLogger();
+logger.event(CheckoutCompleted, { orderId: "ord_123", amountCents: 4999 });
+```
+
+## Operational Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Privacy, offline queue, and crash-path guidance](docs/OPERATIONS.md)
+- [Benchmarks and size budgets](docs/BENCHMARKS.md)
+- [Release workflow](docs/RELEASE.md)
+
+## Development
 
 ```bash
 pnpm install
-pnpm build
+pnpm check
+pnpm bench
+pnpm release:dry-run
 ```
 
-## Publish order
-
-```bash
-pnpm --filter @loggerjs/core publish --access public
-pnpm --filter @loggerjs/processors publish --access public
-pnpm --filter @loggerjs/codecs publish --access public
-pnpm --filter @loggerjs/browser publish --access public
-pnpm --filter @loggerjs/node publish --access public
-pnpm --filter @loggerjs/otel publish --access public
-```
-
-## Design rules
-
-- The logging hot path performs level gating before event construction.
-- Processors are synchronous by design. Heavy work belongs in transports, workers, or backends.
-- Transports must never throw into application code; internal errors are routed to `onInternalError`.
-- Browser integrations are opt-in because automatic collection has privacy and performance implications.
-- JSON/NDJSON are built in for interoperability; binary codecs are adapters so users can opt into size/performance tradeoffs.
+`pnpm check` runs formatting, linting, typechecks, tests, builds, size budgets, package export checks, public type checks, API report checks, and npm pack validation.

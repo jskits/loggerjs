@@ -1,6 +1,6 @@
 # LoggerJS Architecture
 
-> Status: target architecture for the v1 implementation plan.
+> Status: implementation architecture for the current v1-oriented codebase.
 > Source inputs: `DESIGN.md`, `log.md`, and the current monorepo skeleton.
 
 LoggerJS is an isomorphic structured logger for browser, Node, Bun, Deno, and edge runtimes. The product architecture is built around three user-facing concepts:
@@ -13,25 +13,26 @@ There is one additional technical boundary that must stay first-class: **Codec**
 
 ## Current Repository Baseline
 
-The current repo already has a useful v0 skeleton:
+The current repo now has the main v1 building blocks in place:
 
 ```txt
-packages/core        Logger, LogEvent, levels, codecs, console/memory/batch transports
-packages/browser     Browser HTTP transport and console/error/fetch/XHR/page lifecycle integrations
-packages/node        stdout/file/http transports and process integration
+packages/core        Logger, LogRecord helpers, LogEvent projection, context, typed events, codecs, console/memory/batch transports
+packages/browser     Browser HTTP transport, offline queue, beacon/page lifecycle flush, console/error/fetch/XHR integrations
+packages/node        stdout/stderr/file/http/worker transports, AsyncLocalStorage context, process and diagnostics-channel integrations
 packages/processors  redact/sample/tags/type/dedupe/trace processors
 packages/codecs      fixed-shape JSON, msgpackr adapter, projector codec
-packages/otel        OTLP JSON mapping and HTTP transport
+packages/otel        OTLP JSON mapping, HTTP transport, active span trace processor
+packages/sentry      Sentry structured logs, breadcrumbs, exception/message transport
 examples/*           browser and node basic demos
 ```
 
-The target architecture intentionally moves beyond that skeleton:
+Remaining architecture work is mostly about polish and package topology:
 
-- `Processor` becomes `Middleware` in the public mental model. A compatibility alias can remain while the API stabilizes.
-- `LogEvent` becomes a lower-level `LogRecord` with a single hidden class, lazy message support, an error slot, bound context, and source metadata.
+- `Processor` is still supported as compatibility vocabulary while `Middleware` is the public mental model.
+- `LogEvent` remains the transport-facing compatibility envelope while the hot path constructs `LogRecord` and projects when needed.
 - Coarse browser/node packages can remain as presets, but stable v1 packages should split platform transports and integrations into smaller installable units.
-- The current dual ESM/CJS output should move to ESM-only with conditional exports once the public API is ready.
-- The current batch transport is a simple buffer. The target needs bounded queues, byte limits, retry, drop counters, circuit breaking, pagehide/beacon behavior, and flush semantics per runtime.
+- The current dual ESM/CJS output is retained for compatibility. Declaration output is NodeNext-compatible and public subpath exports are verified.
+- Batch transports now cover bounded queues, byte limits, retry, drop counters, circuit breaking, pagehide/beacon behavior, and runtime flush semantics.
 
 ## Non-Negotiable Design Rules
 
