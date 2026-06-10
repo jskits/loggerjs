@@ -204,6 +204,7 @@ export * from "./xhr-integration.js";
 export * from "./framework-error-integration.js";
 export * from "./reporting-integration.js";
 export * from "./router-integration.js";
+export * from "./service-worker-integration.js";
 export * from "./user-action-integration.js";
 export * from "./websocket-integration.js";
 export * from "./web-vitals-integration.js";
@@ -381,6 +382,38 @@ export interface CaptureRouterOptions {
     removeEventListener?: typeof globalThis.removeEventListener;
 }
 export declare function captureRouterIntegration(options?: CaptureRouterOptions): Integration;
+```
+
+## service-worker-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface BrowserServiceWorkerControllerLike {
+    scriptURL?: string;
+    state?: string;
+}
+export interface BrowserServiceWorkerContainerEventsLike {
+    controller?: BrowserServiceWorkerControllerLike | null;
+    addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
+    removeEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void;
+}
+export interface BrowserServiceWorkerMessagePayload {
+    dataType: string;
+    byteLength?: number;
+    data?: unknown;
+    origin?: string;
+    lastEventId?: string;
+}
+export interface CaptureServiceWorkerOptions {
+    level?: LoggerLevel;
+    captureControllerChange?: boolean;
+    captureMessages?: boolean;
+    captureMessageErrors?: boolean;
+    captureMessageData?: boolean;
+    serviceWorker?: BrowserServiceWorkerContainerEventsLike;
+    sanitizeUrl?: (url: string) => string;
+}
+export declare function captureServiceWorkerIntegration(options?: CaptureServiceWorkerOptions): Integration;
 ```
 
 ## service-worker-transport.d.ts

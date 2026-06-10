@@ -43,6 +43,7 @@ import { captureFrameworkErrorsIntegration } from "@loggerjs/browser/integration
 import { capturePerformanceIntegration } from "@loggerjs/browser/integration-performance";
 import { captureReportingIntegration } from "@loggerjs/browser/integration-reporting";
 import { captureRouterIntegration } from "@loggerjs/browser/integration-router";
+import { captureServiceWorkerIntegration } from "@loggerjs/browser/integration-service-worker";
 import { captureUserActionsIntegration } from "@loggerjs/browser/integration-user-actions";
 import { captureWebSocketIntegration } from "@loggerjs/browser/integration-websocket";
 import { postgresTransport } from "@loggerjs/database/postgres";
@@ -115,6 +116,7 @@ capturePerformanceIntegration({
 });
 captureReportingIntegration({ reportTypes: ["csp-violation", "deprecation"] });
 captureRouterIntegration({ includeState: true, urlMode: "path" });
+captureServiceWorkerIntegration({ captureMessageData: false });
 const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
 frameworkErrors.reactComponentDidCatch(new Error("boom"), { componentStack: "App" });
 captureUserActionsIntegration({ events: ["click", "submit"], captureText: false });

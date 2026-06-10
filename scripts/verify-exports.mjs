@@ -26,6 +26,7 @@ const checks = [
   ["@loggerjs/browser/integration-framework-errors", ["captureFrameworkErrorsIntegration"]],
   ["@loggerjs/browser/integration-reporting", ["captureReportingIntegration"]],
   ["@loggerjs/browser/integration-router", ["captureRouterIntegration"]],
+  ["@loggerjs/browser/integration-service-worker", ["captureServiceWorkerIntegration"]],
   ["@loggerjs/browser/integration-user-actions", ["captureUserActionsIntegration"]],
   ["@loggerjs/browser/integration-websocket", ["captureWebSocketIntegration"]],
   ["@loggerjs/browser/integration-page-lifecycle", ["pageLifecycleIntegration"]],
