@@ -5,6 +5,7 @@ Compatibility processor package for common synchronous middleware behavior.
 ```ts
 import {
   dedupeProcessor,
+  dynamicSamplerProcessor,
   enrichProcessor,
   filterProcessor,
   fingerprintProcessor,
@@ -32,6 +33,7 @@ const processors = [
   stackParserProcessor({ dropInternal: true, includeRaw: false }),
   fingerprintProcessor({ parts: ["logger", "type", "message", "error.name", "error.message"] }),
   sampleProcessor({ rates: { debug: 0.1, info: 1, warn: 1, error: 1, fatal: 1, trace: 0.01 } }),
+  dynamicSamplerProcessor({ defaultRate: 0.25, stickyBy: (event) => event.trace?.traceId }),
   tagsProcessor({ service: "checkout" }),
   levelOverrideProcessor([{ tags: { audit: true }, level: "warn" }]),
   filterProcessor([{ tags: { noisy: true }, reason: "noisy" }]),

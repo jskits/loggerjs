@@ -3,6 +3,7 @@ import type { LogEvent, ProcessorContext } from "@loggerjs/core";
 import {
   context,
   dedupe,
+  dynamicSampler,
   enrich,
   filter,
   fingerprint,
@@ -67,5 +68,6 @@ describe("processor middleware aliases", () => {
     expect(stackParser()(event, processorContext)).toBe(event);
     expect(privacyGuard()(event, processorContext)).toBe(event);
     expect(schemaDevCheck()(event, processorContext)).toBe(event);
+    expect(dynamicSampler({ defaultRate: 1 })(event, processorContext)).toBe(event);
   });
 });

@@ -15,6 +15,44 @@ export interface DedupeOptions {
 export declare function dedupeProcessor(options?: DedupeOptions): Processor;
 ```
 
+## dynamic-sampler.d.ts
+
+```ts
+import { type EnabledLogLevelName, type LogEvent, type Processor, type ProcessorContext } from "@loggerjs/core";
+export interface DynamicSamplerStats {
+    readonly key: string;
+    readonly seen: number;
+    readonly kept: number;
+    readonly dropped: number;
+    readonly lastSeenMs: number;
+}
+export interface DynamicSamplerDecisionContext extends DynamicSamplerStats {
+    readonly now: number;
+}
+export type DynamicSampleRate = number | ((event: LogEvent, state: DynamicSamplerDecisionContext) => number);
+export interface DynamicSamplerRule {
+    rate: DynamicSampleRate;
+    when?: (event: LogEvent, context: ProcessorContext) => boolean;
+    key?: (event: LogEvent) => string;
+    stickyBy?: (event: LogEvent) => string | undefined;
+}
+export interface DynamicSamplerProcessor extends Processor {
+    stats(): readonly DynamicSamplerStats[];
+    reset(key?: string): void;
+}
+export interface DynamicSamplerOptions {
+    defaultRate?: DynamicSampleRate;
+    rules?: readonly DynamicSamplerRule[];
+    key?: (event: LogEvent) => string;
+    stickyBy?: (event: LogEvent) => string | undefined;
+    random?: () => number;
+    exemptLevels?: readonly EnabledLogLevelName[];
+    maxKeys?: number;
+    onDrop?: (event: LogEvent, key: string, rate: number) => void;
+}
+export declare function dynamicSamplerProcessor(options?: DynamicSamplerOptions): DynamicSamplerProcessor;
+```
+
 ## enrich.d.ts
 
 ```ts
@@ -138,6 +176,7 @@ export * from "./normalize-error.js";
 export * from "./stack-parser.js";
 export * from "./privacy-guard.js";
 export * from "./schema-dev-check.js";
+export * from "./dynamic-sampler.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
 export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
@@ -153,6 +192,7 @@ export { normalizeErrorProcessor as normalizeError } from "./normalize-error.js"
 export { stackParserProcessor as stackParser } from "./stack-parser.js";
 export { privacyGuardProcessor as privacyGuard } from "./privacy-guard.js";
 export { schemaDevCheckProcessor as schemaDevCheck } from "./schema-dev-check.js";
+export { dynamicSamplerProcessor as dynamicSampler } from "./dynamic-sampler.js";
 ```
 
 ## level-override.d.ts
