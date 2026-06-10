@@ -12,6 +12,7 @@ export * from "./framework-error-integration";
 export * from "./reporting-integration";
 export * from "./router-integration";
 export * from "./user-action-integration";
+export * from "./websocket-integration";
 export * from "./web-vitals-integration";
 export * from "./performance-integration";
 export * from "./page-lifecycle";

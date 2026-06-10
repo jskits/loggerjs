@@ -44,6 +44,7 @@ import { capturePerformanceIntegration } from "@loggerjs/browser/integration-per
 import { captureReportingIntegration } from "@loggerjs/browser/integration-reporting";
 import { captureRouterIntegration } from "@loggerjs/browser/integration-router";
 import { captureUserActionsIntegration } from "@loggerjs/browser/integration-user-actions";
+import { captureWebSocketIntegration } from "@loggerjs/browser/integration-websocket";
 import { postgresTransport } from "@loggerjs/database/postgres";
 import { sqliteTransport } from "@loggerjs/database/sqlite";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
@@ -117,6 +118,7 @@ captureRouterIntegration({ includeState: true, urlMode: "path" });
 const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
 frameworkErrors.reactComponentDidCatch(new Error("boom"), { componentStack: "App" });
 captureUserActionsIntegration({ events: ["click", "submit"], captureText: false });
+captureWebSocketIntegration({ captureMessages: true, captureSentMessages: true });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 sqliteTransport({
   database: {

@@ -27,6 +27,7 @@ const checks = [
   ["@loggerjs/browser/integration-reporting", ["captureReportingIntegration"]],
   ["@loggerjs/browser/integration-router", ["captureRouterIntegration"]],
   ["@loggerjs/browser/integration-user-actions", ["captureUserActionsIntegration"]],
+  ["@loggerjs/browser/integration-websocket", ["captureWebSocketIntegration"]],
   ["@loggerjs/browser/integration-page-lifecycle", ["pageLifecycleIntegration"]],
   [
     "@loggerjs/browser/integration-performance",

@@ -205,6 +205,7 @@ export * from "./framework-error-integration.js";
 export * from "./reporting-integration.js";
 export * from "./router-integration.js";
 export * from "./user-action-integration.js";
+export * from "./websocket-integration.js";
 export * from "./web-vitals-integration.js";
 export * from "./performance-integration.js";
 export * from "./page-lifecycle.js";
@@ -503,6 +504,51 @@ export interface CaptureWebVitalsOptions {
     removeEventListener?: typeof globalThis.removeEventListener;
 }
 export declare function captureWebVitalsIntegration(options?: CaptureWebVitalsOptions): Integration;
+```
+
+## websocket-integration.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+type BrowserWebSocketSendPayload = Parameters<WebSocket["send"]>[0];
+export interface BrowserCapturedWebSocketLike {
+    url?: string;
+    send?: (data: BrowserWebSocketSendPayload) => void;
+    close?: (code?: number, reason?: string) => void;
+    addEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+    removeEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+}
+export interface BrowserCapturedWebSocketConstructor {
+    new (url: string | URL, protocols?: string | string[]): BrowserCapturedWebSocketLike;
+    prototype?: unknown;
+    CONNECTING?: number;
+    OPEN?: number;
+    CLOSING?: number;
+    CLOSED?: number;
+}
+export type BrowserWebSocketDirection = "incoming" | "outgoing";
+export interface BrowserWebSocketMessagePayload {
+    direction: BrowserWebSocketDirection;
+    dataType: string;
+    byteLength?: number;
+    data?: unknown;
+}
+export interface CaptureWebSocketOptions {
+    level?: LoggerLevel;
+    captureConnect?: boolean;
+    captureOpen?: boolean;
+    captureClose?: boolean;
+    captureError?: boolean;
+    captureMessages?: boolean;
+    captureSentMessages?: boolean;
+    captureMessageData?: boolean;
+    sampleRate?: number;
+    random?: () => number;
+    sanitizeUrl?: (url: string) => string;
+    WebSocket?: BrowserCapturedWebSocketConstructor;
+}
+export declare function captureWebSocketIntegration(options?: CaptureWebSocketOptions): Integration;
+export {};
 ```
 
 ## websocket-transport.d.ts
