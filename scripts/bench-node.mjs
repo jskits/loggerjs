@@ -34,6 +34,19 @@ const sampleBatch = Array.from({ length: 16 }, (_, index) => ({
   id: `bench-${index}`,
   seq: index,
 }));
+const sampleRecordBatch = Array.from({ length: 16 }, (_, index) =>
+  core.createRecord({
+    time: 1_700_000_000_000,
+    level: 30,
+    category: ["bench", "node"],
+    type: "order.created",
+    tags: { service: "checkout", env: "bench" },
+    msg: "order created",
+    props: { orderId: "ord_123", amount: 42.5, currency: "USD" },
+    ctx: { requestId: "req_123", tenantId: "tenant_1" },
+    seq: index,
+  }),
+);
 
 let blackhole = 0;
 
@@ -59,9 +72,14 @@ function measure(name, fn, count = iterations) {
 
 async function main() {
   const noopTransport = { name: "noop", log() {} };
+  const noopWriteTransport = { name: "noop-write", write() {} };
   const disabledLogger = core.createLogger({ level: "info", transports: [noopTransport] });
   const noTransportLogger = core.createLogger({ level: "debug", transports: [] });
   const noopTransportLogger = core.createLogger({ level: "debug", transports: [noopTransport] });
+  const recordPathLogger = core.createLogger({
+    level: "debug",
+    transports: [noopWriteTransport],
+  });
   const batchTransport = core.batchTransport(
     {
       name: "batch-inner",
@@ -117,6 +135,9 @@ async function main() {
     measure("enabled logger noop transport", (index) =>
       noopTransportLogger.info("order created", { index }),
     ),
+    measure("enabled logger record write transport", (index) =>
+      recordPathLogger.info("order created", { index }),
+    ),
     measure("console transport noop writer", (index) =>
       consoleLogger.info("order created", { index }),
     ),
@@ -134,6 +155,11 @@ async function main() {
     measure(
       "fast-event-json encode batch",
       () => fastEventJsonCodec.encode(sampleBatch),
+      Math.max(10_000, Math.floor(iterations / 5)),
+    ),
+    measure(
+      "fast-event-json encode record batch",
+      () => fastEventJsonCodec.encode(sampleRecordBatch),
       Math.max(10_000, Math.floor(iterations / 5)),
     ),
     measure(

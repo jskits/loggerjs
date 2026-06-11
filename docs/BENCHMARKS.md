@@ -18,9 +18,11 @@ pnpm size:check
 - Disabled debug log with a lazy message.
 - Enabled logger with no transports.
 - Enabled logger with a no-op transport.
+- Enabled logger with a record-aware no-op write transport (record fast path, no event projection).
 - Console transport with a no-op patched console.
 - Batch transport enqueue path.
 - JSON, safe JSON, fast event JSON, and msgpack adapter encode/decode.
+- Fast event JSON encoding raw LogRecord batches (record transport boundary).
 
 Tune iteration counts with:
 
