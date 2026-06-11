@@ -1,46 +1,63 @@
 # loggerjs
 
-`loggerjs` is an isomorphic structured logging SDK for browser and server-side JavaScript. It is built around three user-facing concepts plus one transport-owned serialization boundary:
+**Isomorphic structured logging for JavaScript — one pipeline from browser to server, built for automatic collection, composable processing, and measured performance.**
 
-- **Integrations** automatically collect logs from platform behavior, such as browser console calls, script errors, fetch/XHR failures, page lifecycle flushes, Node process errors, and diagnostics channels.
-- **Middleware/processors** synchronously enrich, redact, sample, tag, type, dedupe, or attach trace context before logs reach transports.
-- **Transports** deliver logs to a destination, such as console, stdout, file, HTTP, OTLP, Sentry, a worker, or a custom sink.
-- **Codecs** belong to transports and own serialization. Middleware keeps raw values and does not stringify the record.
+LoggerJS is a monorepo of logging packages around a dependency-free, platform-neutral core. It is organized around three user-facing concepts plus one boundary rule:
 
-The core package is dependency-free and platform-neutral. Browser, Node, OTLP, Sentry, codecs, and processor packages layer on top.
+- **Integrations** collect logs automatically from platform behavior — browser console calls, script errors, fetch/XHR failures, Web Vitals, route changes, Node process crashes, HTTP servers, serverless handlers, queue and database clients. All opt-in.
+- **Middleware / processors** synchronously enrich, redact, sample, dedupe, rate-limit, fingerprint, buffer (fingers-crossed), route, and tag logs before delivery. Middleware run on raw records; processors run on projected events.
+- **Transports** deliver logs anywhere — console, stdout, files, HTTP, IndexedDB, WebSocket, service workers, worker threads, OTLP, Sentry, Datadog, Elasticsearch, Loki, CloudWatch, SQL databases — with shared batching, retry, backoff, and circuit-breaker machinery.
+- **Codecs belong to transports.** The pipeline keeps values raw; each destination owns its serialization. Built-in codecs are fast by default and never lose a log to an encoding error.
+
+## Why LoggerJS
+
+- **Truly isomorphic.** The core has zero dependencies, zero platform APIs, and a type surface that compiles without DOM libs. The same logger code runs in Node, browsers, workers, and edge runtimes.
+- **Automatic collection as a first-class concept.** Most loggers stop at `logger.info()`. LoggerJS ships 24 integrations that turn platform behavior into structured logs, with re-entrancy guards and unpatched-original registries so capture never loops.
+- **Performance with receipts.** Disabled levels cost ~5ns (at parity with pino). The full NDJSON path runs at ~83% of pino for equivalent output while carrying a record pipeline pino doesn't have — and the numbers are [measured, published](docs/BENCHMARKS.md), and enforced by a CI regression gate. The deliberate trade-off is [documented](docs/ARCHITECTURE.md).
+- **Logs survive bad days.** Crash-path `flushSync`, beacon delivery on page close, offline queues with replay, batch retry with circuit breakers, codecs that fall back instead of throwing on circular references, and meta counters for every silent degradation.
+- **Library-author friendly.** `getLogger(["my-lib"])` is a no-op until the host application calls `configure()` — log from libraries without forcing a logging dependency decision on users.
 
 ## Packages
 
-```txt
-@loggerjs/core        Logger, event model, context, codecs, console/memory/batch transports
-@loggerjs/browser     Browser HTTP transport and console/error/fetch/XHR/page lifecycle integrations
-@loggerjs/node        stdout/stderr/file/http/worker transports, AsyncLocalStorage context, process and diagnostics integrations
-@loggerjs/processors  Redact, sample, tags, type, dedupe, trace processors
-@loggerjs/codecs      Fast fixed-shape JSON, msgpackr adapter, projector codec
-@loggerjs/otel        OTLP JSON mapping, OTLP HTTP transport, active span trace processor
-@loggerjs/sentry      Sentry structured logs, breadcrumbs, exception/message capture transport
-```
+| Package | Contents |
+| --- | --- |
+| `@loggerjs/core` | Logger, record/event model, registry, context, middleware kernel, integration API, console/memory/test/batch transports, json/safe-json/ndjson codecs |
+| `@loggerjs/browser` | HTTP/IndexedDB/WebSocket/service-worker/broadcast-channel transports, offline queues, ZIP export, 14 browser integrations |
+| `@loggerjs/node` | stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, AsyncLocalStorage context, 10 Node integrations |
+| `@loggerjs/processors` | redact, privacy-guard, sample, dynamic-sampler, rate-limit, dedupe, fingerprint, filter, route, level-override, normalize-error, stack-parser, enrich, tags, trace, fingers-crossed, breadcrumbs, schema-dev-check |
+| `@loggerjs/codecs` | fast-event-json (the performance codec), msgpackr adapter, projector |
+| `@loggerjs/otel` | OTLP JSON mapping, OTLP/HTTP transport, OpenTelemetry log bridge, active-span trace processor |
+| `@loggerjs/sentry` | Sentry structured logs, breadcrumbs, exception/message capture |
+| `@loggerjs/datadog` | Datadog Logs intake transport |
+| `@loggerjs/elastic` | Elasticsearch bulk API transport |
+| `@loggerjs/loki` | Grafana Loki push transport |
+| `@loggerjs/cloudwatch` | CloudWatch Logs transport with built-in SigV4 signing |
+| `@loggerjs/database` | SQLite/Postgres/custom-adapter batch transports |
 
-## Basic Node Usage
+All packages ship ESM + CJS with full TypeScript declarations and granular subpath exports (`@loggerjs/node/transport-stdout`, `@loggerjs/browser/integration-console`, …). Vendor transports speak wire protocols directly — no vendor SDKs bundled.
+
+## Quick Start — Node
 
 ```ts
 import { captureProcessIntegration, createLogger, stdoutTransport } from "@loggerjs/node";
-import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
+import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
-  name: "api",
+  category: ["api"],
   level: "info",
   tags: { service: "checkout", env: process.env.NODE_ENV ?? "dev" },
-  processors: [redactProcessor(), tagsProcessor({ runtime: "node" })],
+  processors: [redactProcessor({ keys: ["password", /token/i] })],
   transports: [stdoutTransport()],
   integrations: [captureProcessIntegration()],
 });
 
-logger.info("order created", { orderId: "ord_123", token: "secret" });
+logger.info("order created", { orderId: "ord_123" });
+logger.error(new Error("card declined"), "payment failed", { orderId: "ord_123" });
+
 await logger.flush();
 ```
 
-## Basic Browser Usage
+## Quick Start — Browser
 
 ```ts
 import {
@@ -55,7 +72,7 @@ import {
 import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
-  name: "web",
+  category: ["web"],
   level: "info",
   processors: [redactProcessor()],
   transports: [
@@ -76,10 +93,30 @@ const logger = createLogger({
 logger.info("page loaded");
 ```
 
+Logs batch over HTTP, queue while offline, replay with backoff when the network returns, and flush via `sendBeacon` when the tab closes.
+
+## Quick Start — Library Authors
+
+```ts
+// inside your library — silent until the app configures it
+import { getLogger } from "@loggerjs/core";
+const logger = getLogger(["my-lib", "client"]);
+logger.debug("handshake started");
+
+// inside the application
+import { configure } from "@loggerjs/core";
+import { stdoutTransport } from "@loggerjs/node";
+
+await configure({
+  transports: { stdout: stdoutTransport() },
+  loggers: [{ category: ["my-lib"], level: "warn", transports: ["stdout"] }],
+});
+```
+
 ## Typed Events
 
 ```ts
-import { createLogger, defineEvent } from "@loggerjs/core";
+import { defineEvent } from "@loggerjs/core";
 
 const CheckoutCompleted = defineEvent<{ orderId: string; amountCents: number }>({
   type: "checkout.completed",
@@ -87,25 +124,68 @@ const CheckoutCompleted = defineEvent<{ orderId: string; amountCents: number }>(
   tags: { domain: "checkout" },
 });
 
-const logger = createLogger();
 logger.event(CheckoutCompleted, { orderId: "ord_123", amountCents: 4999 });
 ```
 
-## Operational Docs
+## Context
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Privacy, offline queue, and crash-path guidance](docs/OPERATIONS.md)
-- [Benchmarks and size budgets](docs/BENCHMARKS.md)
-- [Migration notes](docs/MIGRATION.md)
-- [Release workflow](docs/RELEASE.md)
+```ts
+import { withContext } from "@loggerjs/core";
+import { installAsyncLocalStorageContext } from "@loggerjs/node";
+
+installAsyncLocalStorageContext(); // once at startup
+
+await withContext({ requestId: "req_123" }, async () => {
+  logger.info("request started"); // carries { requestId } across awaits
+});
+```
+
+## Performance
+
+Measured on Node 22 / Apple Silicon, full methodology and snapshot in [docs/BENCHMARKS.md](docs/BENCHMARKS.md):
+
+| Path | ns/op |
+| --- | ---: |
+| Disabled level call (lazy message) | ~5 (pino: ~7) |
+| Enabled pipeline, record fast path | ~108 |
+| Batch transport enqueue | ~166 |
+| Full NDJSON line, lean envelope | ~270 (~83% of pino) |
+| Full NDJSON line with id/seq/levelName | ~300 |
+| winston, same path | ~2,341 |
+
+The hot path is engineered — level gating before any allocation, lazy message resolution, frozen shared tags, memoized ids, a record fast path that skips event projection, fragment-cached serialization — and guarded by `pnpm bench:gate` in CI. The remaining gap to pino is a [documented architectural decision](docs/ARCHITECTURE.md), not an accident: LoggerJS allocates one record per log so middleware, integrations, and multiple transports can observe it.
+
+## Documentation
+
+| Doc | Contents |
+| --- | --- |
+| [Getting Started](docs/GETTING-STARTED.md) | Install, first loggers, levels, context, typed events, registry |
+| [Concepts](docs/CONCEPTS.md) | The pipeline model: records, events, middleware, processors, transports, codecs |
+| [Transports](docs/TRANSPORTS.md) | Every built-in transport, batch reliability options, writing your own |
+| [Integrations](docs/INTEGRATIONS.md) | All 24 integrations, the integration API, writing your own |
+| [Processors](docs/PROCESSORS.md) | The middleware/processor toolbox and ordering guidance |
+| [Codecs](docs/CODECS.md) | Serialization ownership, fast-by-default semantics, custom codecs |
+| [Performance](docs/PERFORMANCE.md) | Tuning guide: fast path, codec choice, batching |
+| [Operations](docs/OPERATIONS.md) | Privacy defaults, offline queues, crash paths, delivery reliability |
+| [Benchmarks](docs/BENCHMARKS.md) | Methodology, measured snapshot, regression gate, size budgets |
+| [Migration](docs/MIGRATION.md) | Coming from pino, winston, or console.log |
+| [Architecture](docs/ARCHITECTURE.md) | The full design document and recorded decisions |
+| [Contributing](docs/CONTRIBUTING.md) | Repo workflow, CI gates, engineering conventions |
+| [Release](docs/RELEASE.md) | Versioning and publish workflow |
+
+Runnable examples live in [`examples/`](examples): Node basics, browser basics, OpenTelemetry, Sentry.
 
 ## Development
 
 ```bash
 pnpm install
-pnpm check
-pnpm bench
-pnpm release:dry-run
+pnpm check        # format, lint, typecheck, test, build, size budgets, API reports, pack checks
+pnpm bench        # node + browser benchmarks
+pnpm bench:gate   # performance regression gate (also runs in CI)
 ```
 
-`pnpm check` runs formatting, linting, typechecks, tests, builds, size budgets, package export checks, public type checks, API report checks, and npm pack validation.
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for conventions and the rules CI enforces.
+
+## License
+
+[MIT](LICENSE) © JS Kits
