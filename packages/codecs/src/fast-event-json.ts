@@ -1,4 +1,5 @@
 import {
+  defaultRecordId,
   incrementLoggerMetaCounter,
   isLogRecord,
   normalizeError,
@@ -101,7 +102,7 @@ function encodeRecord(
   stringify: JsonStringify,
 ): string {
   const levelName = toLevelName(record.level);
-  const id = `${record.time.toString(36)}-${record.seq.toString(36)}-${levelName}`;
+  const id = defaultRecordId(record, levelName);
   let output = `{"id":${JSON.stringify(id)},"time":${record.time},"seq":${record.seq},"level":${record.level},"levelName":${JSON.stringify(levelName)},"logger":${JSON.stringify(record.category.join("."))},"message":${JSON.stringify(resolveMessage(record))}`;
   output = appendField(output, "type", record.type ?? undefined, stringify);
   output = appendField(output, "tags", record.tags ?? undefined, stringify);

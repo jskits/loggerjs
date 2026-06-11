@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRecord, type LogEvent } from "@loggerjs/core";
+import { createRecord, recordToEvent, type LogEvent } from "@loggerjs/core";
 import { fastEventJsonCodec, msgpackrCodec, projectorCodec } from "../src";
 
 function sampleEvent(patch: Partial<LogEvent> = {}): LogEvent {
@@ -62,6 +62,12 @@ describe("fast event json hostile inputs", () => {
     expect(JSON.parse(payload)).toMatchObject({
       data: { err: { name: "Error", message: "boom" } },
     });
+  });
+
+  it("stamps the same default id on records as recordToEvent", () => {
+    const record = createRecord({ time: 1700000000000, level: 30, msg: "created", seq: 7 });
+    const encoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;
+    expect(encoded.id).toBe(recordToEvent(record).id);
   });
 
   it("truncates deep nesting when safe options are set", () => {

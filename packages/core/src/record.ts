@@ -119,7 +119,13 @@ export function resolveMessage(record: LogRecord): string {
   return record.msg;
 }
 
-function defaultRecordId(record: LogRecord, levelName: EnabledLogLevelName): string {
+/**
+ * Derives the id a record receives when it is projected to an event without a
+ * configured id factory. Record-aware transports that encode records directly
+ * never consult the logger's `idFactory`; they get this id instead. Codecs that
+ * stamp ids onto raw records must use this function so both paths agree.
+ */
+export function defaultRecordId(record: LogRecord, levelName: EnabledLogLevelName): string {
   return `${record.time.toString(36)}-${record.seq.toString(36)}-${levelName}`;
 }
 

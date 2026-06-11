@@ -233,6 +233,13 @@ export declare function createEncodeContext(): EncodeContext;
 export declare function createRecord(options: CreateRecordOptions): LogRecord;
 export declare function cloneRecord(record: LogRecord, patch?: Partial<LogRecord>): LogRecord;
 export declare function resolveMessage(record: LogRecord): string;
+/**
+ * Derives the id a record receives when it is projected to an event without a
+ * configured id factory. Record-aware transports that encode records directly
+ * never consult the logger's `idFactory`; they get this id instead. Codecs that
+ * stamp ids onto raw records must use this function so both paths agree.
+ */
+export declare function defaultRecordId(record: LogRecord, levelName: EnabledLogLevelName): string;
 export declare function recordToEvent(record: LogRecord, options?: RecordToEventOptions): LogEvent;
 export declare function eventToRecord(event: LogEvent): LogRecord;
 export declare function isLogRecord(value: unknown): value is LogRecord;

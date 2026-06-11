@@ -7,6 +7,13 @@ Update with `pnpm build && pnpm api:report` after intentional public API changes
 
 ```ts
 import { type Codec, type SafeStringifyOptions } from "@loggerjs/core";
+/**
+ * Without any option set, encode runs on a native `JSON.stringify` fast path: nested
+ * `Error` values serialize as `{}` and circular or BigInt payloads trigger a safe
+ * re-encode of the whole input (circular refs become "[Circular]", BigInt becomes a
+ * string). Setting any {@link SafeStringifyOptions} field opts into the safe encoder
+ * everywhere, which also preserves `Error` name/message/stack inside data payloads.
+ */
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
     includeContext?: boolean;
     includeData?: boolean;
