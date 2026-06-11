@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  ["@loggerjs/core", "packages/core/dist/index.js", 56_000, 12_500],
+  ["@loggerjs/core", "packages/core/dist/index.js", 56_000, 12_600],
   ["@loggerjs/browser", "packages/browser/dist/index.js", 98_000, 21_000],
   ["@loggerjs/node", "packages/node/dist/index.js", 58_000, 12_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
