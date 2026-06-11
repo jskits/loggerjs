@@ -12,6 +12,7 @@ const checks = [
   ["@loggerjs/core/transport-console", ["consoleTransport"]],
   ["@loggerjs/core/transport-batch", ["batchTransport", "estimateLogEventBytes"]],
   ["@loggerjs/core/transport-test", ["testTransport"]],
+  ["@loggerjs/codecs", ["fastEventJsonCodec", "msgpackrCodec", "projectorCodec"]],
   ["@loggerjs/core/context", ["withContext", "getContext"]],
   ["@loggerjs/core/events", ["defineEvent"]],
   ["@loggerjs/browser", ["browserHttpTransport"]],
@@ -84,6 +85,7 @@ const checks = [
 
 const workspacePackages = {
   "@loggerjs/browser": "packages/browser",
+  "@loggerjs/codecs": "packages/codecs",
   "@loggerjs/core": "packages/core",
   "@loggerjs/database": "packages/database",
   "@loggerjs/node": "packages/node",

@@ -56,7 +56,7 @@ try {
 import { createLogger, defineEvent } from "@loggerjs/core";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
-import { fastEventJsonCodec } from "@loggerjs/codecs";
+import { fastEventJsonCodec, msgpackrCodec } from "@loggerjs/codecs";
 import { redactProcessor } from "@loggerjs/processors";
 import { otlpJsonCodec } from "@loggerjs/otel/codec-otlp-json";
 import { sentryTransport } from "@loggerjs/sentry/transport";
@@ -70,6 +70,7 @@ const logger = createLogger({
 });
 logger.event(Event, {});
 fastEventJsonCodec().encode([]);
+if (!(msgpackrCodec().encode([]) instanceof Uint8Array)) throw new Error("bad msgpack payload");
 otlpJsonCodec().encode([]);
 browserHttpTransport({ url: "http://localhost/logs", fetchFn: async () => new Response(null, { status: 200 }) });
 stdoutTransport();
@@ -84,6 +85,7 @@ await logger.flush();
     join(consumerRoot, "cjs.cjs"),
     `
 const { createLogger } = require("@loggerjs/core");
+const { msgpackrCodec } = require("@loggerjs/codecs");
 const { stdoutTransport } = require("@loggerjs/node/transport-stdout");
 const { sentryTransport } = require("@loggerjs/sentry/transport");
 const { lokiTransport } = require("@loggerjs/loki/transport");
@@ -91,6 +93,7 @@ const { datadogLogsTransport } = require("@loggerjs/datadog/transport");
 
 const logger = createLogger({ transports: [{ log() {} }] });
 logger.info("cjs smoke");
+if (!(msgpackrCodec().encode([]) instanceof Uint8Array)) throw new Error("bad msgpack payload");
 stdoutTransport();
 sentryTransport({ sentry: {} });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });

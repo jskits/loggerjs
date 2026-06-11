@@ -59,7 +59,7 @@ import { queueIntegration } from "@loggerjs/node/integration-queue";
 import { serverlessIntegration } from "@loggerjs/node/integration-serverless";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
-import { fastEventJsonCodec } from "@loggerjs/codecs";
+import { fastEventJsonCodec, msgpackrCodec, type MsgpackrCodecOptions } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
 import { openTelemetryLogBridgeTransport } from "@loggerjs/otel/log-bridge";
 import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
@@ -97,6 +97,9 @@ logger.event(loginEvent, { userId: 123 });
 createMiddleware("identity", (record) => record);
 jsonCodec().encode([]);
 fastEventJsonCodec().encode([]);
+const msgpackOptions: MsgpackrCodecOptions = { useRecords: true };
+const msgpackPayload = msgpackrCodec(msgpackOptions).encode([]);
+msgpackrCodec().decode?.(msgpackPayload);
 redact({ paths: ["password"] });
 browserBroadcastChannelTransport({
   channelName: "logs",

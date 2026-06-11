@@ -195,6 +195,42 @@ describe("fast event json hostile inputs", () => {
 });
 
 describe("codec adapters", () => {
+  it("encodes and decodes events with the built-in msgpackr runtime", () => {
+    const codec = msgpackrCodec();
+    const payload = codec.encode([sampleEvent({ data: { orderId: "ord-1" } })]);
+
+    expect(payload).toBeInstanceOf(Uint8Array);
+    expect(codec.decode?.(payload)).toMatchObject([
+      {
+        logger: "api",
+        message: "created",
+        data: { orderId: "ord-1" },
+      },
+    ]);
+  });
+
+  it("projects records before built-in msgpackr encoding", () => {
+    const codec = msgpackrCodec();
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: ["api"],
+      msg: "created",
+      props: { orderId: "ord-1" },
+      ctx: { requestId: "req-1" },
+      seq: 1,
+    });
+
+    expect(codec.decode?.(codec.encode([record]))).toMatchObject([
+      {
+        logger: "api",
+        message: "created",
+        data: { orderId: "ord-1" },
+        context: { requestId: "req-1" },
+      },
+    ]);
+  });
+
   it("accepts LogRecord batches through the compatibility projection", () => {
     const record = createRecord({
       time: 1,
