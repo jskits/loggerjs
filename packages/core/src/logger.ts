@@ -300,22 +300,55 @@ export class Logger implements LoggerLike {
     const levelName = levelNameFor(level, levelValue);
     const time = this.clock();
     const seq = globalSeq++;
-    const context = mergeRecords(getContext(), this.bindings, this.contextProvider?.());
-    const normalized = normalizeLogArgs(message, data, props);
-    const record = createRecord({
+    const ambient = getContext();
+    const provided = this.contextProvider?.();
+    // Ambient contexts are already frozen BoundContexts; only merge and copy
+    // when logger bindings or a provider add fields on top.
+    const ctx =
+      this.bindings === undefined && provided === undefined
+        ? (ambient ?? null)
+        : createBoundContext(mergeRecords(ambient, this.bindings, provided));
+
+    let msg: string | null;
+    let lazy: (() => string) | null;
+    let recordProps: Record<string, unknown> | null;
+    let err: unknown;
+    if (
+      typeof message === "string" &&
+      (data === undefined || (isRecord(data) && !(data.error instanceof Error)))
+    ) {
+      // Common case: string message plus an optional plain data object.
+      msg = message;
+      lazy = null;
+      recordProps = (data as Record<string, unknown> | undefined) ?? null;
+      err = null;
+    } else {
+      const normalized = normalizeLogArgs(message, data, props);
+      msg = normalized.msg;
+      lazy = normalized.lazy;
+      recordProps = normalized.props;
+      err = normalized.err;
+    }
+
+    // Built inline with the exact field order of createRecord so records stay
+    // monomorphic; this avoids the options-object plus record double
+    // allocation on the hottest path.
+    const record: LogRecord = {
       time,
       level: levelValue,
       category: this.category,
       type: this.type ?? null,
       tags: this.tags ?? null,
-      msg: normalized.msg,
-      lazy: normalized.lazy,
-      props: normalized.props,
-      err: normalized.err,
-      ctx: createBoundContext(context),
+      trace: null,
+      msg,
+      lazy,
+      props: recordProps,
+      err,
+      ctx,
       source: "app",
+      stack: null,
       seq,
-    });
+    };
     this.emitRecord(record, levelName);
   }
 

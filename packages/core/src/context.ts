@@ -53,7 +53,14 @@ export function resetContextManager(): void {
 }
 
 export function getContext(): BoundContext | undefined {
-  return mergeContext(provider?.(), manager.get());
+  const provided = provider?.();
+  const managed = manager.get();
+  // Fast paths: most log calls have no ambient context at all, and merging
+  // allocates twice. Managed contexts are already frozen BoundContexts and
+  // can be returned as-is.
+  if (provided === undefined || provided === null) return managed;
+  if (managed === undefined) return createBoundContext(provided) ?? undefined;
+  return mergeContext(provided, managed);
 }
 
 export function withContext<T>(context: Record<string, unknown>, fn: () => T): T {
