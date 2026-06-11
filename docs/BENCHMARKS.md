@@ -8,8 +8,15 @@ LoggerJS benchmarks are intentionally simple and reproducible. They measure publ
 pnpm bench
 pnpm bench:node
 pnpm bench:browser
+pnpm bench:gate
 pnpm size:check
 ```
+
+`pnpm bench:gate` runs the Node suite and enforces regression limits as
+ratios against the pino scenarios measured on the same machine, so the gate
+is hardware-independent. Limits live in `scripts/check-bench-regression.mjs`
+and are generous on purpose: they catch structural regressions, not noise.
+CI runs the gate on every pull request.
 
 `pnpm bench` builds the workspace first, then runs Node and browser benchmarks. Browser benchmarks use a local headless Chrome binary. Set `CHROME_BIN` when Chrome is not installed in a standard location.
 
@@ -37,13 +44,14 @@ pino 10.3.1, winston 3.19.0, `BENCH_ITERATIONS=200000`:
 
 | Scenario | ns/op | ops/sec |
 | --- | ---: | ---: |
-| loggerjs disabled debug (lazy message) | 5 | 222,016,733 |
+| loggerjs disabled debug (lazy message) | 5 | 199,029,730 |
 | pino disabled debug | 7 | 146,145,415 |
-| loggerjs lean record sink | 275 | 3,632,844 |
-| loggerjs fast-event-json record sink | 305 | 3,278,908 |
-| loggerjs fast-event-json event sink | 879 | 1,137,786 |
-| loggerjs ndjson event sink | 1,189 | 841,282 |
-| pino ndjson noop sink | 228 | 4,380,253 |
+| loggerjs batch transport enqueue | 166 | 6,026,524 |
+| loggerjs lean record sink | 270 | 3,698,701 |
+| loggerjs fast-event-json record sink | 300 | 3,329,149 |
+| loggerjs ndjson event sink | 824 | 1,213,189 |
+| loggerjs fast-event-json event sink | 913 | 1,095,335 |
+| pino ndjson noop sink | 226 | 4,427,003 |
 | winston json noop sink | 2,341 | 427,136 |
 
 All loggerjs and pino full-path loggers carry the same base fields

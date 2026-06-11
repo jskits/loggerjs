@@ -20,6 +20,7 @@
     "api:report": "node scripts/api-report.mjs",
     "bench": "pnpm build && pnpm bench:node && pnpm bench:browser",
     "bench:browser": "node scripts/bench-browser.mjs",
+    "bench:gate": "node scripts/check-bench-regression.mjs",
     "bench:node": "node scripts/bench-node.mjs",
     "build": "turbo run build",
     "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm size:check && pnpm verify:exports && pnpm typecheck:public && pnpm api:check && pnpm pack:check",

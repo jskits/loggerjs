@@ -296,6 +296,12 @@ async function main() {
   await batchLogger.flush();
   Object.assign(console, originalConsole);
 
+  if (process.env.BENCH_JSON) {
+    console.log(JSON.stringify({ iterations, rows }));
+    if (blackhole === 42) console.error("blackhole", blackhole);
+    return;
+  }
+
   console.log(`Node benchmark iterations: ${iterations}`);
   console.log("| Scenario | ops/sec | ns/op | iterations |");
   console.log("| --- | ---: | ---: | ---: |");
