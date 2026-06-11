@@ -62,6 +62,20 @@ Notes:
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest and CRC for support workflows. |
 
+For high-throughput local browser capture on modern Chrome, prefer a dedicated
+IndexedDB log store with relaxed durability:
+
+```ts
+indexedDbTransport({
+  durability: "relaxed",
+  storageBucketName: "loggerjs-logs",
+  storageBucketDurability: "relaxed",
+});
+```
+
+Browsers without Storage Buckets support fall back to the regular IndexedDB
+instance while keeping the same transport API.
+
 ## Vendor packages
 
 All vendor transports speak the wire protocol directly over `fetch` and wrap themselves in `batchTransport`; none pull in a vendor SDK (Sentry peers on `@sentry/core` only).
