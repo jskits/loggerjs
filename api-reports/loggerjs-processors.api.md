@@ -94,7 +94,7 @@ export declare function dynamicSamplerProcessor(options?: DynamicSamplerOptions)
 ## enrich.d.ts
 
 ```ts
-import type { LogEvent, Processor, ProcessorContext, Tags, TraceContext } from "@loggerjs/core";
+import { type LogEvent, type LogRecord, type Middleware, type MiddlewareContext, type Processor, type ProcessorContext, type Tags, type TraceContext } from "@loggerjs/core";
 export interface EnrichPatch {
     message?: string;
     type?: string;
@@ -105,7 +105,18 @@ export interface EnrichPatch {
     source?: LogEvent["source"];
 }
 export type EnrichInput = EnrichPatch | ((event: LogEvent, context: ProcessorContext) => EnrichPatch | false | void);
+export interface EnrichRecordPatch {
+    message?: string;
+    type?: string;
+    tags?: Tags;
+    data?: unknown;
+    context?: Record<string, unknown>;
+    trace?: TraceContext;
+    source?: string | LogEvent["source"];
+}
+export type EnrichMiddlewareInput = EnrichRecordPatch | ((record: LogRecord, context: MiddlewareContext) => EnrichRecordPatch | false | void);
 export declare function enrichProcessor(input: EnrichInput): Processor;
+export declare function enrichMiddleware(input: EnrichMiddlewareInput): Middleware;
 ```
 
 ## filter-route.d.ts
@@ -218,12 +229,12 @@ export * from "./dynamic-sampler.js";
 export * from "./breadcrumb-buffer.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
-export { tagsProcessor as tags, typeProcessor as logType, contextProcessor as context, } from "./tags.js";
+export { tagsMiddleware, typeMiddleware, contextMiddleware, tagsProcessor as tags, tagsMiddleware as tagsMw, typeProcessor as logType, typeMiddleware as logTypeMw, contextProcessor as context, contextMiddleware as contextMw, } from "./tags.js";
 export { dedupeProcessor as dedupe } from "./dedupe.js";
-export { traceContextProcessor as traceContext } from "./trace.js";
+export { traceContextMiddleware, traceContextProcessor as traceContext, traceContextMiddleware as traceContextMw, } from "./trace.js";
 export { rateLimitProcessor as rateLimit } from "./rate-limit.js";
 export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed.js";
-export { enrichProcessor as enrich } from "./enrich.js";
+export { enrichMiddleware, enrichProcessor as enrich, enrichMiddleware as enrichMw, } from "./enrich.js";
 export { levelOverrideProcessor as levelOverride } from "./level-override.js";
 export { filterProcessor as filter, routeProcessor as route } from "./filter-route.js";
 export { fingerprintProcessor as fingerprint } from "./fingerprint.js";
@@ -398,7 +409,10 @@ export declare function stackParserProcessor(options?: StackParserOptions): Proc
 ## tags.d.ts
 
 ```ts
-import type { Processor, Tags } from "@loggerjs/core";
+import { type Middleware, type Processor, type Tags } from "@loggerjs/core";
+export declare function tagsMiddleware(tags: Tags): Middleware;
+export declare function typeMiddleware(type: string): Middleware;
+export declare function contextMiddleware(context: Record<string, unknown>): Middleware;
 export declare function tagsProcessor(tags: Tags): Processor;
 export declare function typeProcessor(type: string): Processor;
 export declare function contextProcessor(context: Record<string, unknown>): Processor;
@@ -407,7 +421,8 @@ export declare function contextProcessor(context: Record<string, unknown>): Proc
 ## trace.d.ts
 
 ```ts
-import type { Processor, TraceContext } from "@loggerjs/core";
+import { type Middleware, type Processor, type TraceContext } from "@loggerjs/core";
 export type TraceContextProvider = () => TraceContext | undefined;
+export declare function traceContextMiddleware(provider: TraceContextProvider): Middleware;
 export declare function traceContextProcessor(provider: TraceContextProvider): Processor;
 ```

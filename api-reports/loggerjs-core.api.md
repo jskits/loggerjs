@@ -164,7 +164,11 @@ export declare class Logger implements LoggerLike {
     private installIntegrations;
     private setupIntegration;
     private applyProcessors;
-    private dispatch;
+    private createEvent;
+    private createRecordTransportContext;
+    private createEventTransportContext;
+    private dispatchRecord;
+    private dispatchEvent;
     private reportInternalError;
 }
 export declare function createLogger(options?: LoggerOptions): Logger;
@@ -199,6 +203,9 @@ export interface CreateRecordOptions {
     time: number;
     level: number;
     category?: LoggerCategory;
+    type?: string | null;
+    tags?: LogEvent["tags"] | null;
+    trace?: LogEvent["trace"] | null;
     msg?: string | null;
     lazy?: (() => string) | null;
     props?: Record<string, unknown> | null;
@@ -219,7 +226,7 @@ export interface RecordToEventOptions {
     trace?: LogEvent["trace"];
     source?: LogSource;
 }
-export type CodecInput = LogEvent | readonly LogEvent[] | readonly LogRecord[];
+export type CodecInput = LogEvent | LogRecord | readonly (LogEvent | LogRecord)[];
 export declare function normalizeCategory(category: LoggerCategory | undefined): readonly string[];
 export declare function createBoundContext(bindings: Record<string, unknown> | null | undefined): BoundContext | null;
 export declare function createEncodeContext(): EncodeContext;
@@ -227,6 +234,7 @@ export declare function createRecord(options: CreateRecordOptions): LogRecord;
 export declare function cloneRecord(record: LogRecord, patch?: Partial<LogRecord>): LogRecord;
 export declare function resolveMessage(record: LogRecord): string;
 export declare function recordToEvent(record: LogRecord, options?: RecordToEventOptions): LogEvent;
+export declare function eventToRecord(event: LogEvent): LogRecord;
 export declare function isLogRecord(value: unknown): value is LogRecord;
 export declare function normalizeCodecInput(input: CodecInput): LogEvent | LogEvent[];
 ```
@@ -275,7 +283,7 @@ export declare function getLogger(category: LoggerCategory): RegistryLogger;
 ## transports/batch.d.ts
 
 ```ts
-import type { LogEvent, Transport } from "../types.js";
+import type { LogEvent, LogRecord, Transport } from "../types.js";
 export type DropPolicy = "drop-oldest" | "drop-newest" | "throw";
 export interface BatchTransportOptions {
     name?: string;
@@ -288,6 +296,7 @@ export interface BatchTransportOptions {
     maxQueueSize?: number;
     dropPolicy?: DropPolicy;
     estimateEventBytes?: (event: LogEvent) => number;
+    estimateRecordBytes?: (record: LogRecord) => number;
     maxRetries?: number;
     retryBaseDelayMs?: number;
     retryMaxDelayMs?: number;
@@ -297,6 +306,7 @@ export interface BatchTransportOptions {
     onDrop?: (event: LogEvent, reason: string) => void;
 }
 export declare function estimateLogEventBytes(event: LogEvent): number;
+export declare function estimateLogRecordBytes(record: LogRecord): number;
 export declare function batchTransport(inner: Transport, options?: BatchTransportOptions): Transport;
 ```
 
@@ -341,6 +351,8 @@ export interface TestTransportWaitForCountOptions extends TestTransportWaitOptio
     matcher?: TestTransportMatcher;
 }
 export interface TestTransportStats {
+    writeCalls: number;
+    writeBatchCalls: number;
     logCalls: number;
     logBatchCalls: number;
     flushCalls: number;
@@ -404,6 +416,9 @@ export interface LogRecord {
     time: number;
     level: number;
     category: readonly string[];
+    type: string | null;
+    tags: Tags | null;
+    trace: TraceContext | null;
     msg: string | null;
     lazy: (() => string) | null;
     props: Record<string, unknown> | null;
@@ -473,11 +488,14 @@ export type Processor = (event: LogEvent, context: ProcessorContext) => Processo
 export interface TransportContext {
     loggerName: string;
     now: () => number;
+    toEvent: (record: LogRecord) => LogEvent;
     reportInternalError: (error: unknown, detail?: Record<string, unknown>) => void;
 }
 export interface Transport {
     name?: string;
     minLevel?: LoggerLevel;
+    write?: (record: LogRecord, context: TransportContext) => void | Promise<void>;
+    writeBatch?: (records: LogRecord[], context: TransportContext) => void | Promise<void>;
     log?: (event: LogEvent, context: TransportContext) => void | Promise<void>;
     logBatch?: (events: LogEvent[], context: TransportContext) => void | Promise<void>;
     flush?: () => void | Promise<void>;
@@ -487,7 +505,7 @@ export interface Transport {
 export interface Codec<TPayload = string | Uint8Array> {
     name: string;
     contentType: string;
-    encode: (input: LogEvent | readonly LogEvent[] | readonly LogRecord[], context?: EncodeContext) => TPayload;
+    encode: (input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context?: EncodeContext) => TPayload;
     decode?: (payload: TPayload) => LogEvent | LogEvent[];
 }
 export interface LoggerLike {
@@ -506,10 +524,11 @@ export interface LoggerLike {
 }
 export type Teardown = () => void;
 export type ConsoleMethod = "debug" | "error" | "info" | "log" | "trace" | "warn";
+export type UnpatchedFunction = (...args: any[]) => unknown;
 export interface UnpatchedRegistry {
     readonly console: Partial<Record<ConsoleMethod, (...args: unknown[]) => void>>;
-    fetch?: typeof fetch;
-    XMLHttpRequest?: typeof XMLHttpRequest;
+    fetch?: UnpatchedFunction;
+    XMLHttpRequest?: unknown;
     get: <T = unknown>(key: string) => T | undefined;
     set: <T = unknown>(key: string, value: T) => T;
 }
