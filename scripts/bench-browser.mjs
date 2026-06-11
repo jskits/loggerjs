@@ -44,6 +44,19 @@ function safeRepoPath(urlPath) {
   return existsSync(absolutePath) ? absolutePath : undefined;
 }
 
+function waitForExit(childProcess, timeoutMs = 1_000) {
+  if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(resolve, timeoutMs);
+    childProcess.once("exit", () => {
+      clearTimeout(timeoutId);
+      resolve();
+    });
+  });
+}
+
 const page = `<!doctype html>
 <html>
   <head>
@@ -53,7 +66,8 @@ const page = `<!doctype html>
         "imports": {
           "@loggerjs/core": "/packages/core/dist/index.js",
           "@loggerjs/browser": "/packages/browser/dist/index.js",
-          "@loggerjs/codecs": "/packages/codecs/dist/index.js"
+          "@loggerjs/codecs": "/packages/codecs/dist/index.js",
+          "msgpackr": "/packages/codecs/node_modules/msgpackr/index.js"
         }
       }
     </script>
@@ -211,6 +225,7 @@ try {
   if (result.blackhole === 42) console.log("blackhole", result.blackhole);
 } finally {
   chromeProcess.kill("SIGTERM");
+  await waitForExit(chromeProcess);
   server.close();
-  rmSync(userDataDir, { force: true, recursive: true });
+  rmSync(userDataDir, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
 }
