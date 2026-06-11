@@ -6,10 +6,7 @@ Additional serialization codecs for transports.
 import { fastEventJsonCodec, msgpackrCodec, projectorCodec } from "@loggerjs/codecs";
 
 const json = fastEventJsonCodec();
-const msgpack = msgpackrCodec({
-  pack: (value) => runtime.pack(value),
-  unpack: (payload) => runtime.unpack(payload),
-});
+const msgpack = msgpackrCodec();
 
 const projected = projectorCodec({
   name: "ids-only",

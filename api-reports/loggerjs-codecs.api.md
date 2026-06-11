@@ -44,11 +44,13 @@ export * from "./projector.js";
 
 ```ts
 import { type Codec } from "@loggerjs/core";
+import { type Options as MsgpackrOptions } from "msgpackr";
 export interface MsgpackRuntime {
     pack: (input: unknown) => Uint8Array;
     unpack: (payload: Uint8Array) => unknown;
 }
-export declare function msgpackrCodec(runtime: MsgpackRuntime): Codec<Uint8Array>;
+export type MsgpackrCodecOptions = MsgpackrOptions;
+export declare function msgpackrCodec(options?: MsgpackRuntime | MsgpackrCodecOptions): Codec<Uint8Array>;
 ```
 
 ## projector.d.ts

@@ -24,7 +24,7 @@ interface Codec<TPayload = string | Uint8Array> {
 | `safeJsonCodec(options)` | core | Full safe normalization every time: circular → `"[Circular]"`, BigInt → string, Error → `{name, message, stack}`, depth/array/key truncation, Map/Set conversion. Default codec of `consoleTransport({ pretty: false })`. |
 | `ndjsonCodec(options)` | core | One JSON object per line. **Fast-by-default contract** (below). Default codec of the Node stdout/file transports. |
 | `fastEventJsonCodec(options)` | `@loggerjs/codecs` | The performance codec: native fast path, fragment caches (level, logger, tags, time), scan-based string escaping, flat-data direct writer, lean envelope options. |
-| `msgpackrCodec(runtime)` | `@loggerjs/codecs` | Adapter for a caller-supplied msgpack implementation (`{ pack, unpack }`); returns `Uint8Array`. No msgpack library is bundled. |
+| `msgpackrCodec(options?)` | `@loggerjs/codecs` | Built-in MessagePack codec backed by `msgpackr`; returns `Uint8Array`. Passing `{ pack, unpack }` is still supported for custom runtimes. |
 | `projectorCodec(options)` | `@loggerjs/codecs` | Generic project → serialize (→ parse → unproject) adapter for custom wire schemas. |
 | `otlpJsonCodec(options)` | `@loggerjs/otel` | OTLP/HTTP JSON log payloads with resource attributes. |
 

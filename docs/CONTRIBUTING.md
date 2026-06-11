@@ -18,7 +18,7 @@ packages/core         platform-neutral kernel: logger, record/event model, regis
 packages/browser      browser transports + integrations
 packages/node         node transports + integrations + AsyncLocalStorage context
 packages/processors   middleware/processor toolbox
-packages/codecs       fast-event-json, msgpackr adapter, projector
+packages/codecs       fast-event-json, built-in msgpackr, projector
 packages/otel|sentry|datadog|elastic|loki|cloudwatch|database   destination adapters
 examples/             runnable examples per platform
 scripts/              build/verify/bench/release tooling

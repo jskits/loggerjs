@@ -29,7 +29,7 @@ CI runs the gate on every pull request.
 - Console transport with a no-op patched console.
 - Batch transport enqueue path.
 - Full-path NDJSON comparison against pino, winston, LogTape, and Node console (see below).
-- JSON, safe JSON, fast event JSON, and msgpack adapter encode/decode.
+- JSON, safe JSON, fast event JSON, and msgpackr encode/decode.
 - Fast event JSON encoding raw LogRecord batches (record transport boundary).
 
 ## Competitor Comparison

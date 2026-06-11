@@ -20,7 +20,7 @@ packages/core        Logger, LogRecord helpers, LogEvent projection, context, ty
 packages/browser     Browser HTTP transport, offline queue, beacon/page lifecycle flush, console/error/fetch/XHR integrations
 packages/node        stdout/stderr/file/http/worker transports, AsyncLocalStorage context, process and diagnostics-channel integrations
 packages/processors  redact/sample/tags/type/dedupe/trace processors
-packages/codecs      fixed-shape JSON, msgpackr adapter, projector codec
+packages/codecs      fixed-shape JSON, built-in msgpackr, projector codec
 packages/otel        OTLP JSON mapping, HTTP transport, active span trace processor
 packages/sentry      Sentry structured logs, breadcrumbs, exception/message transport
 examples/*           browser and node basic demos

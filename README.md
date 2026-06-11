@@ -25,7 +25,7 @@ LoggerJS is a monorepo of logging packages around a dependency-free, platform-ne
 | `@loggerjs/browser` | HTTP/IndexedDB/WebSocket/service-worker/broadcast-channel transports, offline queues, ZIP export, 14 browser integrations |
 | `@loggerjs/node` | stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, AsyncLocalStorage context, 10 Node integrations |
 | `@loggerjs/processors` | redact, privacy-guard, sample, dynamic-sampler, rate-limit, dedupe, fingerprint, filter, route, level-override, normalize-error, stack-parser, enrich, tags, trace, fingers-crossed, breadcrumbs, schema-dev-check |
-| `@loggerjs/codecs` | fast-event-json (the performance codec), msgpackr adapter, projector |
+| `@loggerjs/codecs` | fast-event-json (the performance codec), built-in msgpackr, projector |
 | `@loggerjs/otel` | OTLP JSON mapping, OTLP/HTTP transport, OpenTelemetry log bridge, active-span trace processor |
 | `@loggerjs/sentry` | Sentry structured logs, breadcrumbs, exception/message capture |
 | `@loggerjs/datadog` | Datadog Logs intake transport |

@@ -130,21 +130,12 @@ async function main() {
   const jsonCodec = core.jsonCodec();
   const safeJsonCodec = core.safeJsonCodec();
   const fastEventJsonCodec = codecs.fastEventJsonCodec();
-  const textEncoder = new TextEncoder();
-  const textDecoder = new TextDecoder();
-  const msgpackAdapter = codecs.msgpackrCodec({
-    pack(value) {
-      return textEncoder.encode(JSON.stringify(value));
-    },
-    unpack(payload) {
-      return JSON.parse(textDecoder.decode(payload));
-    },
-  });
+  const msgpackrCodec = codecs.msgpackrCodec();
 
   const encodedJson = jsonCodec.encode(sampleBatch);
   const encodedSafeJson = safeJsonCodec.encode(sampleBatch);
   const encodedFastJson = fastEventJsonCodec.encode(sampleBatch);
-  const encodedMsgpack = msgpackAdapter.encode(sampleBatch);
+  const encodedMsgpack = msgpackrCodec.encode(sampleBatch);
 
   // Full-path NDJSON comparison: each logger serializes one structured info
   // log per call and hands the line to a discarding sink, so the numbers
@@ -318,8 +309,8 @@ async function main() {
       Math.max(10_000, Math.floor(iterations / 5)),
     ),
     measure(
-      "msgpack adapter encode batch",
-      () => msgpackAdapter.encode(sampleBatch),
+      "msgpackr encode batch",
+      () => msgpackrCodec.encode(sampleBatch),
       Math.max(10_000, Math.floor(iterations / 5)),
     ),
     measure(
@@ -338,8 +329,8 @@ async function main() {
       Math.max(10_000, Math.floor(iterations / 5)),
     ),
     measure(
-      "msgpack adapter decode batch",
-      () => msgpackAdapter.decode(encodedMsgpack),
+      "msgpackr decode batch",
+      () => msgpackrCodec.decode(encodedMsgpack),
       Math.max(10_000, Math.floor(iterations / 5)),
     ),
   ];
