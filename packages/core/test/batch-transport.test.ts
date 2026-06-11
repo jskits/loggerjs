@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   batchTransport,
   getLoggerMetaStats,
+  recordToEvent,
   resetLoggerMetaStats,
   type LogEvent,
   type Transport,
@@ -22,6 +23,7 @@ function createContext(errors: unknown[] = []): TransportContext {
   return {
     loggerName: "test",
     now: () => 1,
+    toEvent: recordToEvent,
     reportInternalError(error) {
       errors.push(error);
     },

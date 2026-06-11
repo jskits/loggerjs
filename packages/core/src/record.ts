@@ -14,6 +14,9 @@ export interface CreateRecordOptions {
   time: number;
   level: number;
   category?: LoggerCategory;
+  type?: string | null;
+  tags?: LogEvent["tags"] | null;
+  trace?: LogEvent["trace"] | null;
   msg?: string | null;
   lazy?: (() => string) | null;
   props?: Record<string, unknown> | null;
@@ -67,6 +70,9 @@ export function createRecord(options: CreateRecordOptions): LogRecord {
     time: options.time,
     level: options.level,
     category: normalizeCategory(options.category),
+    type: options.type ?? null,
+    tags: options.tags ? { ...options.tags } : null,
+    trace: options.trace ?? null,
     msg: options.msg ?? null,
     lazy: options.lazy ?? null,
     props: options.props ?? null,
@@ -83,6 +89,9 @@ export function cloneRecord(record: LogRecord, patch: Partial<LogRecord> = {}): 
     time: patch.time ?? record.time,
     level: patch.level ?? record.level,
     category: patch.category ?? record.category,
+    type: patch.type ?? record.type,
+    tags: patch.tags ?? record.tags,
+    trace: patch.trace ?? record.trace,
     msg: patch.msg ?? record.msg,
     lazy: patch.lazy ?? record.lazy,
     props: patch.props ?? record.props,
@@ -139,14 +148,44 @@ export function recordToEvent(record: LogRecord, options: RecordToEventOptions =
     levelName,
     logger: options.logger ?? record.category.join("."),
     message: resolveMessage(record),
-    type: options.type,
-    tags: options.tags,
+    type: options.type ?? record.type ?? undefined,
+    tags: options.tags ?? record.tags ?? undefined,
     data: options.data ?? record.props ?? undefined,
     error: options.error ?? errorForRecord(record),
     context: record.ctx ?? undefined,
-    trace: options.trace,
+    trace: options.trace ?? record.trace ?? undefined,
     source: options.source ?? sourceForRecord(record),
   };
+}
+
+function propsFromEventData(data: unknown): Record<string, unknown> | null {
+  if (data === undefined) return null;
+  if (data !== null && typeof data === "object" && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+  return { value: data };
+}
+
+function categoryFromEventLogger(logger: string): LoggerCategory | undefined {
+  const category = logger.split(".").filter(Boolean);
+  return category.length > 0 ? category : undefined;
+}
+
+export function eventToRecord(event: LogEvent): LogRecord {
+  return createRecord({
+    time: event.time,
+    level: event.level,
+    category: categoryFromEventLogger(event.logger),
+    type: event.type ?? null,
+    tags: event.tags ?? null,
+    trace: event.trace ?? null,
+    msg: event.message,
+    props: propsFromEventData(event.data),
+    err: event.error ?? null,
+    ctx: createBoundContext(event.context),
+    source: event.source?.integration ?? event.source?.runtime ?? "event",
+    seq: event.seq,
+  });
 }
 
 export function isLogRecord(value: unknown): value is LogRecord {
@@ -154,6 +193,9 @@ export function isLogRecord(value: unknown): value is LogRecord {
     value !== null &&
     typeof value === "object" &&
     "category" in value &&
+    "type" in value &&
+    "tags" in value &&
+    "trace" in value &&
     "msg" in value &&
     "lazy" in value &&
     "seq" in value

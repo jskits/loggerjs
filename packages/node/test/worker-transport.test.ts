@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Codec, LogEvent, TransportContext } from "@loggerjs/core";
+import { recordToEvent, type Codec, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { workerTransport, type WorkerLike, type WorkerTransportMessage } from "../src";
 
 const textCodec: Codec<string | Uint8Array> = {
@@ -30,6 +30,7 @@ function createContext(errors: unknown[] = []): TransportContext {
   return {
     loggerName: "test",
     now: () => 1,
+    toEvent: recordToEvent,
     reportInternalError(error) {
       errors.push(error);
     },

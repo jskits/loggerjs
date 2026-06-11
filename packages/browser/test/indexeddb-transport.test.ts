@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getLoggerMetaStats,
+  recordToEvent,
   resetLoggerMetaStats,
   type LogEvent,
   type TransportContext,
@@ -123,6 +124,7 @@ class FakeIndexedDB {
 const context: TransportContext = {
   loggerName: "test",
   now: () => 1,
+  toEvent: recordToEvent,
   reportInternalError: vi.fn<TransportContext["reportInternalError"]>(),
 };
 

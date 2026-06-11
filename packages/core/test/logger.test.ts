@@ -10,6 +10,7 @@ import {
   resetLoggerMetaStats,
   setContextProvider,
   type LogEvent,
+  type LogRecord,
   type Processor,
   type Transport,
   withLogEventRoute,
@@ -72,6 +73,75 @@ describe("logger core skeleton", () => {
       levelName: "debug",
       message: "debug details",
       data: { state: "ready" },
+    });
+  });
+
+  it("dispatches records to write transports without event projection", () => {
+    const records: LogRecord[] = [];
+    const lazyMessage = vi.fn<() => string>(() => "debug details");
+    const idFactory = vi.fn<
+      (event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">) => string
+    >(() => "id-1");
+    const transport: Transport = {
+      name: "record",
+      write(record) {
+        records.push(record);
+      },
+    };
+    const logger = createLogger({
+      level: "debug",
+      type: "app.event",
+      tags: { service: "api" },
+      idFactory,
+      transports: [transport],
+    });
+
+    logger.debug(lazyMessage, { state: "ready" });
+
+    expect(lazyMessage).not.toHaveBeenCalled();
+    expect(idFactory).not.toHaveBeenCalled();
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      level: 20,
+      type: "app.event",
+      tags: { service: "api" },
+      msg: null,
+      props: { state: "ready" },
+    });
+    expect(records[0]?.lazy).toBe(lazyMessage);
+  });
+
+  it("projects records to events on transport demand and caches the result", () => {
+    const lazyMessage = vi.fn<() => string>(() => "debug details");
+    const idFactory = vi.fn<
+      (event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">) => string
+    >((event) => `event-${event.seq}`);
+    const events: LogEvent[] = [];
+    const log = vi.fn<NonNullable<Transport["log"]>>();
+    const transport: Transport = {
+      name: "record",
+      write(record, context) {
+        events.push(context.toEvent(record), context.toEvent(record));
+      },
+      log,
+    };
+    const logger = createLogger({
+      level: "debug",
+      idFactory,
+      transports: [transport],
+    });
+
+    logger.debug(lazyMessage);
+
+    expect(log).not.toHaveBeenCalled();
+    expect(lazyMessage).toHaveBeenCalledTimes(1);
+    expect(idFactory).toHaveBeenCalledTimes(1);
+    expect(events).toHaveLength(2);
+    expect(events[0]).toBe(events[1]);
+    expect(events[0]).toMatchObject({
+      id: expect.stringMatching(/^event-/),
+      levelName: "debug",
+      message: "debug details",
     });
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LogEvent, TransportContext } from "@loggerjs/core";
+import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { sentryTransport, type SentryLike } from "../src";
 
 const event: LogEvent = {
@@ -17,6 +17,7 @@ const event: LogEvent = {
 const context: TransportContext = {
   loggerName: "test",
   now: () => 1,
+  toEvent: recordToEvent,
   reportInternalError() {},
 };
 

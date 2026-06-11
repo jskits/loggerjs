@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getLoggerMetaStats,
+  recordToEvent,
   resetLoggerMetaStats,
   type Codec,
   type LogEvent,
@@ -50,6 +51,7 @@ function createTransportContext(): TransportContext {
   return {
     loggerName: "test",
     now: () => 0,
+    toEvent: recordToEvent,
     reportInternalError: vi.fn<TransportContext["reportInternalError"]>(),
   };
 }

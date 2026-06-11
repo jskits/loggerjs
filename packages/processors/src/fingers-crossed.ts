@@ -1,11 +1,14 @@
 import {
+  eventToRecord,
   incrementLoggerMetaCounter,
+  recordToEvent,
   toLevelValue,
   type LogEvent,
   type LoggerLevel,
   type Processor,
   type ProcessorContext,
   type Transport,
+  type TransportContext,
 } from "@loggerjs/core";
 
 export type FingersCrossedDropReason = "buffer-full" | "bucket-pruned";
@@ -103,14 +106,40 @@ async function flushToTarget(
     minLevel === undefined ? [...events] : events.filter((event) => event.level >= minLevel);
   if (selected.length === 0) return;
 
+  const transportContext: TransportContext = {
+    loggerName: context.loggerName,
+    now: context.now,
+    toEvent: recordToEvent,
+    reportInternalError: context.reportInternalError,
+  };
+
   if (target.logBatch) {
-    const result = target.logBatch(selected, context);
+    const result = target.logBatch(selected, transportContext);
     if (isPromiseLike(result)) await result;
     return;
   }
-  if (!target.log) return;
-  for (const event of selected) {
-    const result = target.log(event, context);
+  if (target.log) {
+    for (const event of selected) {
+      const result = target.log(event, transportContext);
+      if (isPromiseLike(result)) {
+        // oxlint-disable-next-line no-await-in-loop -- Preserve buffered log order.
+        await result;
+      }
+    }
+    return;
+  }
+
+  const records = selected.map(eventToRecord);
+  if (target.writeBatch) {
+    const result = target.writeBatch(records, transportContext);
+    if (isPromiseLike(result)) {
+      await result;
+    }
+    return;
+  }
+  if (!target.write) return;
+  for (const record of records) {
+    const result = target.write(record, transportContext);
     if (isPromiseLike(result)) {
       // oxlint-disable-next-line no-await-in-loop -- Preserve buffered log order.
       await result;

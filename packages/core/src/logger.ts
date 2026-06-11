@@ -14,9 +14,9 @@ import { runMiddleware } from "./middleware";
 import {
   createBoundContext,
   createRecord,
+  eventToRecord,
   normalizeCategory,
   recordToEvent,
-  type RecordToEventOptions,
 } from "./record";
 import { valueToMessage } from "./utils/error";
 import type {
@@ -27,6 +27,7 @@ import type {
   Integration,
   LogData,
   LogEvent,
+  LogRecord,
   LoggerLike,
   LoggerCategory,
   LoggerOptions,
@@ -160,7 +161,11 @@ function transportName(transport: Transport, index: number): string {
   return transport.name ?? `transport-${index}`;
 }
 
-function shouldDispatchToTransport(event: LogEvent, transport: Transport, index: number): boolean {
+function shouldDispatchEventToTransport(
+  event: LogEvent,
+  transport: Transport,
+  index: number,
+): boolean {
   const route = getLogEventRoute(event);
   if (!route) return true;
 
@@ -298,6 +303,8 @@ export class Logger implements LoggerLike {
       time,
       level: levelValue,
       category: this.category,
+      type: this.type ?? null,
+      tags: this.tags ?? null,
       msg: normalized.msg,
       lazy: normalized.lazy,
       props: normalized.props,
@@ -324,6 +331,8 @@ export class Logger implements LoggerLike {
       time,
       level: levelValue,
       category: input.category ?? this.category,
+      type: this.type ?? null,
+      tags: this.tags ?? null,
       msg:
         typeof message === "string"
           ? message
@@ -359,6 +368,8 @@ export class Logger implements LoggerLike {
       time,
       level: levelValue,
       category: this.category,
+      type: definition.type,
+      tags: mergeTags(this.tags, eventTags(definition, payload, options)) ?? null,
       msg: message.msg,
       lazy: message.lazy,
       props: payload,
@@ -366,35 +377,24 @@ export class Logger implements LoggerLike {
       source: "app",
       seq,
     });
-    this.emitRecord(record, levelName, {
-      type: definition.type,
-      tags: eventTags(definition, payload, options),
-    });
+    this.emitRecord(record, levelName);
   }
 
-  private emitRecord(
-    record: ReturnType<typeof createRecord>,
-    levelName: EnabledLogLevelName,
-    options: Pick<RecordToEventOptions, "type" | "tags"> = {},
-  ) {
+  private emitRecord(record: ReturnType<typeof createRecord>, levelName: EnabledLogLevelName) {
     const processedRecord = runMiddleware(record, this.middleware, {
       now: this.clock,
       reportInternalError: (error, detail) => this.reportInternalError(error, detail),
     });
     if (!processedRecord) return;
 
-    let event: LogEvent = recordToEvent(processedRecord, {
-      id: "",
-      levelName,
-      logger: processedRecord.category.join("."),
-      type: options.type ?? this.type,
-      tags: mergeTags(this.tags, options.tags),
-    });
-    event.id = this.idFactory(event);
+    if (this.processors.length > 0) {
+      const processed = this.applyProcessors(this.createEvent(processedRecord, levelName));
+      if (!processed) return;
+      this.dispatchEvent(processed);
+      return;
+    }
 
-    const processed = this.applyProcessors(event);
-    if (!processed) return;
-    this.dispatch(processed);
+    this.dispatchRecord(processedRecord, levelName);
   }
 
   trace(message: unknown, data?: LogData | string, props?: LogData) {
@@ -505,16 +505,95 @@ export class Logger implements LoggerLike {
     return current;
   }
 
-  private dispatch(event: LogEvent) {
-    const context: TransportContext = {
+  private createEvent(record: LogRecord, levelName?: EnabledLogLevelName): LogEvent {
+    const event = recordToEvent(record, {
+      id: "",
+      levelName,
+      logger: record.category.join("."),
+    });
+    event.id = this.idFactory(event);
+    return event;
+  }
+
+  private createRecordTransportContext(
+    record: LogRecord,
+    levelName: EnabledLogLevelName,
+  ): TransportContext {
+    let event: LogEvent | undefined;
+    return {
       loggerName: this.name,
       now: this.clock,
+      toEvent: (item) => {
+        if (item === record) {
+          event ??= this.createEvent(record, levelName);
+          return event;
+        }
+        return this.createEvent(item);
+      },
       reportInternalError: (error, detail) => this.reportInternalError(error, detail),
     };
+  }
+
+  private createEventTransportContext(
+    event: LogEvent,
+    getRecord: () => LogRecord | undefined,
+  ): TransportContext {
+    return {
+      loggerName: this.name,
+      now: this.clock,
+      toEvent: (item) => {
+        const record = getRecord();
+        return record && item === record ? event : this.createEvent(item);
+      },
+      reportInternalError: (error, detail) => this.reportInternalError(error, detail),
+    };
+  }
+
+  private dispatchRecord(record: LogRecord, levelName: EnabledLogLevelName) {
+    const context = this.createRecordTransportContext(record, levelName);
 
     for (let index = 0; index < this.transports.length; index += 1) {
       const transport = this.transports[index];
-      if (!transport || !shouldDispatchToTransport(event, transport, index)) continue;
+      if (!transport) continue;
+      if (transport.minLevel !== undefined && record.level < toLevelValue(transport.minLevel))
+        continue;
+      try {
+        if (transport.write) {
+          void Promise.resolve(transport.write(record, context)).catch((error) => {
+            this.reportInternalError(error, { phase: "transport", transport: transport.name });
+          });
+        } else if (transport.writeBatch) {
+          void Promise.resolve(transport.writeBatch([record], context)).catch((error) => {
+            this.reportInternalError(error, { phase: "transport", transport: transport.name });
+          });
+        } else if (transport.log) {
+          const event = context.toEvent(record);
+          void Promise.resolve(transport.log(event, context)).catch((error) => {
+            this.reportInternalError(error, { phase: "transport", transport: transport.name });
+          });
+        } else if (transport.logBatch) {
+          const event = context.toEvent(record);
+          void Promise.resolve(transport.logBatch([event], context)).catch((error) => {
+            this.reportInternalError(error, { phase: "transport", transport: transport.name });
+          });
+        }
+      } catch (error) {
+        this.reportInternalError(error, { phase: "transport", transport: transport.name });
+      }
+    }
+  }
+
+  private dispatchEvent(event: LogEvent) {
+    let record: LogRecord | undefined;
+    const recordForEvent = () => {
+      record ??= eventToRecord(event);
+      return record;
+    };
+    const context = this.createEventTransportContext(event, () => record);
+
+    for (let index = 0; index < this.transports.length; index += 1) {
+      const transport = this.transports[index];
+      if (!transport || !shouldDispatchEventToTransport(event, transport, index)) continue;
       if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel))
         continue;
       try {
@@ -524,6 +603,14 @@ export class Logger implements LoggerLike {
           });
         } else if (transport.logBatch) {
           void Promise.resolve(transport.logBatch([event], context)).catch((error) => {
+            this.reportInternalError(error, { phase: "transport", transport: transport.name });
+          });
+        } else if (transport.write) {
+          void Promise.resolve(transport.write(recordForEvent(), context)).catch((error) => {
+            this.reportInternalError(error, { phase: "transport", transport: transport.name });
+          });
+        } else if (transport.writeBatch) {
+          void Promise.resolve(transport.writeBatch([recordForEvent()], context)).catch((error) => {
             this.reportInternalError(error, { phase: "transport", transport: transport.name });
           });
         }

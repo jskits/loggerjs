@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Codec, LogEvent, TransportContext } from "@loggerjs/core";
+import { recordToEvent, type Codec, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { nodeHttpTransport } from "../src";
 
 let sequence = 0;
@@ -35,6 +35,7 @@ function createTransportContext(): TransportContext {
   return {
     loggerName: "test",
     now: () => 0,
+    toEvent: recordToEvent,
     reportInternalError: vi.fn<TransportContext["reportInternalError"]>(),
   };
 }

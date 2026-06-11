@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { type LogEvent, type TransportContext } from "@loggerjs/core";
+import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import {
   formatSyslogMessage,
   nodeSyslogTransport,
@@ -23,6 +23,7 @@ function createContext(errors: unknown[] = []): TransportContext {
   return {
     loggerName: "api",
     now: () => 1,
+    toEvent: recordToEvent,
     reportInternalError(error) {
       errors.push(error);
     },

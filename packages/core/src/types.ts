@@ -45,6 +45,9 @@ export interface LogRecord {
   time: number;
   level: number;
   category: readonly string[];
+  type: string | null;
+  tags: Tags | null;
+  trace: TraceContext | null;
   msg: string | null;
   lazy: (() => string) | null;
   props: Record<string, unknown> | null;
@@ -129,12 +132,15 @@ export type Processor = (event: LogEvent, context: ProcessorContext) => Processo
 export interface TransportContext {
   loggerName: string;
   now: () => number;
+  toEvent: (record: LogRecord) => LogEvent;
   reportInternalError: (error: unknown, detail?: Record<string, unknown>) => void;
 }
 
 export interface Transport {
   name?: string;
   minLevel?: LoggerLevel;
+  write?: (record: LogRecord, context: TransportContext) => void | Promise<void>;
+  writeBatch?: (records: LogRecord[], context: TransportContext) => void | Promise<void>;
   log?: (event: LogEvent, context: TransportContext) => void | Promise<void>;
   logBatch?: (events: LogEvent[], context: TransportContext) => void | Promise<void>;
   flush?: () => void | Promise<void>;

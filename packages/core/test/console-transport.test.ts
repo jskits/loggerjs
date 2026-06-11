@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   consoleTransport,
   getUnpatchedRegistry,
+  recordToEvent,
   type Codec,
   type LogEvent,
   type TransportContext,
@@ -24,6 +25,7 @@ function createContext(): TransportContext {
   return {
     loggerName: "test",
     now: () => 0,
+    toEvent: recordToEvent,
     reportInternalError: vi.fn<TransportContext["reportInternalError"]>(),
   };
 }

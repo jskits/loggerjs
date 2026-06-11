@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRecord, type LogEvent } from "@loggerjs/core";
+import { createRecord, recordToEvent, type LogEvent } from "@loggerjs/core";
 import { otlpHttpTransport, otlpJsonCodec } from "../src";
 
 function findAttribute(
@@ -106,6 +106,7 @@ describe("otlpHttpTransport", () => {
     const context = {
       loggerName: "test",
       now: () => 1,
+      toEvent: recordToEvent,
       reportInternalError() {},
     };
 

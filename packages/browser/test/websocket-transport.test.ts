@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getLoggerMetaStats,
+  recordToEvent,
   resetLoggerMetaStats,
   type Codec,
   type LogEvent,
@@ -44,6 +45,7 @@ function createContext(errors: unknown[] = []): TransportContext {
   return {
     loggerName: "browser",
     now: () => 1,
+    toEvent: recordToEvent,
     reportInternalError(error) {
       errors.push(error);
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLogger, testTransport, type LogEvent } from "../src";
+import { createLogger, recordToEvent, testTransport, type LogEvent } from "../src";
 
 const event: LogEvent = {
   id: "evt-1",
@@ -18,6 +18,7 @@ describe("testTransport", () => {
     transport.log?.(event, {
       loggerName: "test",
       now: () => 1,
+      toEvent: recordToEvent,
       reportInternalError() {},
     });
     transport.logBatch?.(
@@ -28,6 +29,7 @@ describe("testTransport", () => {
       {
         loggerName: "test",
         now: () => 1,
+        toEvent: recordToEvent,
         reportInternalError() {},
       },
     );

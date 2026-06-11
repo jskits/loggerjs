@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { LogEvent, TransportContext } from "@loggerjs/core";
+import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { rotatingFileTransport } from "../src";
 
 const tempDirs: string[] = [];
@@ -10,6 +10,7 @@ const tempDirs: string[] = [];
 const context: TransportContext = {
   loggerName: "test",
   now: () => 1,
+  toEvent: recordToEvent,
   reportInternalError() {},
 };
 

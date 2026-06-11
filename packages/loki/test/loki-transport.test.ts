@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LogEvent, TransportContext } from "@loggerjs/core";
+import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { lokiTransport, type LokiPushPayload } from "../src";
 
 const context: TransportContext = {
   loggerName: "test",
   now: () => 1,
+  toEvent: recordToEvent,
   reportInternalError() {},
 };
 
