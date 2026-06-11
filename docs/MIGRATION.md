@@ -1,6 +1,97 @@
 # Migration Notes
 
-LoggerJS is still pre-1.0, but the current codebase has moved from the initial skeleton toward the v1 architecture.
+LoggerJS is still pre-1.0, but the current codebase has moved from the initial skeleton toward the v1 architecture. The first half of this page covers migrating from other loggers; the second half covers vocabulary changes inside LoggerJS itself.
+
+## From pino
+
+Same levels, same numeric values, same NDJSON instinct — the mapping is mostly mechanical.
+
+```ts
+// pino
+import pino from "pino";
+const logger = pino({ level: "info", base: { service: "checkout" } });
+logger.info({ orderId: "ord_123" }, "order created");
+const child = logger.child({ requestId: "req_1" });
+
+// loggerjs
+import { createLogger, stdoutTransport } from "@loggerjs/node";
+const logger = createLogger({
+  level: "info",
+  tags: { service: "checkout" },
+  transports: [stdoutTransport()],
+});
+logger.info("order created", { orderId: "ord_123" }); // message first, data second
+const child = logger.child({ bindings: { requestId: "req_1" } });
+```
+
+Key differences:
+
+- **Argument order flips**: pino takes `(mergeObject, message)`, LoggerJS takes `(message, data)`. Errors go first in both: `logger.error(err, "msg")`.
+- pino `base` fields split into `tags` (stable, low-cardinality) and `bindings` (context fields merged into `context`).
+- pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data, not per-key.
+- pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
+- pino-pretty's role is `consoleTransport()` (pretty by default).
+- For pino-shaped minimal output bytes, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Expect ~83% of pino throughput on that path ([BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
+
+## From winston
+
+```ts
+// winston
+import winston from "winston";
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.json(),
+  defaultMeta: { service: "checkout" },
+  transports: [new winston.transports.Console(), new winston.transports.File({ filename: "app.log" })],
+});
+
+// loggerjs
+import { createLogger, fileTransport, stdoutTransport } from "@loggerjs/node";
+const logger = createLogger({
+  level: "info",
+  tags: { service: "checkout" },
+  transports: [stdoutTransport(), fileTransport({ path: "app.log" })],
+});
+```
+
+Key differences:
+
+- winston `format` chains split into two concerns: **processors/middleware** (data shaping: redact, enrich, filter) and **codecs** (serialization, owned by each transport). `format.combine(timestamp, json)` is simply the default output.
+- `defaultMeta` → `tags` and/or `bindings`.
+- Per-transport `level` maps directly to `minLevel` on any transport.
+- Child loggers replace `winston.loggers` registries for per-module configuration; library authors should prefer `getLogger()` from core.
+- Throughput on the same path measures roughly 8x winston ([BENCHMARKS.md](BENCHMARKS.md)).
+
+## From console.log
+
+Two migration styles, usable together.
+
+**Capture first, migrate incrementally** — turn existing console calls into structured logs without touching call sites:
+
+```ts
+import { captureConsoleIntegration, createLogger, browserHttpTransport } from "@loggerjs/browser";
+
+const logger = createLogger({
+  transports: [browserHttpTransport({ url: "/api/logs" })],
+  integrations: [captureConsoleIntegration({ levels: ["log", "warn", "error"] })],
+});
+```
+
+**Then replace call sites** where structure pays off:
+
+```ts
+// before
+console.log("order created", orderId);
+console.error("payment failed", err);
+
+// after
+logger.info("order created", { orderId });
+logger.error(err, "payment failed");
+```
+
+What you gain at each step: levels and level gating, structured data instead of interpolated strings, redaction before anything leaves the process, batching/offline delivery, and crash-path capture via the error/process integrations.
+
+---
 
 ## Processor To Middleware Vocabulary
 
