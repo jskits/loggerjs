@@ -150,6 +150,7 @@ export declare class Logger implements LoggerLike {
     addTransport(transport: Transport): void;
     addIntegration(integration: Integration): void;
     log(level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData): void;
+    private logWith;
     capture(input: CaptureInput): void;
     event<TPayload extends Record<string, unknown>>(definition: EventDefinition<TPayload>, payload: TPayload, options?: EventLogOptions<TPayload>): void;
     private emitRecord;

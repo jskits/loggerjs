@@ -296,10 +296,22 @@ export class Logger implements LoggerLike {
   }
 
   log(level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) {
-    if (this.closed) return;
     const levelValue = toLevelValue(level);
     if (levelValue < this.minimumLevelValue) return;
-    const levelName = levelNameFor(level, levelValue);
+    this.logWith(levelValue, levelNameFor(level, levelValue), message, data, props);
+  }
+
+  // Convenience methods pass precomputed level constants here, skipping the
+  // per-call level lookup and name resolution that log() performs.
+  private logWith(
+    levelValue: number,
+    levelName: EnabledLogLevelName,
+    message: unknown,
+    data?: LogData | string,
+    props?: LogData,
+  ) {
+    if (this.closed) return;
+    if (levelValue < this.minimumLevelValue) return;
     const time = this.clock();
     const seq = globalSeq++;
     const ambient = getContext();
@@ -436,27 +448,27 @@ export class Logger implements LoggerLike {
   }
 
   trace(message: unknown, data?: LogData | string, props?: LogData) {
-    this.log("trace", message, data, props);
+    this.logWith(levelValues.trace, "trace", message, data, props);
   }
 
   debug(message: unknown, data?: LogData | string, props?: LogData) {
-    this.log("debug", message, data, props);
+    this.logWith(levelValues.debug, "debug", message, data, props);
   }
 
   info(message: unknown, data?: LogData | string, props?: LogData) {
-    this.log("info", message, data, props);
+    this.logWith(levelValues.info, "info", message, data, props);
   }
 
   warn(message: unknown, data?: LogData | string, props?: LogData) {
-    this.log("warn", message, data, props);
+    this.logWith(levelValues.warn, "warn", message, data, props);
   }
 
   error(message: unknown, data?: LogData | string, props?: LogData) {
-    this.log("error", message, data, props);
+    this.logWith(levelValues.error, "error", message, data, props);
   }
 
   fatal(message: unknown, data?: LogData | string, props?: LogData) {
-    this.log("fatal", message, data, props);
+    this.logWith(levelValues.fatal, "fatal", message, data, props);
   }
 
   captureException(error: unknown, data?: LogData) {
