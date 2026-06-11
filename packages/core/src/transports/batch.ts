@@ -1,4 +1,5 @@
-import type { LogEvent, Transport, TransportContext } from "../types";
+import { eventToRecord } from "../record";
+import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
 import { incrementLoggerMetaCounter } from "../meta";
 import { toLevelValue } from "../levels";
 
@@ -18,6 +19,7 @@ export interface BatchTransportOptions {
   maxQueueSize?: number;
   dropPolicy?: DropPolicy;
   estimateEventBytes?: (event: LogEvent) => number;
+  estimateRecordBytes?: (record: LogRecord) => number;
   maxRetries?: number;
   retryBaseDelayMs?: number;
   retryMaxDelayMs?: number;
@@ -28,7 +30,8 @@ export interface BatchTransportOptions {
 }
 
 interface QueueItem {
-  event: LogEvent;
+  payload: LogEvent | LogRecord;
+  kind: "event" | "record";
   estimatedBytes: number;
 }
 
@@ -103,6 +106,28 @@ export function estimateLogEventBytes(event: LogEvent): number {
   return estimateValueBytes(event);
 }
 
+export function estimateLogRecordBytes(record: LogRecord): number {
+  return estimateValueBytes(record);
+}
+
+function toEventBatch(batch: QueueItem[], context: TransportContext): LogEvent[] {
+  return batch.map((item) =>
+    item.kind === "event" ? (item.payload as LogEvent) : context.toEvent(item.payload as LogRecord),
+  );
+}
+
+function toRecordBatch(batch: QueueItem[]): LogRecord[] {
+  return batch.map((item) =>
+    item.kind === "record" ? (item.payload as LogRecord) : eventToRecord(item.payload as LogEvent),
+  );
+}
+
+function eventForQueueItem(item: QueueItem, context: TransportContext): LogEvent {
+  return item.kind === "event"
+    ? (item.payload as LogEvent)
+    : context.toEvent(item.payload as LogRecord);
+}
+
 export function batchTransport(inner: Transport, options: BatchTransportOptions = {}): Transport {
   const maxBatchSize = options.maxRecords ?? options.maxBatchSize ?? 50;
   const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
@@ -111,6 +136,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
   const estimateEventBytes = options.estimateEventBytes ?? estimateLogEventBytes;
+  const estimateRecordBytes = options.estimateRecordBytes ?? estimateLogRecordBytes;
   const maxRetries = options.maxRetries ?? 0;
   const retryBaseDelayMs = options.retryBaseDelayMs ?? 100;
   const retryMaxDelayMs = options.retryMaxDelayMs ?? 1000;
@@ -152,7 +178,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     return cap <= 0 ? 0 : random() * cap;
   };
 
-  const deliver = async (batch: LogEvent[], context: TransportContext) => {
+  const deliverEvents = async (batch: LogEvent[], context: TransportContext) => {
     if (inner.logBatch) {
       await inner.logBatch(batch, context);
       return;
@@ -166,7 +192,43 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     }
   };
 
-  const deliverWithRetry = async (batch: LogEvent[], context: TransportContext) => {
+  const deliverRecords = async (batch: LogRecord[], context: TransportContext) => {
+    if (inner.writeBatch) {
+      await inner.writeBatch(batch, context);
+      return;
+    }
+
+    if (inner.write) {
+      for (const record of batch) {
+        // oxlint-disable-next-line no-await-in-loop -- Preserve transport write order.
+        await inner.write(record, context);
+      }
+    }
+  };
+
+  const deliver = async (batch: QueueItem[], context: TransportContext) => {
+    const recordsOnly = batch.every((item) => item.kind === "record");
+    const eventsOnly = batch.every((item) => item.kind === "event");
+
+    if (recordsOnly && (inner.writeBatch || inner.write)) {
+      await deliverRecords(toRecordBatch(batch), context);
+      return;
+    }
+
+    if (eventsOnly && (inner.logBatch || inner.log)) {
+      await deliverEvents(toEventBatch(batch, context), context);
+      return;
+    }
+
+    if (inner.writeBatch || inner.write) {
+      await deliverRecords(toRecordBatch(batch), context);
+      return;
+    }
+
+    await deliverEvents(toEventBatch(batch, context), context);
+  };
+
+  const deliverWithRetry = async (batch: QueueItem[], context: TransportContext) => {
     for (let attempt = 0; ; attempt++) {
       try {
         // oxlint-disable-next-line no-await-in-loop -- Retry attempts must run sequentially.
@@ -208,9 +270,8 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   };
 
   const deliverBatchItems = async (batchItems: QueueItem[], context: TransportContext) => {
-    const batch = batchItems.map((item) => item.event);
     try {
-      await deliverWithRetry(batch, context);
+      await deliverWithRetry(batchItems, context);
     } catch (error) {
       queue.unshift(...batchItems);
       throw error;
@@ -280,9 +341,10 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     }
   };
 
-  const reportDrop = (event: LogEvent, reason: string, context: TransportContext) => {
+  const reportDrop = (item: QueueItem, reason: string, context: TransportContext) => {
     incrementLoggerMetaCounter("transport.dropped");
     incrementLoggerMetaCounter(`transport.dropped.${reason}`);
+    const event = eventForQueueItem(item, context);
     options.onDrop?.(event, reason);
     if (dropPolicy === "throw") {
       context.reportInternalError(new Error(`loggerjs batch transport dropped log: ${reason}`), {
@@ -291,6 +353,54 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
         reason,
       });
     }
+  };
+
+  const enqueue = (item: QueueItem, context: TransportContext) => {
+    lastContext = context;
+    if (item.estimatedBytes > maxBytes) {
+      reportDrop(item, "record-too-large", context);
+      return;
+    }
+    if (queue.length >= maxQueueSize) {
+      if (dropPolicy === "drop-newest") {
+        reportDrop(item, "queue-full", context);
+        return;
+      }
+      if (dropPolicy === "drop-oldest") {
+        const dropped = queue.shift();
+        if (dropped) reportDrop(dropped, "queue-full", context);
+      } else {
+        reportDrop(item, "queue-full", context);
+        return;
+      }
+    }
+    queue.push(item);
+    if (queue.length >= maxBatchSize) flushAndReport(context);
+    else schedule();
+  };
+
+  const enqueueRecord = (record: LogRecord, context: TransportContext) => {
+    if (inner.minLevel !== undefined && record.level < toLevelValue(inner.minLevel)) return;
+    enqueue(
+      {
+        payload: record,
+        kind: "record",
+        estimatedBytes: estimateRecordBytes(record),
+      },
+      context,
+    );
+  };
+
+  const enqueueEvent = (event: LogEvent, context: TransportContext) => {
+    if (inner.minLevel !== undefined && event.level < toLevelValue(inner.minLevel)) return;
+    enqueue(
+      {
+        payload: event,
+        kind: "event",
+        estimatedBytes: estimateEventBytes(event),
+      },
+      context,
+    );
   };
 
   const flushAndReport = (context: TransportContext) => {
@@ -306,30 +416,21 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   return {
     name: transportName,
     minLevel: inner.minLevel,
+    write(record, context) {
+      enqueueRecord(record, context);
+    },
+    writeBatch(records, context) {
+      for (const record of records) {
+        enqueueRecord(record, context);
+      }
+    },
     log(event, context) {
-      if (inner.minLevel !== undefined && event.level < toLevelValue(inner.minLevel)) return;
-      lastContext = context;
-      const estimatedBytes = estimateEventBytes(event);
-      if (estimatedBytes > maxBytes) {
-        reportDrop(event, "record-too-large", context);
-        return;
+      enqueueEvent(event, context);
+    },
+    logBatch(events, context) {
+      for (const event of events) {
+        enqueueEvent(event, context);
       }
-      if (queue.length >= maxQueueSize) {
-        if (dropPolicy === "drop-newest") {
-          reportDrop(event, "queue-full", context);
-          return;
-        }
-        if (dropPolicy === "drop-oldest") {
-          const dropped = queue.shift();
-          if (dropped) reportDrop(dropped.event, "queue-full", context);
-        } else {
-          reportDrop(event, "queue-full", context);
-          return;
-        }
-      }
-      queue.push({ event, estimatedBytes });
-      if (queue.length >= maxBatchSize) flushAndReport(context);
-      else schedule();
     },
     async flush() {
       await flush();

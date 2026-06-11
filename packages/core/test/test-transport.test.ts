@@ -58,6 +58,8 @@ describe("testTransport", () => {
       flushCalls: 0,
       logBatchCalls: 0,
       logCalls: 0,
+      writeBatchCalls: 0,
+      writeCalls: 0,
     });
   });
 
@@ -123,7 +125,8 @@ describe("testTransport", () => {
     expect(transport.stats).toMatchObject({
       closeCalls: 1,
       flushCalls: 1,
-      logCalls: 2,
+      logCalls: 0,
+      writeCalls: 2,
     });
   });
 });

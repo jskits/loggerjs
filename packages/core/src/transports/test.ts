@@ -1,4 +1,4 @@
-import type { LogEvent, Transport } from "../types";
+import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
 
 export type TestTransportMatcher = (event: LogEvent) => boolean;
 
@@ -12,6 +12,8 @@ export interface TestTransportWaitForCountOptions extends TestTransportWaitOptio
 }
 
 export interface TestTransportStats {
+  writeCalls: number;
+  writeBatchCalls: number;
   logCalls: number;
   logBatchCalls: number;
   flushCalls: number;
@@ -75,6 +77,8 @@ export function testTransport(transportOptions: TestTransportOptions = {}): Test
   const maxEvents = transportOptions.maxEvents ?? 1000;
   const cloneEvent = transportOptions.cloneEvent;
   const stats: TestTransportStats = {
+    writeCalls: 0,
+    writeBatchCalls: 0,
     logCalls: 0,
     logBatchCalls: 0,
     flushCalls: 0,
@@ -109,6 +113,10 @@ export function testTransport(transportOptions: TestTransportOptions = {}): Test
       events.splice(0, dropped);
       stats.droppedEvents += dropped;
     }
+  };
+
+  const appendRecordSnapshot = (record: LogRecord, context: TransportContext) => {
+    appendSnapshot(snapshot(context.toEvent(record)));
   };
 
   const takeFailure = () => {
@@ -176,6 +184,8 @@ export function testTransport(transportOptions: TestTransportOptions = {}): Test
       this.clear();
       stats.logCalls = 0;
       stats.logBatchCalls = 0;
+      stats.writeCalls = 0;
+      stats.writeBatchCalls = 0;
       stats.flushCalls = 0;
       stats.closeCalls = 0;
       stats.droppedEvents = 0;
@@ -188,6 +198,20 @@ export function testTransport(transportOptions: TestTransportOptions = {}): Test
       return waitForCount(1, { ...waitOptions, matcher }).then((found) => found[0] as LogEvent);
     },
     waitForCount,
+    write(record, context) {
+      stats.writeCalls += 1;
+      takeFailure();
+      appendRecordSnapshot(record, context);
+      settleWaiters();
+    },
+    writeBatch(records, context) {
+      stats.writeBatchCalls += 1;
+      takeFailure();
+      const snapshotBatch = records.map((record) => snapshot(context.toEvent(record)));
+      batches.push(snapshotBatch);
+      for (const event of snapshotBatch) appendSnapshot(event);
+      settleWaiters();
+    },
     log(event) {
       stats.logCalls += 1;
       takeFailure();

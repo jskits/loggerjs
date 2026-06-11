@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   batchTransport,
+  createRecord,
   getLoggerMetaStats,
   recordToEvent,
   resetLoggerMetaStats,
   type LogEvent,
+  type LogRecord,
   type Transport,
   type TransportContext,
 } from "../src";
@@ -27,6 +29,17 @@ function createContext(errors: unknown[] = []): TransportContext {
     reportInternalError(error) {
       errors.push(error);
     },
+  };
+}
+
+function createRecordContext(
+  toEvent: TransportContext["toEvent"] = recordToEvent,
+): TransportContext {
+  return {
+    loggerName: "test",
+    now: () => 1,
+    toEvent,
+    reportInternalError() {},
   };
 }
 
@@ -114,6 +127,37 @@ describe("batchTransport", () => {
     await transport.flush?.();
 
     expect(batches).toEqual([["evt-1"], ["evt-2", "evt-3"]]);
+  });
+
+  it("delivers records to record-aware inner transports without event projection", async () => {
+    const lazyMessage = vi.fn<() => string>(() => "expensive");
+    const toEvent = vi.fn<TransportContext["toEvent"]>(recordToEvent);
+    const batches: LogRecord[][] = [];
+    const transport = batchTransport(
+      {
+        name: "inner",
+        writeBatch(records) {
+          batches.push(records);
+        },
+      },
+      {
+        flushIntervalMs: 0,
+      },
+    );
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: "test",
+      lazy: lazyMessage,
+      seq: 1,
+    });
+
+    transport.write?.(record, createRecordContext(toEvent));
+    await transport.flush?.();
+
+    expect(batches).toEqual([[record]]);
+    expect(toEvent).not.toHaveBeenCalled();
+    expect(lazyMessage).not.toHaveBeenCalled();
   });
 
   it("drops records larger than the byte budget", async () => {
