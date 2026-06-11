@@ -1,8 +1,15 @@
 import { existsSync } from "node:fs";
+import { Console } from "node:console";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { Writable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  configureSync as configureLogTapeSync,
+  getJsonLinesFormatter as getLogTapeJsonLinesFormatter,
+  getLogger as getLogTapeLogger,
+  resetSync as resetLogTapeSync,
+} from "@logtape/logtape";
 import pino from "pino";
 import winston from "winston";
 
@@ -60,6 +67,13 @@ function consume(value) {
   else if (value instanceof Uint8Array) blackhole ^= value.byteLength;
   else if (value && typeof value === "object") blackhole ^= Object.keys(value).length;
 }
+
+const blackholeStream = new Writable({
+  write(chunk, _encoding, callback) {
+    consume(chunk);
+    callback();
+  },
+});
 
 function measure(name, fn, count = iterations) {
   for (let index = 0; index < warmupIterations; index++) consume(fn(index));
@@ -200,6 +214,37 @@ async function main() {
     },
   );
   const pinoDisabledLogger = pino({ level: "info" }, { write() {} });
+  resetLogTapeSync();
+  const logTapeJsonLines = getLogTapeJsonLinesFormatter({
+    categorySeparator: ".",
+    message: "rendered",
+    properties: "flatten",
+  });
+  configureLogTapeSync({
+    sinks: {
+      blackhole(record) {
+        consume(logTapeJsonLines(record));
+      },
+    },
+    loggers: [
+      {
+        category: ["bench", "node"],
+        lowestLevel: "debug",
+        parentSinks: "override",
+        sinks: ["blackhole"],
+      },
+    ],
+    reset: true,
+  });
+  const logTapeLogger = getLogTapeLogger(["bench", "node"]).with({
+    service: "checkout",
+    env: "bench",
+  });
+  const nativeConsole = new Console({
+    colorMode: false,
+    stderr: blackholeStream,
+    stdout: blackholeStream,
+  });
   const winstonLogger = winston.createLogger({
     level: "debug",
     format: winston.format.json(),
@@ -208,7 +253,7 @@ async function main() {
       new winston.transports.Stream({
         stream: new Writable({
           write(chunk, _encoding, callback) {
-            consume(chunk.toString());
+            consume(chunk);
             callback();
           },
         }),
@@ -245,7 +290,13 @@ async function main() {
     ),
     measure("pino ndjson noop sink", (index) => pinoLogger.info({ index }, "order created")),
     measure("pino disabled debug", (index) => pinoDisabledLogger.debug({ index }, "skip")),
+    measure("logtape json lines noop sink", (index) =>
+      logTapeLogger.info("order created", { index }),
+    ),
     measure("winston json noop sink", (index) => winstonLogger.info("order created", { index })),
+    measure("node console info noop stream", (index) =>
+      nativeConsole.info("order created", { index }),
+    ),
     measure(
       "json encode batch",
       () => jsonCodec.encode(sampleBatch),

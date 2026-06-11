@@ -28,7 +28,7 @@ CI runs the gate on every pull request.
 - Enabled logger with a record-aware no-op write transport (record fast path, no event projection).
 - Console transport with a no-op patched console.
 - Batch transport enqueue path.
-- Full-path NDJSON comparison against pino and winston (see below).
+- Full-path NDJSON comparison against pino, winston, LogTape, and Node console (see below).
 - JSON, safe JSON, fast event JSON, and msgpack adapter encode/decode.
 - Fast event JSON encoding raw LogRecord batches (record transport boundary).
 
@@ -36,23 +36,26 @@ CI runs the gate on every pull request.
 
 The full-path scenarios log one structured info call per iteration and hand the
 serialized line to a discarding sink, so they compare pipeline plus
-serialization without I/O noise. pino and winston are dev dependencies pinned
-in the root lockfile.
+serialization without terminal or filesystem I/O noise. pino, winston, and
+LogTape are dev dependencies pinned in the root lockfile. The Node console
+scenario uses a real `Console` instance backed by a discarding stream.
 
 Snapshot recorded 2026-06-12 on an Apple Silicon laptop, Node v22.22.2,
-pino 10.3.1, winston 3.19.0, `BENCH_ITERATIONS=200000`:
+pino 10.3.1, winston 3.19.0, LogTape 2.1.3, `BENCH_ITERATIONS=200000`:
 
 | Scenario | ns/op | ops/sec |
 | --- | ---: | ---: |
-| loggerjs disabled debug (lazy message) | 5 | 199,029,730 |
-| pino disabled debug | 7 | 146,145,415 |
-| loggerjs batch transport enqueue | 166 | 6,026,524 |
-| loggerjs lean record sink | 270 | 3,698,701 |
-| loggerjs fast-event-json record sink | 300 | 3,329,149 |
-| loggerjs ndjson event sink | 824 | 1,213,189 |
-| loggerjs fast-event-json event sink | 913 | 1,095,335 |
-| pino ndjson noop sink | 226 | 4,427,003 |
-| winston json noop sink | 2,341 | 427,136 |
+| loggerjs disabled debug (lazy message) | 5 | 199,766,872 |
+| pino disabled debug | 6 | 157,723,607 |
+| loggerjs batch transport enqueue | 163 | 6,145,156 |
+| loggerjs lean record sink | 268 | 3,735,859 |
+| loggerjs fast-event-json record sink | 303 | 3,299,801 |
+| loggerjs ndjson event sink | 793 | 1,260,769 |
+| loggerjs fast-event-json event sink | 870 | 1,150,046 |
+| pino ndjson noop sink | 228 | 4,393,343 |
+| node console info noop stream | 549 | 1,821,547 |
+| winston json noop sink | 2,436 | 410,525 |
+| logtape json lines noop sink | 4,842 | 206,535 |
 
 All loggerjs and pino full-path loggers carry the same base fields
 (`service`, `env`). The lean record sink uses
@@ -63,14 +66,15 @@ to emit pino-shaped lines; the full-envelope record sink additionally emits
 Honest read of the numbers against the design targets:
 
 - Disabled-level logging is at parity with pino.
-- The lean record sink runs at roughly 83% of pino, and the full-envelope
+- The lean record sink runs at roughly 85% of pino, and the full-envelope
   record sink at roughly 75% while carrying three extra fields per line. The
   design target of at least 80% of pino is **met** for equivalent output.
   Full parity is structurally out of reach without giving up the record
   pipeline: pino builds its line directly from call arguments, while loggerjs
   allocates a LogRecord so middleware, processors, and multiple transports can
   observe it.
-- loggerjs is roughly 8x faster than winston on the same path.
+- loggerjs is roughly 2x faster than Node console, 9x faster than winston, and
+  18x faster than LogTape on the measured sink paths.
 - An earlier snapshot showed pino at 442ns in the mixed suite; that was a JIT
   warmup artifact (10k warmup iterations), fixed by warming each scenario with
   a quarter of the measured iterations. Treat cross-logger comparisons as

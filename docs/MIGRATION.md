@@ -31,7 +31,7 @@ Key differences:
 - pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data, not per-key.
 - pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
 - pino-pretty's role is `consoleTransport()` (pretty by default).
-- For pino-shaped minimal output bytes, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Expect ~83% of pino throughput on that path ([BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
+- For pino-shaped minimal output bytes, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Expect ~85% of pino throughput on that path ([BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
 
 ## From winston
 
@@ -60,7 +60,7 @@ Key differences:
 - `defaultMeta` → `tags` and/or `bindings`.
 - Per-transport `level` maps directly to `minLevel` on any transport.
 - Child loggers replace `winston.loggers` registries for per-module configuration; library authors should prefer `getLogger()` from core.
-- Throughput on the same path measures roughly 8x winston ([BENCHMARKS.md](BENCHMARKS.md)).
+- Throughput on the same path measures roughly 9x winston ([BENCHMARKS.md](BENCHMARKS.md)).
 
 ## From console.log
 

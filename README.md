@@ -13,7 +13,7 @@ LoggerJS is a monorepo of logging packages around a dependency-free, platform-ne
 
 - **Truly isomorphic.** The core has zero dependencies, zero platform APIs, and a type surface that compiles without DOM libs. The same logger code runs in Node, browsers, workers, and edge runtimes.
 - **Automatic collection as a first-class concept.** Most loggers stop at `logger.info()`. LoggerJS ships 24 integrations that turn platform behavior into structured logs, with re-entrancy guards and unpatched-original registries so capture never loops.
-- **Performance with receipts.** Disabled levels cost ~5ns (at parity with pino). The full NDJSON path runs at ~83% of pino for equivalent output while carrying a record pipeline pino doesn't have — and the numbers are [measured, published](docs/BENCHMARKS.md), and enforced by a CI regression gate. The deliberate trade-off is [documented](docs/ARCHITECTURE.md).
+- **Performance with receipts.** Disabled levels cost ~5ns (at parity with pino). The full NDJSON path runs at ~85% of pino for equivalent output while carrying a record pipeline pino doesn't have — and the numbers are [measured, published](docs/BENCHMARKS.md), and enforced by a CI regression gate. The deliberate trade-off is [documented](docs/ARCHITECTURE.md).
 - **Logs survive bad days.** Crash-path `flushSync`, beacon delivery on page close, offline queues with replay, batch retry with circuit breakers, codecs that fall back instead of throwing on circular references, and meta counters for every silent degradation.
 - **Library-author friendly.** `getLogger(["my-lib"])` is a no-op until the host application calls `configure()` — log from libraries without forcing a logging dependency decision on users.
 
@@ -146,12 +146,14 @@ Measured on Node 22 / Apple Silicon, full methodology and snapshot in [docs/BENC
 
 | Path | ns/op |
 | --- | ---: |
-| Disabled level call (lazy message) | ~5 (pino: ~7) |
-| Enabled pipeline, record fast path | ~108 |
-| Batch transport enqueue | ~166 |
-| Full NDJSON line, lean envelope | ~270 (~83% of pino) |
-| Full NDJSON line with id/seq/levelName | ~300 |
-| winston, same path | ~2,341 |
+| Disabled level call (lazy message) | ~5 (pino: ~6) |
+| Enabled pipeline, record fast path | ~101 |
+| Batch transport enqueue | ~163 |
+| Full NDJSON line, lean envelope | ~268 (~85% of pino) |
+| Full NDJSON line with id/seq/levelName | ~303 |
+| Node console, noop stream | ~549 |
+| winston, same path | ~2,436 |
+| LogTape, same path | ~4,842 |
 
 The hot path is engineered — level gating before any allocation, lazy message resolution, frozen shared tags, memoized ids, a record fast path that skips event projection, fragment-cached serialization — and guarded by `pnpm bench:gate` in CI. The remaining gap to pino is a [documented architectural decision](docs/ARCHITECTURE.md), not an accident: LoggerJS allocates one record per log so middleware, integrations, and multiple transports can observe it.
 

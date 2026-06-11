@@ -20,6 +20,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.0.2
         version: 21.0.2
+      '@logtape/logtape':
+        specifier: ^2.1.3
+        version: 2.1.3
       '@types/node':
         specifier: ^22.19.20
         version: 22.19.20
@@ -528,6 +531,9 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@logtape/logtape@2.1.3':
+    resolution: {integrity: sha512-DgFWjTYG403/FYbe2rIN6oEE20aN34r5UBC4wktCsM+qSF1L9HMZErvH+u+urNuDQX4bcnLm5UYgX+wWE79U3g==}
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -2829,6 +2835,8 @@ snapshots:
       '@types/node': 22.19.20
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@logtape/logtape@2.1.3': {}
 
   '@manypkg/find-root@1.1.0':
     dependencies:

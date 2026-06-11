@@ -404,7 +404,7 @@ Benchmarking must cover Node and real browsers, not only synthetic Node loops. T
 
 ### Decision: 80% of pino is the accepted ceiling, not a milestone toward parity
 
-Status as of 2026-06: the Node NDJSON full path measures ~83% of pino for
+Status as of 2026-06: the Node NDJSON full path measures ~85% of pino for
 equivalent output (lean envelope) and ~75% while emitting `id`, `seq`, and
 `levelName` on top of pino's fields (see `docs/BENCHMARKS.md` for the
 snapshot). The 80% target is met, and we deliberately stop here.
