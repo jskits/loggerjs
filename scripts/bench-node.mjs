@@ -8,7 +8,9 @@ import winston from "winston";
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const iterations = Number.parseInt(process.env.BENCH_ITERATIONS ?? "100000", 10);
-const warmupIterations = Math.min(10_000, Math.max(1_000, Math.floor(iterations / 10)));
+// JIT warmup needs to be a meaningful share of the measured run; 10k was not
+// enough for the competitor loggers and skewed cross-scenario comparisons.
+const warmupIterations = Math.min(50_000, Math.max(1_000, Math.floor(iterations / 4)));
 
 function distUrl(relativePath) {
   const path = join(repoRoot, relativePath);
@@ -145,8 +147,12 @@ async function main() {
       },
     ],
   });
+  // Carry the same base fields as the pino logger below so all full-path
+  // scenarios serialize equivalent information.
+  const benchTags = { service: "checkout", env: "bench" };
   const loggerjsRecordNdjsonLogger = core.createLogger({
     level: "debug",
+    tags: benchTags,
     transports: [
       {
         name: "record-ndjson-sink",
@@ -156,8 +162,26 @@ async function main() {
       },
     ],
   });
+  const leanFastEventJsonCodec = codecs.fastEventJsonCodec({
+    includeId: false,
+    includeSeq: false,
+    includeLevelName: false,
+  });
+  const loggerjsLeanRecordLogger = core.createLogger({
+    level: "debug",
+    tags: benchTags,
+    transports: [
+      {
+        name: "lean-record-sink",
+        write(record) {
+          consume(leanFastEventJsonCodec.encode(record));
+        },
+      },
+    ],
+  });
   const loggerjsFastEventLogger = core.createLogger({
     level: "debug",
+    tags: benchTags,
     transports: [
       {
         name: "fast-event-sink",
@@ -212,6 +236,9 @@ async function main() {
     ),
     measure("loggerjs fast-event-json record sink", (index) =>
       loggerjsRecordNdjsonLogger.info("order created", { index }),
+    ),
+    measure("loggerjs lean record sink", (index) =>
+      loggerjsLeanRecordLogger.info("order created", { index }),
     ),
     measure("loggerjs fast-event-json event sink", (index) =>
       loggerjsFastEventLogger.info("order created", { index }),

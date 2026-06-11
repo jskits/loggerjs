@@ -37,24 +37,36 @@ pino 10.3.1, winston 3.19.0, `BENCH_ITERATIONS=200000`:
 
 | Scenario | ns/op | ops/sec |
 | --- | ---: | ---: |
-| loggerjs disabled debug (lazy message) | 5 | 203,605,445 |
-| pino disabled debug | 6 | 162,519,045 |
-| loggerjs fast-event-json record sink | 809 | 1,236,233 |
-| loggerjs fast-event-json event sink | 848 | 1,178,711 |
-| loggerjs ndjson event sink | 1,256 | 796,032 |
-| pino ndjson noop sink | 240 | 4,159,928 |
-| winston json noop sink | 2,383 | 419,708 |
+| loggerjs disabled debug (lazy message) | 5 | 222,016,733 |
+| pino disabled debug | 7 | 146,145,415 |
+| loggerjs lean record sink | 275 | 3,632,844 |
+| loggerjs fast-event-json record sink | 305 | 3,278,908 |
+| loggerjs fast-event-json event sink | 879 | 1,137,786 |
+| loggerjs ndjson event sink | 1,189 | 841,282 |
+| pino ndjson noop sink | 228 | 4,380,253 |
+| winston json noop sink | 2,341 | 427,136 |
+
+All loggerjs and pino full-path loggers carry the same base fields
+(`service`, `env`). The lean record sink uses
+`fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`
+to emit pino-shaped lines; the full-envelope record sink additionally emits
+`id`, `seq`, and `levelName` per line.
 
 Honest read of the numbers against the design targets:
 
-- Disabled-level logging is at parity with pino. The target of a one-compare
-  early return holds.
-- The best loggerjs full path (record sink) runs at roughly 30% of pino
-  throughput. The design target of at least 80% of pino is **not met yet**.
-  The remaining gap is split between the pipeline (~200ns before any
-  transport: record allocation, context merge, normalization) and single-event
-  serialization (~600ns vs pino's precompiled stringifier).
-- loggerjs is roughly 3x faster than winston on the same path.
+- Disabled-level logging is at parity with pino.
+- The lean record sink runs at roughly 83% of pino, and the full-envelope
+  record sink at roughly 75% while carrying three extra fields per line. The
+  design target of at least 80% of pino is **met** for equivalent output.
+  Full parity is structurally out of reach without giving up the record
+  pipeline: pino builds its line directly from call arguments, while loggerjs
+  allocates a LogRecord so middleware, processors, and multiple transports can
+  observe it.
+- loggerjs is roughly 8x faster than winston on the same path.
+- An earlier snapshot showed pino at 442ns in the mixed suite; that was a JIT
+  warmup artifact (10k warmup iterations), fixed by warming each scenario with
+  a quarter of the measured iterations. Treat cross-logger comparisons as
+  invalid unless warmup is proportionate.
 
 Re-run `pnpm bench:node` after hot-path changes and update this snapshot when
 the numbers move materially.
