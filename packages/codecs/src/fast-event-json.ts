@@ -1,4 +1,5 @@
 import {
+  incrementLoggerMetaCounter,
   isLogRecord,
   normalizeError,
   resolveMessage,
@@ -11,6 +12,13 @@ import {
   type SafeStringifyOptions,
 } from "@loggerjs/core";
 
+/**
+ * Without any option set, encode runs on a native `JSON.stringify` fast path: nested
+ * `Error` values serialize as `{}` and circular or BigInt payloads trigger a safe
+ * re-encode of the whole input (circular refs become "[Circular]", BigInt becomes a
+ * string). Setting any {@link SafeStringifyOptions} field opts into the safe encoder
+ * everywhere, which also preserves `Error` name/message/stack inside data payloads.
+ */
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
   includeContext?: boolean;
   includeData?: boolean;
@@ -146,19 +154,31 @@ function hasLogRecord(items: readonly (LogEvent | LogRecord)[]): boolean {
 
 export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Codec<string> {
   const stringify = createStringify(options);
+  const safeStringify: JsonStringify = (value) => safeJsonStringify(value, options);
   const useNativeEventJson = canUseNativeEventJson(options);
+  const fastEncode = (input: CodecInput): string => {
+    if (isCodecArray(input)) {
+      if (useNativeEventJson && !hasLogRecord(input)) return JSON.stringify(input);
+      return encodeArray(input, options, stringify);
+    }
+    if (useNativeEventJson && !isLogRecord(input)) return JSON.stringify(input);
+    return encodeItem(input, options, stringify);
+  };
   return {
     name: "fast-event-json",
     contentType: "application/json",
     encode(input: CodecInput) {
-      if (isCodecArray(input)) {
-        if (useNativeEventJson && !hasLogRecord(input)) return JSON.stringify(input);
-        return encodeArray(input, options, stringify);
+      // Circular references and BigInt values throw on the native fast path. Logs
+      // must never be lost to encoding, so re-encode the input with the safe
+      // stringifier instead of surfacing the error as a transport failure.
+      try {
+        return fastEncode(input);
+      } catch {
+        incrementLoggerMetaCounter("codec.fallback");
+        incrementLoggerMetaCounter("codec.fallback.fast-event-json");
       }
-      if (useNativeEventJson && !isLogRecord(input)) return JSON.stringify(input);
-      return isLogRecord(input)
-        ? encodeRecord(input, options, stringify)
-        : encodeEvent(input, options, stringify);
+      if (isCodecArray(input)) return encodeArray(input, options, safeStringify);
+      return encodeItem(input, options, safeStringify);
     },
     decode(payload) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
