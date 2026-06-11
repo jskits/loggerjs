@@ -198,6 +198,7 @@ export * from "./service-worker-transport.js";
 export * from "./websocket-transport.js";
 export * from "./indexeddb-offline-queue.js";
 export * from "./indexeddb-transport.js";
+export * from "./zip-export.js";
 export * from "./console-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
@@ -741,4 +742,61 @@ export interface CaptureXHROptions {
     sanitizeUrl?: (url: string) => string;
 }
 export declare function captureXHRIntegration(options?: CaptureXHROptions): Integration;
+```
+
+## zip-export.d.ts
+
+```ts
+import { type LogEvent, type SafeStringifyOptions } from "@loggerjs/core";
+import type { IndexedDbTransportQueryOptions } from "./indexeddb-transport.js";
+export type LogZipExportFormat = "ndjson" | "json";
+export interface ZipExportFile {
+    name: string;
+    content: string | Uint8Array | ArrayBuffer;
+    lastModified?: number;
+}
+export interface LogZipBlobOptions {
+    lastModified?: number;
+    type?: string;
+}
+export interface LogZipExportQuerySource {
+    query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+}
+export type LogZipExportSource = AsyncIterable<LogEvent> | LogZipExportQuerySource;
+export interface LogZipExportManifest {
+    schema: "loggerjs.log-export.v1";
+    createdAt: string;
+    source?: string;
+    format: LogZipExportFormat;
+    logFileName: string;
+    logCount: number;
+    skippedCount: number;
+    query?: IndexedDbTransportQueryOptions;
+    timeRange?: {
+        from: number;
+        to: number;
+    };
+}
+export interface LogZipExportOptions {
+    query?: IndexedDbTransportQueryOptions;
+    format?: LogZipExportFormat;
+    logFileName?: string;
+    includeManifest?: boolean;
+    manifestFileName?: string;
+    source?: string;
+    createdAt?: number;
+    maxEvents?: number;
+    stringify?: SafeStringifyOptions;
+    serializeEvent?: (event: LogEvent) => string;
+    mapEvent?: (event: LogEvent) => LogEvent | false | null | undefined;
+}
+export interface DownloadBlobOptions {
+    filename?: string;
+    document?: Document;
+    url?: Pick<typeof URL, "createObjectURL" | "revokeObjectURL">;
+    revokeDelayMs?: number;
+}
+export declare function createLogZipBlob(files: readonly ZipExportFile[], options?: LogZipBlobOptions): Blob;
+export declare function exportLogsToZip(source: LogZipExportSource, options?: LogZipExportOptions): Promise<Blob>;
+export declare function downloadBlob(blob: Blob, filenameOrOptions?: string | DownloadBlobOptions): string;
 ```

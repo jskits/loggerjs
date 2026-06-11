@@ -21,6 +21,8 @@ import {
   captureWebSocketIntegration,
   captureWebVitalsIntegration,
   createLogger,
+  downloadBlob,
+  exportLogsToZip,
   indexedDbBrowserHttpOfflineQueue,
   indexedDbTransport,
   memoryBrowserHttpOfflineQueue,
@@ -28,6 +30,10 @@ import {
 } from "@loggerjs/browser";
 
 const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
+const localStore = indexedDbTransport({
+  maxEntries: 50_000,
+  ttlMs: 7 * 24 * 60 * 60 * 1000,
+});
 
 const logger = createLogger({
   name: "web",
@@ -40,7 +46,7 @@ const logger = createLogger({
     browserBroadcastChannelTransport({ channelName: "loggerjs" }),
     browserServiceWorkerTransport(),
     browserWebSocketTransport({ url: "wss://example.com/logs" }),
-    indexedDbTransport({ maxEntries: 50_000, ttlMs: 7 * 24 * 60 * 60 * 1000 }),
+    localStore,
   ],
   integrations: [
     captureConsoleIntegration({ levels: ["warn", "error"] }),
@@ -61,6 +67,9 @@ const logger = createLogger({
 
 logger.info("page loaded");
 
+const zip = await exportLogsToZip(localStore, { source: "indexeddb" });
+downloadBlob(zip, "loggerjs-logs.zip");
+
 // React ErrorBoundary: componentDidCatch(error, info) {
 //   frameworkErrors.reactComponentDidCatch(error, info);
 // }
@@ -69,5 +78,7 @@ logger.info("page loaded");
 Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
 `indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
 Use `indexedDbTransport()` when the browser should keep a local, queryable log store.
+Use `exportLogsToZip()` and `downloadBlob()` to export persisted browser logs as a
+standard zip file containing `logs.ndjson` and `manifest.json`.
 
-Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `transport-indexeddb`, `offline-indexeddb`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-framework-errors`, `integration-reporting`, `integration-router`, `integration-runtime-host`, `integration-service-worker`, `integration-user-actions`, `integration-websocket`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.
+Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `transport-indexeddb`, `offline-indexeddb`, `export-zip`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-framework-errors`, `integration-reporting`, `integration-router`, `integration-runtime-host`, `integration-service-worker`, `integration-user-actions`, `integration-websocket`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.

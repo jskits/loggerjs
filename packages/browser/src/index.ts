@@ -5,6 +5,7 @@ export * from "./service-worker-transport";
 export * from "./websocket-transport";
 export * from "./indexeddb-offline-queue";
 export * from "./indexeddb-transport";
+export * from "./zip-export";
 export * from "./console-integration";
 export * from "./error-integration";
 export * from "./fetch-integration";

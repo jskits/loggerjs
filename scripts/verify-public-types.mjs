@@ -38,6 +38,7 @@ import { testTransport } from "@loggerjs/core/transport-test";
 import { browserBroadcastChannelTransport } from "@loggerjs/browser/transport-broadcast-channel";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { indexedDbTransport } from "@loggerjs/browser/transport-indexeddb";
+import { exportLogsToZip } from "@loggerjs/browser/export-zip";
 import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-service-worker";
 import { browserWebSocketTransport } from "@loggerjs/browser/transport-websocket";
 import { captureFrameworkErrorsIntegration } from "@loggerjs/browser/integration-framework-errors";
@@ -102,7 +103,8 @@ browserBroadcastChannelTransport({
   channelFactory: () => ({ postMessage() {} }),
 });
 browserHttpTransport({ url: "/logs" });
-indexedDbTransport({ batchSize: 100, maxEntries: 1000 });
+const localStore = indexedDbTransport({ batchSize: 100, maxEntries: 1000 });
+await exportLogsToZip(localStore, { source: "indexeddb" });
 browserServiceWorkerTransport({
   serviceWorker: {
     controller: {
