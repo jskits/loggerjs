@@ -380,13 +380,18 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     else schedule();
   };
 
+  // Byte estimation walks the entire payload tree, but its result is only
+  // consulted by the maxBytes budget checks. With the default unbounded
+  // maxBytes those checks can never trigger, so skip the walk entirely.
+  const needsByteEstimates = Number.isFinite(maxBytes);
+
   const enqueueRecord = (record: LogRecord, context: TransportContext) => {
     if (inner.minLevel !== undefined && record.level < toLevelValue(inner.minLevel)) return;
     enqueue(
       {
         payload: record,
         kind: "record",
-        estimatedBytes: estimateRecordBytes(record),
+        estimatedBytes: needsByteEstimates ? estimateRecordBytes(record) : 0,
       },
       context,
     );
@@ -398,7 +403,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
       {
         payload: event,
         kind: "event",
-        estimatedBytes: estimateEventBytes(event),
+        estimatedBytes: needsByteEstimates ? estimateEventBytes(event) : 0,
       },
       context,
     );

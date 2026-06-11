@@ -74,6 +74,30 @@ describe("batchTransport", () => {
     });
   });
 
+  it("skips byte estimation entirely when maxBytes is unbounded", () => {
+    const estimate = vi.fn<(event: LogEvent) => number>(() => 1);
+    const transport = batchTransport(
+      { name: "inner", logBatch() {} },
+      { maxBatchSize: 10, flushIntervalMs: 0, estimateEventBytes: estimate },
+    );
+
+    transport.log?.(event, createContext());
+
+    expect(estimate).not.toHaveBeenCalled();
+  });
+
+  it("still estimates bytes when a maxBytes budget is configured", () => {
+    const estimate = vi.fn<(event: LogEvent) => number>(() => 1);
+    const transport = batchTransport(
+      { name: "inner", logBatch() {} },
+      { maxBatchSize: 10, maxBytes: 1024, flushIntervalMs: 0, estimateEventBytes: estimate },
+    );
+
+    transport.log?.(event, createContext());
+
+    expect(estimate).toHaveBeenCalledTimes(1);
+  });
+
   it("skips the drop event conversion when no onDrop listener is set", () => {
     resetLoggerMetaStats();
     const toEvent = vi.fn<TransportContext["toEvent"]>(recordToEvent);
