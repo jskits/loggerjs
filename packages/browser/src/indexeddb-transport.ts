@@ -154,6 +154,18 @@ function shouldKeepEntry(entry: IndexedDbLogEntry, options: IndexedDbTransportQu
   return true;
 }
 
+function orderRangeForQuery(options: IndexedDbTransportQueryOptions): IDBKeyRange | undefined {
+  if (typeof IDBKeyRange === "undefined") return undefined;
+  const lower =
+    options.from === undefined ? undefined : [options.from, Number.MIN_SAFE_INTEGER, ""];
+  const upper =
+    options.to === undefined ? undefined : [options.to, Number.MAX_SAFE_INTEGER, "\uffff"];
+  if (lower && upper) return IDBKeyRange.bound(lower, upper);
+  if (lower) return IDBKeyRange.lowerBound(lower);
+  if (upper) return IDBKeyRange.upperBound(upper);
+  return undefined;
+}
+
 function iterateCursor(
   request: IDBRequest<IDBCursorWithValue | null>,
   visit: (cursor: IDBCursorWithValue) => boolean | void,
@@ -371,6 +383,30 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       return total;
     });
 
+  const queryEntriesByCursor = async (
+    queryOptions: IndexedDbTransportQueryOptions,
+  ): Promise<IndexedDbLogEntry[] | undefined> =>
+    withStore("readonly", async (store) => {
+      const index = getStoreIndex(store, ORDER_INDEX_NAME);
+      if (!index) return undefined;
+      const entries: IndexedDbLogEntry[] = [];
+      const limit = queryOptions.limit;
+      if (limit !== undefined && limit <= 0) return entries;
+      await iterateCursor(
+        index.openCursor(
+          orderRangeForQuery(queryOptions),
+          queryOptions.order === "desc" ? "prev" : "next",
+        ),
+        (cursor) => {
+          const entry = cursor.value as IndexedDbLogEntry;
+          if (!shouldKeepEntry(entry, queryOptions)) return true;
+          entries.push(entry);
+          return limit === undefined || entries.length < limit;
+        },
+      );
+      return entries;
+    });
+
   const pruneWithEntries = async () => {
     const now = Date.now();
     let entries = await getEntries();
@@ -526,7 +562,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     },
     async count() {
       await flushPending();
-      return (await getEntries()).length;
+      return (await countEntries()) ?? (await getEntries()).length;
     },
     async clear() {
       buffer.length = 0;
@@ -535,9 +571,11 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     },
     async *query(queryOptions: IndexedDbTransportQueryOptions = {}) {
       await flushPending();
-      const entries = orderEntries(await getEntries(), queryOptions.order ?? "asc")
-        .filter((entry) => shouldKeepEntry(entry, queryOptions))
-        .slice(0, queryOptions.limit);
+      const entries =
+        (await queryEntriesByCursor(queryOptions)) ??
+        orderEntries(await getEntries(), queryOptions.order ?? "asc")
+          .filter((entry) => shouldKeepEntry(entry, queryOptions))
+          .slice(0, queryOptions.limit);
       for (const entry of entries) {
         const event = decodeEntry(entry, codec);
         if (event) yield event;

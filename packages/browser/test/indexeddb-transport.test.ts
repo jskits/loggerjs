@@ -33,24 +33,120 @@ class FakeOpenRequest extends FakeRequest<FakeDatabase> {
   transaction?: FakeTransaction;
 }
 
-class FakeObjectStore {
-  readonly indexNames = {
-    contains: (name: string) => this.indexes.has(name),
-  };
-  private readonly indexes = new Set<string>();
+type FakeKeyPath = string | readonly string[];
 
+interface FakeState {
+  entries: Map<string, IndexedDbLogEntry>;
+  getAllCalls: number;
+  indexes: Map<string, FakeKeyPath>;
+}
+
+function valueForKeyPath(entry: IndexedDbLogEntry, keyPath: FakeKeyPath): IDBValidKey {
+  if (typeof keyPath === "string") {
+    return entry[keyPath as keyof IndexedDbLogEntry] as IDBValidKey;
+  }
+  return keyPath.map((key) => entry[key as keyof IndexedDbLogEntry]) as IDBValidKey;
+}
+
+function compareKey(left: IDBValidKey, right: IDBValidKey): number {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    const length = Math.min(left.length, right.length);
+    for (let index = 0; index < length; index += 1) {
+      const compared = compareKey(left[index] as IDBValidKey, right[index] as IDBValidKey);
+      if (compared !== 0) return compared;
+    }
+    return left.length - right.length;
+  }
+  if (typeof left === "number" && typeof right === "number") return left - right;
+  const leftString = String(left);
+  const rightString = String(right);
+  return leftString < rightString ? -1 : leftString > rightString ? 1 : 0;
+}
+
+class FakeCursor {
   constructor(
-    private readonly entries: Map<string, IndexedDbLogEntry>,
+    private readonly state: FakeState,
+    private readonly items: IndexedDbLogEntry[],
+    private index: number,
+    private readonly request: FakeRequest<IDBCursorWithValue | null>,
     private readonly transaction?: FakeTransaction,
   ) {}
 
-  createIndex(name: string) {
-    this.indexes.add(name);
+  get value() {
+    return this.items[this.index] as IndexedDbLogEntry;
+  }
+
+  continue() {
+    this.index += 1;
+    const next =
+      this.index >= this.items.length
+        ? null
+        : new FakeCursor(this.state, this.items, this.index, this.request, this.transaction);
+    this.request.succeed(next as unknown as IDBCursorWithValue | null);
+    this.transaction?.completeSoon();
+  }
+
+  delete() {
+    const request = new FakeRequest<undefined>();
+    this.state.entries.delete(this.value.id);
+    request.succeed(undefined);
+    this.transaction?.completeSoon();
+    return request as unknown as IDBRequest<undefined>;
+  }
+}
+
+class FakeIndex {
+  constructor(
+    private readonly state: FakeState,
+    private readonly keyPath: FakeKeyPath,
+    private readonly transaction?: FakeTransaction,
+  ) {}
+
+  openCursor(_query?: IDBValidKey | IDBKeyRange | null, direction: IDBCursorDirection = "next") {
+    const items = [...this.state.entries.values()];
+    items.sort((left, right) =>
+      compareKey(valueForKeyPath(left, this.keyPath), valueForKeyPath(right, this.keyPath)),
+    );
+    if (direction === "prev" || direction === "prevunique") items.reverse();
+    return createCursorRequest(this.state, items, this.transaction);
+  }
+}
+
+function createCursorRequest(
+  state: FakeState,
+  items: IndexedDbLogEntry[],
+  transaction?: FakeTransaction,
+) {
+  const request = new FakeRequest<IDBCursorWithValue | null>();
+  const cursor = items.length === 0 ? null : new FakeCursor(state, items, 0, request, transaction);
+  request.succeed(cursor as unknown as IDBCursorWithValue | null);
+  transaction?.completeSoon();
+  return request as unknown as IDBRequest<IDBCursorWithValue | null>;
+}
+
+class FakeObjectStore {
+  readonly indexNames = {
+    contains: (name: string) => this.state.indexes.has(name),
+  };
+
+  constructor(
+    private readonly state: FakeState,
+    private readonly transaction?: FakeTransaction,
+  ) {}
+
+  createIndex(name: string, keyPath: FakeKeyPath) {
+    this.state.indexes.set(name, keyPath);
+  }
+
+  index(name: string) {
+    const keyPath = this.state.indexes.get(name);
+    if (!keyPath) throw new Error(`Missing index ${name}`);
+    return new FakeIndex(this.state, keyPath, this.transaction) as unknown as IDBIndex;
   }
 
   put(item: IndexedDbLogEntry) {
     const request = new FakeRequest<IDBValidKey>();
-    this.entries.set(item.id, item);
+    this.state.entries.set(item.id, item);
     request.succeed(item.id);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<IDBValidKey>;
@@ -58,14 +154,29 @@ class FakeObjectStore {
 
   getAll() {
     const request = new FakeRequest<IndexedDbLogEntry[]>();
-    request.succeed([...this.entries.values()]);
+    this.state.getAllCalls += 1;
+    request.succeed([...this.state.entries.values()]);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<IndexedDbLogEntry[]>;
   }
 
+  count() {
+    const request = new FakeRequest<number>();
+    request.succeed(this.state.entries.size);
+    this.transaction?.completeSoon();
+    return request as unknown as IDBRequest<number>;
+  }
+
+  openCursor(_query?: IDBValidKey | IDBKeyRange | null, direction: IDBCursorDirection = "next") {
+    const items = [...this.state.entries.values()];
+    items.sort((left, right) => compareKey(left.id, right.id));
+    if (direction === "prev" || direction === "prevunique") items.reverse();
+    return createCursorRequest(this.state, items, this.transaction);
+  }
+
   delete(id: IDBValidKey) {
     const request = new FakeRequest<undefined>();
-    this.entries.delete(String(id));
+    this.state.entries.delete(String(id));
     request.succeed(undefined);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
@@ -73,7 +184,7 @@ class FakeObjectStore {
 
   clear() {
     const request = new FakeRequest<undefined>();
-    this.entries.clear();
+    this.state.entries.clear();
     request.succeed(undefined);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
@@ -85,7 +196,7 @@ class FakeTransaction {
   private completed = false;
   private readonly listeners = new Map<string, Array<() => void>>();
 
-  constructor(private readonly entries: Map<string, IndexedDbLogEntry>) {}
+  constructor(private readonly state: FakeState) {}
 
   addEventListener(type: string, listener: () => void) {
     const listeners = this.listeners.get(type) ?? [];
@@ -113,14 +224,18 @@ class FakeTransaction {
   }
 
   objectStore() {
-    const store = new FakeObjectStore(this.entries, this);
+    const store = new FakeObjectStore(this.state, this);
     this.completeSoon();
     return store as unknown as IDBObjectStore;
   }
 }
 
 class FakeDatabase {
-  readonly entries = new Map<string, IndexedDbLogEntry>();
+  readonly state: FakeState = {
+    entries: new Map<string, IndexedDbLogEntry>(),
+    getAllCalls: 0,
+    indexes: new Map<string, FakeKeyPath>(),
+  };
   closed = false;
   private store: FakeObjectStore | undefined;
   private hasStore = false;
@@ -128,15 +243,23 @@ class FakeDatabase {
     contains: () => this.hasStore,
   };
 
+  get entries() {
+    return this.state.entries;
+  }
+
+  get getAllCalls() {
+    return this.state.getAllCalls;
+  }
+
   createObjectStore() {
     this.hasStore = true;
-    this.store = new FakeObjectStore(this.entries);
+    this.store = new FakeObjectStore(this.state);
     return this.store as unknown as IDBObjectStore;
   }
 
   transaction() {
     if (!this.store) this.createObjectStore();
-    return new FakeTransaction(this.entries) as unknown as IDBTransaction;
+    return new FakeTransaction(this.state) as unknown as IDBTransaction;
   }
 
   close() {
@@ -206,10 +329,14 @@ describe("indexedDbTransport", () => {
     expect(await transport.count()).toBe(2);
     expect((await collect(transport.query())).map((item) => item.id)).toEqual(["first", "second"]);
     expect(
+      (await collect(transport.query({ limit: 1, order: "desc" }))).map((item) => item.id),
+    ).toEqual(["second"]);
+    expect(
       (await collect(transport.query({ logger: "checkout", type: "ui.click" }))).map(
         (item) => item.id,
       ),
     ).toEqual(["first"]);
+    expect(idb.db.getAllCalls).toBe(0);
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.indexeddb.persisted": 2,
     });
