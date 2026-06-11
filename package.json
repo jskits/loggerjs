@@ -55,11 +55,13 @@
     "lint-staged": "^17.0.7",
     "oxfmt": "^0.54.0",
     "oxlint": "^1.69.0",
+    "pino": "^10.3.1",
     "rolldown": "^1.1.0",
     "simple-git-hooks": "^2.13.1",
     "turbo": "^2.9.17",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "winston": "^3.19.0"
   },
   "simple-git-hooks": {
     "commit-msg": "pnpm exec commitlint --edit \"$1\"",
