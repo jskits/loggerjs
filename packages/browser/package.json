@@ -53,6 +53,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./transport-indexeddb": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-console": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

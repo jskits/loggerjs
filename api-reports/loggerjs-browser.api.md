@@ -197,6 +197,7 @@ export * from "./http-transport.js";
 export * from "./service-worker-transport.js";
 export * from "./websocket-transport.js";
 export * from "./indexeddb-offline-queue.js";
+export * from "./indexeddb-transport.js";
 export * from "./console-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
@@ -231,6 +232,57 @@ export interface IndexedDbBrowserHttpOfflineQueue extends BrowserHttpOfflineQueu
     close: () => void;
 }
 export declare function indexedDbBrowserHttpOfflineQueue(options?: IndexedDbBrowserHttpOfflineQueueOptions): IndexedDbBrowserHttpOfflineQueue;
+```
+
+## indexeddb-transport.d.ts
+
+```ts
+import { type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import type { BrowserHttpDropPolicy } from "./http-transport.js";
+export interface IndexedDbLogEntry {
+    id: string;
+    seq: number;
+    createdAt: number;
+    level: number;
+    levelName: string;
+    logger: string;
+    type?: string;
+    byteLength: number;
+    payload: string | Uint8Array;
+}
+export interface IndexedDbTransportQueryOptions {
+    from?: number;
+    to?: number;
+    minLevel?: LoggerLevel;
+    logger?: string;
+    type?: string;
+    limit?: number;
+    order?: "asc" | "desc";
+}
+export interface IndexedDbTransportOptions {
+    name?: string;
+    dbName?: string;
+    storeName?: string;
+    maxEntries?: number;
+    maxBytes?: number;
+    ttlMs?: number;
+    batchSize?: number;
+    flushIntervalMs?: number;
+    maxBufferSize?: number;
+    dropPolicy?: BrowserHttpDropPolicy;
+    flushOnPageHide?: boolean;
+    codec?: Codec<string | Uint8Array>;
+    minLevel?: LoggerLevel;
+    indexedDB?: IDBFactory;
+    onDrop?: (event: LogEvent, reason: string) => void;
+    onPersistedDrop?: (entry: IndexedDbLogEntry, reason: string) => void;
+}
+export interface IndexedDbTransport extends Transport {
+    count: () => Promise<number>;
+    clear: () => Promise<void>;
+    query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+}
+export declare function indexedDbTransport(options?: IndexedDbTransportOptions): IndexedDbTransport;
 ```
 
 ## page-lifecycle.d.ts
