@@ -80,6 +80,20 @@ function asJsonString(value: string): string {
   return `"${value}"`;
 }
 
+// The timestamp changes once per millisecond while bursts of records share
+// it, so the rendered `","time":...,"seq":` fragment can be memoized the same
+// way the default id memoizes its time segment.
+let lastFragmentTime = -1;
+let lastTimeFragment = "";
+
+function timeFragment(time: number): string {
+  if (time !== lastFragmentTime) {
+    lastFragmentTime = time;
+    lastTimeFragment = `","time":${time},"seq":`;
+  }
+  return lastTimeFragment;
+}
+
 // level -> ',"level":30,"levelName":"info","logger":' — derived from the
 // numeric level alone, so a module-level cache is safe.
 const levelFragments = new Map<number, string>();
@@ -140,7 +154,7 @@ function encodeRecord(
   // The default id only contains [0-9a-z-] and the level name, so it never
   // needs escaping.
   const id = defaultRecordId(record, levelName);
-  let output = `{"id":"${id}","time":${record.time},"seq":${record.seq}${levelFragment(record.level)}${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+  let output = `{"id":"${id}${timeFragment(record.time)}${record.seq}${levelFragment(record.level)}${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
   if (record.type !== null) output += `,"type":${asJsonString(record.type)}`;
   if (record.tags !== null) output += tagsFragment(record.tags);
   if (options.includeData ?? true)
