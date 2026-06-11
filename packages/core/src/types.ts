@@ -152,7 +152,7 @@ export interface Codec<TPayload = string | Uint8Array> {
   name: string;
   contentType: string;
   encode: (
-    input: LogEvent | readonly LogEvent[] | readonly LogRecord[],
+    input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[],
     context?: EncodeContext,
   ) => TPayload;
   decode?: (payload: TPayload) => LogEvent | LogEvent[];

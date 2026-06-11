@@ -39,7 +39,7 @@ export interface RecordToEventOptions {
   source?: LogSource;
 }
 
-export type CodecInput = LogEvent | readonly LogEvent[] | readonly LogRecord[];
+export type CodecInput = LogEvent | LogRecord | readonly (LogEvent | LogRecord)[];
 
 const defaultCategory = Object.freeze(["app"]);
 
@@ -207,5 +207,6 @@ export function normalizeCodecInput(input: CodecInput): LogEvent | LogEvent[] {
     const items = input as readonly (LogEvent | LogRecord)[];
     return items.map((item) => (isLogRecord(item) ? recordToEvent(item) : item));
   }
+  if (isLogRecord(input)) return recordToEvent(input);
   return input as LogEvent;
 }

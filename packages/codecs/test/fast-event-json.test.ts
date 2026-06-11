@@ -8,7 +8,13 @@ describe("codec adapters", () => {
       time: 1,
       level: 30,
       category: ["api"],
+      type: "order.created",
+      tags: { service: "checkout" },
+      trace: { traceId: "trace-1" },
       msg: "created",
+      props: { orderId: "ord-1" },
+      ctx: { requestId: "req-1" },
+      source: "test",
       seq: 1,
     });
 
@@ -16,8 +22,20 @@ describe("codec adapters", () => {
       {
         logger: "api",
         message: "created",
+        type: "order.created",
+        tags: { service: "checkout" },
+        trace: { traceId: "trace-1" },
+        data: { orderId: "ord-1" },
+        context: { requestId: "req-1" },
+        source: { integration: "test" },
       },
     ]);
+
+    expect(JSON.parse(fastEventJsonCodec().encode(record))).toMatchObject({
+      logger: "api",
+      message: "created",
+      data: { orderId: "ord-1" },
+    });
 
     const msgpack = msgpackrCodec({
       pack: (input) => new TextEncoder().encode(JSON.stringify(input)),
