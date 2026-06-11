@@ -102,6 +102,40 @@ describe("fast event json hostile inputs", () => {
     expect((JSON.parse(codec.encode(third)) as LogEvent).tags).toEqual({ service: "billing" });
   });
 
+  it("omits id, seq, and levelName when lean output options are set", () => {
+    const codec = fastEventJsonCodec({
+      includeId: false,
+      includeSeq: false,
+      includeLevelName: false,
+    });
+    const record = createRecord({
+      time: 1700000000000,
+      level: 30,
+      category: ["api"],
+      msg: "created",
+      props: { orderId: "ord-1" },
+      seq: 7,
+    });
+
+    const decodedRecord = JSON.parse(codec.encode(record)) as Record<string, unknown>;
+    expect(decodedRecord).toEqual({
+      time: 1700000000000,
+      level: 30,
+      logger: "api",
+      message: "created",
+      data: { orderId: "ord-1" },
+    });
+
+    const decodedEvent = JSON.parse(codec.encode(recordToEvent(record))) as Record<string, unknown>;
+    expect(decodedEvent).toEqual({
+      time: 1700000000000,
+      level: 30,
+      logger: "api",
+      message: "created",
+      data: { orderId: "ord-1" },
+    });
+  });
+
   it("stamps the same default id on records as recordToEvent", () => {
     const record = createRecord({ time: 1700000000000, level: 30, msg: "created", seq: 7 });
     const encoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;

@@ -13,6 +13,10 @@ import { type Codec, type SafeStringifyOptions } from "@loggerjs/core";
  * re-encode of the whole input (circular refs become "[Circular]", BigInt becomes a
  * string). Setting any {@link SafeStringifyOptions} field opts into the safe encoder
  * everywhere, which also preserves `Error` name/message/stack inside data payloads.
+ *
+ * `includeId`, `includeSeq`, and `includeLevelName` trim the envelope for
+ * pino-shaped minimal NDJSON output; turning `includeId` off also skips id
+ * computation entirely on the record path.
  */
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
     includeContext?: boolean;
@@ -20,6 +24,9 @@ export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
     includeError?: boolean;
     includeTrace?: boolean;
     includeSource?: boolean;
+    includeId?: boolean;
+    includeSeq?: boolean;
+    includeLevelName?: boolean;
 }
 export declare function fastEventJsonCodec(options?: FastEventJsonCodecOptions): Codec<string>;
 ```

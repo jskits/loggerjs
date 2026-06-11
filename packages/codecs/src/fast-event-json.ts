@@ -19,6 +19,10 @@ import {
  * re-encode of the whole input (circular refs become "[Circular]", BigInt becomes a
  * string). Setting any {@link SafeStringifyOptions} field opts into the safe encoder
  * everywhere, which also preserves `Error` name/message/stack inside data payloads.
+ *
+ * `includeId`, `includeSeq`, and `includeLevelName` trim the envelope for
+ * pino-shaped minimal NDJSON output; turning `includeId` off also skips id
+ * computation entirely on the record path.
  */
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
   includeContext?: boolean;
@@ -26,6 +30,9 @@ export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
   includeError?: boolean;
   includeTrace?: boolean;
   includeSource?: boolean;
+  includeId?: boolean;
+  includeSeq?: boolean;
+  includeLevelName?: boolean;
 }
 
 type JsonStringify = (value: unknown) => string | undefined;
@@ -48,7 +55,18 @@ function canUseNativeEventJson(options: FastEventJsonCodecOptions): boolean {
     options.includeData !== false &&
     options.includeError !== false &&
     options.includeTrace !== false &&
-    options.includeSource !== false
+    options.includeSource !== false &&
+    options.includeId !== false &&
+    options.includeSeq !== false &&
+    options.includeLevelName !== false
+  );
+}
+
+function hasFullHeader(options: FastEventJsonCodecOptions): boolean {
+  return (
+    (options.includeId ?? true) &&
+    (options.includeSeq ?? true) &&
+    (options.includeLevelName ?? true)
   );
 }
 
@@ -131,7 +149,18 @@ function encodeEvent(
   stringify: JsonStringify,
   tagsFragment: (tags: NonNullable<LogEvent["tags"]>) => string,
 ): string {
-  let output = `{"id":${asJsonString(event.id)},"time":${event.time},"seq":${event.seq},"level":${event.level},"levelName":${asJsonString(event.levelName)},"logger":${asJsonString(event.logger)},"message":${asJsonString(event.message)}`;
+  let output: string;
+  if (hasFullHeader(options)) {
+    output = `{"id":${asJsonString(event.id)},"time":${event.time},"seq":${event.seq},"level":${event.level},"levelName":${asJsonString(event.levelName)},"logger":${asJsonString(event.logger)},"message":${asJsonString(event.message)}`;
+  } else {
+    output = "{";
+    if (options.includeId ?? true) output += `"id":${asJsonString(event.id)},`;
+    output += `"time":${event.time}`;
+    if (options.includeSeq ?? true) output += `,"seq":${event.seq}`;
+    output += `,"level":${event.level}`;
+    if (options.includeLevelName ?? true) output += `,"levelName":${asJsonString(event.levelName)}`;
+    output += `,"logger":${asJsonString(event.logger)},"message":${asJsonString(event.message)}`;
+  }
   if (event.type !== undefined) output += `,"type":${asJsonString(event.type)}`;
   if (event.tags !== undefined) output += tagsFragment(event.tags);
   if (options.includeData ?? true) output = appendField(output, "data", event.data, stringify);
@@ -151,10 +180,20 @@ function encodeRecord(
   tagsFragment: (tags: NonNullable<LogRecord["tags"]>) => string,
 ): string {
   const levelName = toLevelName(record.level);
-  // The default id only contains [0-9a-z-] and the level name, so it never
-  // needs escaping.
-  const id = defaultRecordId(record, levelName);
-  let output = `{"id":"${id}${timeFragment(record.time)}${record.seq}${levelFragment(record.level)}${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+  let output: string;
+  if (hasFullHeader(options)) {
+    // The default id only contains [0-9a-z-] and the level name, so it never
+    // needs escaping.
+    output = `{"id":"${defaultRecordId(record, levelName)}${timeFragment(record.time)}${record.seq}${levelFragment(record.level)}${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+  } else {
+    output = "{";
+    if (options.includeId ?? true) output += `"id":"${defaultRecordId(record, levelName)}",`;
+    output += `"time":${record.time}`;
+    if (options.includeSeq ?? true) output += `,"seq":${record.seq}`;
+    output += `,"level":${record.level}`;
+    if (options.includeLevelName ?? true) output += `,"levelName":"${levelName}"`;
+    output += `,"logger":${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+  }
   if (record.type !== null) output += `,"type":${asJsonString(record.type)}`;
   if (record.tags !== null) output += tagsFragment(record.tags);
   if (options.includeData ?? true)
