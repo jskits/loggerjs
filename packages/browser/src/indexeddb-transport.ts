@@ -59,6 +59,8 @@ export interface IndexedDbTransport extends Transport {
 
 const DEFAULT_DB_NAME = "loggerjs";
 const DEFAULT_STORE_NAME = "logs";
+const DB_VERSION = 2;
+const ORDER_INDEX_NAME = "createdAtSeq";
 
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value)) return fallback;
@@ -122,8 +124,16 @@ function indexExists(store: IDBObjectStore, name: string): boolean {
   return store.indexNames.contains(name);
 }
 
-function ensureIndex(store: IDBObjectStore, name: string, keyPath: string) {
+function ensureIndex(store: IDBObjectStore, name: string, keyPath: string | readonly string[]) {
   if (!indexExists(store, name)) store.createIndex(name, keyPath);
+}
+
+function getStoreIndex(store: IDBObjectStore, name: string): IDBIndex | undefined {
+  const maybeStore = store as IDBObjectStore & {
+    index?: (indexName: string) => IDBIndex;
+  };
+  if (typeof maybeStore.index !== "function" || !indexExists(store, name)) return undefined;
+  return maybeStore.index(name);
 }
 
 function decodeEntry(
@@ -142,6 +152,40 @@ function shouldKeepEntry(entry: IndexedDbLogEntry, options: IndexedDbTransportQu
   if (options.logger !== undefined && entry.logger !== options.logger) return false;
   if (options.type !== undefined && entry.type !== options.type) return false;
   return true;
+}
+
+function iterateCursor(
+  request: IDBRequest<IDBCursorWithValue | null>,
+  visit: (cursor: IDBCursorWithValue) => boolean | void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    request.addEventListener(
+      "success",
+      () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve();
+          return;
+        }
+        try {
+          const shouldContinue = visit(cursor);
+          if (shouldContinue === false) {
+            resolve();
+            return;
+          }
+          cursor.continue();
+        } catch (error) {
+          reject(error);
+        }
+      },
+      false,
+    );
+    request.addEventListener(
+      "error",
+      () => reject(request.error ?? new Error("IndexedDB cursor failed")),
+      { once: true },
+    );
+  });
 }
 
 export function indexedDbTransport(options: IndexedDbTransportOptions = {}): IndexedDbTransport {
@@ -187,7 +231,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   const openDb = () => {
     if (!idb) throw new Error("IndexedDB is not available for indexedDbTransport");
     dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
-      const request = idb.open(dbName, 1);
+      const request = idb.open(dbName, DB_VERSION);
       request.addEventListener("upgradeneeded", () => {
         const db = request.result;
         const store = db.objectStoreNames.contains(storeName)
@@ -198,6 +242,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
         ensureIndex(store, "level", "level");
         ensureIndex(store, "logger", "logger");
         ensureIndex(store, "type", "type");
+        ensureIndex(store, ORDER_INDEX_NAME, ["createdAt", "seq", "id"]);
       });
       request.addEventListener("success", () => resolve(request.result), { once: true });
       request.addEventListener(
@@ -239,6 +284,15 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       ),
     );
 
+  const countEntries = async (): Promise<number | undefined> =>
+    withStore("readonly", (store) => {
+      const maybeStore = store as IDBObjectStore & {
+        count?: () => IDBRequest<number>;
+      };
+      if (typeof maybeStore.count !== "function") return undefined;
+      return requestToPromise(maybeStore.count.call(store));
+    });
+
   const deleteEntries = async (entries: readonly IndexedDbLogEntry[], reason: string) => {
     if (entries.length === 0) return;
     await withStore("readwrite", async (store) => {
@@ -250,7 +304,74 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     });
   };
 
-  const prune = async () => {
+  const deleteByCursor = async (
+    reason: string,
+    openCursor: (store: IDBObjectStore) => IDBRequest<IDBCursorWithValue | null> | undefined,
+    shouldDelete: (entry: IndexedDbLogEntry, deleted: number) => boolean,
+  ): Promise<number | undefined> =>
+    withStore("readwrite", async (store) => {
+      const request = openCursor(store);
+      if (!request) return undefined;
+      let deleted = 0;
+      await iterateCursor(request, (cursor) => {
+        const entry = cursor.value as IndexedDbLogEntry;
+        if (!shouldDelete(entry, deleted)) return false;
+        cursor.delete();
+        deleted += 1;
+        dropPersistedEntry(entry, reason);
+        return true;
+      });
+      return deleted;
+    });
+
+  const deleteExpiredByCursor = async (cutoff: number): Promise<number | undefined> => {
+    if (typeof IDBKeyRange === "undefined") return undefined;
+    const range = IDBKeyRange.upperBound(cutoff, true);
+    return deleteByCursor(
+      "ttl",
+      (store) => getStoreIndex(store, "createdAt")?.openCursor(range),
+      () => true,
+    );
+  };
+
+  const deleteOldestByCursor = async (
+    reason: string,
+    count: number,
+  ): Promise<number | undefined> => {
+    if (count <= 0) return 0;
+    return deleteByCursor(
+      reason,
+      (store) => getStoreIndex(store, ORDER_INDEX_NAME)?.openCursor(),
+      (_entry, deleted) => deleted < count,
+    );
+  };
+
+  const deleteOldestBytesByCursor = async (bytesToFree: number): Promise<number | undefined> => {
+    if (bytesToFree <= 0) return 0;
+    let freed = 0;
+    return deleteByCursor(
+      "max-bytes",
+      (store) => getStoreIndex(store, ORDER_INDEX_NAME)?.openCursor(),
+      (entry) => {
+        if (freed >= bytesToFree) return false;
+        freed += entry.byteLength;
+        return true;
+      },
+    );
+  };
+
+  const sumBytesByCursor = async (): Promise<number | undefined> =>
+    withStore("readonly", async (store) => {
+      const index = getStoreIndex(store, ORDER_INDEX_NAME);
+      if (!index) return undefined;
+      let total = 0;
+      await iterateCursor(index.openCursor(), (cursor) => {
+        total += (cursor.value as IndexedDbLogEntry).byteLength;
+      });
+      return total;
+    });
+
+  const pruneWithEntries = async () => {
     const now = Date.now();
     let entries = await getEntries();
     const expired =
@@ -279,6 +400,38 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       }
       await deleteEntries(dropped, "max-bytes");
     }
+  };
+
+  const pruneWithCursors = async (): Promise<boolean> => {
+    if (options.ttlMs !== undefined) {
+      const deleted = await deleteExpiredByCursor(Date.now() - options.ttlMs);
+      if (deleted === undefined) return false;
+    }
+
+    if (maxEntries >= 0) {
+      const persistedCount = await countEntries();
+      if (persistedCount === undefined) return false;
+      if (persistedCount > maxEntries) {
+        const deleted = await deleteOldestByCursor("max-entries", persistedCount - maxEntries);
+        if (deleted === undefined) return false;
+      }
+    }
+
+    if (maxBytes >= 0) {
+      const totalBytes = await sumBytesByCursor();
+      if (totalBytes === undefined) return false;
+      if (totalBytes > maxBytes) {
+        const deleted = await deleteOldestBytesByCursor(totalBytes - maxBytes);
+        if (deleted === undefined) return false;
+      }
+    }
+
+    return true;
+  };
+
+  const prune = async () => {
+    if (await pruneWithCursors()) return;
+    await pruneWithEntries();
   };
 
   const eventToEntry = (event: LogEvent): IndexedDbLogEntry => {

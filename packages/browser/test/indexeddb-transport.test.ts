@@ -114,6 +114,7 @@ class FakeTransaction {
 
   objectStore() {
     const store = new FakeObjectStore(this.entries, this);
+    this.completeSoon();
     return store as unknown as IDBObjectStore;
   }
 }
