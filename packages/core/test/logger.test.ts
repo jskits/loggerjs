@@ -185,6 +185,39 @@ describe("logger core skeleton", () => {
     });
   });
 
+  it("shares frozen logger tags across records without cross-record leaks", () => {
+    const transport = memoryTransport();
+    const onInternalError = vi.fn<(error: unknown, detail?: Record<string, unknown>) => void>();
+    const logger = createLogger({
+      tags: { service: "checkout" },
+      onInternalError,
+      middleware: [
+        createMiddleware("tag-once", (record) => {
+          if (record.msg === "first") record.tags = { ...record.tags, attempt: "1" };
+          if (record.msg === "mutate") {
+            // In-place mutation violates the contract; the frozen object must
+            // throw here instead of leaking the tag into later records.
+            (record.tags as Record<string, string>).leak = "yes";
+          }
+          return record;
+        }),
+      ],
+      transports: [transport],
+    });
+
+    logger.info("first");
+    logger.info("mutate");
+    logger.info("second");
+
+    expect(transport.events[0]?.tags).toEqual({ service: "checkout", attempt: "1" });
+    expect(transport.events[1]?.tags).toEqual({ service: "checkout" });
+    expect(transport.events[2]?.tags).toEqual({ service: "checkout" });
+    expect(onInternalError).toHaveBeenCalledWith(
+      expect.any(TypeError),
+      expect.objectContaining({ phase: "middleware" }),
+    );
+  });
+
   it("stops dispatch when record middleware drops", () => {
     const transport = memoryTransport();
     const idFactory = vi.fn<

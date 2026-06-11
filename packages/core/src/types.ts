@@ -46,6 +46,11 @@ export interface LogRecord {
   level: number;
   category: readonly string[];
   type: string | null;
+  /**
+   * May reference the logger's frozen tags object. Middleware must replace
+   * this field (`record.tags = { ...record.tags, extra }`), never mutate the
+   * object in place — the same contract as {@link LogRecord.ctx}.
+   */
   tags: Tags | null;
   trace: TraceContext | null;
   msg: string | null;

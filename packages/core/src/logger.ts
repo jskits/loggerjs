@@ -220,7 +220,9 @@ export class Logger implements LoggerLike {
     this.minimumLevel = options.level ?? "info";
     this.minimumLevelValue = toLevelValue(this.minimumLevel);
     this.type = options.type;
-    this.tags = mergeTags(options.tags);
+    // Frozen so records can share this object without a per-call copy.
+    // Middleware replaces record.tags; it must not mutate it in place.
+    this.tags = Object.freeze(mergeTags(options.tags));
     this.bindings = mergeRecords(options.bindings);
     this.middleware = [...(options.middleware ?? [])];
     this.processors = [...(options.processors ?? [])];

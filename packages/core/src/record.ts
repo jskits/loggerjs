@@ -71,7 +71,9 @@ export function createRecord(options: CreateRecordOptions): LogRecord {
     level: options.level,
     category: normalizeCategory(options.category),
     type: options.type ?? null,
-    tags: options.tags ? { ...options.tags } : null,
+    // Shared by reference: logger-level tags are frozen, so middleware must
+    // replace record.tags (like record.ctx) rather than mutate it in place.
+    tags: options.tags ?? null,
     trace: options.trace ?? null,
     msg: options.msg ?? null,
     lazy: options.lazy ?? null,
