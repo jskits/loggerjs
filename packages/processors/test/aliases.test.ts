@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
-import type { LogEvent, ProcessorContext } from "@loggerjs/core";
+import { createRecord, recordToEvent, type LogEvent, type ProcessorContext } from "@loggerjs/core";
 import {
   breadcrumbBuffer,
   context,
+  contextMw,
   dedupe,
   dynamicSampler,
   enrich,
+  enrichMw,
   filter,
   fingerprint,
   levelOverride,
   logType,
+  logTypeMw,
   normalizeError,
   privacyGuard,
   route,
@@ -17,7 +20,9 @@ import {
   schemaDevCheck,
   stackParser,
   tags,
+  tagsMw,
   traceContext,
+  traceContextMw,
 } from "../src";
 
 const event: LogEvent = {
@@ -71,5 +76,45 @@ describe("processor middleware aliases", () => {
     expect(schemaDevCheck()(event, processorContext)).toBe(event);
     expect(dynamicSampler({ defaultRate: 1 })(event, processorContext)).toBe(event);
     expect(breadcrumbBuffer()(event, processorContext)).toBe(event);
+  });
+
+  it("exports record middleware aliases without replacing processor aliases", () => {
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: "test",
+      msg: "created",
+      props: { orderId: "ord-1" },
+      seq: 1,
+    });
+
+    tagsMw({ service: "api" }).process(record, {
+      now: () => 1,
+      reportInternalError() {},
+    });
+    logTypeMw("audit").process(record, {
+      now: () => 1,
+      reportInternalError() {},
+    });
+    contextMw({ requestId: "req-1" }).process(record, {
+      now: () => 1,
+      reportInternalError() {},
+    });
+    traceContextMw(() => ({ traceId: "trace-1" })).process(record, {
+      now: () => 1,
+      reportInternalError() {},
+    });
+    enrichMw({ data: { amount: 42 } }).process(record, {
+      now: () => 1,
+      reportInternalError() {},
+    });
+
+    expect(recordToEvent(record)).toMatchObject({
+      type: "audit",
+      tags: { service: "api" },
+      data: { orderId: "ord-1", amount: 42 },
+      context: { requestId: "req-1" },
+      trace: { traceId: "trace-1" },
+    });
   });
 });

@@ -19,15 +19,29 @@ export * from "./breadcrumb-buffer";
 export { redactProcessor as redact } from "./redact";
 export { sampleProcessor as sample } from "./sample";
 export {
+  tagsMiddleware,
+  typeMiddleware,
+  contextMiddleware,
   tagsProcessor as tags,
+  tagsMiddleware as tagsMw,
   typeProcessor as logType,
+  typeMiddleware as logTypeMw,
   contextProcessor as context,
+  contextMiddleware as contextMw,
 } from "./tags";
 export { dedupeProcessor as dedupe } from "./dedupe";
-export { traceContextProcessor as traceContext } from "./trace";
+export {
+  traceContextMiddleware,
+  traceContextProcessor as traceContext,
+  traceContextMiddleware as traceContextMw,
+} from "./trace";
 export { rateLimitProcessor as rateLimit } from "./rate-limit";
 export { fingersCrossedProcessor as fingersCrossed } from "./fingers-crossed";
-export { enrichProcessor as enrich } from "./enrich";
+export {
+  enrichMiddleware,
+  enrichProcessor as enrich,
+  enrichMiddleware as enrichMw,
+} from "./enrich";
 export { levelOverrideProcessor as levelOverride } from "./level-override";
 export { filterProcessor as filter, routeProcessor as route } from "./filter-route";
 export { fingerprintProcessor as fingerprint } from "./fingerprint";

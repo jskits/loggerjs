@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LogEvent, ProcessorContext } from "@loggerjs/core";
-import { enrichProcessor } from "../src/enrich";
+import { createRecord, recordToEvent, type LogEvent, type ProcessorContext } from "@loggerjs/core";
+import { enrichMiddleware, enrichProcessor } from "../src/enrich";
 
 const event: LogEvent = {
   id: "evt-1",
@@ -58,5 +58,72 @@ describe("enrichProcessor", () => {
     const processor = enrichProcessor(() => false);
 
     expect(processor(event, context)).toBe(false);
+  });
+});
+
+describe("enrichMiddleware", () => {
+  it("merges static enrichment into LogRecord fields before event projection", () => {
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: "app",
+      msg: "created",
+      props: { orderId: "ord-1" },
+      seq: 1,
+    });
+    const middleware = enrichMiddleware({
+      tags: { service: "checkout" },
+      data: { amount: 42 },
+      context: { tenant: "acme" },
+      trace: { traceId: "trace-1" },
+      source: { integration: "test" },
+      type: "order.created",
+    });
+
+    expect(
+      middleware.process(record, {
+        now: () => 1,
+        reportInternalError() {},
+      }),
+    ).toBe(record);
+
+    expect(recordToEvent(record)).toMatchObject({
+      type: "order.created",
+      tags: { service: "checkout" },
+      data: { orderId: "ord-1", amount: 42 },
+      context: { tenant: "acme" },
+      trace: { traceId: "trace-1" },
+      source: { integration: "test" },
+    });
+  });
+
+  it("supports callback enrichment and dropping records", () => {
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: "app",
+      msg: "created",
+      seq: 1,
+    });
+    const middleware = enrichMiddleware((item, ctx) => ({
+      message: `${item.msg} at ${ctx.now()}`,
+      tags: { source: "middleware" },
+    }));
+
+    middleware.process(record, {
+      now: () => 10,
+      reportInternalError() {},
+    });
+
+    expect(recordToEvent(record)).toMatchObject({
+      message: "created at 10",
+      tags: { source: "middleware" },
+    });
+    expect(
+      enrichMiddleware(() => false).process(record, {
+        now: () => 10,
+        reportInternalError() {},
+      }),
+    ).toBeNull();
   });
 });

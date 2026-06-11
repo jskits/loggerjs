@@ -4,6 +4,11 @@ Compatibility processor package for common synchronous middleware behavior.
 
 ```ts
 import {
+  contextMiddleware,
+  enrichMiddleware,
+  tagsMiddleware,
+  traceContextMiddleware,
+  typeMiddleware,
   breadcrumbBufferProcessor,
   dedupeProcessor,
   dynamicSamplerProcessor,
@@ -22,6 +27,14 @@ import {
   stackParserProcessor,
   tagsProcessor,
 } from "@loggerjs/processors";
+
+const middleware = [
+  tagsMiddleware({ service: "checkout" }),
+  typeMiddleware("order"),
+  contextMiddleware({ region: "us-east-1" }),
+  traceContextMiddleware(() => ({ traceId: "trace-id" })),
+  enrichMiddleware({ data: { feature: "checkout" } }),
+];
 
 const processors = [
   redactProcessor({ keys: ["password", "token", /secret/i] }),
@@ -46,6 +59,9 @@ const processors = [
 ];
 ```
 
-Processors are synchronous. Expensive I/O and serialization belong in transports. `fingersCrossedProcessor`
-can receive a `flushTo` transport or sink when buffered pre-trigger events must be replayed.
-`routeProcessor` targets transport names, so configure named transports when using per-event routing.
+Prefer record middleware for metadata and enrichment that can run before event projection. Legacy
+processors remain available for compatibility and for event-only behavior such as routing, schema
+checks, sampling, buffering, and filtering. Expensive I/O and serialization belong in transports.
+`fingersCrossedProcessor` can receive a `flushTo` transport or sink when buffered pre-trigger events
+must be replayed. `routeProcessor` targets transport names, so configure named transports when using
+per-event routing.
