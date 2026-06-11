@@ -14,8 +14,8 @@ const consoleMethods: ConsoleMethod[] = ["debug", "error", "info", "log", "trace
 
 interface UnpatchedStore {
   console: Partial<Record<ConsoleMethod, (...args: unknown[]) => void>>;
-  fetch?: typeof fetch;
-  XMLHttpRequest?: typeof XMLHttpRequest;
+  fetch?: UnpatchedRegistry["fetch"];
+  XMLHttpRequest?: UnpatchedRegistry["XMLHttpRequest"];
   values: Map<string, unknown>;
 }
 
@@ -73,14 +73,6 @@ export function registerUnpatchedDefaults(registry = getUnpatchedRegistry()): Un
     for (const method of consoleMethods) {
       registry.console[method] ??= source[method];
     }
-  }
-
-  if (typeof globalThis.fetch === "function") {
-    registry.fetch ??= globalThis.fetch.bind(globalThis) as typeof fetch;
-  }
-
-  if (typeof globalThis.XMLHttpRequest !== "undefined") {
-    registry.XMLHttpRequest ??= globalThis.XMLHttpRequest;
   }
 
   return registry;

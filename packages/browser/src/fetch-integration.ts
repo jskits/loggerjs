@@ -3,6 +3,7 @@ import {
   type CaptureInput,
   type Integration,
   type IntegrationSetupContext,
+  type UnpatchedFunction,
 } from "@loggerjs/core";
 import {
   durationMs,
@@ -23,6 +24,8 @@ export interface CaptureFetchOptions {
   random?: () => number;
   sanitizeUrl?: (url: string) => string;
 }
+
+type BrowserFetch = typeof fetch;
 
 function requestUrl(input: RequestInfo | URL): string {
   if (typeof input === "string") return input;
@@ -48,8 +51,9 @@ export function captureFetchIntegration(options: CaptureFetchOptions = {}): Inte
     setup(api: IntegrationSetupContext) {
       const current = globalThis.fetch;
       if (!current) return;
-      const original = api.unpatched.fetch ?? current.bind(globalThis);
-      api.unpatched.fetch ??= original;
+      const original =
+        (api.unpatched.fetch as BrowserFetch | undefined) ?? current.bind(globalThis);
+      api.unpatched.fetch ??= original as UnpatchedFunction;
 
       const capture = api.guard((input: CaptureInput) => api.capture(input));
 

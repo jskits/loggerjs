@@ -180,11 +180,12 @@ export interface LoggerLike {
 export type Teardown = () => void;
 
 export type ConsoleMethod = "debug" | "error" | "info" | "log" | "trace" | "warn";
+export type UnpatchedFunction = (...args: any[]) => unknown;
 
 export interface UnpatchedRegistry {
   readonly console: Partial<Record<ConsoleMethod, (...args: unknown[]) => void>>;
-  fetch?: typeof fetch;
-  XMLHttpRequest?: typeof XMLHttpRequest;
+  fetch?: UnpatchedFunction;
+  XMLHttpRequest?: unknown;
   get: <T = unknown>(key: string) => T | undefined;
   set: <T = unknown>(key: string, value: T) => T;
 }

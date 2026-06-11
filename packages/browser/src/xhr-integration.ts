@@ -31,7 +31,7 @@ export function captureXHRIntegration(options: CaptureXHROptions = {}): Integrat
       const proto = XMLHttpRequest.prototype;
       const originalOpen = proto.open;
       const originalSend = proto.send;
-      api.unpatched.XMLHttpRequest ??= XMLHttpRequest;
+      api.unpatched.XMLHttpRequest ??= XMLHttpRequest as unknown;
       const capture = api.guard((input: CaptureInput) => api.capture(input));
 
       proto.open = function patchedOpen(
