@@ -236,6 +236,7 @@ class FakeDatabase {
     getAllCalls: 0,
     indexes: new Map<string, FakeKeyPath>(),
   };
+  readonly transactionOptions: IDBTransactionOptions[] = [];
   closed = false;
   private store: FakeObjectStore | undefined;
   private hasStore = false;
@@ -257,8 +258,13 @@ class FakeDatabase {
     return this.store as unknown as IDBObjectStore;
   }
 
-  transaction() {
+  transaction(
+    _storeName?: string | string[],
+    _mode?: IDBTransactionMode,
+    options?: IDBTransactionOptions,
+  ) {
     if (!this.store) this.createObjectStore();
+    if (options) this.transactionOptions.push(options);
     return new FakeTransaction(this.state) as unknown as IDBTransaction;
   }
 
@@ -311,6 +317,7 @@ async function collect(source: AsyncIterable<LogEvent>) {
 describe("indexedDbTransport", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     resetLoggerMetaStats();
   });
 
@@ -383,6 +390,46 @@ describe("indexedDbTransport", () => {
     expect(dropped).toEqual(["dropped:buffer-full"]);
     await transport.clear();
     expect(await transport.count()).toBe(0);
+  });
+
+  it("passes durability to readwrite transactions when configured", async () => {
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      durability: "relaxed",
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    transport.log?.(event("one", 1), context);
+    await transport.flush?.();
+
+    expect(idb.db.transactionOptions.some((item) => item.durability === "relaxed")).toBe(true);
+  });
+
+  it("uses Storage Buckets IndexedDB when available", async () => {
+    const bucketIdb = new FakeIndexedDB();
+    const rootIdb = new FakeIndexedDB();
+    const open = vi.fn<() => Promise<{ indexedDB: IDBFactory }>>(async () => ({
+      indexedDB: bucketIdb as unknown as IDBFactory,
+    }));
+    vi.stubGlobal("indexedDB", rootIdb as unknown as IDBFactory);
+    vi.stubGlobal("navigator", {
+      storageBuckets: { open },
+    });
+    const transport = indexedDbTransport({
+      storageBucketDurability: "relaxed",
+      storageBucketName: "loggerjs-logs",
+      storageBucketPersisted: true,
+    });
+
+    transport.log?.(event("one", 1), context);
+    await transport.flush?.();
+
+    expect(open).toHaveBeenCalledWith("loggerjs-logs", {
+      durability: "relaxed",
+      persisted: true,
+    });
+    expect(bucketIdb.db.entries.has("one")).toBe(true);
+    expect(rootIdb.db.entries.size).toBe(0);
   });
 
   it("closes the database after flushing pending logs", async () => {

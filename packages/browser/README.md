@@ -31,7 +31,9 @@ import {
 
 const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
 const localStore = indexedDbTransport({
+  durability: "relaxed",
   maxEntries: 50_000,
+  storageBucketName: "loggerjs-logs",
   ttlMs: 7 * 24 * 60 * 60 * 1000,
 });
 
@@ -78,6 +80,8 @@ downloadBlob(zip, "loggerjs-logs.zip");
 Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
 `indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
 Use `indexedDbTransport()` when the browser should keep a local, queryable log store.
+It can opt into IndexedDB transaction durability hints and Chrome Storage Buckets
+for better isolation when the browser supports them.
 Use `exportLogsToZip()` and `downloadBlob()` to export persisted browser logs as a
 standard zip file containing `logs.ndjson` and `manifest.json`.
 

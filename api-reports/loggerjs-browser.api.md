@@ -260,6 +260,8 @@ export interface IndexedDbTransportQueryOptions {
     limit?: number;
     order?: "asc" | "desc";
 }
+export type IndexedDbTransportDurability = "default" | "strict" | "relaxed";
+export type IndexedDbStorageBucketDurability = "strict" | "relaxed";
 export interface IndexedDbTransportOptions {
     name?: string;
     dbName?: string;
@@ -274,6 +276,10 @@ export interface IndexedDbTransportOptions {
     flushOnPageHide?: boolean;
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
+    durability?: IndexedDbTransportDurability;
+    storageBucketName?: string;
+    storageBucketPersisted?: boolean;
+    storageBucketDurability?: IndexedDbStorageBucketDurability;
     indexedDB?: IDBFactory;
     onDrop?: (event: LogEvent, reason: string) => void;
     onPersistedDrop?: (entry: IndexedDbLogEntry, reason: string) => void;

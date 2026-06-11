@@ -32,6 +32,10 @@ export interface IndexedDbTransportQueryOptions {
   order?: "asc" | "desc";
 }
 
+export type IndexedDbTransportDurability = "default" | "strict" | "relaxed";
+
+export type IndexedDbStorageBucketDurability = "strict" | "relaxed";
+
 export interface IndexedDbTransportOptions {
   name?: string;
   dbName?: string;
@@ -46,6 +50,10 @@ export interface IndexedDbTransportOptions {
   flushOnPageHide?: boolean;
   codec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
+  durability?: IndexedDbTransportDurability;
+  storageBucketName?: string;
+  storageBucketPersisted?: boolean;
+  storageBucketDurability?: IndexedDbStorageBucketDurability;
   indexedDB?: IDBFactory;
   onDrop?: (event: LogEvent, reason: string) => void;
   onPersistedDrop?: (entry: IndexedDbLogEntry, reason: string) => void;
@@ -61,6 +69,20 @@ const DEFAULT_DB_NAME = "loggerjs";
 const DEFAULT_STORE_NAME = "logs";
 const DB_VERSION = 2;
 const ORDER_INDEX_NAME = "createdAtSeq";
+
+interface StorageBucketLike {
+  indexedDB?: IDBFactory;
+}
+
+interface StorageBucketManagerLike {
+  open: (
+    name: string,
+    options?: {
+      durability?: IndexedDbStorageBucketDurability;
+      persisted?: boolean;
+    },
+  ) => Promise<StorageBucketLike>;
+}
 
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value)) return fallback;
@@ -134,6 +156,29 @@ function getStoreIndex(store: IDBObjectStore, name: string): IDBIndex | undefine
   };
   if (typeof maybeStore.index !== "function" || !indexExists(store, name)) return undefined;
   return maybeStore.index(name);
+}
+
+function getStorageBucketManager(): StorageBucketManagerLike | undefined {
+  return (globalThis.navigator as unknown as { storageBuckets?: StorageBucketManagerLike })
+    ?.storageBuckets;
+}
+
+function storageBucketOpenOptions(options: IndexedDbTransportOptions):
+  | {
+      durability?: IndexedDbStorageBucketDurability;
+      persisted?: boolean;
+    }
+  | undefined {
+  if (
+    options.storageBucketDurability === undefined &&
+    options.storageBucketPersisted === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    durability: options.storageBucketDurability,
+    persisted: options.storageBucketPersisted,
+  };
 }
 
 function decodeEntry(
@@ -210,11 +255,19 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   const maxEntries = normalizePositiveInteger(options.maxEntries, 50_000);
   const maxBytes = normalizePositiveInteger(options.maxBytes, 50 * 1024 * 1024);
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
-  const idb = options.indexedDB ?? globalThis.indexedDB;
   const flushOnPageHide = options.flushOnPageHide ?? true;
+  const durability = options.durability ?? "default";
+  const rootIndexedDB = options.indexedDB ?? globalThis.indexedDB;
+  const transactionOptions =
+    durability === "default"
+      ? undefined
+      : ({
+          durability,
+        } satisfies IDBTransactionOptions);
 
   const buffer: LogEvent[] = [];
   let dbPromise: Promise<IDBDatabase> | undefined;
+  let indexedDBFactoryPromise: Promise<IDBFactory | undefined> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let flushPromise: Promise<void> | undefined;
   let lastContext: TransportContext | undefined;
@@ -240,30 +293,60 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     options.onPersistedDrop?.(entry, reason);
   };
 
+  const resolveIndexedDBFactory = async () => {
+    if (options.indexedDB || !options.storageBucketName) return rootIndexedDB;
+    indexedDBFactoryPromise ??= (async () => {
+      const manager = getStorageBucketManager();
+      if (!manager) return rootIndexedDB;
+      try {
+        const bucket = await manager.open(
+          options.storageBucketName as string,
+          storageBucketOpenOptions(options),
+        );
+        return bucket.indexedDB ?? rootIndexedDB;
+      } catch (error) {
+        reportInternalError(error, "storage-bucket-open");
+        return rootIndexedDB;
+      }
+    })();
+    return indexedDBFactoryPromise;
+  };
+
   const openDb = () => {
-    if (!idb) throw new Error("IndexedDB is not available for indexedDbTransport");
-    dbPromise ??= new Promise<IDBDatabase>((resolve, reject) => {
-      const request = idb.open(dbName, DB_VERSION);
-      request.addEventListener("upgradeneeded", () => {
-        const db = request.result;
-        const store = db.objectStoreNames.contains(storeName)
-          ? request.transaction?.objectStore(storeName)
-          : db.createObjectStore(storeName, { keyPath: "id" });
-        if (!store) return;
-        ensureIndex(store, "createdAt", "createdAt");
-        ensureIndex(store, "level", "level");
-        ensureIndex(store, "logger", "logger");
-        ensureIndex(store, "type", "type");
-        ensureIndex(store, ORDER_INDEX_NAME, ["createdAt", "seq", "id"]);
+    dbPromise ??= resolveIndexedDBFactory().then((idb) => {
+      if (!idb) throw new Error("IndexedDB is not available for indexedDbTransport");
+      return new Promise<IDBDatabase>((resolve, reject) => {
+        const request = idb.open(dbName, DB_VERSION);
+        request.addEventListener("upgradeneeded", () => {
+          const db = request.result;
+          const store = db.objectStoreNames.contains(storeName)
+            ? request.transaction?.objectStore(storeName)
+            : db.createObjectStore(storeName, { keyPath: "id" });
+          if (!store) return;
+          ensureIndex(store, "createdAt", "createdAt");
+          ensureIndex(store, "level", "level");
+          ensureIndex(store, "logger", "logger");
+          ensureIndex(store, "type", "type");
+          ensureIndex(store, ORDER_INDEX_NAME, ["createdAt", "seq", "id"]);
+        });
+        request.addEventListener("success", () => resolve(request.result), { once: true });
+        request.addEventListener(
+          "error",
+          () => reject(request.error ?? new Error("IndexedDB open failed")),
+          { once: true },
+        );
       });
-      request.addEventListener("success", () => resolve(request.result), { once: true });
-      request.addEventListener(
-        "error",
-        () => reject(request.error ?? new Error("IndexedDB open failed")),
-        { once: true },
-      );
     });
     return dbPromise;
+  };
+
+  const createTransaction = (db: IDBDatabase, mode: IDBTransactionMode) => {
+    if (mode !== "readwrite" || !transactionOptions) return db.transaction(storeName, mode);
+    try {
+      return db.transaction(storeName, mode, transactionOptions);
+    } catch {
+      return db.transaction(storeName, mode);
+    }
   };
 
   const withStore = async <T>(
@@ -271,7 +354,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     run: (store: IDBObjectStore, transaction: IDBTransaction) => T | Promise<T>,
   ): Promise<T> => {
     const db = await openDb();
-    const tx = db.transaction(storeName, mode);
+    const tx = createTransaction(db, mode);
     const settled = transactionToPromise(tx);
     try {
       const result = await run(tx.objectStore(storeName), tx);
