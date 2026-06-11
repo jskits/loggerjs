@@ -167,6 +167,7 @@ export declare class Logger implements LoggerLike {
     private createEvent;
     private createRecordTransportContext;
     private createEventTransportContext;
+    private settleTransport;
     private dispatchRecord;
     private dispatchEvent;
     private reportInternalError;
