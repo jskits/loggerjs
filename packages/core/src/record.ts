@@ -177,6 +177,13 @@ function categoryFromEventLogger(logger: string): LoggerCategory | undefined {
   return category.length > 0 ? category : undefined;
 }
 
+/**
+ * Conversion is lossy: a `runtime` source collapses into the record's string
+ * source (and projects back as `integration`), and scalar `data` values are
+ * wrapped as `{ value }` because record props must be an object. An event
+ * without a source maps to the "app" source so a round trip through
+ * {@link recordToEvent} leaves the source undefined again.
+ */
 export function eventToRecord(event: LogEvent): LogRecord {
   return createRecord({
     time: event.time,
@@ -189,7 +196,7 @@ export function eventToRecord(event: LogEvent): LogRecord {
     props: propsFromEventData(event.data),
     err: event.error ?? null,
     ctx: createBoundContext(event.context),
-    source: event.source?.integration ?? event.source?.runtime ?? "event",
+    source: event.source?.integration ?? event.source?.runtime ?? "app",
     seq: event.seq,
   });
 }

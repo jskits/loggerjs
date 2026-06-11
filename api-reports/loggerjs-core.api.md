@@ -241,6 +241,13 @@ export declare function resolveMessage(record: LogRecord): string;
  */
 export declare function defaultRecordId(record: LogRecord, levelName: EnabledLogLevelName): string;
 export declare function recordToEvent(record: LogRecord, options?: RecordToEventOptions): LogEvent;
+/**
+ * Conversion is lossy: a `runtime` source collapses into the record's string
+ * source (and projects back as `integration`), and scalar `data` values are
+ * wrapped as `{ value }` because record props must be an object. An event
+ * without a source maps to the "app" source so a round trip through
+ * {@link recordToEvent} leaves the source undefined again.
+ */
 export declare function eventToRecord(event: LogEvent): LogRecord;
 export declare function isLogRecord(value: unknown): value is LogRecord;
 export declare function normalizeCodecInput(input: CodecInput): LogEvent | LogEvent[];

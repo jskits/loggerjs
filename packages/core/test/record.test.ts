@@ -4,9 +4,11 @@ import {
   createBoundContext,
   createEncodeContext,
   createRecord,
+  eventToRecord,
   normalizeCategory,
   recordToEvent,
   resolveMessage,
+  type LogEvent,
 } from "../src";
 
 const recordKeys = [
@@ -142,6 +144,53 @@ describe("LogRecord helpers", () => {
       trace: { traceId: "trace-1" },
       source: { integration: "integration:fetch" },
     });
+  });
+
+  it("round trips app events without fabricating a source", () => {
+    const event: LogEvent = {
+      id: "evt-1",
+      time: 10,
+      seq: 2,
+      level: 30,
+      levelName: "info",
+      logger: "api.orders",
+      message: "created",
+      tags: { service: "checkout" },
+      data: { orderId: "ord-1" },
+    };
+
+    const record = eventToRecord(event);
+    expect(record.source).toBe("app");
+
+    const roundTripped = recordToEvent(record);
+    expect(roundTripped.source).toBeUndefined();
+    expect(roundTripped).toMatchObject({
+      logger: "api.orders",
+      message: "created",
+      tags: { service: "checkout" },
+      data: { orderId: "ord-1" },
+    });
+  });
+
+  it("documents the lossy parts of the event to record conversion", () => {
+    const event: LogEvent = {
+      id: "evt-1",
+      time: 10,
+      seq: 2,
+      level: 30,
+      levelName: "info",
+      logger: "api",
+      message: "created",
+      data: "scalar payload",
+      source: { runtime: "node" },
+    };
+
+    const record = eventToRecord(event);
+    // Scalar data must be wrapped because record props are always an object.
+    expect(record.props).toEqual({ value: "scalar payload" });
+    // A runtime source collapses to a string and projects back as integration.
+    expect(record.source).toBe("node");
+    expect(recordToEvent(record).source).toEqual({ integration: "node" });
   });
 
   it("creates independent encode caches", () => {
