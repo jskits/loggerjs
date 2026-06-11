@@ -10,6 +10,14 @@ import type { Codec } from "../types.js";
 import { type SafeStringifyOptions } from "../utils/safe-stringify.js";
 export declare function jsonCodec(): Codec<string>;
 export declare function safeJsonCodec(options?: SafeStringifyOptions): Codec<string>;
+/**
+ * Same fast-by-default contract as fastEventJsonCodec: without options each
+ * line is encoded with native `JSON.stringify`, and a line that throws
+ * (circular references, BigInt) is re-encoded with the safe stringifier so
+ * logs are never lost. Setting any {@link SafeStringifyOptions} field opts the
+ * whole codec into safe normalization (depth caps, truncation, Error
+ * expansion) for every line.
+ */
 export declare function ndjsonCodec(options?: SafeStringifyOptions): Codec<string>;
 ```
 
