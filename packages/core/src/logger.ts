@@ -551,6 +551,18 @@ export class Logger implements LoggerLike {
     };
   }
 
+  // Sync transports return undefined; wrapping every result in
+  // Promise.resolve allocated a promise and a catch closure per log call.
+  // Only attach rejection handling when the transport actually returned a
+  // thenable. Sync throws are handled by the dispatch loop's try/catch.
+  private settleTransport(result: void | Promise<void>, transport: Transport) {
+    if (result && typeof (result as Promise<void>).then === "function") {
+      void (result as Promise<void>).catch((error: unknown) => {
+        this.reportInternalError(error, { phase: "transport", transport: transport.name });
+      });
+    }
+  }
+
   // Unlike dispatchEvent, this path performs no route filtering: routes can only
   // be attached by processors (withLogEventRoute on events), and records are
   // dispatched here only when the logger has zero processors. If records ever
@@ -566,23 +578,13 @@ export class Logger implements LoggerLike {
         continue;
       try {
         if (transport.write) {
-          void Promise.resolve(transport.write(record, context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.write(record, context), transport);
         } else if (transport.writeBatch) {
-          void Promise.resolve(transport.writeBatch([record], context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.writeBatch([record], context), transport);
         } else if (transport.log) {
-          const event = context.toEvent(record);
-          void Promise.resolve(transport.log(event, context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.log(context.toEvent(record), context), transport);
         } else if (transport.logBatch) {
-          const event = context.toEvent(record);
-          void Promise.resolve(transport.logBatch([event], context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.logBatch([context.toEvent(record)], context), transport);
         }
       } catch (error) {
         this.reportInternalError(error, { phase: "transport", transport: transport.name });
@@ -605,21 +607,13 @@ export class Logger implements LoggerLike {
         continue;
       try {
         if (transport.log) {
-          void Promise.resolve(transport.log(event, context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.log(event, context), transport);
         } else if (transport.logBatch) {
-          void Promise.resolve(transport.logBatch([event], context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.logBatch([event], context), transport);
         } else if (transport.write) {
-          void Promise.resolve(transport.write(recordForEvent(), context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.write(recordForEvent(), context), transport);
         } else if (transport.writeBatch) {
-          void Promise.resolve(transport.writeBatch([recordForEvent()], context)).catch((error) => {
-            this.reportInternalError(error, { phase: "transport", transport: transport.name });
-          });
+          this.settleTransport(transport.writeBatch([recordForEvent()], context), transport);
         }
       } catch (error) {
         this.reportInternalError(error, { phase: "transport", transport: transport.name });

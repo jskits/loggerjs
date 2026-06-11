@@ -369,6 +369,27 @@ describe("logger core skeleton", () => {
     });
   });
 
+  it("reports async transport rejections without wrapping sync results", async () => {
+    const internalErrors: Array<Record<string, unknown> | undefined> = [];
+    const rejectingTransport: Transport = {
+      name: "rejecting",
+      async log() {
+        throw new Error("async transport failed");
+      },
+    };
+    const logger = createLogger({
+      transports: [rejectingTransport],
+      onInternalError: (_error, detail) => {
+        internalErrors.push(detail);
+      },
+    });
+
+    logger.info("order created");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(internalErrors).toEqual([{ phase: "transport", transport: "rejecting" }]);
+  });
+
   it("routes events to named transports from processor metadata", () => {
     const local = memoryTransport({ name: "local" });
     const remote = memoryTransport({ name: "remote" });
