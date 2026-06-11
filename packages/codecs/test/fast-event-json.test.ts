@@ -64,6 +64,44 @@ describe("fast event json hostile inputs", () => {
     });
   });
 
+  it("escapes messages and types that need JSON escaping", () => {
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      type: 'order "quoted"',
+      msg: 'line one\nline "two" \\ end',
+      seq: 1,
+    });
+    const decoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;
+    expect(decoded.message).toBe('line one\nline "two" \\ end');
+    expect(decoded.type).toBe('order "quoted"');
+  });
+
+  it("falls back safely when frozen tags contain BigInt values", () => {
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      msg: "created",
+      tags: Object.freeze({ big: 10n }) as unknown as Record<string, string>,
+      seq: 1,
+    });
+    const decoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;
+    expect(decoded.tags).toEqual({ big: "10" });
+  });
+
+  it("caches frozen tags fragments per object identity", () => {
+    const codec = fastEventJsonCodec();
+    const sharedTags = Object.freeze({ service: "checkout" });
+    const otherTags = Object.freeze({ service: "billing" });
+    const first = createRecord({ time: 1, level: 30, msg: "a", tags: sharedTags, seq: 1 });
+    const second = createRecord({ time: 1, level: 30, msg: "b", tags: sharedTags, seq: 2 });
+    const third = createRecord({ time: 1, level: 30, msg: "c", tags: otherTags, seq: 3 });
+
+    expect((JSON.parse(codec.encode(first)) as LogEvent).tags).toEqual({ service: "checkout" });
+    expect((JSON.parse(codec.encode(second)) as LogEvent).tags).toEqual({ service: "checkout" });
+    expect((JSON.parse(codec.encode(third)) as LogEvent).tags).toEqual({ service: "billing" });
+  });
+
   it("stamps the same default id on records as recordToEvent", () => {
     const record = createRecord({ time: 1700000000000, level: 30, msg: "created", seq: 7 });
     const encoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;
