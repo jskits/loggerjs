@@ -235,6 +235,11 @@ export declare function createRecord(options: CreateRecordOptions): LogRecord;
 export declare function cloneRecord(record: LogRecord, patch?: Partial<LogRecord>): LogRecord;
 export declare function resolveMessage(record: LogRecord): string;
 /**
+ * Formats the default `time36-seq36-levelName` id shared by
+ * {@link defaultRecordId} and the logger's default id factory.
+ */
+export declare function formatDefaultId(time: number, seq: number, levelName: string): string;
+/**
  * Derives the id a record receives when it is projected to an event without a
  * configured id factory. Record-aware transports that encode records directly
  * never consult the logger's `idFactory`; they get this id instead. Codecs that

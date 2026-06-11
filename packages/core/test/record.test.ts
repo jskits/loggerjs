@@ -193,6 +193,18 @@ describe("LogRecord helpers", () => {
     expect(recordToEvent(record).source).toEqual({ integration: "node" });
   });
 
+  it("memoizes the default id time segment without staleness", () => {
+    const first = createRecord({ time: 1700000000000, level: 30, msg: "a", seq: 1 });
+    const second = createRecord({ time: 1700000000000, level: 30, msg: "b", seq: 2 });
+    const later = createRecord({ time: 1700000000001, level: 30, msg: "c", seq: 3 });
+
+    expect(recordToEvent(first).id).toBe(`${(1700000000000).toString(36)}-1-info`);
+    expect(recordToEvent(second).id).toBe(`${(1700000000000).toString(36)}-2-info`);
+    expect(recordToEvent(later).id).toBe(`${(1700000000001).toString(36)}-3-info`);
+    // Going back to an earlier time must not reuse the newer cached segment.
+    expect(recordToEvent(first).id).toBe(`${(1700000000000).toString(36)}-1-info`);
+  });
+
   it("creates independent encode caches", () => {
     const first = createEncodeContext();
     const second = createEncodeContext();

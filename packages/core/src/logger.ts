@@ -15,6 +15,7 @@ import {
   createBoundContext,
   createRecord,
   eventToRecord,
+  formatDefaultId,
   normalizeCategory,
   recordToEvent,
 } from "./record";
@@ -53,7 +54,7 @@ function defaultClock() {
 }
 
 function defaultIdFactory(event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">): string {
-  return `${event.time.toString(36)}-${event.seq.toString(36)}-${event.levelName}`;
+  return formatDefaultId(event.time, event.seq, event.levelName);
 }
 
 function levelNameFor(level: LoggerLevel, levelValue: number): EnabledLogLevelName {

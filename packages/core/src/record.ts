@@ -121,6 +121,24 @@ export function resolveMessage(record: LogRecord): string {
   return record.msg;
 }
 
+// toString(36) on a millisecond timestamp costs hundreds of nanoseconds, and
+// the timestamp only changes once per millisecond. Memoize the encoded
+// segment so bursts of logs in the same millisecond pay it once.
+let lastIdTime = -1;
+let lastIdTimeSegment = "";
+
+/**
+ * Formats the default `time36-seq36-levelName` id shared by
+ * {@link defaultRecordId} and the logger's default id factory.
+ */
+export function formatDefaultId(time: number, seq: number, levelName: string): string {
+  if (time !== lastIdTime) {
+    lastIdTime = time;
+    lastIdTimeSegment = time.toString(36);
+  }
+  return `${lastIdTimeSegment}-${seq.toString(36)}-${levelName}`;
+}
+
 /**
  * Derives the id a record receives when it is projected to an event without a
  * configured id factory. Record-aware transports that encode records directly
@@ -128,7 +146,7 @@ export function resolveMessage(record: LogRecord): string {
  * stamp ids onto raw records must use this function so both paths agree.
  */
 export function defaultRecordId(record: LogRecord, levelName: EnabledLogLevelName): string {
-  return `${record.time.toString(36)}-${record.seq.toString(36)}-${levelName}`;
+  return formatDefaultId(record.time, record.seq, levelName);
 }
 
 function sourceForRecord(record: LogRecord): LogSource | undefined {
