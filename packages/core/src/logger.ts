@@ -549,6 +549,11 @@ export class Logger implements LoggerLike {
     };
   }
 
+  // Unlike dispatchEvent, this path performs no route filtering: routes can only
+  // be attached by processors (withLogEventRoute on events), and records are
+  // dispatched here only when the logger has zero processors. If records ever
+  // become routable, this loop must learn the equivalent of
+  // shouldDispatchEventToTransport.
   private dispatchRecord(record: LogRecord, levelName: EnabledLogLevelName) {
     const context = this.createRecordTransportContext(record, levelName);
 
