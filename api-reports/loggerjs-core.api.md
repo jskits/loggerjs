@@ -136,6 +136,8 @@ export declare class Logger implements LoggerLike {
     private idFactory;
     private onInternalError?;
     private closed;
+    private transportContext?;
+    private projectedEvents;
     constructor(options?: LoggerOptions);
     setLevel(level: LoggerLevel): void;
     getLevel(): LoggerLevel;
@@ -165,8 +167,7 @@ export declare class Logger implements LoggerLike {
     private setupIntegration;
     private applyProcessors;
     private createEvent;
-    private createRecordTransportContext;
-    private createEventTransportContext;
+    private getTransportContext;
     private settleTransport;
     private dispatchRecord;
     private dispatchEvent;

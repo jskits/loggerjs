@@ -214,6 +214,8 @@ export class Logger implements LoggerLike {
   private idFactory: (event: Pick<LogEvent, "time" | "seq" | "levelName" | "logger">) => string;
   private onInternalError?: (error: unknown, detail?: Record<string, unknown>) => void;
   private closed = false;
+  private transportContext?: TransportContext;
+  private projectedEvents = new WeakMap<LogRecord, LogEvent>();
 
   constructor(options: LoggerOptions = {}) {
     this.name = categoryToName(options.category) ?? options.name ?? "app";
@@ -430,7 +432,7 @@ export class Logger implements LoggerLike {
       return;
     }
 
-    this.dispatchRecord(processedRecord, levelName);
+    this.dispatchRecord(processedRecord);
   }
 
   trace(message: unknown, data?: LogData | string, props?: LogData) {
@@ -551,38 +553,24 @@ export class Logger implements LoggerLike {
     return event;
   }
 
-  private createRecordTransportContext(
-    record: LogRecord,
-    levelName: EnabledLogLevelName,
-  ): TransportContext {
-    let event: LogEvent | undefined;
-    return {
+  // One context per logger instead of one per dispatch: the toEvent
+  // projection cache moves into a WeakMap keyed by record, which also keeps
+  // ids stable when the same record is converted again later (for example
+  // during a batch flush or drop reporting).
+  private getTransportContext(): TransportContext {
+    return (this.transportContext ??= {
       loggerName: this.name,
       now: this.clock,
       toEvent: (item) => {
-        if (item === record) {
-          event ??= this.createEvent(record, levelName);
-          return event;
+        let event = this.projectedEvents.get(item);
+        if (event === undefined) {
+          event = this.createEvent(item);
+          this.projectedEvents.set(item, event);
         }
-        return this.createEvent(item);
+        return event;
       },
       reportInternalError: (error, detail) => this.reportInternalError(error, detail),
-    };
-  }
-
-  private createEventTransportContext(
-    event: LogEvent,
-    getRecord: () => LogRecord | undefined,
-  ): TransportContext {
-    return {
-      loggerName: this.name,
-      now: this.clock,
-      toEvent: (item) => {
-        const record = getRecord();
-        return record && item === record ? event : this.createEvent(item);
-      },
-      reportInternalError: (error, detail) => this.reportInternalError(error, detail),
-    };
+    });
   }
 
   // Sync transports return undefined; wrapping every result in
@@ -602,8 +590,8 @@ export class Logger implements LoggerLike {
   // dispatched here only when the logger has zero processors. If records ever
   // become routable, this loop must learn the equivalent of
   // shouldDispatchEventToTransport.
-  private dispatchRecord(record: LogRecord, levelName: EnabledLogLevelName) {
-    const context = this.createRecordTransportContext(record, levelName);
+  private dispatchRecord(record: LogRecord) {
+    const context = this.getTransportContext();
 
     for (let index = 0; index < this.transports.length; index += 1) {
       const transport = this.transports[index];
@@ -629,10 +617,15 @@ export class Logger implements LoggerLike {
   private dispatchEvent(event: LogEvent) {
     let record: LogRecord | undefined;
     const recordForEvent = () => {
-      record ??= eventToRecord(event);
+      if (record === undefined) {
+        record = eventToRecord(event);
+        // Seed the projection cache so toEvent returns the original event for
+        // this derived record instead of re-projecting it.
+        this.projectedEvents.set(record, event);
+      }
       return record;
     };
-    const context = this.createEventTransportContext(event, () => record);
+    const context = this.getTransportContext();
 
     for (let index = 0; index < this.transports.length; index += 1) {
       const transport = this.transports[index];
