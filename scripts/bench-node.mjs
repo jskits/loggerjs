@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { performance } from "node:perf_hooks";
+import { Writable } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import pino from "pino";
+import winston from "winston";
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const iterations = Number.parseInt(process.env.BENCH_ITERATIONS ?? "100000", 10);
@@ -127,6 +130,68 @@ async function main() {
   const encodedFastJson = fastEventJsonCodec.encode(sampleBatch);
   const encodedMsgpack = msgpackAdapter.encode(sampleBatch);
 
+  // Full-path NDJSON comparison: each logger serializes one structured info
+  // log per call and hands the line to a discarding sink, so the numbers
+  // compare pipeline plus serialization without I/O noise.
+  const ndjsonCodec = core.ndjsonCodec();
+  const loggerjsNdjsonLogger = core.createLogger({
+    level: "debug",
+    transports: [
+      {
+        name: "ndjson-sink",
+        log(event) {
+          consume(ndjsonCodec.encode(event));
+        },
+      },
+    ],
+  });
+  const loggerjsRecordNdjsonLogger = core.createLogger({
+    level: "debug",
+    transports: [
+      {
+        name: "record-ndjson-sink",
+        write(record) {
+          consume(fastEventJsonCodec.encode(record));
+        },
+      },
+    ],
+  });
+  const loggerjsFastEventLogger = core.createLogger({
+    level: "debug",
+    transports: [
+      {
+        name: "fast-event-sink",
+        log(event) {
+          consume(fastEventJsonCodec.encode(event));
+        },
+      },
+    ],
+  });
+  const pinoLogger = pino(
+    { level: "debug", base: { service: "checkout", env: "bench" } },
+    {
+      write(line) {
+        consume(line);
+      },
+    },
+  );
+  const pinoDisabledLogger = pino({ level: "info" }, { write() {} });
+  const winstonLogger = winston.createLogger({
+    level: "debug",
+    format: winston.format.json(),
+    defaultMeta: { service: "checkout", env: "bench" },
+    transports: [
+      new winston.transports.Stream({
+        stream: new Writable({
+          write(chunk, _encoding, callback) {
+            consume(chunk.toString());
+            callback();
+          },
+        }),
+      }),
+    ],
+  });
+
   const rows = [
     measure("disabled debug lazy log", (index) => disabledLogger.debug(() => `skip ${index}`)),
     measure("enabled logger no transports", (index) =>
@@ -142,6 +207,18 @@ async function main() {
       consoleLogger.info("order created", { index }),
     ),
     measure("batch transport enqueue", (index) => batchLogger.info("order created", { index })),
+    measure("loggerjs ndjson event sink", (index) =>
+      loggerjsNdjsonLogger.info("order created", { index }),
+    ),
+    measure("loggerjs fast-event-json record sink", (index) =>
+      loggerjsRecordNdjsonLogger.info("order created", { index }),
+    ),
+    measure("loggerjs fast-event-json event sink", (index) =>
+      loggerjsFastEventLogger.info("order created", { index }),
+    ),
+    measure("pino ndjson noop sink", (index) => pinoLogger.info({ index }, "order created")),
+    measure("pino disabled debug", (index) => pinoDisabledLogger.debug({ index }, "skip")),
+    measure("winston json noop sink", (index) => winstonLogger.info("order created", { index })),
     measure(
       "json encode batch",
       () => jsonCodec.encode(sampleBatch),
