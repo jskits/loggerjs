@@ -81,7 +81,8 @@ Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, o
 `indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
 Use `indexedDbTransport()` when the browser should keep a local, queryable log store.
 It can opt into IndexedDB transaction durability hints and Chrome Storage Buckets
-for better isolation when the browser supports them.
+for better isolation when the browser supports them. Call `localStore.stats()` to
+read flush, prune, query, drop, and buffer-depth counters for observability.
 Use `exportLogsToZip()` and `downloadBlob()` to export persisted browser logs as a
 standard zip file containing `logs.ndjson` and `manifest.json`.
 

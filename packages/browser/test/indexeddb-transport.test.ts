@@ -344,6 +344,17 @@ describe("indexedDbTransport", () => {
       ),
     ).toEqual(["first"]);
     expect(idb.db.getAllCalls).toBe(0);
+    expect(transport.stats()).toMatchObject({
+      bufferDepth: 0,
+      enqueued: 2,
+      flushes: 1,
+      lastFlushBatchSize: 2,
+      maxBufferDepth: 2,
+      persisted: 2,
+      prunes: 1,
+      queries: 3,
+      queryFallbacks: 0,
+    });
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.indexeddb.persisted": 2,
     });
@@ -388,6 +399,11 @@ describe("indexedDbTransport", () => {
 
     expect((await collect(transport.query())).map((item) => item.id)).toEqual(["kept"]);
     expect(dropped).toEqual(["dropped:buffer-full"]);
+    expect(transport.stats()).toMatchObject({
+      dropped: 1,
+      droppedByReason: { "buffer-full": 1 },
+      enqueued: 1,
+    });
     await transport.clear();
     expect(await transport.count()).toBe(0);
   });

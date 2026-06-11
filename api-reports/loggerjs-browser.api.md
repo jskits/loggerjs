@@ -262,6 +262,32 @@ export interface IndexedDbTransportQueryOptions {
 }
 export type IndexedDbTransportDurability = "default" | "strict" | "relaxed";
 export type IndexedDbStorageBucketDurability = "strict" | "relaxed";
+export interface IndexedDbTransportStats {
+    bufferDepth: number;
+    maxBufferDepth: number;
+    pendingFlush: boolean;
+    enqueued: number;
+    persisted: number;
+    dropped: number;
+    droppedByReason: Record<string, number>;
+    persistedDropped: number;
+    persistedDroppedByReason: Record<string, number>;
+    flushes: number;
+    flushErrors: number;
+    lastFlushBatchSize: number;
+    lastFlushDurationMs: number;
+    prunes: number;
+    pruneFallbacks: number;
+    lastPruneDurationMs: number;
+    queries: number;
+    queryFallbacks: number;
+    lastQueryDurationMs: number;
+    databaseOpenCount: number;
+    storageBucketFallbacks: number;
+    transactionOptionFallbacks: number;
+    errors: number;
+    errorsByOperation: Record<string, number>;
+}
 export interface IndexedDbTransportOptions {
     name?: string;
     dbName?: string;
@@ -288,6 +314,7 @@ export interface IndexedDbTransport extends Transport {
     count: () => Promise<number>;
     clear: () => Promise<void>;
     query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+    stats: () => IndexedDbTransportStats;
 }
 export declare function indexedDbTransport(options?: IndexedDbTransportOptions): IndexedDbTransport;
 ```

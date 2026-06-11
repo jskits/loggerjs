@@ -36,6 +36,33 @@ export type IndexedDbTransportDurability = "default" | "strict" | "relaxed";
 
 export type IndexedDbStorageBucketDurability = "strict" | "relaxed";
 
+export interface IndexedDbTransportStats {
+  bufferDepth: number;
+  maxBufferDepth: number;
+  pendingFlush: boolean;
+  enqueued: number;
+  persisted: number;
+  dropped: number;
+  droppedByReason: Record<string, number>;
+  persistedDropped: number;
+  persistedDroppedByReason: Record<string, number>;
+  flushes: number;
+  flushErrors: number;
+  lastFlushBatchSize: number;
+  lastFlushDurationMs: number;
+  prunes: number;
+  pruneFallbacks: number;
+  lastPruneDurationMs: number;
+  queries: number;
+  queryFallbacks: number;
+  lastQueryDurationMs: number;
+  databaseOpenCount: number;
+  storageBucketFallbacks: number;
+  transactionOptionFallbacks: number;
+  errors: number;
+  errorsByOperation: Record<string, number>;
+}
+
 export interface IndexedDbTransportOptions {
   name?: string;
   dbName?: string;
@@ -63,6 +90,7 @@ export interface IndexedDbTransport extends Transport {
   count: () => Promise<number>;
   clear: () => Promise<void>;
   query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+  stats: () => IndexedDbTransportStats;
 }
 
 const DEFAULT_DB_NAME = "loggerjs";
@@ -87,6 +115,16 @@ interface StorageBucketManagerLike {
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.floor(value));
+}
+
+function nowMs(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+}
+
+function incrementRecord(record: Record<string, number>, key: string, amount = 1): void {
+  record[key] = (record[key] ?? 0) + amount;
 }
 
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
@@ -272,8 +310,45 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   let flushPromise: Promise<void> | undefined;
   let lastContext: TransportContext | undefined;
   let closed = false;
+  const statsState: IndexedDbTransportStats = {
+    bufferDepth: 0,
+    maxBufferDepth: 0,
+    pendingFlush: false,
+    enqueued: 0,
+    persisted: 0,
+    dropped: 0,
+    droppedByReason: {},
+    persistedDropped: 0,
+    persistedDroppedByReason: {},
+    flushes: 0,
+    flushErrors: 0,
+    lastFlushBatchSize: 0,
+    lastFlushDurationMs: 0,
+    prunes: 0,
+    pruneFallbacks: 0,
+    lastPruneDurationMs: 0,
+    queries: 0,
+    queryFallbacks: 0,
+    lastQueryDurationMs: 0,
+    databaseOpenCount: 0,
+    storageBucketFallbacks: 0,
+    transactionOptionFallbacks: 0,
+    errors: 0,
+    errorsByOperation: {},
+  };
+
+  const snapshotStats = (): IndexedDbTransportStats => ({
+    ...statsState,
+    bufferDepth: buffer.length,
+    droppedByReason: { ...statsState.droppedByReason },
+    errorsByOperation: { ...statsState.errorsByOperation },
+    pendingFlush: flushPromise !== undefined,
+    persistedDroppedByReason: { ...statsState.persistedDroppedByReason },
+  });
 
   const reportInternalError = (error: unknown, operation: string) => {
+    statsState.errors += 1;
+    incrementRecord(statsState.errorsByOperation, operation);
     lastContext?.reportInternalError(error, {
       operation,
       phase: "transport",
@@ -282,12 +357,16 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   };
 
   const dropEvent = (event: LogEvent, reason: string) => {
+    statsState.dropped += 1;
+    incrementRecord(statsState.droppedByReason, reason);
     incrementLoggerMetaCounter("transport.indexeddb.dropped");
     incrementLoggerMetaCounter(`transport.indexeddb.dropped.${reason}`);
     options.onDrop?.(event, reason);
   };
 
   const dropPersistedEntry = (entry: IndexedDbLogEntry, reason: string) => {
+    statsState.persistedDropped += 1;
+    incrementRecord(statsState.persistedDroppedByReason, reason);
     incrementLoggerMetaCounter("transport.indexeddb.persisted.dropped");
     incrementLoggerMetaCounter(`transport.indexeddb.persisted.dropped.${reason}`);
     options.onPersistedDrop?.(entry, reason);
@@ -297,14 +376,20 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     if (options.indexedDB || !options.storageBucketName) return rootIndexedDB;
     indexedDBFactoryPromise ??= (async () => {
       const manager = getStorageBucketManager();
-      if (!manager) return rootIndexedDB;
+      if (!manager) {
+        statsState.storageBucketFallbacks += 1;
+        return rootIndexedDB;
+      }
       try {
         const bucket = await manager.open(
           options.storageBucketName as string,
           storageBucketOpenOptions(options),
         );
-        return bucket.indexedDB ?? rootIndexedDB;
+        if (bucket.indexedDB) return bucket.indexedDB;
+        statsState.storageBucketFallbacks += 1;
+        return rootIndexedDB;
       } catch (error) {
+        statsState.storageBucketFallbacks += 1;
         reportInternalError(error, "storage-bucket-open");
         return rootIndexedDB;
       }
@@ -329,7 +414,14 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           ensureIndex(store, "type", "type");
           ensureIndex(store, ORDER_INDEX_NAME, ["createdAt", "seq", "id"]);
         });
-        request.addEventListener("success", () => resolve(request.result), { once: true });
+        request.addEventListener(
+          "success",
+          () => {
+            statsState.databaseOpenCount += 1;
+            resolve(request.result);
+          },
+          { once: true },
+        );
         request.addEventListener(
           "error",
           () => reject(request.error ?? new Error("IndexedDB open failed")),
@@ -345,6 +437,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     try {
       return db.transaction(storeName, mode, transactionOptions);
     } catch {
+      statsState.transactionOptionFallbacks += 1;
       return db.transaction(storeName, mode);
     }
   };
@@ -549,8 +642,15 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   };
 
   const prune = async () => {
-    if (await pruneWithCursors()) return;
-    await pruneWithEntries();
+    const startedAt = nowMs();
+    try {
+      if (await pruneWithCursors()) return;
+      statsState.pruneFallbacks += 1;
+      await pruneWithEntries();
+    } finally {
+      statsState.prunes += 1;
+      statsState.lastPruneDurationMs = nowMs() - startedAt;
+    }
   };
 
   const eventToEntry = (event: LogEvent): IndexedDbLogEntry => {
@@ -570,14 +670,25 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
 
   const writeBatch = async (events: readonly LogEvent[]) => {
     if (events.length === 0) return;
+    const startedAt = nowMs();
+    statsState.lastFlushBatchSize = events.length;
     const entries = events.map(eventToEntry);
-    await withStore("readwrite", (store) => {
-      for (const entry of entries) {
-        store.put(entry);
-      }
-    });
-    incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);
-    await prune();
+    try {
+      await withStore("readwrite", (store) => {
+        for (const entry of entries) {
+          store.put(entry);
+        }
+      });
+      statsState.persisted += entries.length;
+      incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);
+      await prune();
+      statsState.flushes += 1;
+    } catch (error) {
+      statsState.flushErrors += 1;
+      throw error;
+    } finally {
+      statsState.lastFlushDurationMs = nowMs() - startedAt;
+    }
   };
 
   const clearTimer = () => {
@@ -634,6 +745,8 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
         if (dropped) dropEvent(dropped, "buffer-full");
       }
       buffer.push(event);
+      statsState.enqueued += 1;
+      statsState.maxBufferDepth = Math.max(statsState.maxBufferDepth, buffer.length);
       if (buffer.length >= batchSize || flushIntervalMs === 0) {
         void flushPending().catch((error: unknown) => reportInternalError(error, "flush"));
       } else {
@@ -654,15 +767,23 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     },
     async *query(queryOptions: IndexedDbTransportQueryOptions = {}) {
       await flushPending();
+      const startedAt = nowMs();
+      const cursorEntries = await queryEntriesByCursor(queryOptions);
+      if (cursorEntries === undefined) statsState.queryFallbacks += 1;
       const entries =
-        (await queryEntriesByCursor(queryOptions)) ??
+        cursorEntries ??
         orderEntries(await getEntries(), queryOptions.order ?? "asc")
           .filter((entry) => shouldKeepEntry(entry, queryOptions))
           .slice(0, queryOptions.limit);
+      statsState.queries += 1;
+      statsState.lastQueryDurationMs = nowMs() - startedAt;
       for (const entry of entries) {
         const event = decodeEntry(entry, codec);
         if (event) yield event;
       }
+    },
+    stats() {
+      return snapshotStats();
     },
     close() {
       closed = true;
