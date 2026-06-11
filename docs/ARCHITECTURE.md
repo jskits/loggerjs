@@ -402,6 +402,32 @@ Initial internal budget:
 
 Benchmarking must cover Node and real browsers, not only synthetic Node loops. The suite should compare pino, winston, LogTape, native console, native `JSON.stringify`, current LoggerJS, and target LoggerJS paths.
 
+### Decision: 80% of pino is the accepted ceiling, not a milestone toward parity
+
+Status as of 2026-06: the Node NDJSON full path measures ~83% of pino for
+equivalent output (lean envelope) and ~75% while emitting `id`, `seq`, and
+`levelName` on top of pino's fields (see `docs/BENCHMARKS.md` for the
+snapshot). The 80% target is met, and we deliberately stop here.
+
+The remaining gap is structural, not unoptimized code. pino builds its output
+line directly from call arguments; LoggerJS allocates a `LogRecord` so that
+middleware, processors, integrations, and multiple transports can observe one
+shared value. Closing the gap would require a fusion fast path that bypasses
+the record whenever a logger has exactly one sync transport and no
+middleware. That path is rejected because it would:
+
+- create a performance cliff where adding the first middleware silently costs
+  30%+ of throughput,
+- move serialization into the logger, breaking the codec-belongs-to-transport
+  boundary,
+- and double the hot-path surface that every semantic change must keep in
+  sync (the id-drift and source round-trip bugs fixed in 2026-06 were exactly
+  this class of dual-path defect).
+
+Remaining performance budget goes to the default paths (batch enqueue,
+default codecs) and to regression gating, not to peak numbers. Revisit only
+if a use case demonstrates that the last ~20% matters in production.
+
 ## Reliability
 
 Default semantics are **best-effort at-most-once**. LoggerJS must not block application progress indefinitely to guarantee log delivery.
