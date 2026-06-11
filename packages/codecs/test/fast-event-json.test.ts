@@ -136,6 +136,51 @@ describe("fast event json hostile inputs", () => {
     });
   });
 
+  it("writes flat record props directly and falls back for complex values", () => {
+    const codec = fastEventJsonCodec();
+    const flat = createRecord({
+      time: 1,
+      level: 30,
+      msg: "flat",
+      props: { a: 'x "quoted"', b: 42, c: true, d: null, e: undefined, f: Number.NaN },
+      seq: 1,
+    });
+    expect((JSON.parse(codec.encode(flat)) as LogEvent).data).toEqual({
+      a: 'x "quoted"',
+      b: 42,
+      c: true,
+      d: null,
+      f: null,
+    });
+
+    const nested = createRecord({
+      time: 1,
+      level: 30,
+      msg: "nested",
+      props: { outer: { inner: 1 }, list: [1, 2] },
+      seq: 2,
+    });
+    expect((JSON.parse(codec.encode(nested)) as LogEvent).data).toEqual({
+      outer: { inner: 1 },
+      list: [1, 2],
+    });
+
+    class WithToJson {
+      value = 1;
+      toJSON() {
+        return { custom: true };
+      }
+    }
+    const instance = createRecord({
+      time: 1,
+      level: 30,
+      msg: "instance",
+      props: new WithToJson() as unknown as Record<string, unknown>,
+      seq: 3,
+    });
+    expect((JSON.parse(codec.encode(instance)) as LogEvent).data).toEqual({ custom: true });
+  });
+
   it("stamps the same default id on records as recordToEvent", () => {
     const record = createRecord({ time: 1700000000000, level: 30, msg: "created", seq: 7 });
     const encoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;

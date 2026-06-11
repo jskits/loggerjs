@@ -98,6 +98,55 @@ function asJsonString(value: string): string {
   return `"${value}"`;
 }
 
+// Data payloads are usually small flat objects of primitives. Writing them
+// directly skips the native JSON.stringify call overhead; any nested or
+// exotic value bails out so the caller can use the configured stringifier.
+function tryFlatObjectJson(value: Record<string, unknown>): string | undefined {
+  // Class instances may carry toJSON or accessors; only plain objects take
+  // the fast path so behavior matches JSON.stringify.
+  const proto = Object.getPrototypeOf(value) as unknown;
+  if (proto !== Object.prototype && proto !== null) return undefined;
+  let output = "{";
+  let first = true;
+  for (const key of Object.keys(value)) {
+    const item = value[key];
+    let encoded: string;
+    switch (typeof item) {
+      case "string":
+        encoded = asJsonString(item);
+        break;
+      case "number":
+        encoded = Number.isFinite(item) ? String(item) : "null";
+        break;
+      case "boolean":
+        encoded = item ? "true" : "false";
+        break;
+      case "object":
+        if (item !== null) return undefined;
+        encoded = "null";
+        break;
+      case "undefined":
+        continue;
+      default:
+        return undefined;
+    }
+    output += `${first ? "" : ","}${asJsonString(key)}:${encoded}`;
+    first = false;
+  }
+  return `${output}}`;
+}
+
+function appendDataField(
+  output: string,
+  value: Record<string, unknown> | undefined,
+  stringify: JsonStringify,
+): string {
+  if (value === undefined) return output;
+  const flat = tryFlatObjectJson(value);
+  if (flat !== undefined) return `${output},"data":${flat}`;
+  return appendField(output, "data", value, stringify);
+}
+
 // The timestamp changes once per millisecond while bursts of records share
 // it, so the rendered `","time":...,"seq":` fragment can be memoized the same
 // way the default id memoizes its time segment.
@@ -197,7 +246,7 @@ function encodeRecord(
   if (record.type !== null) output += `,"type":${asJsonString(record.type)}`;
   if (record.tags !== null) output += tagsFragment(record.tags);
   if (options.includeData ?? true)
-    output = appendField(output, "data", record.props ?? undefined, stringify);
+    output = appendDataField(output, record.props ?? undefined, stringify);
   if (options.includeError ?? true)
     output = appendField(output, "error", errorForRecord(record), stringify);
   if (options.includeContext ?? true)
