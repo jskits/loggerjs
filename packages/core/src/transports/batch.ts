@@ -344,8 +344,9 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   const reportDrop = (item: QueueItem, reason: string, context: TransportContext) => {
     incrementLoggerMetaCounter("transport.dropped");
     incrementLoggerMetaCounter(`transport.dropped.${reason}`);
-    const event = eventForQueueItem(item, context);
-    options.onDrop?.(event, reason);
+    // Drops happen under overload; only pay for the record-to-event
+    // conversion when a drop listener actually consumes it.
+    if (options.onDrop) options.onDrop(eventForQueueItem(item, context), reason);
     if (dropPolicy === "throw") {
       context.reportInternalError(new Error(`loggerjs batch transport dropped log: ${reason}`), {
         phase: "transport",

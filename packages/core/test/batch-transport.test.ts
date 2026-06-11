@@ -74,6 +74,34 @@ describe("batchTransport", () => {
     });
   });
 
+  it("skips the drop event conversion when no onDrop listener is set", () => {
+    resetLoggerMetaStats();
+    const toEvent = vi.fn<TransportContext["toEvent"]>(recordToEvent);
+    const transport = batchTransport(
+      {
+        name: "inner",
+        writeBatch() {},
+      },
+      {
+        maxBatchSize: 10,
+        maxQueueSize: 1,
+        flushIntervalMs: 0,
+        dropPolicy: "drop-newest",
+      },
+    );
+
+    const context = createRecordContext(toEvent);
+    const record = createRecord({ time: 1, level: 30, msg: "created", seq: 1 });
+    transport.write?.(record, context);
+    transport.write?.(createRecord({ time: 1, level: 30, msg: "dropped", seq: 2 }), context);
+
+    expect(toEvent).not.toHaveBeenCalled();
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.dropped": 1,
+      "transport.dropped.queue-full": 1,
+    });
+  });
+
   it("reports legacy throw overflow policy instead of throwing into the app", () => {
     resetLoggerMetaStats();
     const errors: unknown[] = [];
