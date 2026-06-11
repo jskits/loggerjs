@@ -76,6 +76,22 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+function transactionToPromise(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.addEventListener("complete", () => resolve(), { once: true });
+    transaction.addEventListener(
+      "abort",
+      () => reject(transaction.error ?? new Error("IndexedDB transaction aborted")),
+      { once: true },
+    );
+    transaction.addEventListener(
+      "error",
+      () => reject(transaction.error ?? new Error("IndexedDB transaction failed")),
+      { once: true },
+    );
+  });
+}
+
 function payloadByteLength(payload: string | Uint8Array): number {
   if (typeof payload !== "string") return payload.byteLength;
   if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(payload).byteLength;
@@ -195,11 +211,25 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
 
   const withStore = async <T>(
     mode: IDBTransactionMode,
-    run: (store: IDBObjectStore) => Promise<T>,
+    run: (store: IDBObjectStore, transaction: IDBTransaction) => T | Promise<T>,
   ): Promise<T> => {
     const db = await openDb();
     const tx = db.transaction(storeName, mode);
-    return run(tx.objectStore(storeName));
+    const settled = transactionToPromise(tx);
+    try {
+      const result = await run(tx.objectStore(storeName), tx);
+      await settled;
+      return result;
+    } catch (error) {
+      if (tx.error === null) {
+        try {
+          tx.abort();
+        } catch {
+          // The transaction may already be committed or aborted.
+        }
+      }
+      throw error;
+    }
   };
 
   const getEntries = async () =>
@@ -269,10 +299,9 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   const writeBatch = async (events: readonly LogEvent[]) => {
     if (events.length === 0) return;
     const entries = events.map(eventToEntry);
-    await withStore("readwrite", async (store) => {
+    await withStore("readwrite", (store) => {
       for (const entry of entries) {
-        // oxlint-disable-next-line no-await-in-loop -- Puts are sequenced for fake IDB compatibility.
-        await requestToPromise(store.put(entry));
+        store.put(entry);
       }
     });
     incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);

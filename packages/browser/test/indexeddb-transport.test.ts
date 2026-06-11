@@ -39,7 +39,10 @@ class FakeObjectStore {
   };
   private readonly indexes = new Set<string>();
 
-  constructor(private readonly entries: Map<string, IndexedDbLogEntry>) {}
+  constructor(
+    private readonly entries: Map<string, IndexedDbLogEntry>,
+    private readonly transaction?: FakeTransaction,
+  ) {}
 
   createIndex(name: string) {
     this.indexes.add(name);
@@ -49,12 +52,14 @@ class FakeObjectStore {
     const request = new FakeRequest<IDBValidKey>();
     this.entries.set(item.id, item);
     request.succeed(item.id);
+    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<IDBValidKey>;
   }
 
   getAll() {
     const request = new FakeRequest<IndexedDbLogEntry[]>();
     request.succeed([...this.entries.values()]);
+    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<IndexedDbLogEntry[]>;
   }
 
@@ -62,6 +67,7 @@ class FakeObjectStore {
     const request = new FakeRequest<undefined>();
     this.entries.delete(String(id));
     request.succeed(undefined);
+    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
   }
 
@@ -69,15 +75,46 @@ class FakeObjectStore {
     const request = new FakeRequest<undefined>();
     this.entries.clear();
     request.succeed(undefined);
+    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
   }
 }
 
 class FakeTransaction {
-  constructor(private readonly store: FakeObjectStore) {}
+  error: Error | null = null;
+  private completed = false;
+  private readonly listeners = new Map<string, Array<() => void>>();
+
+  constructor(private readonly entries: Map<string, IndexedDbLogEntry>) {}
+
+  addEventListener(type: string, listener: () => void) {
+    const listeners = this.listeners.get(type) ?? [];
+    listeners.push(listener);
+    this.listeners.set(type, listeners);
+  }
+
+  abort() {
+    if (this.completed) return;
+    this.completed = true;
+    this.dispatch("abort");
+  }
+
+  completeSoon() {
+    if (this.completed) return;
+    queueMicrotask(() => {
+      if (this.completed) return;
+      this.completed = true;
+      this.dispatch("complete");
+    });
+  }
+
+  private dispatch(type: string) {
+    for (const listener of this.listeners.get(type) ?? []) listener();
+  }
 
   objectStore() {
-    return this.store as unknown as IDBObjectStore;
+    const store = new FakeObjectStore(this.entries, this);
+    return store as unknown as IDBObjectStore;
   }
 }
 
@@ -98,7 +135,7 @@ class FakeDatabase {
 
   transaction() {
     if (!this.store) this.createObjectStore();
-    return new FakeTransaction(this.store as FakeObjectStore) as unknown as IDBTransaction;
+    return new FakeTransaction(this.entries) as unknown as IDBTransaction;
   }
 
   close() {
