@@ -25,20 +25,21 @@ pnpm check
 changeset publish --tag canary
 ```
 
-## Trusted Publishing
+## NPM Publishing
 
-The release workflow is `.github/workflows/release.yml`. Configure every `@loggerjs/*` npm package to trust that workflow before the first publish.
+The release workflow is `.github/workflows/release.yml`. Configure the GitHub secret `NPM_AUTH_TOKEN` with an npm automation token that can publish every `@loggerjs/*` package.
 
-The workflow intentionally uses OIDC trusted publishing rather than a long-lived npm token:
+The workflow uses token authentication for npm publishing and OIDC for provenance:
 
-- `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm requires.
-- `actions/setup-node` sets the npm registry.
-- The workflow upgrades to npm 11 because npm trusted publishing requires npm CLI 11.5.1 or newer.
-- `NPM_CONFIG_PROVENANCE=true` requests npm provenance when `changeset publish` publishes packages.
+- `actions/setup-node` sets the npm registry and configures npm to read auth from `NODE_AUTH_TOKEN`.
+- Publish steps map `secrets.NPM_AUTH_TOKEN` to `NODE_AUTH_TOKEN`, which is what npm expects.
+- `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm uses for provenance.
+- The workflow upgrades to npm 11 so provenance support is current.
+- Every publishable package sets `publishConfig.provenance=true`, and the publish step also sets `NPM_CONFIG_PROVENANCE=true`.
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
-Pushes to `main` run validation and, when pending changesets exist, commit the versioned package metadata back to `main`. Real npm publishing is intentionally manual: run the `Release` workflow with `publish=true` after the npm trusted publisher setup is ready. Push-triggered runs still execute the publish dry run when there are no pending changesets, but they do not publish to npm.
+Pushes to `main` run validation and publish. When pending changesets exist, the workflow first commits the versioned package metadata back to `main`, then publishes from that same checked-out versioned tree and pushes release tags. Manual runs without `publish=true` only validate and dry-run; manual runs with `publish=true` publish only when there are no pending changesets.
 
 References:
 
