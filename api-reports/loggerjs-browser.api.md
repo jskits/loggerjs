@@ -60,6 +60,30 @@ export declare function captureConsoleIntegration(options?: CaptureConsoleOption
 export {};
 ```
 
+## context-propagation-integration.d.ts
+
+```ts
+import { type Baggage, type Integration, type TraceContext } from "@loggerjs/core";
+export type BrowserContextActionEventName = "change" | "click" | "input" | "keydown" | "submit";
+export interface BrowserContextEventTargetLike {
+    addEventListener: typeof globalThis.addEventListener;
+    removeEventListener: typeof globalThis.removeEventListener;
+}
+export interface BrowserContextPropagationOptions {
+    sessionId?: string | (() => string | undefined);
+    requestId?: () => string | undefined;
+    trace?: TraceContext | (() => TraceContext | undefined);
+    traceparent?: string | (() => string | undefined);
+    baggage?: Baggage | string | (() => Baggage | string | undefined);
+    actionEvents?: readonly BrowserContextActionEventName[];
+    actionTtlMs?: number;
+    root?: BrowserContextEventTargetLike;
+    clock?: () => number;
+    idFactory?: () => string;
+}
+export declare function browserContextPropagationIntegration(options?: BrowserContextPropagationOptions): Integration;
+```
+
 ## error-integration.d.ts
 
 ```ts
@@ -124,6 +148,46 @@ export interface BrowserFrameworkErrorIntegration extends Integration {
 export declare function captureFrameworkErrorsIntegration(options?: CaptureFrameworkErrorsOptions): BrowserFrameworkErrorIntegration;
 ```
 
+## framework-router-integrations.d.ts
+
+```ts
+import { type Integration, type LoggerLevel } from "@loggerjs/core";
+export interface FrameworkRouterIntegrationOptions {
+    level?: LoggerLevel;
+    sanitizeUrl?: (url: string) => string;
+    includeState?: boolean;
+}
+export interface NextRouterLike {
+    asPath?: string;
+    events?: {
+        on?: (event: string, listener: (url: string) => void) => void;
+        off?: (event: string, listener: (url: string) => void) => void;
+    };
+}
+export interface ReactRouterHistoryLike {
+    location?: unknown;
+    listen?: (listener: (update: unknown) => void) => void | (() => void);
+}
+export interface VueRouterLike {
+    currentRoute?: unknown;
+    afterEach?: (listener: (to: unknown, from: unknown) => void) => void | (() => void);
+}
+export interface NextRouterIntegrationOptions extends FrameworkRouterIntegrationOptions {
+    router: NextRouterLike;
+}
+export interface ReactRouterIntegrationOptions extends FrameworkRouterIntegrationOptions {
+    history: ReactRouterHistoryLike;
+}
+export interface VueRouterIntegrationOptions extends FrameworkRouterIntegrationOptions {
+    router: VueRouterLike;
+    framework?: "vue-router" | "nuxt";
+}
+export declare function nextRouterIntegration(options: NextRouterIntegrationOptions): Integration;
+export declare function reactRouterIntegration(options: ReactRouterIntegrationOptions): Integration;
+export declare function vueRouterIntegration(options: VueRouterIntegrationOptions): Integration;
+export declare function nuxtRouterIntegration(options: Omit<VueRouterIntegrationOptions, "framework">): Integration;
+```
+
 ## http-capture-utils.d.ts
 
 ```ts
@@ -138,7 +202,7 @@ export declare function shouldSample(sampleRate: number, random: () => number): 
 ## http-transport.d.ts
 
 ```ts
-import { type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import { type Codec, type LogEvent, type LoggerLevel, type PayloadTransform, type Transport } from "@loggerjs/core";
 export type BrowserHttpDropPolicy = "drop-oldest" | "drop-newest";
 export interface BrowserHttpOfflineEntry {
     id: string;
@@ -180,6 +244,7 @@ export interface BrowserHttpTransportOptions {
     offlineReplayMaxDelayMs?: number;
     random?: () => number;
     fetchFn?: typeof fetch;
+    transformPayload?: PayloadTransform;
     onDrop?: (event: LogEvent, reason: string) => void;
 }
 export declare function memoryBrowserHttpOfflineQueue(options?: MemoryBrowserHttpOfflineQueueOptions): BrowserHttpOfflineQueue & {
@@ -198,12 +263,15 @@ export * from "./service-worker-transport.js";
 export * from "./websocket-transport.js";
 export * from "./indexeddb-offline-queue.js";
 export * from "./indexeddb-transport.js";
+export * from "./offline-first-transport.js";
 export * from "./zip-export.js";
 export * from "./console-integration.js";
+export * from "./context-propagation-integration.js";
 export * from "./error-integration.js";
 export * from "./fetch-integration.js";
 export * from "./xhr-integration.js";
 export * from "./framework-error-integration.js";
+export * from "./framework-router-integrations.js";
 export * from "./reporting-integration.js";
 export * from "./router-integration.js";
 export * from "./runtime-host-integration.js";
@@ -313,10 +381,46 @@ export interface IndexedDbTransportOptions {
 export interface IndexedDbTransport extends Transport {
     count: () => Promise<number>;
     clear: () => Promise<void>;
+    remove: (ids: string | readonly string[]) => Promise<void>;
     query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
     stats: () => IndexedDbTransportStats;
 }
 export declare function indexedDbTransport(options?: IndexedDbTransportOptions): IndexedDbTransport;
+```
+
+## offline-first-transport.d.ts
+
+```ts
+import { type LogEvent, type LoggerLevel, type RetryTransportOptions, type Transport, type TransportContext } from "@loggerjs/core";
+import { type IndexedDbTransportOptions, type IndexedDbTransportQueryOptions } from "./indexeddb-transport.js";
+export interface OfflineFirstQueue {
+    log: (event: LogEvent, context: TransportContext) => void | Promise<void>;
+    flush?: () => void | Promise<void>;
+    query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+    remove: (ids: string | readonly string[]) => Promise<void>;
+    count?: () => Promise<number>;
+    clear?: () => Promise<void>;
+    close?: () => void | Promise<void>;
+}
+export interface OfflineFirstTransportOptions {
+    name?: string;
+    minLevel?: LoggerLevel;
+    queue?: OfflineFirstQueue;
+    queueOptions?: IndexedDbTransportOptions;
+    replayBatchSize?: number;
+    replayOnOnline?: boolean;
+    online?: () => boolean;
+    retry?: RetryTransportOptions;
+    onQueued?: (event: LogEvent, error?: unknown) => void;
+    onReplayed?: (events: readonly LogEvent[]) => void;
+}
+export interface OfflineFirstTransport extends Transport {
+    replay: () => Promise<void>;
+    queuedCount: () => Promise<number | undefined>;
+    clearQueue: () => Promise<void>;
+    queue: OfflineFirstQueue;
+}
+export declare function offlineFirstTransport(remote: Transport, options?: OfflineFirstTransportOptions): OfflineFirstTransport;
 ```
 
 ## page-lifecycle.d.ts

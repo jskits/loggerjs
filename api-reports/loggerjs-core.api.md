@@ -21,6 +21,17 @@ export declare function safeJsonCodec(options?: SafeStringifyOptions): Codec<str
 export declare function ndjsonCodec(options?: SafeStringifyOptions): Codec<string>;
 ```
 
+## codecs/metrics.d.ts
+
+```ts
+import type { Codec } from "../types.js";
+export interface MetricsCodecOptions<TPayload = string | Uint8Array> {
+    name?: string;
+    byteLength?: (payload: TPayload) => number;
+}
+export declare function metricsCodec<TPayload = string | Uint8Array>(codec: Codec<TPayload>, options?: MetricsCodecOptions<TPayload>): Codec<TPayload>;
+```
+
 ## context.d.ts
 
 ```ts
@@ -31,6 +42,7 @@ export interface ContextManager {
     with: <T>(context: Record<string, unknown>, fn: () => T) => T;
 }
 export declare function setContextProvider(nextProvider: ContextProvider | undefined): void;
+export declare function addContextProvider(nextProvider: ContextProvider): () => void;
 export declare function setContextManager(nextManager: ContextManager): void;
 export declare function resetContextManager(): void;
 export declare function getContext(): BoundContext | undefined;
@@ -67,8 +79,10 @@ export * from "./levels.js";
 export * from "./types.js";
 export * from "./record.js";
 export * from "./context.js";
+export * from "./trace-propagation.js";
 export * from "./events.js";
 export * from "./event-route.js";
+export * from "./semantic-events.js";
 export * from "./logger.js";
 export * from "./registry.js";
 export * from "./meta.js";
@@ -77,9 +91,11 @@ export * from "./integration-api.js";
 export * from "./utils/error.js";
 export * from "./utils/safe-stringify.js";
 export * from "./codecs/json.js";
+export * from "./codecs/metrics.js";
 export * from "./transports/console.js";
 export * from "./transports/memory.js";
 export * from "./transports/batch.js";
+export * from "./transports/reliability.js";
 export * from "./transports/test.js";
 ```
 
@@ -191,7 +207,14 @@ export { levelValues };
 ```ts
 export type LoggerMetaStats = Record<string, number>;
 export declare function incrementLoggerMetaCounter(name: string, amount?: number): void;
+export declare function setLoggerMetaGauge(name: string, value: number): void;
 export declare function getLoggerMetaStats(): LoggerMetaStats;
+export declare function getLoggerMetaGauges(): LoggerMetaStats;
+export interface LoggerSelfMetrics {
+    counters: LoggerMetaStats;
+    gauges: LoggerMetaStats;
+}
+export declare function getLoggerSelfMetrics(): LoggerSelfMetrics;
 export declare function resetLoggerMetaStats(): void;
 export declare function reportLoggerMetaError(error: unknown, detail: Record<string, unknown> | undefined, handler: ((error: unknown, detail?: Record<string, unknown>) => void) | undefined): void;
 ```
@@ -310,6 +333,145 @@ export declare class RegistryLogger implements LoggerLike {
 export declare function getLogger(category: LoggerCategory): RegistryLogger;
 ```
 
+## semantic-events.d.ts
+
+```ts
+export type SemanticEventPayload<T extends Record<string, unknown>> = T & Record<string, unknown>;
+export type SemanticErrorPayload = SemanticEventPayload<{
+    name?: string;
+    message: string;
+    code?: string | number;
+    handled?: boolean;
+    fatal?: boolean;
+}>;
+export type SemanticHttpPayload = SemanticEventPayload<{
+    method: string;
+    url: string;
+    status?: number;
+    durationMs?: number;
+    requestId?: string;
+}>;
+export type SemanticDbPayload = SemanticEventPayload<{
+    system: string;
+    operation?: string;
+    statement?: string;
+    durationMs?: number;
+    rows?: number;
+}>;
+export type SemanticJobPayload = SemanticEventPayload<{
+    queue?: string;
+    job: string;
+    jobId?: string;
+    status?: "started" | "completed" | "failed" | "retrying" | string;
+    durationMs?: number;
+}>;
+export type SemanticUiPayload = SemanticEventPayload<{
+    component?: string;
+    route?: string;
+    state?: string;
+}>;
+export type SemanticActionPayload = SemanticEventPayload<{
+    action: string;
+    target?: string;
+    source?: string;
+}>;
+export type SemanticSecurityPayload = SemanticEventPayload<{
+    category: string;
+    outcome?: "allowed" | "denied" | "blocked" | "detected" | string;
+    actorId?: string;
+    resource?: string;
+}>;
+export type SemanticPerformancePayload = SemanticEventPayload<{
+    metric: string;
+    value: number;
+    unit?: "ms" | "bytes" | "count" | string;
+    target?: string;
+}>;
+export declare const semanticEvents: {
+    readonly error: {
+        type: string;
+        level: "error";
+        message: (payload: SemanticErrorPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly http: {
+        type: string;
+        level: "info";
+        message: (payload: SemanticHttpPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly db: {
+        type: string;
+        level: "debug";
+        message: (payload: SemanticDbPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly job: {
+        type: string;
+        level: "info";
+        message: (payload: SemanticJobPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly ui: {
+        type: string;
+        level: "info";
+        message: (payload: SemanticUiPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly action: {
+        type: string;
+        level: "info";
+        message: (payload: SemanticActionPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly security: {
+        type: string;
+        level: "warn";
+        message: (payload: SemanticSecurityPayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+    readonly performance: {
+        type: string;
+        level: "info";
+        message: (payload: SemanticPerformancePayload) => string;
+        tags: {
+            semantic: string;
+        };
+    };
+};
+```
+
+## trace-propagation.d.ts
+
+```ts
+import type { TraceContext } from "./types.js";
+export type Baggage = Record<string, string>;
+export declare function parseTraceparent(value: string | null | undefined): TraceContext | undefined;
+export declare function formatTraceparent(trace: TraceContext | undefined): string | undefined;
+export declare function parseBaggage(value: string | null | undefined): Baggage | undefined;
+export declare function formatBaggage(baggage: Baggage | undefined): string | undefined;
+export interface TraceHeaders {
+    traceparent?: string;
+    baggage?: string;
+}
+export declare function traceContextFromHeaders(headers: TraceHeaders): TraceContext | undefined;
+export declare function traceContextToHeaders(trace: TraceContext | undefined): TraceHeaders;
+```
+
 ## transports/batch.d.ts
 
 ```ts
@@ -335,9 +497,25 @@ export interface BatchTransportOptions {
     circuitBreakerResetMs?: number;
     onDrop?: (event: LogEvent, reason: string) => void;
 }
+export interface BatchTransportStats {
+    queueDepth: number;
+    maxQueueDepth: number;
+    activeBatches: number;
+    flushes: number;
+    flushErrors: number;
+    lastFlushBatchSize: number;
+    lastFlushDurationMs: number;
+    retryCount: number;
+    retryExhausted: number;
+    circuitOpen: boolean;
+    circuitOpenUntil: number;
+}
+export interface BatchTransport extends Transport {
+    stats: () => BatchTransportStats;
+}
 export declare function estimateLogEventBytes(event: LogEvent): number;
 export declare function estimateLogRecordBytes(record: LogRecord): number;
-export declare function batchTransport(inner: Transport, options?: BatchTransportOptions): Transport;
+export declare function batchTransport(inner: Transport, options?: BatchTransportOptions): BatchTransport;
 ```
 
 ## transports/console.d.ts
@@ -366,6 +544,43 @@ export declare function memoryTransport(options?: {
     maxEvents?: number;
     name?: string;
 }): MemoryTransport;
+```
+
+## transports/reliability.d.ts
+
+```ts
+import type { Transport } from "../types.js";
+export type TransportOperation = "write" | "writeBatch" | "log" | "logBatch";
+export type RetryFallbackReason = "primary-error" | "circuit-open";
+export interface RetryTransportOptions {
+    name?: string;
+    maxRetries?: number;
+    retryBaseDelayMs?: number;
+    retryMaxDelayMs?: number;
+    random?: () => number;
+    circuitBreakerFailureThreshold?: number;
+    circuitBreakerResetMs?: number;
+    fallback?: Transport;
+    onRetry?: (detail: {
+        attempt: number;
+        delayMs: number;
+        error: unknown;
+    }) => void;
+    onFallback?: (detail: {
+        reason: RetryFallbackReason;
+        operation: TransportOperation;
+        error?: unknown;
+    }) => void;
+}
+export interface FallbackTransportOptions {
+    name?: string;
+    onFallback?: (detail: {
+        operation: TransportOperation;
+        error: unknown;
+    }) => void;
+}
+export declare function fallbackTransport(primary: Transport, fallback: Transport, options?: FallbackTransportOptions): Transport;
+export declare function retryTransport(inner: Transport, options?: RetryTransportOptions): Transport;
 ```
 
 ## transports/test.d.ts
@@ -432,6 +647,7 @@ export interface TraceContext {
     spanId?: string;
     traceFlags?: string;
     sampled?: boolean;
+    baggage?: Record<string, string>;
     [key: string]: unknown;
 }
 export interface LogSource {
@@ -543,6 +759,13 @@ export interface Codec<TPayload = string | Uint8Array> {
     encode: (input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context?: EncodeContext) => TPayload;
     decode?: (payload: TPayload) => LogEvent | LogEvent[];
 }
+export type EncodedPayload = string | Uint8Array;
+export interface PayloadTransformContext {
+    contentType: string;
+    transport?: string;
+    events?: readonly LogEvent[];
+}
+export type PayloadTransform<TPayload extends EncodedPayload = EncodedPayload> = (payload: TPayload, context: PayloadTransformContext) => TPayload | Promise<TPayload>;
 export interface LoggerLike {
     log: (level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) => void;
     trace: (message: unknown, data?: LogData | string, props?: LogData) => void;

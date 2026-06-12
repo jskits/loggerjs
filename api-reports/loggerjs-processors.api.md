@@ -41,6 +41,20 @@ export interface BreadcrumbBufferOptions<TBreadcrumb = Breadcrumb> {
 export declare function breadcrumbBufferProcessor<TBreadcrumb = Breadcrumb>(options?: BreadcrumbBufferOptions<TBreadcrumb>): BreadcrumbBufferProcessor;
 ```
 
+## coalesce.d.ts
+
+```ts
+import { type LogEvent, type Processor } from "@loggerjs/core";
+export interface CoalesceOptions {
+    windowMs?: number;
+    maxEntries?: number;
+    key?: (event: LogEvent) => string;
+    field?: string;
+    updateMessage?: boolean;
+}
+export declare function coalesceProcessor(options?: CoalesceOptions): Processor;
+```
+
 ## dedupe.d.ts
 
 ```ts
@@ -213,6 +227,7 @@ export declare function fingersCrossedProcessor(options?: FingersCrossedOptions)
 export * from "./redact.js";
 export * from "./sample.js";
 export * from "./tags.js";
+export * from "./coalesce.js";
 export * from "./dedupe.js";
 export * from "./trace.js";
 export * from "./rate-limit.js";
@@ -223,12 +238,14 @@ export * from "./filter-route.js";
 export * from "./fingerprint.js";
 export * from "./normalize-error.js";
 export * from "./stack-parser.js";
+export * from "./symbolicate-stack.js";
 export * from "./privacy-guard.js";
 export * from "./schema-dev-check.js";
 export * from "./dynamic-sampler.js";
 export * from "./breadcrumb-buffer.js";
 export { redactProcessor as redact } from "./redact.js";
 export { sampleProcessor as sample } from "./sample.js";
+export { coalesceProcessor as coalesce } from "./coalesce.js";
 export { tagsMiddleware, typeMiddleware, contextMiddleware, tagsProcessor as tags, tagsMiddleware as tagsMw, typeProcessor as logType, typeMiddleware as logTypeMw, contextProcessor as context, contextMiddleware as contextMw, } from "./tags.js";
 export { dedupeProcessor as dedupe } from "./dedupe.js";
 export { traceContextMiddleware, traceContextProcessor as traceContext, traceContextMiddleware as traceContextMw, } from "./trace.js";
@@ -240,6 +257,7 @@ export { filterProcessor as filter, routeProcessor as route } from "./filter-rou
 export { fingerprintProcessor as fingerprint } from "./fingerprint.js";
 export { normalizeErrorProcessor as normalizeError } from "./normalize-error.js";
 export { stackParserProcessor as stackParser } from "./stack-parser.js";
+export { symbolicateStackProcessor as symbolicateStack } from "./symbolicate-stack.js";
 export { privacyGuardProcessor as privacyGuard } from "./privacy-guard.js";
 export { schemaDevCheckProcessor as schemaDevCheck } from "./schema-dev-check.js";
 export { dynamicSamplerProcessor as dynamicSampler } from "./dynamic-sampler.js";
@@ -404,6 +422,25 @@ export interface StackParserOptions {
 }
 export declare function parseStack(stack: string): StackFrame[];
 export declare function stackParserProcessor(options?: StackParserOptions): Processor;
+```
+
+## symbolicate-stack.d.ts
+
+```ts
+import type { LogEvent, Processor } from "@loggerjs/core";
+import { type StackFrame } from "./stack-parser.js";
+export interface SymbolicatedStackFrame extends StackFrame {
+    original?: StackFrame;
+}
+export interface SymbolicateStackOptions {
+    maxFrames?: number;
+    sourceKey?: string;
+    target?: "error" | "context";
+    key?: string;
+    mode?: "annotate" | "replace";
+    symbolicate: (frame: StackFrame, event: LogEvent) => StackFrame | undefined;
+}
+export declare function symbolicateStackProcessor(options: SymbolicateStackOptions): Processor;
 ```
 
 ## tags.d.ts

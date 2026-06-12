@@ -3,6 +3,19 @@
 Generated from `packages/node/dist/**/*.d.ts`.
 Update with `pnpm build && pnpm api:report` after intentional public API changes.
 
+## bullmq-integration.d.ts
+
+```ts
+import { type QueueClientLike, type QueueIntegrationOptions } from "./queue-integration.js";
+export interface BullMqIntegrationOptions extends Omit<QueueIntegrationOptions, "client" | "system" | "methods" | "getQueueName"> {
+    client: QueueClientLike & {
+        name?: string;
+    };
+    methods?: readonly string[];
+}
+export declare function bullMqIntegration(options: BullMqIntegrationOptions): import("@loggerjs/core").Integration;
+```
+
 ## cli-integration.d.ts
 
 ```ts
@@ -217,10 +230,58 @@ export interface FileTransport extends Transport {
 export declare function fileTransport(options: FileTransportOptions): FileTransport;
 ```
 
+## hapi-integration.d.ts
+
+```ts
+import { type LoggerLevel, type LoggerLike } from "@loggerjs/core";
+export interface HapiRequestLike {
+    method?: string;
+    path?: string;
+    url?: {
+        pathname?: string;
+    };
+    info?: {
+        id?: string;
+        received?: number;
+        remoteAddress?: string;
+    };
+    response?: {
+        statusCode?: number;
+    } | {
+        isBoom?: boolean;
+        output?: {
+            statusCode?: number;
+        };
+    };
+    app?: Record<string, unknown>;
+}
+export interface HapiToolkitLike {
+    continue: unknown;
+}
+export interface HapiServerLike {
+    ext: (event: "onRequest", handler: (request: HapiRequestLike, h: HapiToolkitLike) => unknown) => unknown;
+    events?: {
+        on?: (event: "response", handler: (request: HapiRequestLike) => void) => unknown;
+    };
+}
+export interface HapiIntegrationOptions {
+    minStatus?: number;
+    captureAll?: boolean;
+    bindContext?: boolean;
+    getRequestId?: (request: HapiRequestLike) => string | undefined;
+    context?: (request: HapiRequestLike) => Record<string, unknown> | undefined;
+    level?: (status: number, request: HapiRequestLike) => LoggerLevel;
+}
+export declare function hapiIntegration(logger: LoggerLike, options?: HapiIntegrationOptions): {
+    name: string;
+    register(server: HapiServerLike): void;
+};
+```
+
 ## http-transport.d.ts
 
 ```ts
-import { type BatchTransportOptions, type Codec, type LoggerLevel, type Transport } from "@loggerjs/core";
+import { type BatchTransportOptions, type Codec, type LoggerLevel, type PayloadTransform, type Transport } from "@loggerjs/core";
 export interface NodeHttpTransportOptions extends BatchTransportOptions {
     url: string;
     name?: string;
@@ -229,6 +290,7 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
     fetchFn?: typeof fetch;
+    transformPayload?: PayloadTransform;
 }
 export declare function nodeHttpTransport(options: NodeHttpTransportOptions): Transport;
 ```
@@ -244,14 +306,20 @@ export * from "./http-transport.js";
 export * from "./syslog-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
+export * from "./bullmq-integration.js";
 export * from "./cli-integration.js";
 export * from "./database-integration.js";
 export * from "./express-integration.js";
 export * from "./fastify-integration.js";
+export * from "./hapi-integration.js";
+export * from "./koa-integration.js";
+export * from "./nest-integration.js";
 export * from "./node-fetch-integration.js";
 export * from "./node-http-client-integration.js";
 export * from "./process-integration.js";
+export * from "./prisma-integration.js";
 export * from "./queue-integration.js";
+export * from "./redis-integration.js";
 export * from "./serverless-integration.js";
 export * from "./diagnostics-channel-integration.js";
 ```
@@ -264,6 +332,45 @@ export interface WritableLike {
     once?: (event: "drain", listener: () => void) => unknown;
     end?: (callback?: (error?: Error | null) => void) => unknown;
 }
+```
+
+## koa-integration.d.ts
+
+```ts
+import { type LoggerLevel, type LoggerLike } from "@loggerjs/core";
+export interface KoaContextLike {
+    method?: string;
+    originalUrl?: string;
+    url?: string;
+    path?: string;
+    status?: number;
+    ip?: string;
+    state?: Record<string, unknown>;
+    request?: {
+        headers?: Record<string, string | string[] | undefined>;
+    };
+}
+export type KoaNext = () => Promise<unknown>;
+export type KoaMiddleware = (ctx: KoaContextLike, next: KoaNext) => Promise<void>;
+export interface KoaIntegrationOptions {
+    minStatus?: number;
+    captureAll?: boolean;
+    bindContext?: boolean;
+    sanitizeUrl?: (url: string) => string;
+    getRequestId?: (ctx: KoaContextLike) => string | undefined;
+    context?: (ctx: KoaContextLike) => Record<string, unknown> | undefined;
+    level?: (status: number, ctx: KoaContextLike, error: unknown) => LoggerLevel;
+}
+export declare function koaIntegration(logger: LoggerLike, options?: KoaIntegrationOptions): KoaMiddleware;
+```
+
+## nest-integration.d.ts
+
+```ts
+import type { LoggerLike } from "@loggerjs/core";
+import { type ExpressIntegrationOptions, type ExpressRequestHandler } from "./express-integration.js";
+export type NestMiddleware = ExpressRequestHandler;
+export declare function nestMiddlewareIntegration(logger: LoggerLike, options?: ExpressIntegrationOptions): NestMiddleware;
 ```
 
 ## node-fetch-integration.d.ts
@@ -355,16 +462,30 @@ export interface NodeHttpClientIntegrationOptions {
 export declare function nodeHttpClientIntegration(options?: NodeHttpClientIntegrationOptions): Integration;
 ```
 
+## prisma-integration.d.ts
+
+```ts
+import { type DatabaseClientLike, type DatabaseIntegrationOptions } from "./database-integration.js";
+export interface PrismaIntegrationOptions extends Omit<DatabaseIntegrationOptions, "client" | "system" | "methods" | "getStatement"> {
+    client: DatabaseClientLike;
+}
+export declare function prismaIntegration(options: PrismaIntegrationOptions): import("@loggerjs/core").Integration;
+```
+
 ## process-integration.d.ts
 
 ```ts
 import { type Integration } from "@loggerjs/core";
+export type ProcessSignal = "SIGHUP" | "SIGINT" | "SIGQUIT" | "SIGTERM";
 export interface CaptureProcessOptions {
     uncaughtException?: boolean;
     unhandledRejection?: boolean;
     warning?: boolean;
     beforeExitFlush?: boolean;
     exitFlush?: boolean;
+    signalFlush?: boolean;
+    signals?: ProcessSignal[];
+    exitOnSignal?: boolean;
     exitOnUncaught?: boolean;
     flushTimeoutMs?: number;
     exitFn?: (code: number) => void;
@@ -414,6 +535,17 @@ export interface QueueIntegrationOptions {
     level?: (durationMs: number, error: unknown, info: QueueOperationInfo) => LoggerLevel;
 }
 export declare function queueIntegration(options?: QueueIntegrationOptions): Integration;
+```
+
+## redis-integration.d.ts
+
+```ts
+import { type DatabaseClientLike, type DatabaseIntegrationOptions } from "./database-integration.js";
+export interface RedisIntegrationOptions extends Omit<DatabaseIntegrationOptions, "client" | "system" | "methods" | "getStatement"> {
+    client: DatabaseClientLike;
+    methods?: readonly string[];
+}
+export declare function redisIntegration(options: RedisIntegrationOptions): import("@loggerjs/core").Integration;
 ```
 
 ## rotating-file-transport.d.ts
