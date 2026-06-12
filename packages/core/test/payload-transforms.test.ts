@@ -47,7 +47,10 @@ describe("payload transforms", () => {
       contentType: "application/octet-stream",
       headers: { "x-encrypted": "yes" },
       encrypt(payload) {
-        return Uint8Array.from([...payload].toReversed());
+        return Uint8Array.from(
+          payload,
+          (_value, index) => payload[payload.length - index - 1] ?? 0,
+        );
       },
     });
 
