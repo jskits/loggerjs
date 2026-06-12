@@ -244,7 +244,7 @@ export interface BrowserHttpTransportOptions {
     offlineReplayMaxDelayMs?: number;
     random?: () => number;
     fetchFn?: typeof fetch;
-    transformPayload?: PayloadTransform;
+    transformPayload?: PayloadTransform | readonly PayloadTransform[];
     onDrop?: (event: LogEvent, reason: string) => void;
 }
 export declare function memoryBrowserHttpOfflineQueue(options?: MemoryBrowserHttpOfflineQueueOptions): BrowserHttpOfflineQueue & {
@@ -259,6 +259,7 @@ export declare function browserHttpTransport(options: BrowserHttpTransportOption
 export * from "@loggerjs/core";
 export * from "./broadcast-channel-transport.js";
 export * from "./http-transport.js";
+export * from "./payload-transforms.js";
 export * from "./service-worker-transport.js";
 export * from "./websocket-transport.js";
 export * from "./indexeddb-offline-queue.js";
@@ -433,6 +434,22 @@ export interface PageLifecycleOptions {
     coalesceMs?: number;
 }
 export declare function pageLifecycleIntegration(options?: PageLifecycleOptions): Integration;
+```
+
+## payload-transforms.d.ts
+
+```ts
+import { type PayloadTransform, type PayloadTransformContext } from "@loggerjs/core";
+export type BrowserCompressionFormat = "gzip" | "deflate";
+export interface BrowserCompressionPayloadTransformOptions {
+    format?: BrowserCompressionFormat;
+    headers?: Record<string, string>;
+    compress?: (payload: Uint8Array, context: PayloadTransformContext & {
+        format: BrowserCompressionFormat;
+    }) => Uint8Array | Promise<Uint8Array>;
+    streamFactory?: (format: BrowserCompressionFormat) => CompressionStream;
+}
+export declare function browserCompressionPayloadTransform(options?: BrowserCompressionPayloadTransformOptions): PayloadTransform;
 ```
 
 ## performance-integration.d.ts

@@ -83,6 +83,7 @@ export * from "./trace-propagation.js";
 export * from "./events.js";
 export * from "./event-route.js";
 export * from "./semantic-events.js";
+export * from "./payload-transforms.js";
 export * from "./logger.js";
 export * from "./registry.js";
 export * from "./meta.js";
@@ -226,6 +227,26 @@ import type { LogRecord, Middleware, MiddlewareContext } from "./types.js";
 export type MiddlewareProcess = Middleware["process"];
 export declare function createMiddleware(name: string, process: MiddlewareProcess): Middleware;
 export declare function runMiddleware(record: LogRecord, middleware: readonly Middleware[], context: MiddlewareContext): LogRecord | null;
+```
+
+## payload-transforms.d.ts
+
+```ts
+import type { EncodedPayload, PayloadTransform, PayloadTransformContext, PayloadTransformResult } from "./types.js";
+export interface ResolvedPayload<TPayload extends EncodedPayload = EncodedPayload> {
+    payload: TPayload;
+    contentType: string;
+    headers: Record<string, string>;
+}
+export interface EncryptionPayloadTransformOptions {
+    encrypt: (payload: Uint8Array, context: PayloadTransformContext) => PayloadTransformResult | Promise<PayloadTransformResult>;
+    contentType?: string;
+    headers?: Record<string, string> | ((context: PayloadTransformContext) => Record<string, string> | undefined);
+}
+export declare function encodedPayloadToUint8Array(payload: EncodedPayload): Uint8Array;
+export declare function applyPayloadTransforms(payload: EncodedPayload, context: PayloadTransformContext, transforms?: PayloadTransform | readonly PayloadTransform[]): Promise<ResolvedPayload>;
+export declare function composePayloadTransforms(...transforms: readonly PayloadTransform[]): PayloadTransform;
+export declare function encryptionPayloadTransform(options: EncryptionPayloadTransformOptions): PayloadTransform;
 ```
 
 ## record.d.ts
@@ -762,10 +783,17 @@ export interface Codec<TPayload = string | Uint8Array> {
 export type EncodedPayload = string | Uint8Array;
 export interface PayloadTransformContext {
     contentType: string;
+    headers?: Readonly<Record<string, string>>;
     transport?: string;
     events?: readonly LogEvent[];
 }
-export type PayloadTransform<TPayload extends EncodedPayload = EncodedPayload> = (payload: TPayload, context: PayloadTransformContext) => TPayload | Promise<TPayload>;
+export interface PayloadTransformOutput<TPayload extends EncodedPayload = EncodedPayload> {
+    payload: TPayload;
+    contentType?: string;
+    headers?: Record<string, string>;
+}
+export type PayloadTransformResult<TPayload extends EncodedPayload = EncodedPayload> = TPayload | PayloadTransformOutput<TPayload>;
+export type PayloadTransform<TInput extends EncodedPayload = EncodedPayload, TOutput extends EncodedPayload = EncodedPayload> = (payload: TInput, context: PayloadTransformContext) => PayloadTransformResult<TOutput> | undefined | Promise<PayloadTransformResult<TOutput> | undefined>;
 export interface LoggerLike {
     log: (level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) => void;
     trace: (message: unknown, data?: LogData | string, props?: LogData) => void;

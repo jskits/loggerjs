@@ -290,7 +290,7 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
     fetchFn?: typeof fetch;
-    transformPayload?: PayloadTransform;
+    transformPayload?: PayloadTransform | readonly PayloadTransform[];
 }
 export declare function nodeHttpTransport(options: NodeHttpTransportOptions): Transport;
 ```
@@ -303,6 +303,7 @@ export * from "./stdout-transport.js";
 export * from "./file-transport.js";
 export * from "./rotating-file-transport.js";
 export * from "./http-transport.js";
+export * from "./payload-transforms.js";
 export * from "./syslog-transport.js";
 export * from "./worker-transport.js";
 export * from "./context.js";
@@ -460,6 +461,22 @@ export interface NodeHttpClientIntegrationOptions {
     httpsModule?: NodeHttpModuleLike | null;
 }
 export declare function nodeHttpClientIntegration(options?: NodeHttpClientIntegrationOptions): Integration;
+```
+
+## payload-transforms.d.ts
+
+```ts
+import { type BrotliOptions, type ZlibOptions } from "node:zlib";
+import { type PayloadTransform } from "@loggerjs/core";
+export type NodeCompressionFormat = "gzip" | "brotli" | "deflate";
+export interface NodeCompressionPayloadTransformOptions {
+    format?: NodeCompressionFormat;
+    gzipOptions?: ZlibOptions;
+    brotliOptions?: BrotliOptions;
+    deflateOptions?: ZlibOptions;
+    headers?: Record<string, string>;
+}
+export declare function nodeCompressionPayloadTransform(options?: NodeCompressionPayloadTransformOptions): PayloadTransform;
 ```
 
 ## prisma-integration.d.ts
