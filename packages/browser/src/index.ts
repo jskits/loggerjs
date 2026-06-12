@@ -8,6 +8,7 @@ export * from "./indexeddb-transport";
 export * from "./offline-first-transport";
 export * from "./zip-export";
 export * from "./console-integration";
+export * from "./context-propagation-integration";
 export * from "./error-integration";
 export * from "./fetch-integration";
 export * from "./xhr-integration";

@@ -73,6 +73,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-context": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-errors": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
