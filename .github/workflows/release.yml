@@ -31,6 +31,11 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: pnpm
 
+      - name: Use npm trusted publishing CLI
+        run: |
+          npm install -g npm@11
+          npm --version
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 

@@ -33,6 +33,7 @@ The workflow intentionally uses OIDC trusted publishing rather than a long-lived
 
 - `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm requires.
 - `actions/setup-node` sets the npm registry.
+- The workflow upgrades to npm 11 because npm trusted publishing requires npm CLI 11.5.1 or newer.
 - `NPM_CONFIG_PROVENANCE=true` requests npm provenance when `changeset publish` publishes packages.
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
