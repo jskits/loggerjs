@@ -1,4 +1,5 @@
 import {
+  applyPayloadTransforms,
   batchTransport,
   safeJsonCodec,
   type BatchTransportOptions,
@@ -18,7 +19,7 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
   codec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
   fetchFn?: typeof fetch;
-  transformPayload?: PayloadTransform;
+  transformPayload?: PayloadTransform | readonly PayloadTransform[];
 }
 
 function payloadToBody(payload: EncodedPayload): BodyInit {
@@ -35,19 +36,23 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
     async logBatch(events: LogEvent[]) {
       if (!fetchFn) throw new Error("fetch is not available. Use Node.js 18+ or pass fetchFn.");
       const encoded = codec.encode(events);
-      const body =
-        options.transformPayload?.(encoded, {
+      const transformed = await applyPayloadTransforms(
+        encoded,
+        {
           contentType: codec.contentType,
           events,
           transport: options.name ?? "node-http",
-        }) ?? encoded;
+        },
+        options.transformPayload,
+      );
       const response = await fetchFn(options.url, {
         method: options.method ?? "POST",
         headers: {
-          "content-type": codec.contentType,
+          "content-type": transformed.contentType,
+          ...transformed.headers,
           ...options.headers,
         },
-        body: payloadToBody(await body),
+        body: payloadToBody(transformed.payload),
       });
       if (!response.ok) throw new Error(`nodeHttpTransport failed with status ${response.status}`);
     },

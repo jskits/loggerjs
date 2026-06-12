@@ -92,8 +92,10 @@ describe("nodeHttpTransport", () => {
 
   it("transforms encoded payloads before fetch", async () => {
     const bodies: string[] = [];
+    const headers: HeadersInit[] = [];
     const fetchFn = vi.fn<typeof fetch>(async (_url, init) => {
       if (typeof init?.body === "string") bodies.push(init.body);
+      if (init?.headers) headers.push(init.headers);
       return okResponse;
     });
     const transport = nodeHttpTransport({
@@ -101,13 +103,20 @@ describe("nodeHttpTransport", () => {
       codec: textCodec,
       flushIntervalMs: 0,
       fetchFn,
-      transformPayload: async (payload, context) =>
-        `${context.contentType}:${payload.toString().toUpperCase()}`,
+      transformPayload: async (payload, context) => ({
+        payload: `${context.contentType}:${payload.toString().toUpperCase()}`,
+        contentType: "application/x-logger",
+        headers: { "content-encoding": "mock" },
+      }),
     });
 
     transport.log?.(createEvent("compressed"), createTransportContext());
     await transport.flush?.();
 
     expect(bodies).toEqual(["text/plain:COMPRESSED"]);
+    expect(headers[0]).toMatchObject({
+      "content-type": "application/x-logger",
+      "content-encoding": "mock",
+    });
   });
 });

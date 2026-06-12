@@ -190,14 +190,21 @@ describe("browserHttpTransport", () => {
       useBeaconOnPageHide: false,
       offlineQueue,
       fetchFn,
-      transformPayload: async (payload, context) =>
-        `${context.contentType}:${payload.toString().toUpperCase()}`,
+      transformPayload: async (payload, context) => ({
+        payload: `${context.contentType}:${payload.toString().toUpperCase()}`,
+        contentType: "application/x-logger",
+        headers: { "content-encoding": "mock" },
+      }),
     });
 
     transport.log?.(createEvent("secret"), createTransportContext());
     await transport.flush?.();
 
     expect(entries[0]?.body).toBe("text/plain:SECRET");
+    expect(entries[0]?.headers).toMatchObject({
+      "content-type": "application/x-logger",
+      "content-encoding": "mock",
+    });
   });
 
   it("replays offline payloads on online with retry", async () => {

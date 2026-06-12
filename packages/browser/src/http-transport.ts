@@ -1,4 +1,5 @@
 import {
+  applyPayloadTransforms,
   incrementLoggerMetaCounter,
   safeJsonCodec,
   toLevelValue,
@@ -61,7 +62,7 @@ export interface BrowserHttpTransportOptions {
   offlineReplayMaxDelayMs?: number;
   random?: () => number;
   fetchFn?: typeof fetch;
-  transformPayload?: PayloadTransform;
+  transformPayload?: PayloadTransform | readonly PayloadTransform[];
   onDrop?: (event: LogEvent, reason: string) => void;
 }
 
@@ -156,8 +157,9 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   let replayingOffline = false;
   let lastContext: TransportContext | undefined;
 
-  const headers = () => ({
-    "content-type": codec.contentType,
+  const headers = (payloadHeaders?: Record<string, string>, contentType = codec.contentType) => ({
+    "content-type": contentType,
+    ...payloadHeaders,
     ...options.headers,
   });
 
@@ -235,17 +237,6 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     return { ok: true, remaining: [] };
   };
 
-  const encodePayload = async (batch: LogEvent[]): Promise<EncodedPayload> => {
-    const encoded = codec.encode(batch);
-    return (
-      (await options.transformPayload?.(encoded, {
-        contentType: codec.contentType,
-        events: batch,
-        transport: options.name ?? "browser-http",
-      })) ?? encoded
-    );
-  };
-
   const sendPayload = async (entry: BrowserHttpOfflineEntry) => {
     if (!fetchFn) throw new Error("fetch is not available for browserHttpTransport");
     const response = await fetchFn(entry.url, {
@@ -258,35 +249,70 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     if (!response.ok) throw new Error(`browserHttpTransport failed with status ${response.status}`);
   };
 
-  const createOfflineEntry = (payload: string | Uint8Array): BrowserHttpOfflineEntry => ({
+  const encodeTransformedPayload = async (batch: LogEvent[]) => {
+    const encoded = codec.encode(batch);
+    return applyPayloadTransforms(
+      encoded,
+      {
+        contentType: codec.contentType,
+        events: batch,
+        transport: options.name ?? "browser-http",
+      },
+      options.transformPayload,
+    );
+  };
+
+  const createOfflineEntry = (
+    payload: string | Uint8Array,
+    payloadHeaders?: Record<string, string>,
+    contentType?: string,
+  ): BrowserHttpOfflineEntry => ({
     id: `${Date.now().toString(36)}-${(offlineEntrySeq++).toString(36)}`,
     url: options.url,
     method: options.method ?? "POST",
-    headers: headers(),
+    headers: headers(payloadHeaders, contentType),
     body: payload,
     credentials: options.credentials,
     keepalive: options.keepalive ?? true,
     createdAt: Date.now(),
   });
 
-  const enqueueOfflinePayload = async (payload: string | Uint8Array) => {
+  const enqueueOfflinePayload = async (
+    payload: string | Uint8Array,
+    payloadHeaders?: Record<string, string>,
+    contentType?: string,
+  ) => {
     if (!offlineQueue) return false;
-    await offlineQueue.enqueue(createOfflineEntry(payload));
+    await offlineQueue.enqueue(createOfflineEntry(payload, payloadHeaders, contentType));
     incrementLoggerMetaCounter("transport.offline.queued");
     return true;
   };
 
   const sendFetchBatch = async (batch: LogEvent[]) => {
     if (batch.length === 0) return;
-    const payload = await encodePayload(batch);
+    const transformed = await encodeTransformedPayload(batch);
     if (offlineQueue && typeof navigator !== "undefined" && navigator.onLine === false) {
-      await enqueueOfflinePayload(payload);
+      await enqueueOfflinePayload(
+        transformed.payload,
+        transformed.headers,
+        transformed.contentType,
+      );
       return;
     }
     try {
-      await sendPayload(createOfflineEntry(payload));
+      await sendPayload(
+        createOfflineEntry(transformed.payload, transformed.headers, transformed.contentType),
+      );
     } catch (error) {
-      if (await enqueueOfflinePayload(payload)) return;
+      if (
+        await enqueueOfflinePayload(
+          transformed.payload,
+          transformed.headers,
+          transformed.contentType,
+        )
+      ) {
+        return;
+      }
       throw error;
     }
   };
