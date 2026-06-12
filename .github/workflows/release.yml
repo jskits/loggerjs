@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish packages to npm after validation
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -49,7 +56,7 @@ jobs:
           fi
 
       - name: Version packages
-        if: steps.changesets.outputs.has_changesets == 'true'
+        if: github.event_name == 'push' && steps.changesets.outputs.has_changesets == 'true'
         run: |
           pnpm version-packages
           if [ -z "$(git status --porcelain)" ]; then
@@ -64,12 +71,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Block publish with pending changesets
+        if: github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'true'
+        run: |
+          echo "Pending changesets must be versioned before publishing."
+          exit 1
+
       - name: Publish dry run
         if: steps.changesets.outputs.has_changesets == 'false'
         run: pnpm publish -r --dry-run --access public --no-git-checks --json
 
       - name: Publish packages
-        if: steps.changesets.outputs.has_changesets == 'false'
+        if: github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false'
         run: pnpm release
         env:
           NPM_CONFIG_PROVENANCE: "true"

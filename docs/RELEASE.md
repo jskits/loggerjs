@@ -38,6 +38,8 @@ The workflow intentionally uses OIDC trusted publishing rather than a long-lived
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
+Pushes to `main` run validation and, when pending changesets exist, commit the versioned package metadata back to `main`. Real npm publishing is intentionally manual: run the `Release` workflow with `publish=true` after the npm trusted publisher setup is ready. Push-triggered runs still execute the publish dry run when there are no pending changesets, but they do not publish to npm.
+
 References:
 
 - https://docs.npmjs.com/trusted-publishers/
