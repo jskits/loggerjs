@@ -38,6 +38,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./codec-metrics": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./transport-console": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

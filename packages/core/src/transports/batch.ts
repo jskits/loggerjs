@@ -1,6 +1,6 @@
 import { eventToRecord } from "../record";
 import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
-import { incrementLoggerMetaCounter } from "../meta";
+import { incrementLoggerMetaCounter, setLoggerMetaGauge } from "../meta";
 import { toLevelValue } from "../levels";
 
 export type DropPolicy = "drop-oldest" | "drop-newest" | "throw";
@@ -27,6 +27,24 @@ export interface BatchTransportOptions {
   circuitBreakerFailureThreshold?: number;
   circuitBreakerResetMs?: number;
   onDrop?: (event: LogEvent, reason: string) => void;
+}
+
+export interface BatchTransportStats {
+  queueDepth: number;
+  maxQueueDepth: number;
+  activeBatches: number;
+  flushes: number;
+  flushErrors: number;
+  lastFlushBatchSize: number;
+  lastFlushDurationMs: number;
+  retryCount: number;
+  retryExhausted: number;
+  circuitOpen: boolean;
+  circuitOpenUntil: number;
+}
+
+export interface BatchTransport extends Transport {
+  stats: () => BatchTransportStats;
 }
 
 interface QueueItem {
@@ -128,7 +146,16 @@ function eventForQueueItem(item: QueueItem, context: TransportContext): LogEvent
     : context.toEvent(item.payload as LogRecord);
 }
 
-export function batchTransport(inner: Transport, options: BatchTransportOptions = {}): Transport {
+function nowMs(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+}
+
+export function batchTransport(
+  inner: Transport,
+  options: BatchTransportOptions = {},
+): BatchTransport {
   const maxBatchSize = options.maxRecords ?? options.maxBatchSize ?? 50;
   const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
   const flushIntervalMs = options.maxWaitMs ?? options.flushIntervalMs ?? 1000;
@@ -151,6 +178,39 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
   let activeFlush: Promise<void> | undefined;
   let consecutiveFailures = 0;
   let circuitOpenUntil = 0;
+  const statsState: BatchTransportStats = {
+    queueDepth: 0,
+    maxQueueDepth: 0,
+    activeBatches: 0,
+    flushes: 0,
+    flushErrors: 0,
+    lastFlushBatchSize: 0,
+    lastFlushDurationMs: 0,
+    retryCount: 0,
+    retryExhausted: 0,
+    circuitOpen: false,
+    circuitOpenUntil: 0,
+  };
+
+  const updateQueueDepth = () => {
+    statsState.queueDepth = queue.length;
+    statsState.maxQueueDepth = Math.max(statsState.maxQueueDepth, queue.length);
+    setLoggerMetaGauge(`transport.queue.depth.${transportName}`, queue.length);
+  };
+
+  const updateCircuit = () => {
+    const open = circuitOpenUntil > Date.now();
+    statsState.circuitOpen = open;
+    statsState.circuitOpenUntil = open ? circuitOpenUntil : 0;
+    setLoggerMetaGauge(`transport.circuit.open.${transportName}`, open ? 1 : 0);
+  };
+
+  const snapshotStats = (): BatchTransportStats => ({
+    ...statsState,
+    queueDepth: queue.length,
+    circuitOpen: circuitOpenUntil > Date.now(),
+    circuitOpenUntil: circuitOpenUntil > Date.now() ? circuitOpenUntil : 0,
+  });
 
   const clearTimer = () => {
     if (timer) clearTimeout(timer);
@@ -238,13 +298,16 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
       } catch (error) {
         if (attempt >= maxRetries) {
           consecutiveFailures += 1;
+          statsState.retryExhausted += 1;
           incrementLoggerMetaCounter("transport.retry.exhausted");
           if (consecutiveFailures >= circuitBreakerFailureThreshold) {
             circuitOpenUntil = Date.now() + circuitBreakerResetMs;
+            updateCircuit();
             incrementLoggerMetaCounter("transport.circuit.open");
           }
           throw error;
         }
+        statsState.retryCount += 1;
         incrementLoggerMetaCounter("transport.retry");
         // oxlint-disable-next-line no-await-in-loop -- Backoff must complete before the next retry.
         await sleep(retryDelay(attempt));
@@ -266,15 +329,23 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
       bytes += item.estimatedBytes;
     }
 
+    updateQueueDepth();
     return batch;
   };
 
   const deliverBatchItems = async (batchItems: QueueItem[], context: TransportContext) => {
     try {
+      statsState.activeBatches += 1;
+      statsState.lastFlushBatchSize = batchItems.length;
+      setLoggerMetaGauge(`transport.active_batches.${transportName}`, statsState.activeBatches);
       await deliverWithRetry(batchItems, context);
     } catch (error) {
       queue.unshift(...batchItems);
+      updateQueueDepth();
       throw error;
+    } finally {
+      statsState.activeBatches -= 1;
+      setLoggerMetaGauge(`transport.active_batches.${transportName}`, statsState.activeBatches);
     }
   };
 
@@ -327,10 +398,21 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
 
     flushing = true;
     clearTimer();
+    const startedAt = nowMs();
     activeFlush = flushLoop(context);
     try {
       await activeFlush;
+      statsState.flushes += 1;
+    } catch (error) {
+      statsState.flushErrors += 1;
+      throw error;
     } finally {
+      statsState.lastFlushDurationMs = nowMs() - startedAt;
+      setLoggerMetaGauge(
+        `transport.flush.duration_ms.${transportName}`,
+        statsState.lastFlushDurationMs,
+      );
+      updateCircuit();
       flushing = false;
       activeFlush = undefined;
       if (queue.length > 0) {
@@ -376,6 +458,7 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
       }
     }
     queue.push(item);
+    updateQueueDepth();
     if (queue.length >= maxBatchSize) flushAndReport(context);
     else schedule();
   };
@@ -445,6 +528,9 @@ export function batchTransport(inner: Transport, options: BatchTransportOptions 
     async close() {
       await flush();
       await inner.close?.();
+    },
+    stats() {
+      return snapshotStats();
     },
   };
 }
