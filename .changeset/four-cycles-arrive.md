@@ -1,4 +1,0 @@
----
----
-
-Set up monorepo tooling.
