@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/codecs",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Serialization codecs for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/codecs#readme",
   "bugs": {

@@ -1,5 +1,14 @@
 # @loggerjs/datadog
 
+## 0.0.2
+
+### Patch Changes
+
+- [`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e) Thanks [@unadlib](https://github.com/unadlib)! - Republish packages through the explicit provenance publishing path.
+
+- Updated dependencies [[`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e)]:
+  - @loggerjs/core@0.0.2
+
 ## 0.1.1
 
 ### Patch Changes
