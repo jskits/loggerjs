@@ -111,6 +111,34 @@ describe("offlineFirstTransport", () => {
     expect(queue.events.map((item) => item.id)).toEqual(["offline"]);
   });
 
+  it("replays persisted queue entries before any new log is written", async () => {
+    resetLoggerMetaStats();
+    const queue = memoryQueue();
+    queue.events.push(event("persisted"));
+    const sent: string[] = [];
+    const transport = offlineFirstTransport(
+      {
+        name: "remote",
+        logBatch(batch) {
+          sent.push(...batch.map((item) => item.id));
+        },
+      },
+      {
+        queue,
+        replayOnOnline: false,
+        retry: { maxRetries: 0 },
+      },
+    );
+
+    await transport.replay();
+
+    expect(sent).toEqual(["persisted"]);
+    expect(queue.events).toEqual([]);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.offline.replayed": 1,
+    });
+  });
+
   it("removes only replayed ids and keeps entries queued after replay failure", async () => {
     resetLoggerMetaStats();
     const queue = memoryQueue();

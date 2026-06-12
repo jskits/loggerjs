@@ -1,5 +1,6 @@
 import {
   incrementLoggerMetaCounter,
+  recordToEvent,
   retryTransport,
   toLevelValue,
   type LogEvent,
@@ -94,8 +95,17 @@ export function offlineFirstTransport(
   let lastContext: TransportContext | undefined;
   let replayPromise: Promise<void> | undefined;
 
+  const replayContext: TransportContext = {
+    loggerName: name,
+    now: () => Date.now(),
+    toEvent: recordToEvent,
+    reportInternalError() {},
+  };
+
+  const contextForReplay = () => lastContext ?? replayContext;
+
   const reportInternalError = (error: unknown, operation: string) => {
-    lastContext?.reportInternalError(error, {
+    contextForReplay().reportInternalError(error, {
       phase: "transport",
       transport: name,
       operation,
@@ -131,8 +141,8 @@ export function offlineFirstTransport(
   const replay = async () => {
     if (replayPromise) return replayPromise;
     replayPromise = (async () => {
-      const context = lastContext;
-      if (!context || !isBrowserOnline(options)) return;
+      if (!isBrowserOnline(options)) return;
+      const context = contextForReplay();
       await queue.flush?.();
 
       for (;;) {
