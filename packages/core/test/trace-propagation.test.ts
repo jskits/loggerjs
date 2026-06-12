@@ -68,4 +68,22 @@ describe("trace propagation", () => {
     dispose();
     expect(getContext()).toEqual({ app: "checkout" });
   });
+
+  it("removes only the disposed ambient context provider", () => {
+    setContextProvider(() => ({ app: "checkout" }));
+    const disposeSession = addContextProvider(() => ({ sessionId: "s1" }));
+    const disposeTrace = addContextProvider(() => ({ traceparent: "trace-1" }));
+
+    expect(getContext()).toEqual({
+      app: "checkout",
+      sessionId: "s1",
+      traceparent: "trace-1",
+    });
+
+    disposeSession();
+    expect(getContext()).toEqual({ app: "checkout", traceparent: "trace-1" });
+
+    disposeTrace();
+    expect(getContext()).toEqual({ app: "checkout" });
+  });
 });

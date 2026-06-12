@@ -9,6 +9,7 @@ export interface ContextManager {
 }
 
 let provider: ContextProvider | undefined;
+const addedProviders: Array<{ provider: ContextProvider }> = [];
 
 function mergeContext(
   ...items: Array<Record<string, unknown> | undefined | null>
@@ -42,13 +43,15 @@ let manager = createStackContextManager();
 
 export function setContextProvider(nextProvider: ContextProvider | undefined): void {
   provider = nextProvider;
+  addedProviders.length = 0;
 }
 
 export function addContextProvider(nextProvider: ContextProvider): () => void {
-  const previousProvider = provider;
-  provider = () => mergeContext(previousProvider?.(), nextProvider());
+  const entry = { provider: nextProvider };
+  addedProviders.push(entry);
   return () => {
-    provider = previousProvider;
+    const index = addedProviders.indexOf(entry);
+    if (index >= 0) addedProviders.splice(index, 1);
   };
 }
 
@@ -61,7 +64,7 @@ export function resetContextManager(): void {
 }
 
 export function getContext(): BoundContext | undefined {
-  const provided = provider?.();
+  const provided = mergeContext(provider?.(), ...addedProviders.map((entry) => entry.provider()));
   const managed = manager.get();
   // Fast paths: most log calls have no ambient context at all, and merging
   // allocates twice. Managed contexts are already frozen BoundContexts and
