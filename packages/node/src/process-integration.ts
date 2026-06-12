@@ -5,16 +5,26 @@ import {
   type IntegrationSetupContext,
 } from "@loggerjs/core";
 
+export type ProcessSignal = "SIGHUP" | "SIGINT" | "SIGQUIT" | "SIGTERM";
+
 export interface CaptureProcessOptions {
   uncaughtException?: boolean;
   unhandledRejection?: boolean;
   warning?: boolean;
   beforeExitFlush?: boolean;
   exitFlush?: boolean;
+  signalFlush?: boolean;
+  signals?: ProcessSignal[];
+  exitOnSignal?: boolean;
   exitOnUncaught?: boolean;
   flushTimeoutMs?: number;
   exitFn?: (code: number) => void;
 }
+
+const signalExitCodes: Partial<Record<ProcessSignal, number>> = {
+  SIGINT: 130,
+  SIGTERM: 143,
+};
 
 export function captureProcessIntegration(options: CaptureProcessOptions = {}): Integration {
   const uncaughtException = options.uncaughtException ?? true;
@@ -22,6 +32,9 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
   const warning = options.warning ?? true;
   const beforeExitFlush = options.beforeExitFlush ?? true;
   const exitFlush = options.exitFlush ?? true;
+  const signalFlush = options.signalFlush ?? true;
+  const signals = options.signals ?? (["SIGTERM"] satisfies ProcessSignal[]);
+  const exitOnSignal = options.exitOnSignal ?? true;
   const exitOnUncaught = options.exitOnUncaught ?? true;
   const flushTimeoutMs = options.flushTimeoutMs ?? 250;
   const exitFn = options.exitFn ?? ((code: number) => process.exit(code));
@@ -126,6 +139,25 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
         };
         process.on("exit", onExit);
         disposers.push(() => process.off("exit", onExit));
+      }
+
+      if (signalFlush) {
+        for (const signal of signals) {
+          const onSignal = () => {
+            capture({
+              level: "fatal",
+              message: `Process signal ${signal}`,
+              props: { process: { kind: "signal", signal } },
+            });
+            flushSync();
+            const flushed = flushBounded();
+            if (exitOnSignal) {
+              void flushed.finally(() => exitFn(signalExitCodes[signal] ?? 1));
+            }
+          };
+          process.on(signal, onSignal);
+          disposers.push(() => process.off(signal, onSignal));
+        }
       }
 
       return () => {

@@ -133,6 +133,41 @@ describe("captureProcessIntegration", () => {
     expect(flushSync).toHaveBeenCalledTimes(1);
   });
 
+  it("captures configured process signals, flushes, and preserves signal exit code", async () => {
+    const flush = vi.fn<LoggerLike["flush"]>(async () => {});
+    const flushSync = vi.fn<NonNullable<LoggerLike["flushSync"]>>();
+    const logger = createLogger({ flush, flushSync });
+    const { context, capture } = createIntegrationContext(logger);
+    const exitFn = vi.fn<(code: number) => void>();
+    const teardown = captureProcessIntegration({
+      beforeExitFlush: false,
+      exitFlush: false,
+      signalFlush: true,
+      signals: ["SIGTERM"],
+      uncaughtException: false,
+      unhandledRejection: false,
+      warning: false,
+      exitFn,
+    }).setup(context);
+    if (typeof teardown === "function") teardowns.push(teardown);
+
+    lastListener<() => void>("SIGTERM")();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(capture).toHaveBeenCalledWith({
+      level: "fatal",
+      message: "Process signal SIGTERM",
+      props: { process: { kind: "signal", signal: "SIGTERM" } },
+      source: "integration:capture-process",
+    });
+    expect(flushSync).toHaveBeenCalledTimes(1);
+    expect(flush).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(exitFn).toHaveBeenCalledWith(143);
+    });
+  });
+
   it("captures warnings and unhandled rejections through IntegrationAPI", () => {
     const logger = createLogger();
     const { context, capture } = createIntegrationContext(logger);
