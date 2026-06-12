@@ -58,6 +58,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./offline-first-transport": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./export-zip": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
