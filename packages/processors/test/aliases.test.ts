@@ -20,6 +20,7 @@ import {
   sample,
   schemaDevCheck,
   stackParser,
+  symbolicateStack,
   tags,
   tagsMw,
   traceContext,
@@ -74,6 +75,7 @@ describe("processor middleware aliases", () => {
     });
     expect(normalizeError()(event, processorContext)).toBe(event);
     expect(stackParser()(event, processorContext)).toBe(event);
+    expect(symbolicateStack({ symbolicate: () => undefined })(event, processorContext)).toBe(event);
     expect(privacyGuard()(event, processorContext)).toBe(event);
     expect(schemaDevCheck()(event, processorContext)).toBe(event);
     expect(dynamicSampler({ defaultRate: 1 })(event, processorContext)).toBe(event);
