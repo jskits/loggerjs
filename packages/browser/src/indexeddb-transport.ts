@@ -89,6 +89,7 @@ export interface IndexedDbTransportOptions {
 export interface IndexedDbTransport extends Transport {
   count: () => Promise<number>;
   clear: () => Promise<void>;
+  remove: (ids: string | readonly string[]) => Promise<void>;
   query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
   stats: () => IndexedDbTransportStats;
 }
@@ -764,6 +765,17 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       buffer.length = 0;
       clearTimer();
       await withStore("readwrite", (store) => requestToPromise(store.clear()));
+    },
+    async remove(ids) {
+      await flushPending();
+      const items = typeof ids === "string" ? [ids] : ids;
+      if (items.length === 0) return;
+      await withStore("readwrite", async (store) => {
+        for (const id of items) {
+          // oxlint-disable-next-line no-await-in-loop -- Deletes must preserve fake IDB transaction ordering.
+          await requestToPromise(store.delete(id));
+        }
+      });
     },
     async *query(queryOptions: IndexedDbTransportQueryOptions = {}) {
       await flushPending();

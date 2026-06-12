@@ -408,6 +408,21 @@ describe("indexedDbTransport", () => {
     expect(await transport.count()).toBe(0);
   });
 
+  it("removes selected persisted logs by id", async () => {
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    transport.log?.(event("first", 1), context);
+    transport.log?.(event("second", 2), context);
+    transport.log?.(event("third", 3), context);
+    await transport.flush?.();
+    await transport.remove(["first", "third"]);
+
+    expect((await collect(transport.query())).map((item) => item.id)).toEqual(["second"]);
+  });
+
   it("passes durability to readwrite transactions when configured", async () => {
     const idb = new FakeIndexedDB();
     const transport = indexedDbTransport({
