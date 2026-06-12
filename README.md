@@ -170,6 +170,7 @@ The hot path is engineered — level gating before any allocation, lazy message 
 | [Performance](docs/PERFORMANCE.md) | Tuning guide: fast path, codec choice, batching |
 | [Operations](docs/OPERATIONS.md) | Privacy defaults, offline queues, crash paths, delivery reliability |
 | [Benchmarks](docs/BENCHMARKS.md) | Methodology, measured snapshot, regression gate, size budgets |
+| [Comparison](docs/COMPARISON.md) | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter console tools |
 | [Migration](docs/MIGRATION.md) | Coming from pino, winston, or console.log |
 | [Architecture](docs/ARCHITECTURE.md) | The full design document and recorded decisions |
 | [Contributing](docs/CONTRIBUTING.md) | Repo workflow, CI gates, engineering conventions |
