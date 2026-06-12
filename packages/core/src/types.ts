@@ -168,14 +168,31 @@ export type EncodedPayload = string | Uint8Array;
 
 export interface PayloadTransformContext {
   contentType: string;
+  headers?: Readonly<Record<string, string>>;
   transport?: string;
   events?: readonly LogEvent[];
 }
 
-export type PayloadTransform<TPayload extends EncodedPayload = EncodedPayload> = (
-  payload: TPayload,
+export interface PayloadTransformOutput<TPayload extends EncodedPayload = EncodedPayload> {
+  payload: TPayload;
+  contentType?: string;
+  headers?: Record<string, string>;
+}
+
+export type PayloadTransformResult<TPayload extends EncodedPayload = EncodedPayload> =
+  | TPayload
+  | PayloadTransformOutput<TPayload>;
+
+export type PayloadTransform<
+  TInput extends EncodedPayload = EncodedPayload,
+  TOutput extends EncodedPayload = EncodedPayload,
+> = (
+  payload: TInput,
   context: PayloadTransformContext,
-) => TPayload | Promise<TPayload>;
+) =>
+  | PayloadTransformResult<TOutput>
+  | undefined
+  | Promise<PayloadTransformResult<TOutput> | undefined>;
 
 export interface LoggerLike {
   log: (level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) => void;

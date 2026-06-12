@@ -15,6 +15,7 @@ const checks = [
   ["@loggerjs/codecs", ["fastEventJsonCodec", "msgpackrCodec", "projectorCodec"]],
   ["@loggerjs/core/context", ["withContext", "getContext"]],
   ["@loggerjs/core/events", ["defineEvent"]],
+  ["@loggerjs/core/payload-transforms", ["applyPayloadTransforms", "encryptionPayloadTransform"]],
   ["@loggerjs/browser", ["browserHttpTransport"]],
   ["@loggerjs/browser/transport-http", ["browserHttpTransport"]],
   ["@loggerjs/browser/transport-broadcast-channel", ["browserBroadcastChannelTransport"]],

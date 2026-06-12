@@ -6,6 +6,7 @@ export * from "./trace-propagation";
 export * from "./events";
 export * from "./event-route";
 export * from "./semantic-events";
+export * from "./payload-transforms";
 export * from "./logger";
 export * from "./registry";
 export * from "./meta";
