@@ -3,8 +3,10 @@ import {
   safeJsonCodec,
   type BatchTransportOptions,
   type Codec,
+  type EncodedPayload,
   type LogEvent,
   type LoggerLevel,
+  type PayloadTransform,
   type Transport,
 } from "@loggerjs/core";
 
@@ -16,9 +18,10 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
   codec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
   fetchFn?: typeof fetch;
+  transformPayload?: PayloadTransform;
 }
 
-function payloadToBody(payload: string | Uint8Array): BodyInit {
+function payloadToBody(payload: EncodedPayload): BodyInit {
   if (typeof payload === "string") return payload;
   return Uint8Array.from(payload);
 }
@@ -31,13 +34,20 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
     minLevel: options.minLevel,
     async logBatch(events: LogEvent[]) {
       if (!fetchFn) throw new Error("fetch is not available. Use Node.js 18+ or pass fetchFn.");
+      const encoded = codec.encode(events);
+      const body =
+        options.transformPayload?.(encoded, {
+          contentType: codec.contentType,
+          events,
+          transport: options.name ?? "node-http",
+        }) ?? encoded;
       const response = await fetchFn(options.url, {
         method: options.method ?? "POST",
         headers: {
           "content-type": codec.contentType,
           ...options.headers,
         },
-        body: payloadToBody(codec.encode(events)),
+        body: payloadToBody(await body),
       });
       if (!response.ok) throw new Error(`nodeHttpTransport failed with status ${response.status}`);
     },

@@ -164,6 +164,19 @@ export interface Codec<TPayload = string | Uint8Array> {
   decode?: (payload: TPayload) => LogEvent | LogEvent[];
 }
 
+export type EncodedPayload = string | Uint8Array;
+
+export interface PayloadTransformContext {
+  contentType: string;
+  transport?: string;
+  events?: readonly LogEvent[];
+}
+
+export type PayloadTransform<TPayload extends EncodedPayload = EncodedPayload> = (
+  payload: TPayload,
+  context: PayloadTransformContext,
+) => TPayload | Promise<TPayload>;
+
 export interface LoggerLike {
   log: (level: LoggerLevel, message: unknown, data?: LogData | string, props?: LogData) => void;
   trace: (message: unknown, data?: LogData | string, props?: LogData) => void;

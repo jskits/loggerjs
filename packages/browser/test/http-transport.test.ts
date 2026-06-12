@@ -172,6 +172,34 @@ describe("browserHttpTransport", () => {
     });
   });
 
+  it("transforms encoded payloads before fetch and offline storage", async () => {
+    const entries: BrowserHttpOfflineEntry[] = [];
+    const offlineQueue: BrowserHttpOfflineQueue = {
+      enqueue(entry) {
+        entries.push(entry);
+      },
+      replay() {},
+    };
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      throw new TypeError("offline");
+    });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      fetchFn,
+      transformPayload: async (payload, context) =>
+        `${context.contentType}:${payload.toString().toUpperCase()}`,
+    });
+
+    transport.log?.(createEvent("secret"), createTransportContext());
+    await transport.flush?.();
+
+    expect(entries[0]?.body).toBe("text/plain:SECRET");
+  });
+
   it("replays offline payloads on online with retry", async () => {
     const addEventListener = vi.fn<typeof globalThis.addEventListener>();
     const removeEventListener = vi.fn<typeof globalThis.removeEventListener>();

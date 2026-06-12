@@ -3,8 +3,10 @@ import {
   safeJsonCodec,
   toLevelValue,
   type Codec,
+  type EncodedPayload,
   type LogEvent,
   type LoggerLevel,
+  type PayloadTransform,
   type Transport,
   type TransportContext,
 } from "@loggerjs/core";
@@ -59,6 +61,7 @@ export interface BrowserHttpTransportOptions {
   offlineReplayMaxDelayMs?: number;
   random?: () => number;
   fetchFn?: typeof fetch;
+  transformPayload?: PayloadTransform;
   onDrop?: (event: LogEvent, reason: string) => void;
 }
 
@@ -102,18 +105,18 @@ export function memoryBrowserHttpOfflineQueue(
   };
 }
 
-function payloadToBody(payload: string | Uint8Array): BodyInit {
+function payloadToBody(payload: EncodedPayload): BodyInit {
   if (typeof payload === "string") return payload;
   return Uint8Array.from(payload);
 }
 
-function payloadByteLength(payload: string | Uint8Array): number {
+function payloadByteLength(payload: EncodedPayload): number {
   if (typeof payload !== "string") return payload.byteLength;
   if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(payload).byteLength;
   return new Blob([payload]).size;
 }
 
-function payloadToBeaconBody(payload: string | Uint8Array, contentType: string): BodyInit {
+function payloadToBeaconBody(payload: EncodedPayload, contentType: string): BodyInit {
   return new Blob([typeof payload === "string" ? payload : Uint8Array.from(payload)], {
     type: contentType,
   });
@@ -232,6 +235,17 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     return { ok: true, remaining: [] };
   };
 
+  const encodePayload = async (batch: LogEvent[]): Promise<EncodedPayload> => {
+    const encoded = codec.encode(batch);
+    return (
+      (await options.transformPayload?.(encoded, {
+        contentType: codec.contentType,
+        events: batch,
+        transport: options.name ?? "browser-http",
+      })) ?? encoded
+    );
+  };
+
   const sendPayload = async (entry: BrowserHttpOfflineEntry) => {
     if (!fetchFn) throw new Error("fetch is not available for browserHttpTransport");
     const response = await fetchFn(entry.url, {
@@ -264,7 +278,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
   const sendFetchBatch = async (batch: LogEvent[]) => {
     if (batch.length === 0) return;
-    const payload = codec.encode(batch);
+    const payload = await encodePayload(batch);
     if (offlineQueue && typeof navigator !== "undefined" && navigator.onLine === false) {
       await enqueueOfflinePayload(payload);
       return;
@@ -319,7 +333,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
     try {
       let fetchBatch = batch;
-      if (preferBeacon) {
+      if (preferBeacon && !options.transformPayload) {
         const beaconResult = sendBeaconBatch(batch);
         if (beaconResult.ok || beaconResult.remaining.length === 0) return;
         fetchBatch = beaconResult.remaining;

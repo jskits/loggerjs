@@ -89,4 +89,25 @@ describe("nodeHttpTransport", () => {
 
     expect(bodies).toEqual(["aa", "bb|c"]);
   });
+
+  it("transforms encoded payloads before fetch", async () => {
+    const bodies: string[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async (_url, init) => {
+      if (typeof init?.body === "string") bodies.push(init.body);
+      return okResponse;
+    });
+    const transport = nodeHttpTransport({
+      url: "https://collector.example/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      fetchFn,
+      transformPayload: async (payload, context) =>
+        `${context.contentType}:${payload.toString().toUpperCase()}`,
+    });
+
+    transport.log?.(createEvent("compressed"), createTransportContext());
+    await transport.flush?.();
+
+    expect(bodies).toEqual(["text/plain:COMPRESSED"]);
+  });
 });
