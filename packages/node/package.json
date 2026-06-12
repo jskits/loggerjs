@@ -68,6 +68,21 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-koa": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./integration-nest": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./integration-hapi": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-queue": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
