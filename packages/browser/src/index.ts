@@ -13,6 +13,7 @@ export * from "./error-integration";
 export * from "./fetch-integration";
 export * from "./xhr-integration";
 export * from "./framework-error-integration";
+export * from "./framework-router-integrations";
 export * from "./reporting-integration";
 export * from "./router-integration";
 export * from "./runtime-host-integration";

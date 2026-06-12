@@ -98,6 +98,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./integration-framework-routers": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./integration-reporting": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
