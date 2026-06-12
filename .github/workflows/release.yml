@@ -114,13 +114,14 @@ jobs:
 
       - name: Publish dry run
         if: github.event_name == 'push' || steps.changesets.outputs.has_changesets == 'false'
-        run: pnpm publish -r --dry-run --access public --no-git-checks --json
+        run: pnpm release:publish:dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
 
       - name: Publish packages
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
-        run: pnpm exec changeset publish --no-git-tag
+        run: pnpm release:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"

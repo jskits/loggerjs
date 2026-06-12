@@ -35,11 +35,11 @@ The workflow uses token authentication for npm publishing and OIDC for provenanc
 - Publish steps map `secrets.NPM_AUTH_TOKEN` or `secrets.NPM_TOKEN` to `NODE_AUTH_TOKEN`, which is what npm expects.
 - `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm uses for provenance.
 - The workflow upgrades to npm 11 so provenance support is current.
-- Every publishable package sets `publishConfig.provenance=true`, and the publish step also sets `NPM_CONFIG_PROVENANCE=true`.
+- Every publishable package sets `publishConfig.provenance=true`, the publish step sets `NPM_CONFIG_PROVENANCE=true`, and the publish script passes `--provenance` explicitly to `pnpm publish`.
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
-Pushes to `main` run validation and publish. When pending changesets exist, the workflow first commits the versioned package metadata back to `main`, then publishes from that same checked-out versioned tree. Publishing runs `changeset publish --no-git-tag`, then creates release tags with the idempotent `changeset tag` command before pushing tags. Manual runs without `publish=true` only validate and dry-run; manual runs with `publish=true` publish only when there are no pending changesets.
+Pushes to `main` run validation and publish. When pending changesets exist, the workflow first commits the versioned package metadata back to `main`, then publishes from that same checked-out versioned tree. Publishing runs `pnpm release:publish`, which publishes each not-yet-published workspace package with `pnpm publish --provenance`, then creates release tags with the idempotent `changeset tag` command before pushing package tags. Manual runs without `publish=true` only validate and dry-run; manual runs with `publish=true` publish only when there are no pending changesets.
 
 For an organization-level npm secret, make sure the secret's repository access includes `jskits/loggerjs`. Public repositories are not covered when the secret is limited to private repositories only.
 
