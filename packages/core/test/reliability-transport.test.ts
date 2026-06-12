@@ -126,4 +126,21 @@ describe("retryTransport", () => {
       "transport.fallback": 2,
     });
   });
+
+  it("delivers single log calls to batch-only transports", async () => {
+    const batches: string[][] = [];
+    const transport = retryTransport(
+      {
+        name: "batch-only",
+        logBatch(events) {
+          batches.push(events.map((item) => item.id));
+        },
+      },
+      { maxRetries: 0 },
+    );
+
+    await transport.log?.(event, createContext());
+
+    expect(batches).toEqual([["evt-1"]]);
+  });
 });

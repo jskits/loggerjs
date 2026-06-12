@@ -60,7 +60,9 @@ async function deliver(
   if (operation === "write") {
     const record = payload as LogRecord;
     if (transport.write) return transport.write(record, context);
+    if (transport.writeBatch) return transport.writeBatch([record], context);
     if (transport.log) return transport.log(context.toEvent(record), context);
+    if (transport.logBatch) return transport.logBatch([context.toEvent(record)], context);
     return;
   }
 
@@ -87,7 +89,9 @@ async function deliver(
   if (operation === "log") {
     const event = payload as LogEvent;
     if (transport.log) return transport.log(event, context);
+    if (transport.logBatch) return transport.logBatch([event], context);
     if (transport.write) return transport.write(eventToRecord(event), context);
+    if (transport.writeBatch) return transport.writeBatch([eventToRecord(event)], context);
     return;
   }
 
