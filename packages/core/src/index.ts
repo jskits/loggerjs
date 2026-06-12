@@ -15,4 +15,5 @@ export * from "./codecs/json";
 export * from "./transports/console";
 export * from "./transports/memory";
 export * from "./transports/batch";
+export * from "./transports/reliability";
 export * from "./transports/test";
