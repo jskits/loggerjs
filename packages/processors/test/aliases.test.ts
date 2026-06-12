@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createRecord, recordToEvent, type LogEvent, type ProcessorContext } from "@loggerjs/core";
 import {
   breadcrumbBuffer,
+  coalesce,
   context,
   contextMw,
   dedupe,
@@ -44,6 +45,7 @@ const processorContext: ProcessorContext = {
 describe("processor middleware aliases", () => {
   it("exports shorter middleware-style names", () => {
     expect(sample({ defaultRate: 1 })(event, processorContext)).toBe(event);
+    expect(coalesce()(event, processorContext)).toBe(event);
     expect(dedupe()(event, processorContext)).toBe(event);
     expect(tags({ service: "api" })(event, processorContext)).toMatchObject({
       tags: { service: "api" },

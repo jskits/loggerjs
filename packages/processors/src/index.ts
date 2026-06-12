@@ -1,6 +1,7 @@
 export * from "./redact";
 export * from "./sample";
 export * from "./tags";
+export * from "./coalesce";
 export * from "./dedupe";
 export * from "./trace";
 export * from "./rate-limit";
@@ -18,6 +19,7 @@ export * from "./breadcrumb-buffer";
 
 export { redactProcessor as redact } from "./redact";
 export { sampleProcessor as sample } from "./sample";
+export { coalesceProcessor as coalesce } from "./coalesce";
 export {
   tagsMiddleware,
   typeMiddleware,
