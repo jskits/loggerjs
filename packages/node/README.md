@@ -9,7 +9,9 @@ import {
   expressIntegration,
   fastifyIntegration,
   installAsyncLocalStorageContext,
+  nodeCompressionPayloadTransform,
   nodeFetchIntegration,
+  nodeHttpTransport,
   nodeHttpClientIntegration,
   nodeSyslogTransport,
   rotatingFileTransport,
@@ -20,7 +22,13 @@ installAsyncLocalStorageContext();
 
 const logger = createLogger({
   name: "api",
-  transports: [stdoutTransport()],
+  transports: [
+    stdoutTransport(),
+    nodeHttpTransport({
+      url: "https://collector.example/logs",
+      transformPayload: nodeCompressionPayloadTransform({ format: "brotli" }),
+    }),
+  ],
   integrations: [captureProcessIntegration(), nodeHttpClientIntegration(), nodeFetchIntegration()],
 });
 
@@ -50,4 +58,4 @@ app.use(expressIntegration(logger, { captureAll: true }));
 fastify.register(fastifyIntegration(logger, { captureAll: true }));
 ```
 
-Subpaths expose `transport-http`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-cli`, `integration-queue`, `integration-serverless`, `integration-database`, `integration-express`, `integration-fastify`, `integration-fetch`, `integration-http-client`, `integration-diagnostics`, and `context`.
+Subpaths expose `transport-http`, `payload-transforms`, `transport-file`, `transport-rotating-file`, `transport-stdout`, `transport-syslog`, `transport-worker`, `integration-process`, `integration-cli`, `integration-koa`, `integration-nest`, `integration-hapi`, `integration-prisma`, `integration-redis`, `integration-queue`, `integration-bullmq`, `integration-serverless`, `integration-database`, `integration-express`, `integration-fastify`, `integration-fetch`, `integration-http-client`, `integration-diagnostics`, and `context`.

@@ -5,6 +5,7 @@ Browser transports and integrations for automatic client-side collection.
 ```ts
 import {
   browserHttpTransport,
+  browserCompressionPayloadTransform,
   browserBroadcastChannelTransport,
   browserServiceWorkerTransport,
   browserWebSocketTransport,
@@ -44,6 +45,7 @@ const logger = createLogger({
     browserHttpTransport({
       url: "/api/logs",
       offlineQueue: indexedDbBrowserHttpOfflineQueue({ maxEntries: 500 }),
+      transformPayload: browserCompressionPayloadTransform(),
       useBeaconOnPageHide: true,
     }),
     browserBroadcastChannelTransport({ channelName: "loggerjs" }),
@@ -90,4 +92,4 @@ flush, prune, query, drop, and buffer-depth counters for observability.
 Use `exportLogsToZip()` and `downloadBlob()` to export persisted browser logs as a
 standard zip file containing `logs.ndjson` and `manifest.json`.
 
-Subpaths expose `transport-http`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `transport-indexeddb`, `offline-indexeddb`, `export-zip`, `integration-console`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-framework-errors`, `integration-reporting`, `integration-router`, `integration-runtime-host`, `integration-service-worker`, `integration-user-actions`, `integration-websocket`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.
+Subpaths expose `transport-http`, `payload-transforms`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `transport-indexeddb`, `offline-indexeddb`, `offline-first-transport`, `export-zip`, `integration-console`, `integration-context`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-framework-errors`, `integration-framework-routers`, `integration-reporting`, `integration-router`, `integration-runtime-host`, `integration-service-worker`, `integration-user-actions`, `integration-websocket`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.

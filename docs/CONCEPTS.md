@@ -146,7 +146,15 @@ getLoggerMetaStats();
 // { "transport.errors": 1, "transport.dropped.queue-full": 2, "codec.fallback": 1, ... }
 ```
 
-Use these counters to alert on silent degradation: queue drops, codec fallbacks, integration re-entrancy drops.
+Use these counters to alert on silent degradation: queue drops, codec fallbacks, integration re-entrancy drops. `getLoggerSelfMetrics()` returns counters and gauges together, including queue depth and circuit-breaker state gauges exposed by shared transport helpers.
+
+## Trace and Semantic Events
+
+`trace-propagation` helpers parse/format W3C `traceparent` and baggage headers,
+and `addContextProvider()` lets integrations attach ambient context without
+replacing the app's context provider. `semanticEvents` defines common event
+families (`error`, `http`, `db`, `job`, `ui`, `action`, `security`,
+`performance`) so integrations and app logs can share field names.
 
 ## Further Reading
 

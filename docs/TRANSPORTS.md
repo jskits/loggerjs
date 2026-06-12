@@ -10,6 +10,8 @@ A transport delivers log records or events to a destination. This page catalogs 
 | `memoryTransport()` | Ring buffer of recent events (`maxEvents`, default 1000). Useful for diagnostics endpoints and tests. |
 | `testTransport()` | Assertion-friendly sink: snapshots, call stats, `waitForEvent()`/`waitForCount()`, injectable failures. |
 | `batchTransport(inner, options)` | Wraps any transport with batching, retry, and reliability controls (below). |
+| `retryTransport(inner, options)` | Wraps any transport with retries, exponential backoff, optional circuit breaker, and optional fallback. |
+| `fallbackTransport(primary, fallback)` | Sends to a fallback transport when the primary throws. |
 
 ### `batchTransport` reliability options
 
@@ -49,6 +51,18 @@ Notes:
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ url })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports a fallback transport if the worker dies. |
 
+`nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use
+`nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
+
+```ts
+import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
+
+nodeHttpTransport({
+  url: "https://collector.example/logs",
+  transformPayload: nodeCompressionPayloadTransform({ format: "brotli" }),
+});
+```
+
 ## Browser (`@loggerjs/browser`)
 
 | Transport | What it does |
@@ -56,11 +70,24 @@ Notes:
 | `browserHttpTransport({ url })` | Batching HTTP delivery with offline queue, online replay with backoff, and `sendBeacon` on page hide (payloads chunked to `beaconMaxBytes`). |
 | `memoryBrowserHttpOfflineQueue()` | In-memory offline queue adapter (lost on reload). |
 | `indexedDbBrowserHttpOfflineQueue()` | Durable offline queue in IndexedDB; survives reloads. |
+| `offlineFirstTransport(remote)` | Standard remote + persistent queue wrapper; queues while offline or when remote delivery fails, then replays later. |
 | `indexedDbTransport()` | Persist logs locally in IndexedDB with TTL/count/byte pruning, durability hints, optional Storage Bucket isolation, an async `query()` API, and `stats()` observability. |
 | `browserWebSocketTransport({ socket })` | Codec-encoded batches over a WebSocket; queues while the socket is closed (reconnection is the caller's responsibility). |
 | `browserServiceWorkerTransport()` | Posts events to a service worker, queueing until one is active. |
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest and CRC for support workflows. |
+
+`browserHttpTransport()` also accepts `transformPayload`. Use
+`browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
+
+```ts
+import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+
+browserHttpTransport({
+  url: "/api/logs",
+  transformPayload: browserCompressionPayloadTransform({ format: "gzip" }),
+});
+```
 
 For high-throughput local browser capture on modern Chrome, prefer a dedicated
 IndexedDB log store with relaxed durability:
@@ -75,6 +102,36 @@ indexedDbTransport({
 
 Browsers without Storage Buckets support fall back to the regular IndexedDB
 instance while keeping the same transport API.
+
+## Payload transforms
+
+Payload transforms run after codec encoding and before a wire transport sends or
+stores the payload. They can return a replacement payload, or `{ payload,
+headers, contentType }`; HTTP transports persist those headers through offline
+queues and replay.
+
+```ts
+import {
+  composePayloadTransforms,
+  encryptionPayloadTransform,
+} from "@loggerjs/core/payload-transforms";
+import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+
+browserHttpTransport({
+  url: "/api/logs",
+  transformPayload: composePayloadTransforms(
+    browserCompressionPayloadTransform(),
+    encryptionPayloadTransform({
+      contentType: "application/octet-stream",
+      headers: { "x-payload-encrypted": "1" },
+      encrypt: async (payload) => encryptForCollector(payload),
+    }),
+  ),
+});
+```
+
+`encryptionPayloadTransform()` provides the hook; the encryption algorithm and
+key management remain application-owned.
 
 ## Vendor packages
 

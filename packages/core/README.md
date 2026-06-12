@@ -21,4 +21,4 @@ withContext({ requestId: "req_123" }, () => {
 });
 ```
 
-Subpaths include `@loggerjs/core/middleware`, `@loggerjs/core/codec-json`, `@loggerjs/core/transport-console`, `@loggerjs/core/transport-batch`, `@loggerjs/core/transport-test`, `@loggerjs/core/context`, and `@loggerjs/core/events`.
+Subpaths include `@loggerjs/core/middleware`, `@loggerjs/core/codec-json`, `@loggerjs/core/codec-metrics`, `@loggerjs/core/payload-transforms`, `@loggerjs/core/transport-console`, `@loggerjs/core/transport-batch`, `@loggerjs/core/transport-reliability`, `@loggerjs/core/transport-test`, `@loggerjs/core/context`, `@loggerjs/core/trace-propagation`, `@loggerjs/core/events`, and `@loggerjs/core/semantic-events`.

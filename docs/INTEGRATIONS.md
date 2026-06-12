@@ -22,6 +22,8 @@ Privacy guidance for what to enable and how to sanitize lives in [OPERATIONS.md]
 | `captureWebSocketIntegration()` | WebSocket connect/open/close/error and sampled messages | Wraps the constructor; sockets created before setup are not tracked. |
 | `captureFrameworkErrorsIntegration()` | React/Vue/Solid/Svelte error hooks | Exposes `reactComponentDidCatch()`, `vueErrorHandler()`, etc.; buffers errors raised before the logger exists (`maxPending`). |
 | `captureRuntimeHostIntegration()` | browser-extension messages, Electron IPC on configured channels | Conservative default: no channels monitored. |
+| `browserContextPropagationIntegration()` | session/request/action and trace context | Adds ambient context providers for traceparent, baggage, session id, request id, and recent user action. |
+| `nextRouterIntegration()` / `reactRouterIntegration()` / `vueRouterIntegration()` / `nuxtRouterIntegration()` | framework router transitions | Thin adapters over common router APIs; sanitize URLs before logging. |
 
 ## Node (`@loggerjs/node`)
 
@@ -37,6 +39,9 @@ Privacy guidance for what to enable and how to sanitize lives in [OPERATIONS.md]
 | `serverlessIntegration(logger, handler)` | wraps a serverless handler: invocation, duration, cold start, errors | Supports promise, callback, and sync handlers. |
 | `queueIntegration()` | queue client operations (publish/consume/ack/nack) with duration | Patches the methods you list per client. |
 | `databaseIntegration()` | database client calls (query/execute/...) with statement and duration | Statement extracted from the first string arg or `.sql`/`.text`/`.query` properties. |
+| `koaIntegration()` / `nestMiddlewareIntegration()` / `hapiIntegration()` | framework request lifecycle | Thin adapters for Koa, Nest middleware, and Hapi request hooks. |
+| `prismaIntegration()` / `redisIntegration()` | data client operations | Captures selected query/command methods, duration, errors, and optional payload metadata. |
+| `bullMqIntegration()` | BullMQ producer/worker operations | Captures `add`, `addBulk`, and `process` with optional job payload metadata. |
 
 ### Context manager
 

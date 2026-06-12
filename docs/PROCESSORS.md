@@ -37,6 +37,7 @@ Configuring any processor turns off the record fast path for that logger; middle
 | `dynamicSamplerProcessor(options)` | Adaptive sampling per category over a sliding window — throttles noisy loggers, leaves quiet ones alone. |
 | `rateLimitProcessor(options)` | Token bucket per category; `error`/`fatal` exempt by default. |
 | `dedupeProcessor(options)` | Fold repeated identical logs inside a time window into one event with a count. |
+| `coalesceProcessor(options)` | Suppress repeated events in a window and emit the previous repeat count on the next matching event. |
 | `fingerprintProcessor(options)` | Compute a stable fingerprint from configurable parts (`logger`, `error.name`, `stack.top`, custom functions) for grouping and dedupe keys. |
 | `filterProcessor(input)` | Keep/drop by predicate or declarative rules (`minLevel`, `logger`, `type`, `tags`, integration source…). |
 | `levelOverrideProcessor(input)` | Raise or clamp levels per category pattern (for example demote a chatty dependency). |
@@ -48,6 +49,7 @@ Configuring any processor turns off the record fast path for that logger; middle
 | `fingersCrossedProcessor(options)` | Hold low-level logs in per-key ring buffers; when a trigger level fires, flush the buffered history to a target transport. The classic "give me the debug logs, but only when something breaks". |
 | `breadcrumbBufferProcessor(options)` | Maintain a bounded breadcrumb trail and attach/replay it on triggering events. |
 | `routeProcessor(input)` | Pin events to named transports or exclude transports, by rule (`[{ minLevel: "error", transports: ["alerts"] }]`). |
+| `symbolicateStackProcessor(options)` | Hook source-map or release-service symbolication into parsed stack frames without bundling a source-map parser. |
 
 ## Ordering Guidance
 
