@@ -68,6 +68,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./trace-propagation": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./events": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

@@ -29,6 +29,7 @@ export interface TraceContext {
   spanId?: string;
   traceFlags?: string;
   sampled?: boolean;
+  baggage?: Record<string, string>;
   [key: string]: unknown;
 }
 

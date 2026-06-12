@@ -2,6 +2,7 @@ export * from "./levels";
 export * from "./types";
 export * from "./record";
 export * from "./context";
+export * from "./trace-propagation";
 export * from "./events";
 export * from "./event-route";
 export * from "./logger";

@@ -44,6 +44,14 @@ export function setContextProvider(nextProvider: ContextProvider | undefined): v
   provider = nextProvider;
 }
 
+export function addContextProvider(nextProvider: ContextProvider): () => void {
+  const previousProvider = provider;
+  provider = () => mergeContext(previousProvider?.(), nextProvider());
+  return () => {
+    provider = previousProvider;
+  };
+}
+
 export function setContextManager(nextManager: ContextManager): void {
   manager = nextManager;
 }
