@@ -77,30 +77,56 @@ jobs:
           echo "Pending changesets must be versioned before publishing."
           exit 1
 
+      - name: Validate npm publish token
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            {
+              echo "### Missing npm publish token"
+              echo
+              echo "The release job cannot read \`NPM_AUTH_TOKEN\` or \`NPM_TOKEN\`."
+              echo
+              echo "If the token is configured as an organization secret, check that its repository access includes \`jskits/loggerjs\`. Public repositories are not covered by a private-repositories-only policy."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=NPM publish token is unavailable::Configure NPM_AUTH_TOKEN as a repository secret or grant the organization secret access to jskits/loggerjs."
+            exit 1
+          fi
+
+          if ! npm_user="$(npm whoami --registry=https://registry.npmjs.org 2>&1)"; then
+            {
+              echo "### npm authentication failed"
+              echo
+              echo "The release job received a token, but npm rejected it."
+              echo
+              echo "Use an npm automation token with publish access to the \`@loggerjs\` scope."
+              echo
+              echo "\`\`\`"
+              printf '%s\n' "$npm_user"
+              echo "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=NPM authentication failed::npm whoami rejected the configured token."
+            exit 1
+          fi
+
+          echo "Authenticated to npm as ${npm_user}."
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
+
       - name: Publish dry run
         if: github.event_name == 'push' || steps.changesets.outputs.has_changesets == 'false'
         run: pnpm publish -r --dry-run --access public --no-git-checks --json
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-
-      - name: Verify npm authentication
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "NPM_AUTH_TOKEN secret is required to publish packages."
-            exit 1
-          fi
-          npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
 
       - name: Publish packages
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
-        run: pnpm release
+        run: pnpm exec changeset publish --no-git-tag
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
       - name: Push release tags
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
-        run: git push --follow-tags
+        run: |
+          pnpm exec changeset tag
+          git push --follow-tags

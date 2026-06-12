@@ -27,19 +27,21 @@ changeset publish --tag canary
 
 ## NPM Publishing
 
-The release workflow is `.github/workflows/release.yml`. Configure the GitHub secret `NPM_AUTH_TOKEN` with an npm automation token that can publish every `@loggerjs/*` package.
+The release workflow is `.github/workflows/release.yml`. Configure the GitHub secret `NPM_AUTH_TOKEN` with an npm automation token that can publish every `@loggerjs/*` package. `NPM_TOKEN` is accepted as a fallback name.
 
 The workflow uses token authentication for npm publishing and OIDC for provenance:
 
 - `actions/setup-node` sets the npm registry and configures npm to read auth from `NODE_AUTH_TOKEN`.
-- Publish steps map `secrets.NPM_AUTH_TOKEN` to `NODE_AUTH_TOKEN`, which is what npm expects.
+- Publish steps map `secrets.NPM_AUTH_TOKEN` or `secrets.NPM_TOKEN` to `NODE_AUTH_TOKEN`, which is what npm expects.
 - `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm uses for provenance.
 - The workflow upgrades to npm 11 so provenance support is current.
 - Every publishable package sets `publishConfig.provenance=true`, and the publish step also sets `NPM_CONFIG_PROVENANCE=true`.
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
-Pushes to `main` run validation and publish. When pending changesets exist, the workflow first commits the versioned package metadata back to `main`, then publishes from that same checked-out versioned tree and pushes release tags. Manual runs without `publish=true` only validate and dry-run; manual runs with `publish=true` publish only when there are no pending changesets.
+Pushes to `main` run validation and publish. When pending changesets exist, the workflow first commits the versioned package metadata back to `main`, then publishes from that same checked-out versioned tree. Publishing runs `changeset publish --no-git-tag`, then creates release tags with the idempotent `changeset tag` command before pushing tags. Manual runs without `publish=true` only validate and dry-run; manual runs with `publish=true` publish only when there are no pending changesets.
+
+For an organization-level npm secret, make sure the secret's repository access includes `jskits/loggerjs`. Public repositories are not covered when the secret is limited to private repositories only.
 
 References:
 
