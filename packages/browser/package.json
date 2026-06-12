@@ -135,7 +135,8 @@
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "pnpm run clean && pnpm run build:js && pnpm run build:types",
