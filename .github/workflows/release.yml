@@ -12,7 +12,6 @@ concurrency:
 permissions:
   contents: write
   id-token: write
-  pull-requests: write
 
 jobs:
   release:
@@ -34,14 +33,38 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - run: pnpm publish -r --dry-run --access public --no-git-checks --json
 
-      - uses: changesets/action@v1
-        with:
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
-          version: pnpm version-packages
-          publish: pnpm release
+      - name: Detect pending changesets
+        id: changesets
+        run: |
+          if find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | grep -q .; then
+            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Version packages
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: |
+          pnpm version-packages
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changeset version produced no files to commit"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit --no-verify -m "chore(release): version packages"
+          git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish dry run
+        if: steps.changesets.outputs.has_changesets == 'false'
+        run: pnpm publish -r --dry-run --access public --no-git-checks --json
+
+      - name: Publish packages
+        if: steps.changesets.outputs.has_changesets == 'false'
+        run: pnpm release
+        env:
           NPM_CONFIG_PROVENANCE: "true"
