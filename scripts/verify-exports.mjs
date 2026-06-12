@@ -41,6 +41,7 @@ const checks = [
   ],
   ["@loggerjs/node", ["stdoutTransport"]],
   ["@loggerjs/node/transport-http", ["nodeHttpTransport"]],
+  ["@loggerjs/node/payload-transforms", ["nodeCompressionPayloadTransform"]],
   ["@loggerjs/node/transport-file", ["fileTransport"]],
   ["@loggerjs/node/transport-stdout", ["stdoutTransport", "stderrTransport"]],
   ["@loggerjs/node/transport-syslog", ["nodeSyslogTransport", "formatSyslogMessage"]],

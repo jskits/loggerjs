@@ -3,6 +3,7 @@ export * from "./stdout-transport";
 export * from "./file-transport";
 export * from "./rotating-file-transport";
 export * from "./http-transport";
+export * from "./payload-transforms";
 export * from "./syslog-transport";
 export * from "./worker-transport";
 export * from "./context";
