@@ -356,16 +356,20 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     flushing = true;
     clearTimer();
     const batch = queue.splice(0, queue.length);
+    let pendingBatch = batch;
 
     try {
-      let fetchBatch = batch;
       if (preferBeacon && !options.transformPayload) {
         const beaconResult = sendBeaconBatch(batch);
         if (beaconResult.ok || beaconResult.remaining.length === 0) return;
-        fetchBatch = beaconResult.remaining;
+        pendingBatch = beaconResult.remaining;
       }
 
-      await sendFetchBatch(fetchBatch);
+      await sendFetchBatch(pendingBatch);
+      pendingBatch = [];
+    } catch (error) {
+      if (pendingBatch.length > 0) queue.unshift(...pendingBatch);
+      throw error;
     } finally {
       flushing = false;
       if (queue.length > 0) schedule();

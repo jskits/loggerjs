@@ -207,6 +207,31 @@ describe("browserHttpTransport", () => {
     });
   });
 
+  it("keeps queued events when a payload transform fails", async () => {
+    let failTransform = true;
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      transformPayload(payload) {
+        if (failTransform) throw new Error("transform unavailable");
+        return payload;
+      },
+    });
+
+    transport.log?.(createEvent("retained"), createTransportContext());
+
+    await expect(transport.flush?.()).rejects.toThrow("transform unavailable");
+    failTransform = false;
+    await transport.flush?.();
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn.mock.calls[0]?.[1]?.body).toBe("retained");
+  });
+
   it("replays offline payloads on online with retry", async () => {
     const addEventListener = vi.fn<typeof globalThis.addEventListener>();
     const removeEventListener = vi.fn<typeof globalThis.removeEventListener>();
