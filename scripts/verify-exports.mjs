@@ -18,6 +18,7 @@ const checks = [
   ["@loggerjs/core/payload-transforms", ["applyPayloadTransforms", "encryptionPayloadTransform"]],
   ["@loggerjs/browser", ["browserHttpTransport"]],
   ["@loggerjs/browser/transport-http", ["browserHttpTransport"]],
+  ["@loggerjs/browser/payload-transforms", ["browserCompressionPayloadTransform"]],
   ["@loggerjs/browser/transport-broadcast-channel", ["browserBroadcastChannelTransport"]],
   ["@loggerjs/browser/transport-service-worker", ["browserServiceWorkerTransport"]],
   ["@loggerjs/browser/transport-websocket", ["browserWebSocketTransport"]],

@@ -33,6 +33,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./payload-transforms": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./transport-broadcast-channel": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

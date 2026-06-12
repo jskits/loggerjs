@@ -1,6 +1,7 @@
 export * from "@loggerjs/core";
 export * from "./broadcast-channel-transport";
 export * from "./http-transport";
+export * from "./payload-transforms";
 export * from "./service-worker-transport";
 export * from "./websocket-transport";
 export * from "./indexeddb-offline-queue";
