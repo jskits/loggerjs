@@ -1,5 +1,9 @@
 # loggerjs
 
+[![CI](https://github.com/jskits/loggerjs/actions/workflows/ci.yml/badge.svg)](https://github.com/jskits/loggerjs/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@loggerjs/core.svg)](https://www.npmjs.com/package/@loggerjs/core)
+![license](https://img.shields.io/npm/l/@loggerjs/core)
+
 **Isomorphic structured logging for JavaScript — one pipeline from browser to server, built for automatic collection, composable processing, and measured performance.**
 
 LoggerJS is a monorepo of logging packages around a dependency-free, platform-neutral core. It is organized around three user-facing concepts plus one boundary rule:
