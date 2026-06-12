@@ -129,4 +129,4 @@ jobs:
         if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
         run: |
           pnpm exec changeset tag
-          git push --follow-tags
+          git push origin 'refs/tags/@loggerjs/*:refs/tags/@loggerjs/*'
