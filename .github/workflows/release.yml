@@ -98,7 +98,7 @@ jobs:
               echo
               echo "The release job received a token, but npm rejected it."
               echo
-              echo "Use an npm automation token with publish access to the \`@loggerjs\` scope."
+              echo "Use an npm granular access token with read/write publish access to the \`@loggerjs\` scope and bypass 2FA enabled."
               echo
               echo "\`\`\`"
               printf '%s\n' "$npm_user"

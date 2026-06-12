@@ -27,7 +27,7 @@ changeset publish --tag canary
 
 ## NPM Publishing
 
-The release workflow is `.github/workflows/release.yml`. Configure the GitHub secret `NPM_AUTH_TOKEN` with an npm automation token that can publish every `@loggerjs/*` package. `NPM_TOKEN` is accepted as a fallback name.
+The release workflow is `.github/workflows/release.yml`. Configure the GitHub secret `NPM_AUTH_TOKEN` with an npm granular access token that can publish every `@loggerjs/*` package. The token needs read/write access to the `@loggerjs` scope or all packages, and bypass 2FA must be enabled for non-interactive publishing. `NPM_TOKEN` is accepted as a fallback name.
 
 The workflow uses token authentication for npm publishing and OIDC for provenance:
 
