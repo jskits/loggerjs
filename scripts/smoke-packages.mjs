@@ -9,6 +9,13 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const tempRoot = join(repoRoot, ".tmp", "package-smoke");
 const tarballRoot = join(tempRoot, "tarballs");
 const consumerRoot = join(tempRoot, "consumer");
+const args = new Set(process.argv.slice(2));
+const packOnly = args.has("--pack-only");
+const smokeOnly = args.has("--smoke-only");
+
+if (packOnly && smokeOnly) {
+  throw new Error("Use either --pack-only or --smoke-only, not both.");
+}
 
 function readPackageNames() {
   return readdirSync(join(repoRoot, "packages"), { withFileTypes: true })
@@ -21,19 +28,18 @@ function readPackageNames() {
     .toSorted();
 }
 
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, encoding: "utf8" });
+function run(command, commandArgs, cwd) {
+  const result = spawnSync(command, commandArgs, { cwd, encoding: "utf8" });
   if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed\n${result.stdout}${result.stderr}`);
+    throw new Error(`${command} ${commandArgs.join(" ")} failed\n${result.stdout}${result.stderr}`);
   }
   return result.stdout;
 }
 
-rmSync(tempRoot, { force: true, recursive: true });
-mkdirSync(tarballRoot, { recursive: true });
-mkdirSync(consumerRoot, { recursive: true });
+function packPackages() {
+  rmSync(tempRoot, { force: true, recursive: true });
+  mkdirSync(tarballRoot, { recursive: true });
 
-try {
   const tarballs = [];
   for (const packageName of readPackageNames()) {
     const output = run(
@@ -44,6 +50,30 @@ try {
     const packed = JSON.parse(output);
     tarballs.push(packed.filename);
   }
+
+  return tarballs;
+}
+
+function readExistingTarballs() {
+  if (!existsSync(tarballRoot)) {
+    throw new Error("No packed tarballs found. Run with --pack-only first.");
+  }
+
+  const tarballs = readdirSync(tarballRoot)
+    .filter((filename) => filename.endsWith(".tgz"))
+    .map((filename) => join(tarballRoot, filename))
+    .toSorted();
+
+  if (tarballs.length === 0) {
+    throw new Error("No packed tarballs found. Run with --pack-only first.");
+  }
+
+  return tarballs;
+}
+
+function smokeTarballs(tarballs) {
+  rmSync(consumerRoot, { force: true, recursive: true });
+  mkdirSync(consumerRoot, { recursive: true });
 
   writeFileSync(
     join(consumerRoot, "package.json"),
@@ -201,6 +231,18 @@ cloudWatchLogsTransport({
   console.log(
     `Smoke tested ${tarballs.length} packed packages in a temporary runtime and typed consumer.`,
   );
+}
+
+try {
+  const tarballs = smokeOnly ? readExistingTarballs() : packPackages();
+
+  if (packOnly) {
+    console.log(`Packed ${tarballs.length} packages for later smoke testing.`);
+  } else {
+    smokeTarballs(tarballs);
+  }
 } finally {
-  rmSync(tempRoot, { force: true, recursive: true });
+  if (!packOnly) {
+    rmSync(tempRoot, { force: true, recursive: true });
+  }
 }

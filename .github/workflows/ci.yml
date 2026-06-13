@@ -20,7 +20,6 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - 20.19.0
           - 22
           - 24
     steps:
@@ -37,6 +36,37 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+
+  node-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 20.19.0
+          - 22
+          - 24
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/smoke-packages.mjs --pack-only
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - run: node scripts/smoke-packages.mjs --smoke-only
 
   bench:
     runs-on: ubuntu-latest
