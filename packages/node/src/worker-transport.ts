@@ -117,6 +117,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
   const autoEnd = options.autoEnd ?? true;
   let worker: WorkerLike | undefined;
   let failed = false;
+  let failedError: Error | undefined;
   let lastContext: TransportContext | undefined;
   let ready = readyTimeoutMs === 0;
   let readyPromise: Promise<void> | undefined;
@@ -145,6 +146,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
   const markFailed = (error: unknown, operation: string) => {
     if (failed) return;
     failed = true;
+    failedError = error instanceof Error ? error : new Error(String(error));
     setReadyGauge(0);
     incrementLoggerMetaCounter("transport.worker.failed");
     emitLoggerDiagnostic({
@@ -155,7 +157,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       error,
     });
     reportInternalError(error, operation);
-    readyReject?.(error instanceof Error ? error : new Error(String(error)));
+    readyReject?.(failedError);
     failPendingBatches(operation);
   };
 
@@ -315,6 +317,26 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
   const transport: Transport = {
     name: transportName,
     minLevel: options.minLevel,
+    async ready() {
+      const currentWorker = getWorker();
+      if (!currentWorker) {
+        if (fallback) {
+          await fallback.ready?.();
+          return;
+        }
+        throw failedError ?? new Error("workerTransport is unavailable");
+      }
+      try {
+        await waitForReady();
+      } catch (error) {
+        markFailed(error, "worker-ready-timeout");
+        if (fallback) {
+          await fallback.ready?.();
+          return;
+        }
+        throw error;
+      }
+    },
     log(event, context) {
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
       return postBatch([event], context);

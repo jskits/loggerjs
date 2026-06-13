@@ -31,7 +31,7 @@ them. Treat this table as the production delivery contract:
 | `rotatingFileTransport()` | synchronous shared file destination with size rotation | Local durability path with size rotation; blocks the caller while writing. |
 | `nodeHttpTransport()` | self-wrapped batched HTTP delivery | Uses `batchTransport`; tune queue, retry, and circuit options for production. |
 | `nodeSyslogTransport()` | immediate UDP/TCP syslog write | UDP can drop; TCP still depends on socket state and close/flush behavior. |
-| `workerTransport()` | worker offload with optional ready/ack lifecycle | Fire-and-forget by default; configure `readyTimeoutMs`, `ackTimeoutMs`, fallback, and `autoEnd` when worker acceptance must be observable. |
+| `workerTransport()` | worker offload with optional ready/ack lifecycle | Fire-and-forget by default; configure `readyTimeoutMs`, `ackTimeoutMs`, fallback, and `autoEnd` when worker acceptance must be observable; `ready()` waits for worker startup when a ready handshake is configured. |
 | `browserHttpTransport()` | batched fetch with optional offline queue and beacon pagehide mode | Use an IndexedDB queue for reload survival; beacon mode is best-effort and size limited. |
 | `memoryBrowserHttpOfflineQueue()` | in-memory offline queue | Survives network drops, not reloads or tab close. |
 | `indexedDbBrowserHttpOfflineQueue()` | IndexedDB offline queue | Survives reloads while quota/storage remains available. |
@@ -119,6 +119,8 @@ object messages. Lifecycle is opt-in:
 - Set `readyTimeoutMs` when the worker will send `{ type: "loggerjs:ready" }`.
   If readiness times out, LoggerJS fails the worker and sends the batch to the
   configured fallback or counts it as `transport.dropped.worker-ready-timeout`.
+  Explicit `transport.ready()` / `logger.ready()` also waits for this startup
+  handshake.
 - Set `ackTimeoutMs` when the worker will acknowledge each batch with
   `{ type: "loggerjs:batch:ack", id }`. `flush()` waits for those acks.
 - The main thread posts `{ type: "loggerjs:batch", id?, codec, contentType, count, payload }`.

@@ -146,6 +146,47 @@ describe("workerTransport", () => {
     expect(errors[0]).toBeInstanceOf(Error);
   });
 
+  it("exposes explicit readiness for worker startup", async () => {
+    resetLoggerMetaStats();
+    const worker = new FakeWorker();
+    const transport = workerTransport({
+      worker,
+      codec: textCodec,
+      readyTimeoutMs: 1000,
+    });
+
+    let settled = false;
+    const readyPromise = Promise.resolve(transport.ready?.()).then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    worker.emit("message", { type: "loggerjs:ready" });
+    await readyPromise;
+
+    expect(settled).toBe(true);
+    expect(getLoggerMetaGauges()).toMatchObject({
+      "transport.ready.worker": 1,
+    });
+  });
+
+  it("rejects explicit readiness when the worker never becomes ready", async () => {
+    resetLoggerMetaStats();
+    const worker = new FakeWorker();
+    const transport = workerTransport({
+      worker,
+      codec: textCodec,
+      readyTimeoutMs: 1,
+    });
+
+    await expect(transport.ready?.()).rejects.toThrow("workerTransport ready timeout");
+
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.worker.failed": 1,
+    });
+  });
+
   it("waits for batch ack during flush", async () => {
     resetLoggerMetaStats();
     const worker = new FakeWorker();

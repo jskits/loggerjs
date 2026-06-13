@@ -87,7 +87,9 @@ Use `readyTimeoutMs` for workers that send `{ type: "loggerjs:ready" }`, and
 `ackTimeoutMs` for workers that acknowledge `{ type: "loggerjs:batch", id }`
 with `{ type: "loggerjs:batch:ack", id }`. Pending batches fall back or are
 counted as drops when readiness, posting, ack, or worker exit fails. Set
-`autoEnd: false` for shared workers you close elsewhere.
+`autoEnd: false` for shared workers you close elsewhere. Explicit
+`transport.ready()` / `logger.ready()` waits for the ready handshake when
+`readyTimeoutMs` is configured.
 
 Call `installLoggerDiagnosticsChannel()` to publish LoggerJS internal
 diagnostics to Node `diagnostics_channel` channels such as `loggerjs.dispatch`,
