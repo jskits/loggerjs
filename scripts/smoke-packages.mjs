@@ -1,8 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+const require = createRequire(import.meta.url);
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const tempRoot = join(repoRoot, ".tmp", "package-smoke");
 const tarballRoot = join(tempRoot, "tarballs");
@@ -103,7 +105,102 @@ datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, {
 
   run("node", ["esm.mjs"], consumerRoot);
   run("node", ["cjs.cjs"], consumerRoot);
-  console.log(`Smoke tested ${tarballs.length} packed packages in a temporary consumer.`);
+
+  writeFileSync(
+    join(consumerRoot, "typed-consumer.ts"),
+    `
+import { createLogger, defineEvent, type LogEvent, type Transport } from "@loggerjs/core";
+import { createMiddleware } from "@loggerjs/core/middleware";
+import { browserHttpTransport } from "@loggerjs/browser/transport-http";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
+import { fastEventJsonCodec, msgpackrCodec } from "@loggerjs/codecs";
+import { databaseTransport } from "@loggerjs/database/transport";
+import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
+import { stdoutTransport } from "@loggerjs/node/transport-stdout";
+import { otlpJsonCodec } from "@loggerjs/otel/codec-otlp-json";
+import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
+import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
+import { sentryTransport, type SentryLike } from "@loggerjs/sentry";
+import { lokiTransport } from "@loggerjs/loki";
+import { datadogLogsTransport } from "@loggerjs/datadog";
+import { elasticTransport } from "@loggerjs/elastic";
+import { cloudWatchLogsTransport } from "@loggerjs/cloudwatch";
+
+const OrderEvent = defineEvent<{ orderId: string }>({
+  type: "order.created",
+  message: (payload) => payload.orderId,
+});
+
+const transport: Transport = {
+  log(event: LogEvent) {
+    if (event.message.length === 0) throw new Error("expected message");
+  },
+};
+
+const logger = createLogger({
+  processors: [redactProcessor(), tagsProcessor({ runtime: "packed-consumer" })],
+  transports: [transport, stdoutTransport()],
+});
+
+logger.event(OrderEvent, { orderId: "ord_123" });
+createMiddleware("typed", (record) => record);
+fastEventJsonCodec().encode([]);
+msgpackrCodec().encode([]);
+otlpJsonCodec().encode([]);
+browserCompressionPayloadTransform();
+nodeCompressionPayloadTransform();
+openTelemetryTraceProcessor();
+browserHttpTransport({ url: "/logs", fetchFn: async () => new Response(null, { status: 204 }) });
+databaseTransport({ adapter: { insert: async () => undefined } });
+sentryTransport({ sentry: {} satisfies SentryLike });
+lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
+datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
+elasticTransport({
+  url: "http://localhost:9200",
+  fetchFn: async () => new Response(JSON.stringify({ errors: false }), { status: 200 }),
+});
+cloudWatchLogsTransport({
+  credentials: { accessKeyId: "test", secretAccessKey: "test" },
+  logGroupName: "group",
+  logStreamName: "stream",
+  region: "us-east-1",
+  signer: async (request) => request.headers,
+  fetchFn: async () => new Response("{}", { status: 200 }),
+});
+`,
+  );
+
+  writeFileSync(
+    join(consumerRoot, "tsconfig.json"),
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          exactOptionalPropertyTypes: false,
+          lib: ["ES2022", "DOM"],
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          noEmit: true,
+          skipLibCheck: true,
+          strict: true,
+          target: "ES2022",
+          types: ["node"],
+        },
+        include: ["typed-consumer.ts"],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  run(
+    process.execPath,
+    [require.resolve("typescript/bin/tsc"), "-p", "tsconfig.json"],
+    consumerRoot,
+  );
+
+  console.log(
+    `Smoke tested ${tarballs.length} packed packages in a temporary runtime and typed consumer.`,
+  );
 } finally {
   rmSync(tempRoot, { force: true, recursive: true });
 }
