@@ -14,7 +14,7 @@
 
 [Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [Architecture](docs/ARCHITECTURE.md)
 
-<sub>**12 packages** · **35 integrations** (**19 browser / 16 Node.js**) · **25+ transports** (core / browser / Node.js / vendor) · **27 runtime-neutral processors** · **7 codecs** · **zero-dependency core**</sub>
+<sub>**12 packages** · **35 integrations** (**19 browser / 16 Node.js**) · **25+ transports** (core / browser / Node.js / vendor) · **27 runtime-neutral processors** · **8 codecs** · **zero-dependency core**</sub>
 
 </div>
 
@@ -268,7 +268,7 @@ Measured on an Apple Silicon laptop, Node v22.22.2, against pino 10.3.1 / winsto
 | -------------------------------------------------- | ------: | --------------------------------- |
 | **loggerjs** — disabled level (lazy message)       |   **5** | parity with pino (6)              |
 | **loggerjs** — batch transport enqueue             | **163** | —                                 |
-| **loggerjs** — lean NDJSON, pino-shaped line       | **268** | **~85% of pino**                  |
+| **loggerjs** — lean NDJSON, comparable line        | **268** | **~85% of pino**                  |
 | **loggerjs** — full envelope (`+id/seq/levelName`) | **303** | ~75% of pino, 3 extra fields/line |
 | pino — NDJSON noop sink                            |     228 | 1.00× baseline                    |
 | Node `console` — noop stream                       |     549 | loggerjs ~2× faster               |
@@ -372,11 +372,11 @@ Middleware run on raw records before id/message/error work; processors run on pr
 </details>
 
 <details>
-<summary><strong>7 codecs</strong> — serialization owned by the transport, fast by default, never throws</summary>
+<summary><strong>8 codecs</strong> — serialization owned by the transport, fast by default, never throws</summary>
 
 <br/>
 
-`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (core) — `fastEventJsonCodec` (the performance codec) · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
+`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (core) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
 
 Codecs fall back to a safe representation on circular references instead of throwing, and increment a `codec.fallback` meta counter so silent degradation is observable. See [docs/CODECS.md](docs/CODECS.md).
 

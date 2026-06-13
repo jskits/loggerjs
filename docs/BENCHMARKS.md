@@ -60,7 +60,7 @@ pino 10.3.1, winston 3.19.0, LogTape 2.1.3, `BENCH_ITERATIONS=200000`:
 All loggerjs and pino full-path loggers carry the same base fields
 (`service`, `env`). The lean record sink uses
 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`
-to emit pino-shaped lines; the full-envelope record sink additionally emits
+to emit lean comparable lines; the full-envelope record sink additionally emits
 `id`, `seq`, and `levelName` per line.
 
 Honest read of the numbers against the design targets:

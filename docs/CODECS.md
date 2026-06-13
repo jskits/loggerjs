@@ -24,6 +24,7 @@ interface Codec<TPayload = string | Uint8Array> {
 | `safeJsonCodec(options)` | core | Full safe normalization every time: circular → `"[Circular]"`, BigInt → string, Error → `{name, message, stack}`, depth/array/key truncation, Map/Set conversion. Default codec of `consoleTransport({ pretty: false })`. |
 | `ndjsonCodec(options)` | core | One JSON object per line. **Fast-by-default contract** (below). Default codec of the Node stdout/file transports. |
 | `fastEventJsonCodec(options)` | `@loggerjs/codecs` | The performance codec: native fast path, fragment caches (level, logger, tags, time), scan-based string escaping, flat-data direct writer, lean envelope options. |
+| `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | Pino-shaped NDJSON for migration paths: `level`, `time`, optional `pid`/`hostname` base fields, `msg`, `err`, and opt-in root data merging with reserved-key protection. |
 | `msgpackrCodec(options?)` | `@loggerjs/codecs` | Built-in MessagePack codec backed by `msgpackr`; returns `Uint8Array`. Passing `{ pack, unpack }` is still supported for custom runtimes. |
 | `projectorCodec(options)` | `@loggerjs/codecs` | Generic project → serialize (→ parse → unproject) adapter for custom wire schemas. |
 | `otlpJsonCodec(options)` | `@loggerjs/otel` | OTLP/HTTP JSON log payloads with resource attributes. |
@@ -50,7 +51,24 @@ fastEventJsonCodec({
 })
 ```
 
-With the three header flags off, output is pino-shaped: `{"time":...,"level":30,"logger":"api","message":"...","data":{...}}`. This is the configuration behind the headline benchmark numbers in [BENCHMARKS.md](BENCHMARKS.md).
+With the three header flags off, output is a lean LoggerJS envelope: `{"time":...,"level":30,"logger":"api","message":"...","data":{...}}`. This is the configuration behind the headline benchmark numbers in [BENCHMARKS.md](BENCHMARKS.md). Use `pinoCompatCodec()` when you need Pino field names such as `msg`, `err`, `pid`, and `hostname`.
+
+## Pino Compatibility
+
+`pinoCompatCodec()` emits newline-delimited JSON for migration paths that need Pino-shaped output:
+
+```ts
+import { pinoCompatCodec } from "@loggerjs/codecs";
+
+pinoCompatCodec({
+  base: { pid: process.pid, hostname: "api-1" },
+  mergeData: true,
+});
+```
+
+Root data merging is opt-in. By default, LoggerJS keeps payloads under `data`; when `mergeData: true` is enabled, reserved keys such as `time`, `level`, `msg`, `pid`, `hostname`, `err`, `logger`, and `data` are nested instead of overwriting transport-owned fields. Set `collision: "throw"` if you prefer to reject those payloads during migration testing.
+
+This codec is intentionally encode-only: Pino-shaped NDJSON is a migration wire format, not the native LoggerJS event envelope.
 
 ## Records, Events, and IDs
 

@@ -16,7 +16,7 @@ npm install @loggerjs/codecs
 ## Usage
 
 ```ts
-import { fastEventJsonCodec, projectorCodec } from "@loggerjs/codecs";
+import { fastEventJsonCodec, pinoCompatCodec, projectorCodec } from "@loggerjs/codecs";
 import { nodeHttpTransport } from "@loggerjs/node";
 
 // The performance codec for JSON payload transports.
@@ -30,6 +30,12 @@ nodeHttpTransport({
   url: "https://collector.example/logs",
   codec: fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false }),
 });
+
+// Pino-shaped NDJSON for migration paths.
+nodeHttpTransport({
+  url: "https://collector.example/logs",
+  codec: pinoCompatCodec({ base: { pid: process.pid, hostname: "api-1" }, mergeData: true }),
+});
 ```
 
 ## Codecs
@@ -37,6 +43,7 @@ nodeHttpTransport({
 | Codec | Format | Notes |
 | --- | --- | --- |
 | `fastEventJsonCodec` | JSON | The performance codec — fragment-cached serialization, fast by default, falls back instead of throwing on circular references. Toggle envelope fields (`includeId`, `includeSeq`, `includeLevelName`) to trade detail for speed. |
+| `pinoCompatCodec` / `pinoNdjsonProjector` | NDJSON | Encode-only Pino-shaped migration output with `level`, `time`, optional base fields, `msg`, `err`, and opt-in root data merging with reserved-key protection. |
 | `msgpackrCodec` | MessagePack (binary) | Compact binary encoding via [`msgpackr`](https://github.com/kriszyp/msgpackr); ideal for worker, WebSocket, and HTTP transports that accept binary payloads. |
 | `projectorCodec` | custom | Build a codec from a `project` step (shape the events) plus a `serialize` step (turn them into the wire payload). |
 

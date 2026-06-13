@@ -15,7 +15,7 @@ import { type Codec, type SafeStringifyOptions } from "@loggerjs/core";
  * everywhere, which also preserves `Error` name/message/stack inside data payloads.
  *
  * `includeId`, `includeSeq`, and `includeLevelName` trim the envelope for
- * pino-shaped minimal NDJSON output; turning `includeId` off also skips id
+ * lean comparable JSON output; turning `includeId` off also skips id
  * computation entirely on the record path.
  */
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
@@ -37,6 +37,7 @@ export declare function fastEventJsonCodec(options?: FastEventJsonCodecOptions):
 export * from "@loggerjs/core";
 export * from "./fast-event-json.js";
 export * from "./msgpackr.js";
+export * from "./pino-compat.js";
 export * from "./projector.js";
 ```
 
@@ -51,6 +52,23 @@ export interface MsgpackRuntime {
 }
 export type MsgpackrCodecOptions = MsgpackrOptions;
 export declare function msgpackrCodec(options?: MsgpackRuntime | MsgpackrCodecOptions): Codec<Uint8Array>;
+```
+
+## pino-compat.d.ts
+
+```ts
+import { type Codec, type SafeStringifyOptions } from "@loggerjs/core";
+export type PinoCompatCollisionPolicy = "nest" | "drop" | "throw";
+export interface PinoCompatCodecOptions extends SafeStringifyOptions {
+    base?: Record<string, unknown>;
+    dataKey?: string;
+    errorKey?: string;
+    includeLogger?: boolean;
+    mergeData?: boolean;
+    collision?: PinoCompatCollisionPolicy;
+}
+export declare function pinoCompatCodec(options?: PinoCompatCodecOptions): Codec<string>;
+export declare const pinoNdjsonProjector: typeof pinoCompatCodec;
 ```
 
 ## projector.d.ts

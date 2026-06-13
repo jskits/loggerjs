@@ -31,7 +31,8 @@ Key differences:
 - pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data, not per-key.
 - pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
 - pino-pretty's role is `consoleTransport()` (pretty by default).
-- For pino-shaped minimal output bytes, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Expect ~85% of pino throughput on that path ([BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
+- For Pino-shaped NDJSON, use `pinoCompatCodec()` from `@loggerjs/codecs`. Root data merging is opt-in (`mergeData: true`) and reserved key collisions are nested by default instead of overwriting `time`, `level`, `msg`, `pid`, `hostname`, or `err`.
+- For the fastest LoggerJS lean envelope, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Expect ~85% of pino throughput on that path ([BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
 
 ## From winston
 

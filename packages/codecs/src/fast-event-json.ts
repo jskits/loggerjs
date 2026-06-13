@@ -21,7 +21,7 @@ import {
  * everywhere, which also preserves `Error` name/message/stack inside data payloads.
  *
  * `includeId`, `includeSeq`, and `includeLevelName` trim the envelope for
- * pino-shaped minimal NDJSON output; turning `includeId` off also skips id
+ * lean comparable JSON output; turning `includeId` off also skips id
  * computation entirely on the record path.
  */
 export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
