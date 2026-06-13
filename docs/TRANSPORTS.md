@@ -12,6 +12,39 @@ A transport delivers log records or events to a destination. This page catalogs 
 | Vendor / observability | OTLP, Sentry, Datadog, Elastic, Loki, CloudWatch | HTTP wire transports run where their `fetch`/crypto/runtime requirements are present; SDK/provider adapters require the application-provided SDK object or provider. Vendor credentials are usually safer on servers or trusted workers. |
 | Database / local app / backend | `databaseTransport`, `postgresTransport`, `sqliteTransport` | Driver-agnostic at the LoggerJS layer, but the application must provide database drivers; intended for Node.js, Electron, CLIs, or backend workers. |
 
+## Reliability Posture
+
+Transports are composable by default. Some transports include batching or durable
+local storage internally; raw vendor wire transports do not retry unless you wrap
+them. Treat this table as the production delivery contract:
+
+| Transport or wrapper | Default posture | Production note |
+| --- | --- | --- |
+| `consoleTransport()` | immediate local write | Human/dev output; no retry or durability beyond the console target. |
+| `memoryTransport()` | in-memory ring buffer | Diagnostic cache only; lost on process/page exit. |
+| `testTransport()` | in-memory assertion sink | Test-only; not a production delivery mechanism. |
+| `batchTransport(inner)` | batched queue with optional retry/circuit breaker | Use around raw I/O transports when you need queue bounds, retries, backoff, or drop accounting. |
+| `retryTransport(inner)` | retried immediate delivery | Use when the inner transport already owns batching or when per-call retry is acceptable. |
+| `fallbackTransport(primary, fallback)` | fallback after primary failure | Use for local backup sinks, not as a replacement for queueing. |
+| `stdoutTransport()` / `stderrTransport()` | immediate stream write with drain-aware `flush()` | Local process sink; no retry after stream failure. |
+| `fileTransport()` | immediate file stream write with crash-path `flushSync()` | Local durability path; prefer one writer process per file. |
+| `rotatingFileTransport()` | synchronous local file writes | Local durability path with size rotation; blocks the caller while writing. |
+| `nodeHttpTransport()` | self-wrapped batched HTTP delivery | Uses `batchTransport`; tune queue, retry, and circuit options for production. |
+| `nodeSyslogTransport()` | immediate UDP/TCP syslog write | UDP can drop; TCP still depends on socket state and close/flush behavior. |
+| `workerTransport()` | worker offload with fallback on creation/post failure | Current worker path is fire-and-forget; use fallback until ready/ack lifecycle lands. |
+| `browserHttpTransport()` | batched fetch with optional offline queue and beacon pagehide mode | Use an IndexedDB queue for reload survival; beacon mode is best-effort and size limited. |
+| `memoryBrowserHttpOfflineQueue()` | in-memory offline queue | Survives network drops, not reloads or tab close. |
+| `indexedDbBrowserHttpOfflineQueue()` | IndexedDB offline queue | Survives reloads while quota/storage remains available. |
+| `offlineFirstTransport(remote)` | remote delivery plus persistent queue replay | Queues on offline or remote failure, then replays later. |
+| `indexedDbTransport()` | local IndexedDB persistence | Local support/export store; durability depends on browser storage policy and quota. |
+| `browserWebSocketTransport()` | queued while socket is closed | Reconnection is caller-owned; queued events can drop when bounded queues fill. |
+| `browserServiceWorkerTransport()` | queue until active service worker is available | Delivery depends on registration, activation, and worker lifetime. |
+| `browserBroadcastChannelTransport()` | lossy tab broadcast | Receivers must already be listening; not durable. |
+| `otlpHttpTransport()` | self-wrapped batched OTLP/HTTP delivery | Uses `batchTransport`; tune retry and circuit options for production. |
+| Datadog / Elastic / Loki / CloudWatch transports | raw HTTP wire delivery | Wrap with `batchTransport()` / `retryTransport()` for queueing, retry, and circuit breaking. |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | SDK/provider adapter | Reliability follows the SDK/provider you pass in. |
+| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | batched database writes | Adapter/driver owns actual transaction and connection behavior. |
+
 ## Core / Runtime-Neutral (`@loggerjs/core`)
 
 | Transport | What it does |
@@ -146,6 +179,21 @@ key management remain application-owned.
 ## Vendor packages
 
 Vendor HTTP transports speak the wire protocol directly over `fetch`. SDK/provider adapters such as Sentry and the OpenTelemetry bridge use the SDK object or provider your app already initialized. `otlpHttpTransport()` wraps itself in `batchTransport`; Datadog, Elastic, Loki, and CloudWatch expose `logBatch`, so wrap them with core reliability wrappers when you need queueing, retry, or circuit-breaker behavior.
+
+Production vendor usage should make the reliability wrapper visible:
+
+```ts
+import { batchTransport } from "@loggerjs/core";
+import { datadogLogsTransport } from "@loggerjs/datadog";
+
+const transport = batchTransport(datadogLogsTransport({ apiKey: process.env.DD_API_KEY }), {
+  maxRecords: 100,
+  maxWaitMs: 2000,
+  maxQueueSize: 5000,
+  maxRetries: 3,
+  circuitBreakerFailureThreshold: 5,
+});
+```
 
 | Package | Transport | Destination |
 | --- | --- | --- |
