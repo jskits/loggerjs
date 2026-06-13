@@ -2,15 +2,8 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      publish:
-        description: Publish packages to npm after validation
-        required: false
-        type: boolean
-        default: false
+    tags:
+      - "v*"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -27,6 +20,14 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Verify release tag is on main
+        run: |
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error title=Release tag is not on main::Release tags must point at commits reachable from origin/main."
+            exit 1
+          fi
 
       - uses: pnpm/action-setup@v6
         with:
@@ -55,30 +56,13 @@ jobs:
             echo "has_changesets=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Version packages
-        if: github.event_name == 'push' && steps.changesets.outputs.has_changesets == 'true'
-        run: |
-          pnpm version-packages
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "changeset version produced no files to commit"
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit --no-verify -m "chore(release): version packages"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Block publish with pending changesets
-        if: github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'true'
+        if: steps.changesets.outputs.has_changesets == 'true'
         run: |
-          echo "Pending changesets must be versioned before publishing."
+          echo "Pending changesets must be versioned and committed before tagging a release."
           exit 1
 
       - name: Validate npm publish token
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
         run: |
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
             {
@@ -113,21 +97,18 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
 
       - name: Publish dry run
-        if: github.event_name == 'push' || steps.changesets.outputs.has_changesets == 'false'
         run: pnpm release:publish:dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
       - name: Publish packages
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
         run: pnpm release:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
       - name: Push release tags
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && steps.changesets.outputs.has_changesets == 'false')
         run: |
           pnpm exec changeset tag
           git push origin 'refs/tags/@loggerjs/*:refs/tags/@loggerjs/*'

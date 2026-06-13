@@ -1,95 +1,105 @@
 # @loggerjs/browser
 
-Browser transports and integrations for automatic client-side collection.
+> Browser transports, offline persistence, and 19 automatic integrations — re-exports all of `@loggerjs/core`.
+
+[![npm](https://img.shields.io/npm/v/@loggerjs/browser.svg)](https://www.npmjs.com/package/@loggerjs/browser)
+[![license](https://img.shields.io/npm/l/@loggerjs/browser)](../../LICENSE)
+
+The browser platform package for [LoggerJS](../../README.md). It re-exports the entire `@loggerjs/core` API and adds HTTP / IndexedDB / WebSocket / service-worker / broadcast-channel transports, offline queues with replay, ZIP export, and a broad suite of integrations that turn console calls, errors, network failures, Web Vitals, routing, and lifecycle events into structured logs — all opt-in.
+
+## Install
+
+```bash
+npm install @loggerjs/browser @loggerjs/processors
+```
+
+## Usage
 
 ```ts
 import {
   browserHttpTransport,
-  browserCompressionPayloadTransform,
-  browserBroadcastChannelTransport,
-  browserServiceWorkerTransport,
-  browserWebSocketTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
   captureFetchIntegration,
-  captureFrameworkErrorsIntegration,
-  capturePerformanceIntegration,
-  captureReportingIntegration,
-  captureRouterIntegration,
-  captureRuntimeHostIntegration,
-  captureServiceWorkerIntegration,
-  captureUserActionsIntegration,
-  captureWebSocketIntegration,
   captureWebVitalsIntegration,
   createLogger,
-  downloadBlob,
-  exportLogsToZip,
-  indexedDbBrowserHttpOfflineQueue,
-  indexedDbTransport,
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
-
-const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
-const localStore = indexedDbTransport({
-  durability: "relaxed",
-  maxEntries: 50_000,
-  storageBucketName: "loggerjs-logs",
-  storageBucketDurability: "relaxed",
-  ttlMs: 7 * 24 * 60 * 60 * 1000,
-});
+import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
-  name: "web",
+  category: ["web"],
+  level: "info",
+  processors: [redactProcessor()],
   transports: [
     browserHttpTransport({
       url: "/api/logs",
-      offlineQueue: indexedDbBrowserHttpOfflineQueue({ maxEntries: 500 }),
-      transformPayload: browserCompressionPayloadTransform(),
+      offlineQueue: memoryBrowserHttpOfflineQueue({ maxEntries: 500 }),
       useBeaconOnPageHide: true,
     }),
-    browserBroadcastChannelTransport({ channelName: "loggerjs" }),
-    browserServiceWorkerTransport(),
-    browserWebSocketTransport({ url: "wss://example.com/logs" }),
-    localStore,
   ],
   integrations: [
     captureConsoleIntegration({ levels: ["warn", "error"] }),
     captureBrowserErrorsIntegration(),
     captureFetchIntegration(),
-    frameworkErrors,
-    captureReportingIntegration(),
-    captureRouterIntegration(),
-    captureRuntimeHostIntegration({ electronChannels: ["main:error"] }),
-    captureServiceWorkerIntegration(),
-    captureUserActionsIntegration(),
-    captureWebSocketIntegration(),
     captureWebVitalsIntegration(),
-    capturePerformanceIntegration({ entryTypes: ["navigation", "resource", "longtask"] }),
     pageLifecycleIntegration(),
   ],
 });
 
 logger.info("page loaded");
-
-const zip = await exportLogsToZip(localStore, { source: "indexeddb" });
-downloadBlob(zip, "loggerjs-logs.zip");
-
-// React ErrorBoundary: componentDidCatch(error, info) {
-//   frameworkErrors.reactComponentDidCatch(error, info);
-// }
 ```
 
-Use `memoryBrowserHttpOfflineQueue()` for short-lived in-memory retry buffers, or
-`indexedDbBrowserHttpOfflineQueue()` when payloads must survive page reloads.
-Use `indexedDbTransport()` when the browser should keep a local, queryable log store.
-It can opt into IndexedDB transaction durability hints and Chrome Storage Buckets
-for better isolation when the browser supports them. For high-throughput local
-capture on modern Chrome, prefer `durability: "relaxed"` with a dedicated
-`storageBucketName` and `storageBucketDurability: "relaxed"`; unsupported browsers
-fall back to the regular IndexedDB instance. Call `localStore.stats()` to read
-flush, prune, query, drop, and buffer-depth counters for observability.
-Use `exportLogsToZip()` and `downloadBlob()` to export persisted browser logs as a
-standard zip file containing `logs.ndjson` and `manifest.json`.
+Logs batch over HTTP, queue while offline, replay with backoff when the network returns, and flush via `sendBeacon` when the tab closes.
 
-Subpaths expose `transport-http`, `payload-transforms`, `transport-broadcast-channel`, `transport-service-worker`, `transport-websocket`, `transport-indexeddb`, `offline-indexeddb`, `offline-first-transport`, `export-zip`, `integration-console`, `integration-context`, `integration-errors`, `integration-fetch`, `integration-xhr`, `integration-framework-errors`, `integration-framework-routers`, `integration-reporting`, `integration-router`, `integration-runtime-host`, `integration-service-worker`, `integration-user-actions`, `integration-websocket`, `integration-web-vitals`, `integration-performance`, and `integration-page-lifecycle`.
+## Transports
+
+| Transport | Delivers to |
+| --- | --- |
+| `browserHttpTransport` | your collector — batching, offline queue, online replay with backoff, `sendBeacon` on page hide |
+| `indexedDbTransport` | a local, queryable IndexedDB store (TTL, pruning, optional Storage Buckets and durability hints) |
+| `browserWebSocketTransport` | a WebSocket (codec-encoded batches, queues while closed) |
+| `browserServiceWorkerTransport` | a service worker for centralized delivery |
+| `browserBroadcastChannelTransport` | other tabs via `BroadcastChannel` |
+| `offlineFirstTransport` | a local store first, then forwards online |
+
+### Offline queues & export
+
+- `memoryBrowserHttpOfflineQueue()` — short-lived in-memory retry buffer.
+- `indexedDbBrowserHttpOfflineQueue()` — survives page reloads.
+- `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson` and `manifest.json`.
+- Call the `indexedDbTransport()` instance's `stats()` to read flush, prune, query, drop, and buffer-depth counters.
+
+## Integrations (19)
+
+| Group | Integrations |
+| --- | --- |
+| **Console & errors** | `captureConsoleIntegration`, `captureBrowserErrorsIntegration`, `captureFrameworkErrorsIntegration`, `captureReportingIntegration` |
+| **Network** | `captureFetchIntegration`, `captureXHRIntegration`, `captureWebSocketIntegration` |
+| **Performance** | `captureWebVitalsIntegration`, `capturePerformanceIntegration` |
+| **Navigation** | `captureRouterIntegration`, `nextRouterIntegration`, `reactRouterIntegration`, `vueRouterIntegration`, `nuxtRouterIntegration` |
+| **Lifecycle & context** | `pageLifecycleIntegration`, `captureUserActionsIntegration`, `captureServiceWorkerIntegration`, `captureRuntimeHostIntegration`, `browserContextPropagationIntegration` |
+
+Integrations patch through an unpatched-original registry and a re-entrancy guard, so the console transport never loops back through console capture. Framework error hooks expose `reactComponentDidCatch()`, `vueErrorHandler()`, etc.:
+
+```ts
+const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" });
+// In a React ErrorBoundary:
+// componentDidCatch(error, info) { frameworkErrors.reactComponentDidCatch(error, info); }
+```
+
+## Subpath exports
+
+Transports — `transport-http` · `transport-indexeddb` · `transport-websocket` · `transport-service-worker` · `transport-broadcast-channel` · `offline-first-transport` · `offline-indexeddb` · `export-zip` · `payload-transforms`
+
+Integrations — `integration-console` · `integration-errors` · `integration-framework-errors` · `integration-reporting` · `integration-fetch` · `integration-xhr` · `integration-websocket` · `integration-web-vitals` · `integration-performance` · `integration-router` · `integration-framework-routers` · `integration-page-lifecycle` · `integration-user-actions` · `integration-service-worker` · `integration-runtime-host` · `integration-context`
+
+## Documentation
+
+- [Transports](../../docs/TRANSPORTS.md) · [Integrations](../../docs/INTEGRATIONS.md) · [Operations](../../docs/OPERATIONS.md)
+- [Getting Started](../../docs/GETTING-STARTED.md) · [LoggerJS root README](../../README.md)
+
+## License
+
+[MIT](../../LICENSE) © JS Kits

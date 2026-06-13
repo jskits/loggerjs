@@ -39,7 +39,7 @@ The workflow uses token authentication for npm publishing and OIDC for provenanc
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
-Pushes to `main` run validation and publish. When pending changesets exist, the workflow first commits the versioned package metadata back to `main`, then publishes from that same checked-out versioned tree. Publishing runs `pnpm release:publish`, which publishes each not-yet-published workspace package with `pnpm publish --provenance`, then creates release tags with the idempotent `changeset tag` command before pushing package tags. Manual runs without `publish=true` only validate and dry-run; manual runs with `publish=true` publish only when there are no pending changesets.
+Commits do not trigger publishing. To publish, first consume pending changesets with `pnpm version-packages`, commit the versioned package metadata, and push that commit through normal CI. After the version commit is on `main`, create and push a release tag such as `v0.0.3`; `.github/workflows/release.yml` only listens to `v*` tag pushes and rejects tags whose commits are not reachable from `origin/main`. The release job blocks if pending changesets still exist, runs `pnpm release:publish`, publishes each not-yet-published workspace package with `pnpm publish --provenance`, then creates package release tags with the idempotent `changeset tag` command before pushing `@loggerjs/*` package tags.
 
 For an organization-level npm secret, make sure the secret's repository access includes `jskits/loggerjs`. Public repositories are not covered when the secret is limited to private repositories only.
 

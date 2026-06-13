@@ -1,6 +1,6 @@
 # Processors and Middleware
 
-`@loggerjs/processors` is the toolbox for the pipeline's middle layer. Everything here is synchronous, ordered, and error-isolated: a throwing processor is reported to logger meta and the pipeline continues.
+`@loggerjs/processors` is the runtime-neutral toolbox for the pipeline's middle layer. Everything here is synchronous, ordered, and error-isolated: a throwing processor is reported to logger meta and the pipeline continues.
 
 Two flavors exist (see [CONCEPTS.md](CONCEPTS.md) for the full model):
 
@@ -8,6 +8,16 @@ Two flavors exist (see [CONCEPTS.md](CONCEPTS.md) for the full model):
 - **Processors** run on `LogEvent` after projection — required when you need the resolved event shape.
 
 Configuring any processor turns off the record fast path for that logger; middleware do not.
+
+## Runtime Support
+
+All 27 processors and middleware are supported in browser/frontend and Node.js/server runtimes. The package itself does not depend on DOM, IndexedDB, filesystem, streams, worker threads, or any vendor SDK.
+
+| Runtime | Support | Notes |
+| --- | --- | --- |
+| Browser / frontend | Supported | Use for enrichment, privacy scrubbing, sampling, dedupe, routing, breadcrumbs, schema checks, and browser-captured errors before data leaves the page. |
+| Node.js / server | Supported | Use the same processors with Node transports and integrations; stack parsing and error normalization work on standard JavaScript errors. |
+| Workers / edge / libraries | Supported | Keep custom provider functions synchronous. Routing and fingers-crossed targets must reference transports available in that runtime. |
 
 ## Enrichment
 

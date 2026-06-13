@@ -14,7 +14,7 @@
 
 [Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [Architecture](docs/ARCHITECTURE.md)
 
-<sub>**12 packages** · **35 integrations** · **25+ transports** · **27 processors** · **7 codecs** · **zero-dependency core**</sub>
+<sub>**12 packages** · **35 integrations** (**19 browser / 16 Node.js**) · **25+ transports** (core / browser / Node.js / vendor) · **27 runtime-neutral processors** · **7 codecs** · **zero-dependency core**</sub>
 
 </div>
 
@@ -24,7 +24,7 @@ LoggerJS is a monorepo of logging packages around a dependency-free, platform-ne
 
 - **Integrations** collect logs automatically from platform behavior — browser console calls, script errors, fetch/XHR failures, Web Vitals, route changes, Node process crashes, HTTP servers, serverless handlers, queue and database clients. All opt-in.
 - **Middleware / processors** synchronously enrich, redact, sample, dedupe, rate-limit, fingerprint, buffer (fingers-crossed), route, and tag logs before delivery. Middleware run on raw records; processors run on projected events.
-- **Transports** deliver logs anywhere — console, stdout, files, HTTP, IndexedDB, WebSocket, service workers, worker threads, OTLP, Sentry, Datadog, Elasticsearch, Loki, CloudWatch, SQL databases — with shared batching, retry, backoff, and circuit-breaker machinery.
+- **Transports** deliver logs anywhere — console, stdout, files, HTTP, IndexedDB, WebSocket, service workers, worker threads, OTLP, Sentry, Datadog, Elasticsearch, Loki, CloudWatch, SQL databases — with reusable batching, retry, backoff, and circuit-breaker wrappers where the destination needs them.
 - **Codecs belong to transports.** The pipeline keeps values raw; each destination owns its serialization. Built-in codecs are fast by default and never lose a log to an encoding error.
 
 <table>
@@ -38,7 +38,7 @@ Zero-dependency core, zero platform APIs, a type surface that compiles without D
 <td width="50%" valign="top">
 
 🎣 **Automatic collection, first-class**<br/>
-35 opt-in integrations turn platform behavior — console, errors, fetch/XHR, Web Vitals, routing, process crashes, frameworks — into structured logs.
+35 opt-in integrations — 19 browser/frontend and 16 Node.js/server — turn platform behavior into structured logs.
 
 </td>
 </tr>
@@ -60,7 +60,7 @@ Crash-path `flushSync`, beacon on page close, offline replay, batch retry with c
 <td width="50%" valign="top">
 
 🧩 **Composable pipeline**<br/>
-27 middleware and processors enrich, redact, sample, dedupe, rate-limit, fingerprint, route, and buffer — on raw records or projected events.
+27 runtime-neutral middleware and processors enrich, redact, sample, dedupe, rate-limit, fingerprint, route, and buffer — on raw records or projected events.
 
 </td>
 <td width="50%" valign="top">
@@ -294,31 +294,46 @@ The hot path is deliberate: level gating before any allocation, lazy message res
 | [`@loggerjs/cloudwatch`](packages/cloudwatch) | CloudWatch Logs transport with built-in SigV4 signing                                                                                                                                                              |
 | [`@loggerjs/database`](packages/database)     | SQLite / Postgres / custom-adapter batch transports                                                                                                                                                                |
 
-Vendor transports speak wire protocols directly — **no vendor SDKs bundled**.
+Vendor HTTP transports speak wire protocols directly; SDK/provider adapters use the SDK object or provider your app already owns. **No vendor SDKs are bundled.**
 
 ## The Ecosystem
 
 <details>
-<summary><strong>25+ transports</strong> — every destination shares batching, retry, backoff, and circuit-breaker machinery</summary>
+<summary><strong>Runtime support at a glance</strong> — what runs in browser, Node.js, or both</summary>
 
 <br/>
 
-**Core** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport`, plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
+| Capability family | Browser / frontend | Node.js / server | Runtime-neutral |
+| --- | --- | --- | --- |
+| Integrations | 19 first-party browser collectors | 16 first-party Node.js collectors | Core exposes the integration API; automatic capture lives in platform packages. |
+| Transports | HTTP, IndexedDB, WebSocket, service worker, BroadcastChannel, offline-first | stdout/stderr, files, rotation, HTTP, syslog, worker threads, database-backed transports | console, memory, test, batch/retry/fallback wrappers; vendor HTTP transports can run where their credentials and fetch/runtime requirements are safe. |
+| Processors / middleware | All 27 supported | All 27 supported | `@loggerjs/processors` has no browser or Node.js platform dependency; only routed transport targets are runtime-specific. |
 
-**Node** (`@loggerjs/node`) — `stdoutTransport` · `stderrTransport` · `fileTransport` · `rotatingFileTransport` · `nodeHttpTransport` · `nodeSyslogTransport` · `workerTransport`
+See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRANSPORTS.md), and [docs/PROCESSORS.md](docs/PROCESSORS.md) for the full support notes.
 
-**Browser** (`@loggerjs/browser`) — `browserHttpTransport` · `indexedDbTransport` · `browserWebSocketTransport` · `browserServiceWorkerTransport` · `browserBroadcastChannelTransport` · `offlineFirstTransport`
+</details>
 
-**Observability & vendors** — `otlpHttpTransport` · `openTelemetryLogBridgeTransport` · `sentryTransport` · `datadogLogsTransport` · `elasticTransport` · `lokiTransport` · `cloudWatchLogsTransport`
+<details>
+<summary><strong>25+ transports</strong> — core/browser/Node.js/vendor destinations plus reusable reliability wrappers</summary>
 
-**Databases** — `databaseTransport` · `postgresTransport` · `sqliteTransport`
+<br/>
+
+**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport`, plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
+
+**Node.js / server** (`@loggerjs/node`) — `stdoutTransport` · `stderrTransport` · `fileTransport` · `rotatingFileTransport` · `nodeHttpTransport` · `nodeSyslogTransport` · `workerTransport`
+
+**Browser / frontend** (`@loggerjs/browser`) — `browserHttpTransport` · `indexedDbTransport` · `browserWebSocketTransport` · `browserServiceWorkerTransport` · `browserBroadcastChannelTransport` · `offlineFirstTransport`
+
+**Observability & vendors** — `otlpHttpTransport` · `openTelemetryLogBridgeTransport` · `sentryTransport` · `datadogLogsTransport` · `elasticTransport` · `lokiTransport` · `cloudWatchLogsTransport`. HTTP wire transports depend on `fetch`/crypto and credential placement; SDK/provider adapters use the SDK object or provider your app already owns.
+
+**Databases / local app / backend** — `databaseTransport` · `postgresTransport` · `sqliteTransport`. These require application-provided database drivers and are intended for Node.js, Electron, CLIs, or backend workers.
 
 See [docs/TRANSPORTS.md](docs/TRANSPORTS.md) for options and how to write your own.
 
 </details>
 
 <details>
-<summary><strong>35 integrations</strong> — opt-in automatic collection from platform behavior</summary>
+<summary><strong>35 integrations</strong> — 19 browser/frontend + 16 Node.js/server automatic collectors</summary>
 
 <br/>
 
@@ -340,7 +355,7 @@ Every integration uses re-entrancy guards and an unpatched-original registry so 
 </details>
 
 <details>
-<summary><strong>27 processors &amp; middleware</strong> — synchronous, error-isolated, composable</summary>
+<summary><strong>27 processors &amp; middleware</strong> — runtime-neutral, synchronous, error-isolated, composable</summary>
 
 <br/>
 
@@ -352,7 +367,7 @@ _Routing & control:_ `routeProcessor` · `filterProcessor` · `levelOverrideProc
 _Buffering:_ `fingersCrossedProcessor` · `breadcrumbBufferProcessor`
 _Development:_ `schemaDevCheckProcessor`
 
-Middleware run on raw records before id/message/error work; processors run on projected events. See [docs/PROCESSORS.md](docs/PROCESSORS.md) for ordering guidance.
+Middleware run on raw records before id/message/error work; processors run on projected events. The processor package is platform-neutral and works in browser, Node.js, workers, and edge runtimes; only route/fingers-crossed targets depend on transports available in that runtime. See [docs/PROCESSORS.md](docs/PROCESSORS.md) for ordering guidance.
 
 </details>
 
@@ -374,7 +389,7 @@ LoggerJS shines when the logging problem spans **browser and server** collection
 | Capability                             | LoggerJS | Pino | Winston | LogTape |
 | -------------------------------------- | :------: | :--: | :-----: | :-----: |
 | Isomorphic (browser + Node, one API)   |    ✅    |  ⚠️  |   ⚠️    |   ✅    |
-| Automatic collection (integrations)    |  ✅ 35   |  ❌  |   ⚠️    |   ⚠️    |
+| Automatic collection (integrations)    |  ✅ 19 browser / 16 Node   |  ❌  |   ⚠️    |   ⚠️    |
 | Built-in batching / retry / offline    |    ✅    |  ⚠️  |   ⚠️    |   ⚠️    |
 | Transport-owned codecs                 |    ✅    |  ⚠️  |   ⚠️    |   ⚠️    |
 | Library-safe (silent until configured) |    ✅    |  ⚠️  |   ⚠️    |   ✅    |

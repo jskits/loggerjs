@@ -4,7 +4,17 @@ Integrations collect logs automatically from platform behavior. They are always 
 
 Privacy guidance for what to enable and how to sanitize lives in [OPERATIONS.md](OPERATIONS.md).
 
-## Browser (`@loggerjs/browser`)
+## Runtime Support
+
+| Runtime | Support | Count | Notes |
+| --- | --- | --- | --- |
+| Browser / frontend | First-party automatic collectors in `@loggerjs/browser` | 19 | Console, script errors, fetch/XHR, WebSocket, Web Vitals, Performance API, routing, user actions, service worker, extension/Electron renderer hooks, and browser context propagation. |
+| Node.js / server | First-party automatic collectors in `@loggerjs/node` | 16 | Process crashes, diagnostics channels, HTTP frameworks, outgoing clients, CLI/serverless lifecycle, queues, and database clients. |
+| Runtime-neutral / core | Integration API only in `@loggerjs/core` | — | The core package defines the integration contract and loop-prevention helpers, but platform capture lives in the browser and Node.js packages. |
+
+Custom integrations should feature-detect their platform surface and no-op when the surface is unavailable.
+
+## Browser / Frontend (`@loggerjs/browser`)
 
 | Integration | Captures | Notes |
 | --- | --- | --- |
@@ -25,7 +35,7 @@ Privacy guidance for what to enable and how to sanitize lives in [OPERATIONS.md]
 | `browserContextPropagationIntegration()` | session/request/action and trace context | Adds ambient context providers for traceparent, baggage, session id, request id, and recent user action. |
 | `nextRouterIntegration()` / `reactRouterIntegration()` / `vueRouterIntegration()` / `nuxtRouterIntegration()` | framework router transitions | Thin adapters over common router APIs; sanitize URLs before logging. |
 
-## Node (`@loggerjs/node`)
+## Node.js / Server (`@loggerjs/node`)
 
 | Integration | Captures | Notes |
 | --- | --- | --- |

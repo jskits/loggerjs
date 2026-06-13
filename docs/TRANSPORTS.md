@@ -2,7 +2,17 @@
 
 A transport delivers log records or events to a destination. This page catalogs every built-in transport and shows how to write your own. Exact option types live in each package's TypeScript declarations and `api-reports/`.
 
-## Core (`@loggerjs/core`)
+## Runtime Support
+
+| Runtime | Transport support | Notes |
+| --- | --- | --- |
+| Core / runtime-neutral | `consoleTransport`, `memoryTransport`, `testTransport`, `batchTransport`, `retryTransport`, `fallbackTransport` | These do not require browser or Node.js-only APIs. Wrappers work around any transport available in the current runtime. |
+| Browser / frontend | `browserHttpTransport`, IndexedDB queues/store, WebSocket, service worker, BroadcastChannel, offline-first replay | Uses browser APIs such as `fetch`, `sendBeacon`, `IndexedDB`, `navigator.onLine`, service workers, and BroadcastChannel with feature detection and fallbacks where available. |
+| Node.js / server | `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, `nodeSyslogTransport`, `workerTransport` | Uses Node.js streams, filesystem, worker threads, network sockets, and Node fetch. |
+| Vendor / observability | OTLP, Sentry, Datadog, Elastic, Loki, CloudWatch | HTTP wire transports run where their `fetch`/crypto/runtime requirements are present; SDK/provider adapters require the application-provided SDK object or provider. Vendor credentials are usually safer on servers or trusted workers. |
+| Database / local app / backend | `databaseTransport`, `postgresTransport`, `sqliteTransport` | Driver-agnostic at the LoggerJS layer, but the application must provide database drivers; intended for Node.js, Electron, CLIs, or backend workers. |
+
+## Core / Runtime-Neutral (`@loggerjs/core`)
 
 | Transport | What it does |
 | --- | --- |
@@ -40,7 +50,7 @@ Notes:
 - Drops are always counted in logger meta (`transport.dropped.*`); the `onDrop` event conversion only happens when a listener is registered.
 - A failed batch is re-queued at the head; the circuit breaker stops hammering a dead endpoint.
 
-## Node (`@loggerjs/node`)
+## Node.js / Server (`@loggerjs/node`)
 
 | Transport | What it does |
 | --- | --- |
@@ -63,7 +73,7 @@ nodeHttpTransport({
 });
 ```
 
-## Browser (`@loggerjs/browser`)
+## Browser / Frontend (`@loggerjs/browser`)
 
 | Transport | What it does |
 | --- | --- |
@@ -135,13 +145,13 @@ key management remain application-owned.
 
 ## Vendor packages
 
-All vendor transports speak the wire protocol directly over `fetch` and wrap themselves in `batchTransport`; none pull in a vendor SDK (Sentry peers on `@sentry/core` only).
+Vendor HTTP transports speak the wire protocol directly over `fetch`. SDK/provider adapters such as Sentry and the OpenTelemetry bridge use the SDK object or provider your app already initialized. `otlpHttpTransport()` wraps itself in `batchTransport`; Datadog, Elastic, Loki, and CloudWatch expose `logBatch`, so wrap them with core reliability wrappers when you need queueing, retry, or circuit-breaker behavior.
 
 | Package | Transport | Destination |
 | --- | --- | --- |
 | `@loggerjs/otel` | `otlpHttpTransport({ url })` | OTLP/HTTP JSON logs endpoint; `otlpJsonCodec()` and mapping helpers exported. |
 | `@loggerjs/otel` | `openTelemetryLogBridgeTransport()` | Bridge into an OpenTelemetry `LoggerProvider`. |
-| `@loggerjs/sentry` | `sentryTransport({ client })` | Sentry structured logs, breadcrumbs, exception/message capture. |
+| `@loggerjs/sentry` | `sentryTransport({ sentry })` | Sentry structured logs, breadcrumbs, exception/message capture. |
 | `@loggerjs/datadog` | `datadogLogsTransport({ apiKey })` | Datadog Logs intake API. |
 | `@loggerjs/elastic` | `elasticTransport({ url, index })` | Elasticsearch `_bulk` API with per-record index/pipeline/id selection. |
 | `@loggerjs/loki` | `lokiTransport({ url })` | Grafana Loki push API with stream labels and structured metadata. |

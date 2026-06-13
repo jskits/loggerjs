@@ -1,31 +1,44 @@
 # @loggerjs/processors
 
-Compatibility processor package for common synchronous middleware behavior.
+> The composable middleware and processor toolbox for LoggerJS — redact, sample, dedupe, rate-limit, fingerprint, enrich, route, and buffer.
+
+[![npm](https://img.shields.io/npm/v/@loggerjs/processors.svg)](https://www.npmjs.com/package/@loggerjs/processors)
+[![license](https://img.shields.io/npm/l/@loggerjs/processors)](../../LICENSE)
+
+Synchronous, error-isolated steps that run inside the [LoggerJS](../../README.md) pipeline before delivery. **Middleware** run on the raw `LogRecord` (before id/message/error work); **processors** run on the projected `LogEvent`. Both are sandboxed — a throwing step is reported to logger meta and never corrupts other records or blocks delivery.
+
+## Install
+
+```bash
+npm install @loggerjs/processors
+```
+
+## Usage
+
+```ts
+import { createLogger } from "@loggerjs/node";
+import { redactProcessor, sampleProcessor, tagsMiddleware } from "@loggerjs/processors";
+
+const logger = createLogger({
+  category: ["api"],
+  middleware: [tagsMiddleware({ service: "checkout" })],
+  processors: [
+    redactProcessor({ keys: ["password", "token", /secret/i] }),
+    sampleProcessor({ rates: { debug: 0.1, info: 1, warn: 1, error: 1, fatal: 1 } }),
+  ],
+});
+```
+
+<details>
+<summary>Full example — middleware and processors side by side</summary>
 
 ```ts
 import {
-  contextMiddleware,
-  enrichMiddleware,
-  tagsMiddleware,
-  traceContextMiddleware,
-  typeMiddleware,
-  breadcrumbBufferProcessor,
-  dedupeProcessor,
-  dynamicSamplerProcessor,
-  enrichProcessor,
-  filterProcessor,
-  fingerprintProcessor,
-  fingersCrossedProcessor,
-  levelOverrideProcessor,
-  normalizeErrorProcessor,
-  privacyGuardProcessor,
-  rateLimitProcessor,
-  redactProcessor,
-  routeProcessor,
-  sampleProcessor,
-  schemaDevCheckProcessor,
-  stackParserProcessor,
-  tagsProcessor,
+  contextMiddleware, enrichMiddleware, tagsMiddleware, traceContextMiddleware, typeMiddleware,
+  breadcrumbBufferProcessor, dedupeProcessor, dynamicSamplerProcessor, enrichProcessor,
+  filterProcessor, fingerprintProcessor, fingersCrossedProcessor, levelOverrideProcessor,
+  normalizeErrorProcessor, privacyGuardProcessor, rateLimitProcessor, redactProcessor,
+  routeProcessor, sampleProcessor, schemaDevCheckProcessor, stackParserProcessor, tagsProcessor,
 } from "@loggerjs/processors";
 
 const middleware = [
@@ -59,9 +72,33 @@ const processors = [
 ];
 ```
 
-Prefer record middleware for metadata and enrichment that can run before event projection. Legacy
-processors remain available for compatibility and for event-only behavior such as routing, schema
-checks, sampling, buffering, and filtering. Expensive I/O and serialization belong in transports.
-`fingersCrossedProcessor` can receive a `flushTo` transport or sink when buffered pre-trigger events
-must be replayed. `routeProcessor` targets transport names, so configure named transports when using
-per-event routing.
+</details>
+
+## The toolbox
+
+| Group | Steps |
+| --- | --- |
+| **Redaction & privacy** | `redactProcessor`, `privacyGuardProcessor` |
+| **Sampling & volume** | `sampleProcessor`, `dynamicSamplerProcessor`, `rateLimitProcessor`, `dedupeProcessor`, `coalesceProcessor` |
+| **Enrichment & tagging** | `enrichProcessor` / `enrichMiddleware`, `tagsProcessor` / `tagsMiddleware`, `typeProcessor` / `typeMiddleware`, `contextProcessor` / `contextMiddleware`, `traceContextProcessor` / `traceContextMiddleware` |
+| **Errors** | `normalizeErrorProcessor`, `fingerprintProcessor`, `stackParserProcessor`, `symbolicateStackProcessor` |
+| **Routing & control** | `routeProcessor`, `filterProcessor`, `levelOverrideProcessor` |
+| **Buffering** | `fingersCrossedProcessor`, `breadcrumbBufferProcessor` |
+| **Development** | `schemaDevCheckProcessor` |
+
+## Ordering & cost
+
+- **Prefer middleware** for metadata and enrichment that can run before event projection — it's the cheapest place to drop or annotate a record.
+- **Use processors** for event-only behavior: routing, schema checks, sampling, buffering, and filtering on the resolved event shape.
+- **Configuring any processor disables the record fast path** for that logger, because every log must then be projected to an event. That is the correct trade when you need event-level behavior — see [PROCESSORS.md](../../docs/PROCESSORS.md) and [PERFORMANCE.md](../../docs/PERFORMANCE.md).
+- `fingersCrossedProcessor` accepts a `flushTo` transport or sink to replay buffered pre-trigger events. `routeProcessor` targets **named** transports, so name the transports you route to. Expensive I/O and serialization belong in transports, not processors.
+
+## Documentation
+
+- [Processors](../../docs/PROCESSORS.md) — the full reference and ordering guidance
+- [Operations](../../docs/OPERATIONS.md) — privacy defaults and what to redact
+- [Concepts](../../docs/CONCEPTS.md) · [LoggerJS root README](../../README.md)
+
+## License
+
+[MIT](../../LICENSE) © JS Kits
