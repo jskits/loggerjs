@@ -91,7 +91,7 @@ the filesystem before the log call returns.
 | **Clients** | `nodeFetchIntegration`, `nodeHttpClientIntegration`, `redisIntegration`, `prismaIntegration`, `databaseIntegration` |
 | **Queues** | `queueIntegration`, `bullMqIntegration` |
 
-`captureProcessIntegration()` turns uncaught exceptions (fatal), unhandled rejections, warnings, and exit into log events; with `exitOnUncaught` it flushes synchronously before exiting. Every integration is tagged `source: "integration:<name>"` and guarded against capture loops.
+`captureProcessIntegration()` turns uncaught exceptions (fatal), unhandled rejections, warnings, and exit into log events; with `exitOnUncaught` it captures the fatal record, calls `flushSync()`, waits for bounded async `flush()`, then exits. Every integration is tagged `source: "integration:<name>"` and guarded against capture loops.
 
 ### Context manager
 

@@ -1,3 +1,8 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createIntegrationSetupContext,
@@ -10,7 +15,17 @@ import { captureProcessIntegration } from "../src";
 const nodeProcess = process as typeof process & {
   listenerCount: (event: string) => number;
   listeners: (event: string) => Array<(...args: unknown[]) => void>;
+  platform: string;
 };
+const testDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(testDir, "../../..");
+const tsxBin = join(
+  repoRoot,
+  "node_modules",
+  ".bin",
+  nodeProcess.platform === "win32" ? "tsx.cmd" : "tsx",
+);
+const crashFixture = join(testDir, "fixtures", "crash-child.ts");
 
 function createLogger(overrides: Partial<LoggerLike> = {}): LoggerLike {
   return {
@@ -53,10 +68,14 @@ function lastListener<T extends (...args: never[]) => void>(event: string): T {
 
 describe("captureProcessIntegration", () => {
   const teardowns: Array<() => void> = [];
+  const tempDirs: string[] = [];
 
   afterEach(() => {
     while (teardowns.length > 0) {
       teardowns.pop()?.();
+    }
+    for (const dir of tempDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 
@@ -214,5 +233,23 @@ describe("captureProcessIntegration", () => {
       },
       source: "integration:capture-process",
     });
+  });
+
+  it("persists a fatal uncaught exception before process exit", () => {
+    const dir = mkdtempSync(join(tmpdir(), "loggerjs-crash-"));
+    tempDirs.push(dir);
+    const outputPath = join(dir, "logs", "fatal.ndjson");
+
+    const result = spawnSync(tsxBin, [crashFixture, outputPath], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      timeout: 5000,
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    const output = readFileSync(outputPath, "utf8");
+    expect(output).toContain("fixture fatal crash");
+    expect(output).toContain("uncaughtException");
   });
 });

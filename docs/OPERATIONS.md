@@ -99,6 +99,17 @@ Crash-path guidance:
 - Use HTTP/OTLP remote transports for normal delivery, not as the only fatal-path sink.
 - Keep processor work synchronous and bounded; crash handlers should not perform slow enrichment.
 
+For `uncaughtException` with `exitOnUncaught: true`, the sequence is:
+
+1. Capture a `fatal` record with `process.kind: "uncaughtException"`.
+2. Call `flushSync()` on sync-capable transports.
+3. Run a bounded async `flush()` race controlled by `flushTimeoutMs` (default `250` ms).
+4. Exit with code `1`.
+
+For signals with `exitOnSignal: true`, LoggerJS captures a fatal signal record,
+uses the same sync-plus-bounded-async flush sequence, then exits with the signal
+exit code when known (`SIGTERM` -> `143`, `SIGINT` -> `130`).
+
 ## Remote Transport Reliability
 
 Batch-based transports support the same core reliability options:

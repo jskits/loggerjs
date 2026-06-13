@@ -39,7 +39,7 @@ Custom integrations should feature-detect their platform surface and no-op when 
 
 | Integration | Captures | Notes |
 | --- | --- | --- |
-| `captureProcessIntegration()` | `uncaughtException` (fatal), `unhandledRejection`, warnings, exit | `exitOnUncaught` flushes synchronously, then exits after a bounded async flush window. |
+| `captureProcessIntegration()` | `uncaughtException` (fatal), `unhandledRejection`, warnings, exit | With `exitOnUncaught`, captures a fatal record, calls `flushSync()`, waits up to `flushTimeoutMs` for async `flush()`, then exits with code `1`. |
 | `diagnosticsChannelIntegration()` | Node `diagnostics_channel` messages (http, undici, custom channels) | Message payload capture off by default. |
 | `expressIntegration(logger)` | request completion with status, route, duration, request id | Returns an Express middleware; optional `withContext` binding per request. |
 | `fastifyIntegration(logger)` | request lifecycle via onRequest/onError/onResponse hooks | Returns a Fastify plugin; state keyed in a WeakMap. |
