@@ -1,12 +1,13 @@
 # Proposal: Production Hardening - Lessons from Pino
 
-**Status:** Draft for discussion
+**Status:** Implementation baseline
 **Date:** 2026-06-13
 **Scope:** `@loggerjs/node`, `@loggerjs/core`, `@loggerjs/codecs`, browser transports,
 vendor transports, docs
 
-> Code references below are a snapshot taken against the working tree on 2026-06-13.
-> Verify line numbers before editing.
+> This proposal records the baseline that motivated the production-hardening work.
+> Some baseline rows intentionally describe the pre-implementation state; use the
+> package docs and API reports as the current behavior reference.
 
 ## 1. Thesis
 
@@ -47,9 +48,9 @@ what may be lost, and how users can see degradation before it becomes an outage.
 - Optimizing a single microbenchmark at the cost of middleware, integrations,
   routing, or codec ownership.
 
-## 2. Verified Current State
+## 2. Baseline State Before This Plan
 
-| Area | Current state | Hardening implication |
+| Area | Baseline state | Hardening implication |
 | --- | --- | --- |
 | Transport interface | `Transport` has `write`, `writeBatch`, `log`, `logBatch`, `flush`, `flushSync`, and `close`; it has no `ready` contract. | Add lifecycle semantics deliberately before wiring broad metrics or worker startup behavior. |
 | Meta metrics | Core has global counters and gauges through `getLoggerSelfMetrics()`. Batch transport already reports queue and circuit gauges. | Metrics plumbing exists, but naming and per-transport coverage are inconsistent. |
