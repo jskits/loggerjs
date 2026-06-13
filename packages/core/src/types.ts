@@ -145,6 +145,7 @@ export interface TransportContext {
 export interface Transport {
   name?: string;
   minLevel?: LoggerLevel;
+  ready?: () => void | Promise<void>;
   write?: (record: LogRecord, context: TransportContext) => void | Promise<void>;
   writeBatch?: (records: LogRecord[], context: TransportContext) => void | Promise<void>;
   log?: (event: LogEvent, context: TransportContext) => void | Promise<void>;
@@ -208,6 +209,7 @@ export interface LoggerLike {
     payload: TPayload,
     options?: EventLogOptions<TPayload>,
   ) => void;
+  ready: () => Promise<void>;
   flush: () => Promise<void>;
   flushSync?: () => void;
   close: () => Promise<void>;

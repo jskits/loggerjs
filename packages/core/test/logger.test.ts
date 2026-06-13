@@ -390,6 +390,23 @@ describe("logger core skeleton", () => {
     expect(internalErrors).toEqual([{ phase: "transport", transport: "rejecting" }]);
   });
 
+  it("waits for transport readiness only when requested", async () => {
+    const ready = vi.fn<() => Promise<void>>(async () => {});
+    const log = vi.fn<NonNullable<Transport["log"]>>();
+    const logger = createLogger({
+      transports: [{ name: "async-sink", ready, log }],
+    });
+
+    logger.info("order created");
+
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(ready).not.toHaveBeenCalled();
+
+    await logger.ready();
+
+    expect(ready).toHaveBeenCalledTimes(1);
+  });
+
   it("routes events to named transports from processor metadata", () => {
     const local = memoryTransport({ name: "local" });
     const remote = memoryTransport({ name: "remote" });

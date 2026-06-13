@@ -36,6 +36,7 @@ function createLogger(flush: LoggerLike["flush"]): LoggerLike {
     fatal: vi.fn<LoggerLike["fatal"]>(),
     captureException: vi.fn<LoggerLike["captureException"]>(),
     event: () => {},
+    ready: vi.fn<LoggerLike["ready"]>(async () => {}),
     flush,
     close: vi.fn<LoggerLike["close"]>(async () => {}),
   };

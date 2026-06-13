@@ -72,6 +72,7 @@ A transport implements any of four methods:
 interface Transport {
   name?: string;
   minLevel?: LoggerLevel;
+  ready?(): void | Promise<void>;
   write?(record: LogRecord, context: TransportContext): void | Promise<void>;
   writeBatch?(records: LogRecord[], context: TransportContext): void | Promise<void>;
   log?(event: LogEvent, context: TransportContext): void | Promise<void>;
@@ -86,6 +87,8 @@ interface Transport {
 - Event transports (`log`/`logBatch`) receive projected events.
 - `context.toEvent(record)` converts on demand; the result is memoized per record, so several transports share one projection and ids stay stable across conversions.
 - Errors thrown by a transport (sync or async) are caught and reported to logger meta; one failing transport never blocks the others.
+- `ready()` is explicit and opt-in. Normal log calls do not wait for transport startup; callers that need startup confirmation call `logger.ready()`.
+- `close()` must include its own best-effort flush before resource release. Core calls `close()` when it exists and falls back to `flush()` only when a transport has no `close()`.
 
 ## Codecs Belong to Transports
 

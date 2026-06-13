@@ -225,6 +225,10 @@ export class RegistryLogger implements LoggerLike {
     getRuntimeLogger(this.category)?.event(definition, payload, options);
   }
 
+  async ready(): Promise<void> {
+    await getRuntimeLogger(this.category)?.ready();
+  }
+
   async flush(): Promise<void> {
     await getRuntimeLogger(this.category)?.flush();
   }

@@ -57,4 +57,20 @@ describe("logger registry", () => {
 
     expect(close).toHaveBeenCalledTimes(1);
   });
+
+  it("forwards explicit readiness checks to selected transports", async () => {
+    const ready = vi.fn<() => Promise<void>>(async () => {});
+    const transport: Transport = {
+      name: "custom",
+      ready,
+    };
+
+    await configure({
+      transports: { custom: transport },
+    });
+
+    await getLogger("app").ready();
+
+    expect(ready).toHaveBeenCalledTimes(1);
+  });
 });

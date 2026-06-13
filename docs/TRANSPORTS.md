@@ -193,6 +193,8 @@ const recordSink: Transport = {
 Rules of the road:
 
 - Throwing (sync or rejected promise) is safe: errors are reported to logger meta and other transports keep running. Do not swallow your own errors silently — let them surface.
+- Implement `ready()` when callers can explicitly wait for startup. `logger.ready()` is opt-in; normal log calls never wait for transport readiness.
 - Implement `flush()` if you buffer, `flushSync()` if you can drain synchronously on crash paths, `close()` if you hold resources.
+- If you implement `close()`, include your own best-effort flush before releasing resources. Core calls `close()` when present and falls back to `flush()` only for transports without `close()`.
 - Prefer `logBatch`/`writeBatch` plus `batchTransport` for anything that does I/O; per-event network calls do not survive production traffic.
 - Encoding raw records directly skips the logger's `idFactory`; records get the documented `defaultRecordId`. Convert via `context.toEvent()` when custom ids matter. See [CODECS.md](CODECS.md).

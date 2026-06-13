@@ -476,6 +476,10 @@ export class Logger implements LoggerLike {
     this.log("error", error instanceof Error ? error.message : "Captured exception", payload);
   }
 
+  async ready() {
+    await Promise.all(this.transports.map((transport) => transport.ready?.()));
+  }
+
   async flush() {
     await Promise.all(this.transports.map((transport) => transport.flush?.()));
   }

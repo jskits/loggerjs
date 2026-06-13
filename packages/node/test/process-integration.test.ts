@@ -22,6 +22,7 @@ function createLogger(overrides: Partial<LoggerLike> = {}): LoggerLike {
     error: vi.fn<LoggerLike["error"]>(),
     fatal: vi.fn<LoggerLike["fatal"]>(),
     captureException: vi.fn<LoggerLike["captureException"]>(),
+    ready: vi.fn<LoggerLike["ready"]>(async () => {}),
     flush: vi.fn<LoggerLike["flush"]>(async () => {}),
     close: vi.fn<LoggerLike["close"]>(async () => {}),
     ...overrides,

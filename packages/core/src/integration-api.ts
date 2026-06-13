@@ -104,6 +104,7 @@ export function createIntegrationSetupContext(
     fatal: (...args) => options.logger.fatal(...args),
     captureException: (...args) => options.logger.captureException(...args),
     event: (...args) => options.logger.event(...args),
+    ready: () => options.logger.ready(),
     flush: () => options.logger.flush(),
     flushSync: () => options.logger.flushSync?.(),
     close: () => options.logger.close(),
