@@ -30,6 +30,18 @@ const integrations = [
 ];
 ```
 
+`redactProcessor()` masks by key, exact dot path, regex, or custom matcher. Paths
+are relative to each redacted event field (`user.password`, not
+`data.user.password`). Use `replacement` (or the Pino-compatible `censor` alias)
+to mask values, and `remove: true` when the field should be omitted from the
+event. LoggerJS does not compile redaction paths with `eval` or `new Function`;
+wildcard-like regexes and deep traversal are safer than generated code but cost
+more than exact keys and paths.
+
+`privacyGuardProcessor()` is broader: it scans selected fields for built-in and
+custom string patterns such as emails, bearer tokens, and card-like values. Use
+it as a safety net, not as a replacement for capture allowlists.
+
 ## Browser Queue And Offline Replay
 
 `browserHttpTransport()` batches records in memory and can persist failed payloads into an offline queue adapter. The built-in memory queue is intentionally small and dependency-free; applications that need reload survival should provide an IndexedDB-backed adapter with the same interface.

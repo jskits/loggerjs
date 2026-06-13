@@ -212,7 +212,7 @@ Execution model:
 
 Built-ins should cover:
 
-- `redact`: compiled path/key redaction with copy-on-write on matched branches
+- `redact`: safe path/key redaction with copy-on-write on matched branches
 - `sample`: level/category/key-based sampling, with error and fatal defaulting to full retention
 - `rateLimit`: token bucket by category/level/source
 - `dedupe`: fingerprinted burst collapse

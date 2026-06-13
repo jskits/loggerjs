@@ -33,11 +33,30 @@ All 27 processors and middleware are supported in browser/frontend and Node.js/s
 
 | Export | What it does |
 | --- | --- |
-| `redactProcessor(options)` | Mask values by key name, path, or regex across data/context/tags. Copy-on-write so async transports never see half-redacted objects. |
-| `privacyGuardProcessor(options)` | Blanket PII scrubbing with built-in patterns (emails, phone numbers, card-like digits) plus custom patterns. |
+| `redactProcessor(options)` | Mask or remove values by key name, exact dot path, or regex across data/context/tags/structured errors. `censor` is a non-breaking alias for `replacement`. Copy-on-write so async transports never see half-redacted objects. |
+| `privacyGuardProcessor(options)` | Blanket PII scrubbing with built-in patterns (emails, bearer tokens, card-like digits) plus custom patterns. |
 | `normalizeErrorProcessor(options)` | Force error shape: stack truncation, cause-chain depth limits, enumerable property capture. |
 | `stackParserProcessor(options)` / `parseStack(stack)` | Parse stacks into structured frames (file, line, column, function). |
 | `schemaDevCheckProcessor(options)` | Development-only event shape validation; flags drift between typed events and actual payloads. |
+
+### Redaction behavior
+
+`redactProcessor()` is intentionally synchronous and interpreter-based. LoggerJS
+does not compile user-supplied paths with `eval` or `new Function`; custom
+matchers run as normal functions inside the processor error boundary.
+
+Options:
+
+- `keys`: case-insensitive key names, regexes that match key or full path, or a custom `(key, path, value) => boolean` matcher.
+- `paths`: exact dot paths relative to each redacted event field, such as `user.password` or `request.headers.authorization`; these are not glob patterns.
+- `replacement`: value written for matches; default `"[REDACTED]"`.
+- `censor`: Pino-compatible alias for `replacement`; ignored when `replacement` is set.
+- `remove`: omit matched object properties instead of replacing them.
+- `maxDepth`: maximum traversal depth; default `8`.
+
+Cost is proportional to traversed object size times matcher count. Prefer exact
+keys and paths for hot loggers; reserve broad regexes and deep traversal for
+edge loggers or lower-volume error paths.
 
 ## Volume Control
 

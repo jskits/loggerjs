@@ -50,7 +50,7 @@ const middleware = [
 ];
 
 const processors = [
-  redactProcessor({ keys: ["password", "token", /secret/i] }),
+  redactProcessor({ keys: ["password", "token", /secret/i], censor: "[hidden]" }),
   privacyGuardProcessor({ maxStringLength: 8192, allowKeys: ["publicToken"] }),
   schemaDevCheckProcessor({
     validators: { "order.created": (data) => (typeof data === "object" && data ? true : "bad payload") },
@@ -91,6 +91,7 @@ const processors = [
 - **Prefer middleware** for metadata and enrichment that can run before event projection — it's the cheapest place to drop or annotate a record.
 - **Use processors** for event-only behavior: routing, schema checks, sampling, buffering, and filtering on the resolved event shape.
 - **Configuring any processor disables the record fast path** for that logger, because every log must then be projected to an event. That is the correct trade when you need event-level behavior — see [PROCESSORS.md](../../docs/PROCESSORS.md) and [PERFORMANCE.md](../../docs/PERFORMANCE.md).
+- `redactProcessor()` supports exact `keys`/`paths`, regex/custom matchers, the Pino-compatible `censor` alias, and `remove: true` for omitting matched object fields. It does not compile user paths with `eval` or `new Function`.
 - `fingersCrossedProcessor` accepts a `flushTo` transport or sink to replay buffered pre-trigger events. `routeProcessor` targets **named** transports, so name the transports you route to. Expensive I/O and serialization belong in transports, not processors.
 
 ## Documentation

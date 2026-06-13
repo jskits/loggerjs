@@ -364,6 +364,8 @@ export interface RedactOptions {
     keys?: RedactMatcher[];
     paths?: string[];
     replacement?: string;
+    censor?: string;
+    remove?: boolean;
     maxDepth?: number;
 }
 export declare function redactProcessor(options?: RedactOptions): Processor;

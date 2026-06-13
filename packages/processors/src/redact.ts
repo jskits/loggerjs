@@ -9,13 +9,20 @@ export interface RedactOptions {
   keys?: RedactMatcher[];
   paths?: string[];
   replacement?: string;
+  censor?: string;
+  remove?: boolean;
   maxDepth?: number;
 }
 
 function matchesKey(key: string, path: string, value: unknown, matchers: RedactMatcher[]): boolean {
   return matchers.some((matcher) => {
     if (typeof matcher === "string") return matcher.toLowerCase() === key.toLowerCase();
-    if (matcher instanceof RegExp) return matcher.test(key) || matcher.test(path);
+    if (matcher instanceof RegExp) {
+      matcher.lastIndex = 0;
+      const keyMatches = matcher.test(key);
+      matcher.lastIndex = 0;
+      return keyMatches || matcher.test(path);
+    }
     return matcher(key, path, value);
   });
 }
@@ -26,7 +33,7 @@ function pathMatches(path: string, paths: string[]): boolean {
 
 function redactValue(
   value: unknown,
-  options: Required<Pick<RedactOptions, "replacement" | "maxDepth">> &
+  options: Required<Pick<RedactOptions, "replacement" | "remove" | "maxDepth">> &
     Pick<RedactOptions, "keys" | "paths">,
   path = "",
   depth = 0,
@@ -58,6 +65,7 @@ function redactValue(
       matchesKey(key, childPath, child, options.keys ?? []) ||
       pathMatches(childPath, options.paths ?? [])
     ) {
+      if (options.remove) continue;
       out[key] = options.replacement;
     } else {
       out[key] = redactValue(child, options, childPath, depth + 1, seen);
@@ -80,7 +88,8 @@ export function redactProcessor(options: RedactOptions = {}): Processor {
       "api_key",
     ],
     paths: options.paths ?? [],
-    replacement: options.replacement ?? "[REDACTED]",
+    replacement: options.replacement ?? options.censor ?? "[REDACTED]",
+    remove: options.remove ?? false,
     maxDepth: options.maxDepth ?? 8,
   };
 

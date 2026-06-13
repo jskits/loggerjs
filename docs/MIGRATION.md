@@ -28,7 +28,8 @@ Key differences:
 
 - **Argument order flips**: pino takes `(mergeObject, message)`, LoggerJS takes `(message, data)`. Errors go first in both: `logger.error(err, "msg")`.
 - pino `base` fields split into `tags` (stable, low-cardinality) and `bindings` (context fields merged into `context`).
-- pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data, not per-key.
+- pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data before serialization.
+- pino redaction maps to `redactProcessor({ paths, censor, remove })`; `replacement` is the LoggerJS-native name for `censor`, and exact key/path matching is preferred on hot loggers.
 - pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
 - pino-pretty's role is `consoleTransport()` (pretty by default).
 - For Pino-shaped NDJSON, use `pinoCompatCodec()` from `@loggerjs/codecs`. Root data merging is opt-in (`mergeData: true`) and reserved key collisions are nested by default instead of overwriting `time`, `level`, `msg`, `pid`, `hostname`, or `err`.
