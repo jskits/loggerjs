@@ -407,6 +407,24 @@ describe("logger core skeleton", () => {
     expect(ready).toHaveBeenCalledTimes(1);
   });
 
+  it("uses close instead of fallback flush when both transport hooks exist", async () => {
+    const close = vi.fn<NonNullable<Transport["close"]>>();
+    const flush = vi.fn<NonNullable<Transport["flush"]>>();
+    const fallbackFlush = vi.fn<NonNullable<Transport["flush"]>>();
+    const logger = createLogger({
+      transports: [
+        { name: "closable", close, flush },
+        { name: "flush-only", flush: fallbackFlush },
+      ],
+    });
+
+    await logger.close();
+
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(flush).not.toHaveBeenCalled();
+    expect(fallbackFlush).toHaveBeenCalledTimes(1);
+  });
+
   it("routes events to named transports from processor metadata", () => {
     const local = memoryTransport({ name: "local" });
     const remote = memoryTransport({ name: "remote" });

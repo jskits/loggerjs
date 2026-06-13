@@ -565,7 +565,10 @@ export class Logger implements LoggerLike {
       }
     }
     await Promise.all(
-      this.transports.map((transport) => transport.close?.() ?? transport.flush?.()),
+      this.transports.map((transport) => {
+        if (transport.close) return transport.close();
+        return transport.flush?.();
+      }),
     );
   }
 
