@@ -60,7 +60,7 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 | `browserHttpTransport` | your collector — batching, offline queue, online replay with backoff, `sendBeacon` on page hide |
 | `indexedDbTransport` | a local, queryable IndexedDB store (TTL, pruning, optional Storage Buckets and durability hints) |
 | `browserWebSocketTransport` | a WebSocket (codec-encoded batches, queues while closed) |
-| `browserServiceWorkerTransport` | a service worker for centralized delivery |
+| `browserServiceWorkerTransport` | a service worker for centralized delivery; `ready()` waits for `serviceWorker.ready` with `target: "ready"` |
 | `browserBroadcastChannelTransport` | other tabs via `BroadcastChannel` |
 | `offlineFirstTransport` | a local store first, then forwards online |
 

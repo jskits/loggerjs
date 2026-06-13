@@ -109,7 +109,7 @@ export function browserServiceWorkerTransport(
   const mapBatch = options.mapBatch ?? defaultMapBatch;
   const queue: QueueItem[] = [];
   let readyWorker: BrowserServiceWorkerLike | undefined;
-  let readyStarted = false;
+  let readyPromise: Promise<void> | undefined;
   let lastContext: TransportContext | undefined;
 
   const reportError = (
@@ -168,34 +168,47 @@ export function browserServiceWorkerTransport(
     }
   };
 
-  const startReady = (context: TransportContext) => {
-    if (target !== "ready" || readyStarted) return;
-    readyStarted = true;
+  const dropQueued = (reason: string) => {
+    const pending = queue.splice(0);
+    for (const item of pending) reportDrop(item, reason);
+    return pending.reduce((total, item) => total + item.events.length, 0);
+  };
+
+  const waitForReady = (context?: TransportContext) => {
+    const worker = currentWorker();
+    if (worker) return Promise.resolve();
+    if (target !== "ready") {
+      return Promise.reject(new Error("service worker controller is not available"));
+    }
+    if (readyPromise) return readyPromise;
     const container = options.serviceWorker ?? serviceWorkerContainer();
     if (!container?.ready) {
-      reportError(new Error("serviceWorker.ready is not available"), context, "ready");
-      return;
+      const error = new Error("serviceWorker.ready is not available");
+      const droppedEvents = dropQueued("ready");
+      reportError(error, context, "ready", droppedEvents);
+      return Promise.reject(error);
     }
-    void container.ready
+    readyPromise = container.ready
       .then((registration) => {
         readyWorker = workerFromRegistration(registration);
         if (!readyWorker) {
-          const pending = queue.splice(0);
-          for (const item of pending) reportDrop(item, "unavailable");
-          return;
+          throw new Error("service worker registration has no active worker");
         }
-        drain(context);
+        drain(context ?? lastContext);
       })
       .catch((error) => {
-        const pending = queue.splice(0);
-        for (const item of pending) reportDrop(item, "ready");
-        reportError(
-          error,
-          context,
-          "ready",
-          pending.reduce((total, item) => total + item.events.length, 0),
-        );
+        readyPromise = undefined;
+        const droppedEvents = dropQueued("ready");
+        reportError(error, context ?? lastContext, "ready", droppedEvents);
+        throw error;
       });
+    return readyPromise;
+  };
+
+  const startReady = (context: TransportContext) => {
+    void waitForReady(context).catch(() => {
+      // Errors are already reported through the transport context.
+    });
   };
 
   const enqueue = (item: QueueItem) => {
@@ -236,6 +249,9 @@ export function browserServiceWorkerTransport(
     minLevel: options.minLevel,
     queueSize() {
       return queue.length;
+    },
+    ready() {
+      return waitForReady();
     },
     log(event, context) {
       send({ events: [event], message: mapEvent(event, mapContext) }, context);

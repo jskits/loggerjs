@@ -38,7 +38,7 @@ them. Treat this table as the production delivery contract:
 | `offlineFirstTransport(remote)` | remote delivery plus persistent queue replay | Queues on offline or remote failure, then replays later. |
 | `indexedDbTransport()` | local IndexedDB persistence | Local support/export store; durability depends on browser storage policy and quota. |
 | `browserWebSocketTransport()` | queued while socket is closed | Reconnection is caller-owned; queued events can drop when bounded queues fill. |
-| `browserServiceWorkerTransport()` | queue until active service worker is available | Delivery depends on registration, activation, and worker lifetime. |
+| `browserServiceWorkerTransport()` | queue until active service worker is available; `ready()` can wait for `serviceWorker.ready` when `target: "ready"` | Delivery depends on registration, activation, and worker lifetime. |
 | `browserBroadcastChannelTransport()` | lossy tab broadcast | Receivers must already be listening; not durable. |
 | `otlpHttpTransport()` | self-wrapped batched OTLP/HTTP delivery | Uses `batchTransport`; tune retry and circuit options for production. |
 | Datadog / Elastic / Loki / CloudWatch transports | raw HTTP wire delivery | Wrap with `batchTransport()` / `retryTransport()` for queueing, retry, and circuit breaking. |
@@ -147,7 +147,7 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
 | `offlineFirstTransport(remote)` | Standard remote + persistent queue wrapper; queues while offline or when remote delivery fails, then replays later. |
 | `indexedDbTransport()` | Persist logs locally in IndexedDB with TTL/count/byte pruning, durability hints, optional Storage Bucket isolation, an async `query()` API, and `stats()` observability. |
 | `browserWebSocketTransport({ socket })` | Codec-encoded batches over a WebSocket; queues while the socket is closed (reconnection is the caller's responsibility). |
-| `browserServiceWorkerTransport()` | Posts events to a service worker, queueing until one is active. |
+| `browserServiceWorkerTransport()` | Posts events to a service worker, queueing until one is active; with `target: "ready"`, explicit `ready()` waits for `serviceWorker.ready`. |
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest and CRC for support workflows. |
 

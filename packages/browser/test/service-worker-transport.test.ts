@@ -108,6 +108,37 @@ describe("browserServiceWorkerTransport", () => {
     );
   });
 
+  it("exposes explicit readiness for the serviceWorker.ready target", async () => {
+    const worker = createWorker();
+    const ready = deferred<{ active: BrowserServiceWorkerLike }>();
+    const transport = browserServiceWorkerTransport({
+      serviceWorker: { ready: ready.promise },
+      source: "page-a",
+      target: "ready",
+    });
+
+    let settled = false;
+    const readyPromise = Promise.resolve(transport.ready?.()).then(() => {
+      settled = true;
+    });
+
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    transport.log?.(event, createContext());
+    expect(transport.queueSize()).toBe(1);
+
+    ready.resolve({ active: worker });
+    await readyPromise;
+
+    expect(settled).toBe(true);
+    expect(transport.queueSize()).toBe(0);
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      { event, source: "page-a", type: "loggerjs.event" },
+      undefined,
+    );
+  });
+
   it("drops newest messages when the ready queue is full", () => {
     const dropped: string[] = [];
     const transport = browserServiceWorkerTransport({
