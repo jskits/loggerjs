@@ -1,7 +1,7 @@
 # Proposal: Production Hardening - Lessons from Pino
 
-**Status:** Draft for discussion  
-**Date:** 2026-06-13  
+**Status:** Draft for discussion
+**Date:** 2026-06-13
 **Scope:** `@loggerjs/node`, `@loggerjs/core`, `@loggerjs/codecs`, browser transports,
 vendor transports, docs
 
