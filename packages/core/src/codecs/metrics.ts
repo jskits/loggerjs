@@ -1,4 +1,5 @@
 import { incrementLoggerMetaCounter } from "../meta";
+import { runLoggerDiagnostic } from "../diagnostics";
 import type { Codec, LogEvent, LogRecord } from "../types";
 
 export interface MetricsCodecOptions<TPayload = string | Uint8Array> {
@@ -36,34 +37,38 @@ export function metricsCodec<TPayload = string | Uint8Array>(
     name: `metrics(${codec.name})`,
     contentType: codec.contentType,
     encode(input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context) {
-      try {
-        const payload = codec.encode(input, context);
-        const bytes = byteLength(payload);
-        incrementLoggerMetaCounter("codec.encode");
-        incrementLoggerMetaCounter(`codec.encode.${name}`);
-        incrementLoggerMetaCounter("codec.encoded.bytes", bytes);
-        incrementLoggerMetaCounter(`codec.encoded.bytes.${name}`, bytes);
-        return payload;
-      } catch (error) {
-        incrementLoggerMetaCounter("codec.encode.errors");
-        incrementLoggerMetaCounter(`codec.encode.errors.${name}`);
-        throw error;
-      }
+      return runLoggerDiagnostic({ stage: "encode", codec: name }, () => {
+        try {
+          const payload = codec.encode(input, context);
+          const bytes = byteLength(payload);
+          incrementLoggerMetaCounter("codec.encode");
+          incrementLoggerMetaCounter(`codec.encode.${name}`);
+          incrementLoggerMetaCounter("codec.encoded.bytes", bytes);
+          incrementLoggerMetaCounter(`codec.encoded.bytes.${name}`, bytes);
+          return payload;
+        } catch (error) {
+          incrementLoggerMetaCounter("codec.encode.errors");
+          incrementLoggerMetaCounter(`codec.encode.errors.${name}`);
+          throw error;
+        }
+      });
     },
   };
 
   if (codec.decode) {
     wrapped.decode = (payload: TPayload) => {
-      try {
-        const decoded = codec.decode?.(payload) as LogEvent | LogEvent[];
-        incrementLoggerMetaCounter("codec.decode");
-        incrementLoggerMetaCounter(`codec.decode.${name}`);
-        return decoded;
-      } catch (error) {
-        incrementLoggerMetaCounter("codec.decode.errors");
-        incrementLoggerMetaCounter(`codec.decode.errors.${name}`);
-        throw error;
-      }
+      return runLoggerDiagnostic({ stage: "encode", codec: name, operation: "decode" }, () => {
+        try {
+          const decoded = codec.decode?.(payload) as LogEvent | LogEvent[];
+          incrementLoggerMetaCounter("codec.decode");
+          incrementLoggerMetaCounter(`codec.decode.${name}`);
+          return decoded;
+        } catch (error) {
+          incrementLoggerMetaCounter("codec.decode.errors");
+          incrementLoggerMetaCounter(`codec.decode.errors.${name}`);
+          throw error;
+        }
+      });
     };
   }
 

@@ -1,4 +1,5 @@
 import type { Codec, LogEvent } from "../types";
+import { runLoggerDiagnostic } from "../diagnostics";
 import { incrementLoggerMetaCounter } from "../meta";
 import { normalizeCodecInput, type CodecInput } from "../record";
 import { safeJsonStringify, type SafeStringifyOptions } from "../utils/safe-stringify";
@@ -8,7 +9,9 @@ export function jsonCodec(): Codec<string> {
     name: "json",
     contentType: "application/json",
     encode(input: CodecInput) {
-      return JSON.stringify(normalizeCodecInput(input));
+      return runLoggerDiagnostic({ stage: "encode", codec: "json" }, () =>
+        JSON.stringify(normalizeCodecInput(input)),
+      );
     },
     decode(payload: string) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
@@ -21,7 +24,9 @@ export function safeJsonCodec(options: SafeStringifyOptions = {}): Codec<string>
     name: "safe-json",
     contentType: "application/json",
     encode(input: CodecInput) {
-      return safeJsonStringify(normalizeCodecInput(input), options);
+      return runLoggerDiagnostic({ stage: "encode", codec: "safe-json" }, () =>
+        safeJsonStringify(normalizeCodecInput(input), options),
+      );
     },
     decode(payload: string) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
@@ -64,11 +69,13 @@ export function ndjsonCodec(options: SafeStringifyOptions = {}): Codec<string> {
     name: "ndjson",
     contentType: "application/x-ndjson",
     encode(input: CodecInput) {
-      const normalized = normalizeCodecInput(input);
-      if (!Array.isArray(normalized)) return `${encodeLine(normalized)}\n`;
-      let output = "";
-      for (const event of normalized) output += `${encodeLine(event)}\n`;
-      return output;
+      return runLoggerDiagnostic({ stage: "encode", codec: "ndjson" }, () => {
+        const normalized = normalizeCodecInput(input);
+        if (!Array.isArray(normalized)) return `${encodeLine(normalized)}\n`;
+        let output = "";
+        for (const event of normalized) output += `${encodeLine(event)}\n`;
+        return output;
+      });
     },
     decode(payload: string) {
       return payload

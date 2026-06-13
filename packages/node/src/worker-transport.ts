@@ -1,7 +1,9 @@
 import { Worker } from "node:worker_threads";
 import {
+  emitLoggerDiagnostic,
   incrementLoggerMetaCounter,
   safeJsonCodec,
+  setLoggerMetaGauge,
   toLevelValue,
   type Codec,
   type LogEvent,
@@ -124,6 +126,14 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
   let nextBatchId = 1;
   const pendingBatches = new Map<number, PendingBatch>();
 
+  const setPendingGauge = () => {
+    setLoggerMetaGauge(`transport.queue.depth.${transportName}`, pendingBatches.size);
+  };
+
+  const setReadyGauge = (value: number) => {
+    setLoggerMetaGauge(`transport.ready.${transportName}`, value);
+  };
+
   const reportInternalError = (error: unknown, operation: string) => {
     lastContext?.reportInternalError(error, {
       phase: "transport",
@@ -135,7 +145,15 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
   const markFailed = (error: unknown, operation: string) => {
     if (failed) return;
     failed = true;
+    setReadyGauge(0);
     incrementLoggerMetaCounter("transport.worker.failed");
+    emitLoggerDiagnostic({
+      stage: "worker",
+      phase: "error",
+      transport: transportName,
+      operation,
+      error,
+    });
     reportInternalError(error, operation);
     readyReject?.(error instanceof Error ? error : new Error(String(error)));
     failPendingBatches(operation);
@@ -150,6 +168,13 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
     if (!message) return;
     if (message.type === "loggerjs:ready") {
       ready = true;
+      setReadyGauge(1);
+      emitLoggerDiagnostic({
+        stage: "worker",
+        phase: "end",
+        transport: transportName,
+        operation: "ready",
+      });
       if (readyTimer) clearTimeout(readyTimer);
       readyResolve?.();
       return;
@@ -158,6 +183,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       const pending = pendingBatches.get(message.id);
       if (!pending) return;
       pendingBatches.delete(message.id);
+      setPendingGauge();
       if (pending.timer) clearTimeout(pending.timer);
       pending.resolve();
       incrementLoggerMetaCounter("transport.worker.ack");
@@ -183,6 +209,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
 
   const failPendingBatch = (pending: PendingBatch, reason: string) => {
     pendingBatches.delete(pending.id);
+    setPendingGauge();
     if (pending.timer) clearTimeout(pending.timer);
     incrementLoggerMetaCounter("transport.worker.pending-dropped", pending.events.length);
     void fallbackOrDropBatch(pending.events, pending.context, reason).finally(pending.resolve);
@@ -212,6 +239,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       worker.on?.("error", onWorkerError);
       worker.on?.("exit", onWorkerExit);
       worker.on?.("message", onWorkerMessage);
+      if (ready) setReadyGauge(1);
       return worker;
     } catch (error) {
       markFailed(error, "create-worker");
@@ -273,6 +301,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
         );
       }, ackTimeoutMs);
       pendingBatches.set(id, pending);
+      setPendingGauge();
     }
 
     try {

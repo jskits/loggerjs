@@ -23,3 +23,4 @@ export * from "./queue-integration";
 export * from "./redis-integration";
 export * from "./serverless-integration";
 export * from "./diagnostics-channel-integration";
+export * from "./logger-diagnostics";

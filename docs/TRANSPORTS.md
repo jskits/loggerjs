@@ -127,6 +127,16 @@ object messages. Lifecycle is opt-in:
 - `autoEnd` defaults to `true`; set `autoEnd: false` if the worker is shared and
   should not be terminated by transport `close()`.
 
+Worker lifecycle updates the standard transport gauges
+`transport.ready.<name>` and `transport.queue.depth.<name>`, and pending ack
+failures count `transport.worker.pending-dropped` plus
+`transport.dropped.<reason>`.
+
+For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
+`@loggerjs/node`. It publishes subscribed LoggerJS internals to
+`diagnostics_channel` channels named `loggerjs.dispatch`, `loggerjs.transport`,
+`loggerjs.flush`, `loggerjs.encode`, and `loggerjs.worker`.
+
 ## Browser / Frontend (`@loggerjs/browser`)
 
 | Transport | What it does |

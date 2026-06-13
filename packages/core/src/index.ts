@@ -10,6 +10,7 @@ export * from "./payload-transforms";
 export * from "./logger";
 export * from "./registry";
 export * from "./meta";
+export * from "./diagnostics";
 export * from "./middleware";
 export * from "./integration-api";
 export * from "./utils/error";

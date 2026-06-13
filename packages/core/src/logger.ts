@@ -7,6 +7,7 @@ import {
   type LoggerLevel,
 } from "./levels";
 import { getContext } from "./context";
+import { emitLoggerDiagnostic, loggerDiagnosticNow, loggerDiagnosticsEnabled } from "./diagnostics";
 import { getLogEventRoute } from "./event-route";
 import { createIntegrationSetupContext, onceTeardown } from "./integration-api";
 import { reportLoggerMetaError } from "./meta";
@@ -481,20 +482,75 @@ export class Logger implements LoggerLike {
   }
 
   async flush() {
-    await Promise.all(this.transports.map((transport) => transport.flush?.()));
+    const diagnostics = loggerDiagnosticsEnabled();
+    const start = diagnostics ? loggerDiagnosticNow() : undefined;
+    if (diagnostics) {
+      emitLoggerDiagnostic({ stage: "flush", phase: "start", logger: this.name });
+    }
+    try {
+      await Promise.all(this.transports.map((transport) => transport.flush?.()));
+      if (diagnostics && start !== undefined) {
+        emitLoggerDiagnostic({
+          stage: "flush",
+          phase: "end",
+          logger: this.name,
+          durationMs: loggerDiagnosticNow() - start,
+        });
+      }
+    } catch (error) {
+      if (diagnostics && start !== undefined) {
+        emitLoggerDiagnostic({
+          stage: "flush",
+          phase: "error",
+          logger: this.name,
+          durationMs: loggerDiagnosticNow() - start,
+          error,
+        });
+      }
+      throw error;
+    }
   }
 
   flushSync() {
+    const diagnostics = loggerDiagnosticsEnabled();
+    const start = diagnostics ? loggerDiagnosticNow() : undefined;
+    if (diagnostics) {
+      emitLoggerDiagnostic({
+        stage: "flush",
+        phase: "start",
+        logger: this.name,
+        operation: "flushSync",
+      });
+    }
     for (const transport of this.transports) {
       try {
         transport.flushSync?.();
       } catch (error) {
+        if (diagnostics) {
+          emitLoggerDiagnostic({
+            stage: "flush",
+            phase: "error",
+            logger: this.name,
+            transport: transport.name,
+            operation: "flushSync",
+            error,
+          });
+        }
         this.reportInternalError(error, {
           phase: "transport",
           transport: transport.name,
           operation: "flushSync",
         });
       }
+    }
+    if (diagnostics && start !== undefined) {
+      emitLoggerDiagnostic({
+        stage: "flush",
+        phase: "end",
+        logger: this.name,
+        operation: "flushSync",
+        durationMs: loggerDiagnosticNow() - start,
+      });
     }
   }
 
@@ -593,12 +649,41 @@ export class Logger implements LoggerLike {
   // Promise.resolve allocated a promise and a catch closure per log call.
   // Only attach rejection handling when the transport actually returned a
   // thenable. Sync throws are handled by the dispatch loop's try/catch.
-  private settleTransport(result: void | Promise<void>, transport: Transport) {
+  private settleTransport(
+    result: void | Promise<void>,
+    transport: Transport,
+    diagnosticStart?: number,
+  ): boolean {
     if (result && typeof (result as Promise<void>).then === "function") {
-      void (result as Promise<void>).catch((error: unknown) => {
-        this.reportInternalError(error, { phase: "transport", transport: transport.name });
-      });
+      void (result as Promise<void>).then(
+        () => {
+          if (diagnosticStart !== undefined) {
+            emitLoggerDiagnostic({
+              stage: "transport",
+              phase: "end",
+              logger: this.name,
+              transport: transport.name,
+              durationMs: loggerDiagnosticNow() - diagnosticStart,
+            });
+          }
+        },
+        (error: unknown) => {
+          if (diagnosticStart !== undefined) {
+            emitLoggerDiagnostic({
+              stage: "transport",
+              phase: "error",
+              logger: this.name,
+              transport: transport.name,
+              durationMs: loggerDiagnosticNow() - diagnosticStart,
+              error,
+            });
+          }
+          this.reportInternalError(error, { phase: "transport", transport: transport.name });
+        },
+      );
+      return true;
     }
+    return false;
   }
 
   // Unlike dispatchEvent, this path performs no route filtering: routes can only
@@ -608,24 +693,78 @@ export class Logger implements LoggerLike {
   // shouldDispatchEventToTransport.
   private dispatchRecord(record: LogRecord) {
     const context = this.getTransportContext();
+    const diagnostics = loggerDiagnosticsEnabled();
+    const dispatchStart = diagnostics ? loggerDiagnosticNow() : undefined;
+    if (diagnostics) {
+      emitLoggerDiagnostic({
+        stage: "dispatch",
+        phase: "start",
+        logger: this.name,
+        level: record.level,
+        count: 1,
+      });
+    }
 
-    for (let index = 0; index < this.transports.length; index += 1) {
-      const transport = this.transports[index];
-      if (!transport) continue;
-      if (transport.minLevel !== undefined && record.level < toLevelValue(transport.minLevel))
-        continue;
-      try {
-        if (transport.write) {
-          this.settleTransport(transport.write(record, context), transport);
-        } else if (transport.writeBatch) {
-          this.settleTransport(transport.writeBatch([record], context), transport);
-        } else if (transport.log) {
-          this.settleTransport(transport.log(context.toEvent(record), context), transport);
-        } else if (transport.logBatch) {
-          this.settleTransport(transport.logBatch([context.toEvent(record)], context), transport);
+    try {
+      for (let index = 0; index < this.transports.length; index += 1) {
+        const transport = this.transports[index];
+        if (!transport) continue;
+        if (transport.minLevel !== undefined && record.level < toLevelValue(transport.minLevel))
+          continue;
+        const transportStart = diagnostics ? loggerDiagnosticNow() : undefined;
+        if (diagnostics) {
+          emitLoggerDiagnostic({
+            stage: "transport",
+            phase: "start",
+            logger: this.name,
+            transport: transport.name,
+            level: record.level,
+            count: 1,
+          });
         }
-      } catch (error) {
-        this.reportInternalError(error, { phase: "transport", transport: transport.name });
+        try {
+          let result: void | Promise<void> = undefined;
+          if (transport.write) {
+            result = transport.write(record, context);
+          } else if (transport.writeBatch) {
+            result = transport.writeBatch([record], context);
+          } else if (transport.log) {
+            result = transport.log(context.toEvent(record), context);
+          } else if (transport.logBatch) {
+            result = transport.logBatch([context.toEvent(record)], context);
+          }
+          const asyncTransport = this.settleTransport(result, transport, transportStart);
+          if (diagnostics && transportStart !== undefined && !asyncTransport) {
+            emitLoggerDiagnostic({
+              stage: "transport",
+              phase: "end",
+              logger: this.name,
+              transport: transport.name,
+              durationMs: loggerDiagnosticNow() - transportStart,
+            });
+          }
+        } catch (error) {
+          if (diagnostics && transportStart !== undefined) {
+            emitLoggerDiagnostic({
+              stage: "transport",
+              phase: "error",
+              logger: this.name,
+              transport: transport.name,
+              durationMs: loggerDiagnosticNow() - transportStart,
+              error,
+            });
+          }
+          this.reportInternalError(error, { phase: "transport", transport: transport.name });
+        }
+      }
+    } finally {
+      if (diagnostics && dispatchStart !== undefined) {
+        emitLoggerDiagnostic({
+          stage: "dispatch",
+          phase: "end",
+          logger: this.name,
+          durationMs: loggerDiagnosticNow() - dispatchStart,
+        });
       }
     }
   }
@@ -642,24 +781,78 @@ export class Logger implements LoggerLike {
       return record;
     };
     const context = this.getTransportContext();
+    const diagnostics = loggerDiagnosticsEnabled();
+    const dispatchStart = diagnostics ? loggerDiagnosticNow() : undefined;
+    if (diagnostics) {
+      emitLoggerDiagnostic({
+        stage: "dispatch",
+        phase: "start",
+        logger: this.name,
+        level: event.level,
+        count: 1,
+      });
+    }
 
-    for (let index = 0; index < this.transports.length; index += 1) {
-      const transport = this.transports[index];
-      if (!transport || !shouldDispatchEventToTransport(event, transport, index)) continue;
-      if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel))
-        continue;
-      try {
-        if (transport.log) {
-          this.settleTransport(transport.log(event, context), transport);
-        } else if (transport.logBatch) {
-          this.settleTransport(transport.logBatch([event], context), transport);
-        } else if (transport.write) {
-          this.settleTransport(transport.write(recordForEvent(), context), transport);
-        } else if (transport.writeBatch) {
-          this.settleTransport(transport.writeBatch([recordForEvent()], context), transport);
+    try {
+      for (let index = 0; index < this.transports.length; index += 1) {
+        const transport = this.transports[index];
+        if (!transport || !shouldDispatchEventToTransport(event, transport, index)) continue;
+        if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel))
+          continue;
+        const transportStart = diagnostics ? loggerDiagnosticNow() : undefined;
+        if (diagnostics) {
+          emitLoggerDiagnostic({
+            stage: "transport",
+            phase: "start",
+            logger: this.name,
+            transport: transport.name,
+            level: event.level,
+            count: 1,
+          });
         }
-      } catch (error) {
-        this.reportInternalError(error, { phase: "transport", transport: transport.name });
+        try {
+          let result: void | Promise<void> = undefined;
+          if (transport.log) {
+            result = transport.log(event, context);
+          } else if (transport.logBatch) {
+            result = transport.logBatch([event], context);
+          } else if (transport.write) {
+            result = transport.write(recordForEvent(), context);
+          } else if (transport.writeBatch) {
+            result = transport.writeBatch([recordForEvent()], context);
+          }
+          const asyncTransport = this.settleTransport(result, transport, transportStart);
+          if (diagnostics && transportStart !== undefined && !asyncTransport) {
+            emitLoggerDiagnostic({
+              stage: "transport",
+              phase: "end",
+              logger: this.name,
+              transport: transport.name,
+              durationMs: loggerDiagnosticNow() - transportStart,
+            });
+          }
+        } catch (error) {
+          if (diagnostics && transportStart !== undefined) {
+            emitLoggerDiagnostic({
+              stage: "transport",
+              phase: "error",
+              logger: this.name,
+              transport: transport.name,
+              durationMs: loggerDiagnosticNow() - transportStart,
+              error,
+            });
+          }
+          this.reportInternalError(error, { phase: "transport", transport: transport.name });
+        }
+      }
+    } finally {
+      if (diagnostics && dispatchStart !== undefined) {
+        emitLoggerDiagnostic({
+          stage: "dispatch",
+          phase: "end",
+          logger: this.name,
+          durationMs: loggerDiagnosticNow() - dispatchStart,
+        });
       }
     }
   }

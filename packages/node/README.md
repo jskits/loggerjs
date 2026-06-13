@@ -89,6 +89,11 @@ with `{ type: "loggerjs:batch:ack", id }`. Pending batches fall back or are
 counted as drops when readiness, posting, ack, or worker exit fails. Set
 `autoEnd: false` for shared workers you close elsewhere.
 
+Call `installLoggerDiagnosticsChannel()` to publish LoggerJS internal
+diagnostics to Node `diagnostics_channel` channels such as `loggerjs.dispatch`,
+`loggerjs.transport`, `loggerjs.flush`, `loggerjs.encode`, and
+`loggerjs.worker`.
+
 ## Integrations (16)
 
 | Group | Integrations |
@@ -113,7 +118,7 @@ await withContext({ requestId: "req_123" }, async () => {
 
 ## Subpath exports
 
-Transports — `transport-stdout` · `transport-file` · `transport-rotating-file` · `transport-http` · `transport-syslog` · `transport-worker` · `payload-transforms` · `context`
+Transports — `transport-stdout` · `transport-file` · `transport-rotating-file` · `transport-http` · `transport-syslog` · `transport-worker` · `payload-transforms` · `logger-diagnostics` · `context`
 
 Integrations — `integration-process` · `integration-cli` · `integration-diagnostics` · `integration-serverless` · `integration-express` · `integration-fastify` · `integration-koa` · `integration-nest` · `integration-hapi` · `integration-fetch` · `integration-http-client` · `integration-redis` · `integration-prisma` · `integration-database` · `integration-queue` · `integration-bullmq`
 

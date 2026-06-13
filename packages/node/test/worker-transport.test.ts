@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getLoggerMetaGauges,
   getLoggerMetaStats,
   recordToEvent,
   resetLoggerMetaStats,
@@ -173,6 +174,10 @@ describe("workerTransport", () => {
 
     expect(flushed).toBe(true);
     expect(getLoggerMetaStats()).toMatchObject({ "transport.worker.ack": 1 });
+    expect(getLoggerMetaGauges()).toMatchObject({
+      "transport.ready.worker": 1,
+      "transport.queue.depth.worker": 0,
+    });
   });
 
   it("falls back pending batches when the worker exits after ready", async () => {

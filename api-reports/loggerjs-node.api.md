@@ -327,6 +327,7 @@ export * from "./queue-integration.js";
 export * from "./redis-integration.js";
 export * from "./serverless-integration.js";
 export * from "./diagnostics-channel-integration.js";
+export * from "./logger-diagnostics.js";
 ```
 
 ## internal-types.d.ts
@@ -367,6 +368,24 @@ export interface KoaIntegrationOptions {
     level?: (status: number, ctx: KoaContextLike, error: unknown) => LoggerLevel;
 }
 export declare function koaIntegration(logger: LoggerLike, options?: KoaIntegrationOptions): KoaMiddleware;
+```
+
+## logger-diagnostics.d.ts
+
+```ts
+import { type LoggerDiagnosticEvent } from "@loggerjs/core";
+export interface LoggerDiagnosticsChannelPublisher {
+    hasSubscribers?: boolean;
+    publish: (message: LoggerDiagnosticEvent) => void;
+}
+export interface LoggerDiagnosticsChannelModule {
+    channel: (name: string) => LoggerDiagnosticsChannelPublisher;
+}
+export interface InstallLoggerDiagnosticsChannelOptions {
+    diagnosticsChannel?: LoggerDiagnosticsChannelModule | null;
+    prefix?: string;
+}
+export declare function installLoggerDiagnosticsChannel(options?: InstallLoggerDiagnosticsChannelOptions): () => void;
 ```
 
 ## nest-integration.d.ts

@@ -143,6 +143,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
+    "./logger-diagnostics": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./context": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",

@@ -49,6 +49,32 @@ export declare function getContext(): BoundContext | undefined;
 export declare function withContext<T>(context: Record<string, unknown>, fn: () => T): T;
 ```
 
+## diagnostics.d.ts
+
+```ts
+export type LoggerDiagnosticStage = "encode" | "dispatch" | "transport" | "flush" | "worker";
+export type LoggerDiagnosticPhase = "start" | "end" | "error";
+export interface LoggerDiagnosticEvent {
+    stage: LoggerDiagnosticStage;
+    phase: LoggerDiagnosticPhase;
+    logger?: string;
+    transport?: string;
+    codec?: string;
+    operation?: string;
+    level?: number;
+    count?: number;
+    durationMs?: number;
+    error?: unknown;
+    detail?: Record<string, unknown>;
+}
+export type LoggerDiagnosticSink = (event: LoggerDiagnosticEvent) => void;
+export declare function setLoggerDiagnosticSink(next: LoggerDiagnosticSink | undefined): LoggerDiagnosticSink | undefined;
+export declare function loggerDiagnosticsEnabled(): boolean;
+export declare function emitLoggerDiagnostic(event: LoggerDiagnosticEvent): void;
+export declare function loggerDiagnosticNow(): number;
+export declare function runLoggerDiagnostic<T>(event: Omit<LoggerDiagnosticEvent, "phase" | "durationMs" | "error">, run: () => T): T;
+```
+
 ## event-route.d.ts
 
 ```ts
@@ -87,6 +113,7 @@ export * from "./payload-transforms.js";
 export * from "./logger.js";
 export * from "./registry.js";
 export * from "./meta.js";
+export * from "./diagnostics.js";
 export * from "./middleware.js";
 export * from "./integration-api.js";
 export * from "./utils/error.js";
@@ -186,6 +213,7 @@ export declare class Logger implements LoggerLike {
     error(message: unknown, data?: LogData | string, props?: LogData): void;
     fatal(message: unknown, data?: LogData | string, props?: LogData): void;
     captureException(error: unknown, data?: LogData): void;
+    ready(): Promise<void>;
     flush(): Promise<void>;
     flushSync(): void;
     close(): Promise<void>;
@@ -347,6 +375,7 @@ export declare class RegistryLogger implements LoggerLike {
     fatal(message: unknown, data?: LogData | string, props?: LogData): void;
     captureException(error: unknown, data?: LogData): void;
     event<TPayload extends Record<string, unknown>>(definition: EventDefinition<TPayload>, payload: TPayload, options?: EventLogOptions<TPayload>): void;
+    ready(): Promise<void>;
     flush(): Promise<void>;
     flushSync(): void;
     close(): Promise<void>;
@@ -766,6 +795,7 @@ export interface TransportContext {
 export interface Transport {
     name?: string;
     minLevel?: LoggerLevel;
+    ready?: () => void | Promise<void>;
     write?: (record: LogRecord, context: TransportContext) => void | Promise<void>;
     writeBatch?: (records: LogRecord[], context: TransportContext) => void | Promise<void>;
     log?: (event: LogEvent, context: TransportContext) => void | Promise<void>;
@@ -804,6 +834,7 @@ export interface LoggerLike {
     fatal: (message: unknown, data?: LogData | string, props?: LogData) => void;
     captureException: (error: unknown, data?: LogData) => void;
     event: <TPayload extends Record<string, unknown>>(definition: EventDefinition<TPayload>, payload: TPayload, options?: EventLogOptions<TPayload>) => void;
+    ready: () => Promise<void>;
     flush: () => Promise<void>;
     flushSync?: () => void;
     close: () => Promise<void>;
