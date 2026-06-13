@@ -57,6 +57,14 @@ Vitest per package, `test/*.test.ts`. House style:
 - Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
 
+Additional CI gates cover the runtime and quality surface:
+
+- `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
+- `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
+- `pnpm test:quality` runs coverage thresholds, mutation testing, and the concurrent soak runner.
+- `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
+- `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.
+
 ## Releasing
 
 See [RELEASE.md](RELEASE.md). Short version: changesets accumulate on `main`; the release workflow versions, builds, runs the full gate, and publishes with provenance.

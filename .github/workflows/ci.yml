@@ -136,3 +136,85 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:e2e:browser
+
+  live-integrations:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        provider:
+          - elastic
+          - loki
+    timeout-minutes: 20
+    env:
+      ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
+      ELASTIC_DOCKER_IMAGE: ${{ vars.ELASTIC_DOCKER_IMAGE }}
+      ELASTIC_URL: ${{ vars.ELASTIC_URL }}
+      LOKI_DOCKER_IMAGE: ${{ vars.LOKI_DOCKER_IMAGE }}
+      LOKI_TENANT_ID: ${{ vars.LOKI_TENANT_ID }}
+      LOKI_URL: ${{ vars.LOKI_URL }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/live-integrations.mjs --provider=${{ matrix.provider }}
+
+  external-live-integrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      CLOUDWATCH_ENDPOINT: ${{ vars.CLOUDWATCH_ENDPOINT }}
+      CLOUDWATCH_LOG_GROUP: ${{ vars.CLOUDWATCH_LOG_GROUP }}
+      CLOUDWATCH_LOG_STREAM: ${{ vars.CLOUDWATCH_LOG_STREAM }}
+      DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY }}
+      DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+      DATADOG_SEARCH_URL: ${{ vars.DATADOG_SEARCH_URL }}
+      DATADOG_SERVICE: ${{ vars.DATADOG_SERVICE }}
+      DATADOG_SITE: ${{ vars.DATADOG_SITE }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Report external live integration configuration
+        run: pnpm test:live:config -- --provider=datadog,cloudwatch
+
+      - name: Run Datadog live integration
+        if: env.DATADOG_API_KEY != '' && env.DATADOG_APP_KEY != ''
+        run: node scripts/live-integrations.mjs --provider=datadog
+
+      - name: Skip Datadog live integration
+        if: env.DATADOG_API_KEY == '' || env.DATADOG_APP_KEY == ''
+        run: echo "DATADOG_API_KEY or DATADOG_APP_KEY is not configured; skipping Datadog live integration."
+
+      - name: Run CloudWatch live integration
+        if: env.AWS_REGION != '' && env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != '' && env.CLOUDWATCH_LOG_GROUP != ''
+        run: node scripts/live-integrations.mjs --provider=cloudwatch
+
+      - name: Skip CloudWatch live integration
+        if: env.AWS_REGION == '' || env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == '' || env.CLOUDWATCH_LOG_GROUP == ''
+        run: echo "AWS credentials/region or CLOUDWATCH_LOG_GROUP is not configured; skipping CloudWatch live integration."
