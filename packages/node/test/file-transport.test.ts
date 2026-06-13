@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { fileTransport } from "../src";
 
@@ -70,5 +70,21 @@ describe("fileTransport", () => {
     const content = readFileSync(path, "utf8");
     expect(content).toContain("fatal crash");
     expect(content).not.toContain("existing");
+  });
+
+  it("reports async stream errors through the transport context", async () => {
+    const path = join(dirname(tempFile()), "missing", "app.log");
+    const reportInternalError = vi.fn<TransportContext["reportInternalError"]>();
+    const transport = fileTransport({ path });
+
+    transport.log?.(event, { ...context, reportInternalError });
+
+    await expect(transport.flush?.()).rejects.toMatchObject({ code: "ENOENT" });
+    expect(reportInternalError).toHaveBeenCalledWith(expect.any(Error), {
+      phase: "transport",
+      transport: "file",
+      operation: expect.stringMatching(/^(stream-error|write)$/),
+    });
+    await Promise.resolve(transport.close?.()).catch(() => undefined);
   });
 });

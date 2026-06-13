@@ -111,6 +111,13 @@ export function createNodeStreamDestination(
     reportInternalError(lastError, operation);
   };
 
+  const onStreamError = (error: Error) => {
+    recordError(error, "stream-error");
+    settleWaitersIfIdle();
+  };
+  const offError = () => options.stream.off?.("error", onStreamError);
+  options.stream.on?.("error", onStreamError);
+
   const waitForDrain = () => {
     if (!options.stream.once) return;
     pendingDrains += 1;
@@ -191,20 +198,27 @@ export function createNodeStreamDestination(
           new Promise<void>((resolve, reject) => {
             if (!options.stream.end) {
               closed = true;
+              offError();
               resolve();
               return;
             }
             options.stream.end((error?: Error | null) => {
               closed = true;
+              offError();
               if (error && !(ignoreEpipe && isEpipe(error))) reject(error);
               else resolve();
             });
           }),
+        (error: unknown) => {
+          offError();
+          return Promise.reject(error);
+        },
       );
     },
     closeSync() {
       destination.flushSync();
       closed = true;
+      offError();
     },
   };
   return destination;

@@ -42,9 +42,9 @@ export function fileTransport(options: FileTransportOptions): FileTransport {
     name: options.name ?? "file",
     minLevel: options.minLevel,
     stream: destination.stream,
-    log(event: LogEvent) {
+    log(event: LogEvent, context) {
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
-      destination.write(codec.encode(event));
+      destination.write(codec.encode(event), context);
     },
     flush: destination.flush,
     flushSync: destination.flushSync,
