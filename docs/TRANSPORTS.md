@@ -146,6 +146,28 @@ indexedDbTransport({
 Browsers without Storage Buckets support fall back to the regular IndexedDB
 instance while keeping the same transport API.
 
+### Browser failure boundaries
+
+Browser delivery is best effort unless the log has already been acknowledged by
+the destination you care about. These are the important loss windows:
+
+| Path | Failure boundary / loss window | Production guidance |
+| --- | --- | --- |
+| `browserHttpTransport()` | In-memory batches are lost on reload, tab close, process kill, or if the queue bound drops records before delivery. Fetch can be aborted by navigation. | Use bounded queues, retry options, and an IndexedDB offline queue when reload survival matters. |
+| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` is fire-and-forget. Browsers cap payload size and can reject, truncate, or skip delivery under shutdown pressure. | Keep `beaconMaxBytes` conservative, treat pagehide flush as a last chance, and do not use it as the only durability path. |
+| `memoryBrowserHttpOfflineQueue()` | Survives temporary offline periods only while the page process stays alive. | Use for lightweight apps or tests; switch to IndexedDB for support/debug logs that must survive reload. |
+| `indexedDbBrowserHttpOfflineQueue()` | Stores replay payloads across reloads, but quota, private browsing mode, storage eviction, blocked upgrades, or unavailable IndexedDB can still prevent persistence. | Monitor queue/drop counters and keep payloads bounded; pair with HTTP replay and page lifecycle flush. |
+| `offlineFirstTransport(remote)` | Queues when remote delivery fails, then replays later. Replay is not a guarantee if local storage fails or is evicted. | Prefer a persistent queue adapter and call `flush()` during controlled shutdown/navigation when possible. |
+| `indexedDbTransport()` | Local persistence depends on IndexedDB availability, quota, eviction policy, durability hints, and browser support for Storage Buckets. | Use `durability: "relaxed"` for throughput when acceptable; use TTL/count/byte pruning to stay below quota. |
+| `browserWebSocketTransport()` | Queued events can be lost when the page exits, the queue bound is exceeded, or the caller never reconnects the socket. | Own reconnection outside the transport and use queue bounds/drop counters to detect backpressure. |
+| `browserServiceWorkerTransport()` | Delivery depends on service worker registration, activation, message delivery, and worker lifetime. A terminating worker can drop in-flight work unless it persists its own queue. | Treat it as centralization, not durability, unless the service worker also writes to durable storage. |
+| `browserBroadcastChannelTransport()` | BroadcastChannel only reaches currently open, same-origin listeners. Messages are not durable and receivers can miss them during startup. | Use for multi-tab aggregation and debugging, not as a primary remote delivery guarantee. |
+
+The usual production browser stack is HTTP batching plus an IndexedDB offline
+queue plus page lifecycle flush. Add a service worker or BroadcastChannel when
+you need centralization across tabs, but keep a durable queue in the delivery
+path when logs must survive reloads.
+
 ## Payload transforms
 
 Payload transforms run after codec encoding and before a wire transport sends or

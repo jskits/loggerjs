@@ -51,7 +51,7 @@ const logger = createLogger({
 logger.info("page loaded");
 ```
 
-Logs batch over HTTP, queue while offline, replay with backoff when the network returns, and flush via `sendBeacon` when the tab closes.
+Logs batch over HTTP, queue while offline, replay with backoff when the network returns, and attempt a last-chance best-effort `sendBeacon` flush when the tab closes.
 
 ## Transports
 
@@ -70,6 +70,11 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 - `indexedDbBrowserHttpOfflineQueue()` — survives page reloads.
 - `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson` and `manifest.json`.
 - Call the `indexedDbTransport()` instance's `stats()` to read flush, prune, query, drop, and buffer-depth counters.
+
+Browser delivery has runtime loss windows: tab close can cut off async work,
+`sendBeacon` is size- and user-agent-limited, service worker delivery depends on
+activation and lifetime, and IndexedDB persistence depends on quota and browser
+storage policy. Use an IndexedDB offline queue when reload survival matters.
 
 ## Integrations (19)
 

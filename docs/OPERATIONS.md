@@ -55,6 +55,16 @@ import { pageLifecycleIntegration } from "@loggerjs/browser";
 const integrations = [pageLifecycleIntegration()];
 ```
 
+Browser storage and shutdown behavior are still best effort. `sendBeacon` can be
+size-limited or skipped during shutdown, in-memory queues disappear on reload,
+and IndexedDB can be unavailable, full, evicted, or blocked by an upgrade. For
+production browser delivery, combine:
+
+- `browserHttpTransport()` for normal remote delivery.
+- `indexedDbBrowserHttpOfflineQueue()` or `offlineFirstTransport()` for reload-surviving replay.
+- `pageLifecycleIntegration()` and `useBeaconOnPageHide` for last-chance flush.
+- Drop/queue metrics from logger meta so quota or backpressure is visible.
+
 ## Node Crash Path
 
 For process-level failures, combine `captureProcessIntegration()` with a transport that can flush synchronously when needed.
