@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/otel",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "OpenTelemetry mapping and OTLP JSON transport for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/otel#readme",
   "bugs": {
