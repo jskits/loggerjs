@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/cloudwatch",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Amazon CloudWatch Logs transport for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/cloudwatch#readme",
   "bugs": {

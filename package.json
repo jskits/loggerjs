@@ -84,10 +84,6 @@
     "winston": "^3.19.0",
     "workerd": "^1.20260612.1"
   },
-  "simple-git-hooks": {
-    "commit-msg": "pnpm exec commitlint --edit \"$1\"",
-    "pre-commit": "pnpm exec lint-staged"
-  },
   "lint-staged": {
     "*": "oxfmt --no-error-on-unmatched-pattern",
     "*.{js,cjs,mjs,jsx,ts,tsx}": "oxlint --fix --no-error-on-unmatched-pattern"

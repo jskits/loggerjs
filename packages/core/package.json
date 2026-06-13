@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/core",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Tiny isomorphic structured logger core for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/core#readme",
   "bugs": {
