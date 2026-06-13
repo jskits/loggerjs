@@ -93,7 +93,7 @@ Current measured Node snapshot from [BENCHMARKS.md](BENCHMARKS.md), recorded on
 | --- | ---: | --- |
 | loggerjs disabled debug, lazy message | 5 | Disabled level path is at pino parity in this run |
 | pino disabled debug | 6 | Effectively the same class of overhead |
-| loggerjs lean record sink | 268 | Pino-shaped output via `fastEventJsonCodec` |
+| loggerjs lean record sink | 268 | Comparable lean JSON output via `fastEventJsonCodec` |
 | pino NDJSON noop sink | 228 | Faster direct JSON path |
 | loggerjs full-envelope record sink | 303 | Adds `id`, `seq`, and `levelName` |
 | node console info noop stream | 549 | Slower than LoggerJS structured sink in this run |

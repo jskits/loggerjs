@@ -173,7 +173,7 @@ const logger = createLogger({
 logger.info("page loaded");
 ```
 
-Logs batch over HTTP, queue while offline, replay with backoff when the network returns, and flush via `sendBeacon` when the tab closes.
+Logs batch over HTTP, queue while offline, replay with backoff when the network returns, and attempt a best-effort `sendBeacon` flush when the tab closes.
 
 ### Library authors
 
