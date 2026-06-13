@@ -67,9 +67,12 @@ export interface LoggerDiagnosticEvent {
     error?: unknown;
     detail?: Record<string, unknown>;
 }
-export type LoggerDiagnosticSink = (event: LoggerDiagnosticEvent) => void;
+export interface LoggerDiagnosticSink {
+    (event: LoggerDiagnosticEvent): void;
+    enabled?: (stage: LoggerDiagnosticStage) => boolean;
+}
 export declare function setLoggerDiagnosticSink(next: LoggerDiagnosticSink | undefined): LoggerDiagnosticSink | undefined;
-export declare function loggerDiagnosticsEnabled(): boolean;
+export declare function loggerDiagnosticsEnabled(stage?: LoggerDiagnosticStage): boolean;
 export declare function emitLoggerDiagnostic(event: LoggerDiagnosticEvent): void;
 export declare function loggerDiagnosticNow(): number;
 export declare function runLoggerDiagnostic<T>(event: Omit<LoggerDiagnosticEvent, "phase" | "durationMs" | "error">, run: () => T): T;

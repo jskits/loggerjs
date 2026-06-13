@@ -2,9 +2,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createLogger,
   emitLoggerDiagnostic,
+  loggerDiagnosticsEnabled,
   ndjsonCodec,
   setLoggerDiagnosticSink,
   type LoggerDiagnosticEvent,
+  type LoggerDiagnosticSink,
   type Transport,
 } from "../src";
 
@@ -71,6 +73,37 @@ describe("logger diagnostics", () => {
         expect.objectContaining({ stage: "encode", phase: "end", codec: "ndjson" }),
       ]),
     );
+  });
+
+  it("skips disabled diagnostic stages before entering hot-path branches", () => {
+    const sink: LoggerDiagnosticSink = (event) => events.push(event);
+    sink.enabled = (stage) => stage !== "transport" && stage !== "encode";
+    setLoggerDiagnosticSink(sink);
+
+    const transport: Transport = {
+      name: "sink",
+      log() {},
+    };
+    const logger = createLogger({ transports: [transport] });
+
+    expect(loggerDiagnosticsEnabled("dispatch")).toBe(true);
+    expect(loggerDiagnosticsEnabled("transport")).toBe(false);
+
+    logger.info("created");
+    ndjsonCodec().encode({
+      id: "evt-1",
+      time: 1,
+      seq: 1,
+      level: 30,
+      levelName: "info",
+      logger: "test",
+      message: "created",
+    });
+
+    expect(events).toEqual([
+      expect.objectContaining({ stage: "dispatch", phase: "start" }),
+      expect.objectContaining({ stage: "dispatch", phase: "end" }),
+    ]);
   });
 
   it("stops emitting after the sink is removed", () => {

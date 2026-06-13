@@ -15,7 +15,10 @@ export interface LoggerDiagnosticEvent {
   detail?: Record<string, unknown>;
 }
 
-export type LoggerDiagnosticSink = (event: LoggerDiagnosticEvent) => void;
+export interface LoggerDiagnosticSink {
+  (event: LoggerDiagnosticEvent): void;
+  enabled?: (stage: LoggerDiagnosticStage) => boolean;
+}
 
 let sink: LoggerDiagnosticSink | undefined;
 
@@ -27,12 +30,15 @@ export function setLoggerDiagnosticSink(
   return previous;
 }
 
-export function loggerDiagnosticsEnabled(): boolean {
-  return sink !== undefined;
+export function loggerDiagnosticsEnabled(stage?: LoggerDiagnosticStage): boolean {
+  if (!sink) return false;
+  if (stage === undefined) return true;
+  return sink.enabled?.(stage) ?? true;
 }
 
 export function emitLoggerDiagnostic(event: LoggerDiagnosticEvent): void {
-  sink?.(event);
+  if (!sink || sink.enabled?.(event.stage) === false) return;
+  sink(event);
 }
 
 export function loggerDiagnosticNow(): number {
@@ -43,15 +49,20 @@ export function runLoggerDiagnostic<T>(
   event: Omit<LoggerDiagnosticEvent, "phase" | "durationMs" | "error">,
   run: () => T,
 ): T {
-  if (!sink) return run();
+  if (!loggerDiagnosticsEnabled(event.stage)) return run();
   const start = loggerDiagnosticNow();
-  sink({ ...event, phase: "start" });
+  emitLoggerDiagnostic({ ...event, phase: "start" });
   try {
     const result = run();
-    sink({ ...event, phase: "end", durationMs: loggerDiagnosticNow() - start });
+    emitLoggerDiagnostic({ ...event, phase: "end", durationMs: loggerDiagnosticNow() - start });
     return result;
   } catch (error) {
-    sink({ ...event, phase: "error", durationMs: loggerDiagnosticNow() - start, error });
+    emitLoggerDiagnostic({
+      ...event,
+      phase: "error",
+      durationMs: loggerDiagnosticNow() - start,
+      error,
+    });
     throw error;
   }
 }

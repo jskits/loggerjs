@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { emitLoggerDiagnostic, setLoggerDiagnosticSink } from "@loggerjs/core";
+import {
+  emitLoggerDiagnostic,
+  loggerDiagnosticsEnabled,
+  setLoggerDiagnosticSink,
+} from "@loggerjs/core";
 import {
   installLoggerDiagnosticsChannel,
   type LoggerDiagnosticsChannelModule,
@@ -57,9 +61,31 @@ describe("installLoggerDiagnosticsChannel", () => {
     const { diagnosticsChannel, publishers } = createDiagnosticsChannelModule(false);
     const teardown = installLoggerDiagnosticsChannel({ diagnosticsChannel });
 
+    expect(loggerDiagnosticsEnabled("transport")).toBe(false);
+
     emitLoggerDiagnostic({ stage: "transport", phase: "start", transport: "stdout" });
 
     expect(publishers.get("loggerjs.transport")?.publish).not.toHaveBeenCalled();
+
+    teardown();
+  });
+
+  it("reads diagnostics channel subscription state dynamically", () => {
+    const { diagnosticsChannel, publishers } = createDiagnosticsChannelModule(false);
+    const teardown = installLoggerDiagnosticsChannel({ diagnosticsChannel });
+
+    expect(loggerDiagnosticsEnabled("dispatch")).toBe(false);
+    const publisher = publishers.get("loggerjs.dispatch");
+    if (publisher) publisher.hasSubscribers = true;
+
+    expect(loggerDiagnosticsEnabled("dispatch")).toBe(true);
+    emitLoggerDiagnostic({ stage: "dispatch", phase: "start", logger: "app" });
+
+    expect(publisher?.publish).toHaveBeenCalledWith({
+      stage: "dispatch",
+      phase: "start",
+      logger: "app",
+    });
 
     teardown();
   });

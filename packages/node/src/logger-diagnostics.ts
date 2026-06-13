@@ -3,6 +3,7 @@ import {
   setLoggerDiagnosticSink,
   type LoggerDiagnosticEvent,
   type LoggerDiagnosticSink,
+  type LoggerDiagnosticStage,
 } from "@loggerjs/core";
 
 export interface LoggerDiagnosticsChannelPublisher {
@@ -50,11 +51,20 @@ export function installLoggerDiagnosticsChannel(
   if (!diagnosticsChannel) return () => {};
 
   const prefix = options.prefix ?? "loggerjs";
-  const sink: LoggerDiagnosticSink = (event) => {
-    const channel = diagnosticsChannel.channel(`${prefix}.${event.stage}`);
-    if (channel.hasSubscribers === false) return;
-    channel.publish(event);
+  const channels = new Map<string, LoggerDiagnosticsChannelPublisher>();
+  const channelFor = (stage: LoggerDiagnosticStage) => {
+    const name = `${prefix}.${stage}`;
+    let channel = channels.get(name);
+    if (!channel) {
+      channel = diagnosticsChannel.channel(name);
+      channels.set(name, channel);
+    }
+    return channel;
   };
+  const sink: LoggerDiagnosticSink = (event) => {
+    channelFor(event.stage).publish(event);
+  };
+  sink.enabled = (stage) => channelFor(stage).hasSubscribers !== false;
   const previous = setLoggerDiagnosticSink(sink);
 
   return () => {

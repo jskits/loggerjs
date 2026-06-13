@@ -482,14 +482,14 @@ export class Logger implements LoggerLike {
   }
 
   async flush() {
-    const diagnostics = loggerDiagnosticsEnabled();
-    const start = diagnostics ? loggerDiagnosticNow() : undefined;
-    if (diagnostics) {
+    const flushDiagnostics = loggerDiagnosticsEnabled("flush");
+    const start = flushDiagnostics ? loggerDiagnosticNow() : undefined;
+    if (flushDiagnostics) {
       emitLoggerDiagnostic({ stage: "flush", phase: "start", logger: this.name });
     }
     try {
       await Promise.all(this.transports.map((transport) => transport.flush?.()));
-      if (diagnostics && start !== undefined) {
+      if (flushDiagnostics && start !== undefined) {
         emitLoggerDiagnostic({
           stage: "flush",
           phase: "end",
@@ -498,7 +498,7 @@ export class Logger implements LoggerLike {
         });
       }
     } catch (error) {
-      if (diagnostics && start !== undefined) {
+      if (flushDiagnostics && start !== undefined) {
         emitLoggerDiagnostic({
           stage: "flush",
           phase: "error",
@@ -512,9 +512,9 @@ export class Logger implements LoggerLike {
   }
 
   flushSync() {
-    const diagnostics = loggerDiagnosticsEnabled();
-    const start = diagnostics ? loggerDiagnosticNow() : undefined;
-    if (diagnostics) {
+    const flushDiagnostics = loggerDiagnosticsEnabled("flush");
+    const start = flushDiagnostics ? loggerDiagnosticNow() : undefined;
+    if (flushDiagnostics) {
       emitLoggerDiagnostic({
         stage: "flush",
         phase: "start",
@@ -526,7 +526,7 @@ export class Logger implements LoggerLike {
       try {
         transport.flushSync?.();
       } catch (error) {
-        if (diagnostics) {
+        if (flushDiagnostics) {
           emitLoggerDiagnostic({
             stage: "flush",
             phase: "error",
@@ -543,7 +543,7 @@ export class Logger implements LoggerLike {
         });
       }
     }
-    if (diagnostics && start !== undefined) {
+    if (flushDiagnostics && start !== undefined) {
       emitLoggerDiagnostic({
         stage: "flush",
         phase: "end",
@@ -693,9 +693,10 @@ export class Logger implements LoggerLike {
   // shouldDispatchEventToTransport.
   private dispatchRecord(record: LogRecord) {
     const context = this.getTransportContext();
-    const diagnostics = loggerDiagnosticsEnabled();
-    const dispatchStart = diagnostics ? loggerDiagnosticNow() : undefined;
-    if (diagnostics) {
+    const dispatchDiagnostics = loggerDiagnosticsEnabled("dispatch");
+    const transportDiagnostics = loggerDiagnosticsEnabled("transport");
+    const dispatchStart = dispatchDiagnostics ? loggerDiagnosticNow() : undefined;
+    if (dispatchDiagnostics) {
       emitLoggerDiagnostic({
         stage: "dispatch",
         phase: "start",
@@ -711,8 +712,8 @@ export class Logger implements LoggerLike {
         if (!transport) continue;
         if (transport.minLevel !== undefined && record.level < toLevelValue(transport.minLevel))
           continue;
-        const transportStart = diagnostics ? loggerDiagnosticNow() : undefined;
-        if (diagnostics) {
+        const transportStart = transportDiagnostics ? loggerDiagnosticNow() : undefined;
+        if (transportDiagnostics) {
           emitLoggerDiagnostic({
             stage: "transport",
             phase: "start",
@@ -734,7 +735,7 @@ export class Logger implements LoggerLike {
             result = transport.logBatch([context.toEvent(record)], context);
           }
           const asyncTransport = this.settleTransport(result, transport, transportStart);
-          if (diagnostics && transportStart !== undefined && !asyncTransport) {
+          if (transportDiagnostics && transportStart !== undefined && !asyncTransport) {
             emitLoggerDiagnostic({
               stage: "transport",
               phase: "end",
@@ -744,7 +745,7 @@ export class Logger implements LoggerLike {
             });
           }
         } catch (error) {
-          if (diagnostics && transportStart !== undefined) {
+          if (transportDiagnostics && transportStart !== undefined) {
             emitLoggerDiagnostic({
               stage: "transport",
               phase: "error",
@@ -758,7 +759,7 @@ export class Logger implements LoggerLike {
         }
       }
     } finally {
-      if (diagnostics && dispatchStart !== undefined) {
+      if (dispatchDiagnostics && dispatchStart !== undefined) {
         emitLoggerDiagnostic({
           stage: "dispatch",
           phase: "end",
@@ -781,9 +782,10 @@ export class Logger implements LoggerLike {
       return record;
     };
     const context = this.getTransportContext();
-    const diagnostics = loggerDiagnosticsEnabled();
-    const dispatchStart = diagnostics ? loggerDiagnosticNow() : undefined;
-    if (diagnostics) {
+    const dispatchDiagnostics = loggerDiagnosticsEnabled("dispatch");
+    const transportDiagnostics = loggerDiagnosticsEnabled("transport");
+    const dispatchStart = dispatchDiagnostics ? loggerDiagnosticNow() : undefined;
+    if (dispatchDiagnostics) {
       emitLoggerDiagnostic({
         stage: "dispatch",
         phase: "start",
@@ -799,8 +801,8 @@ export class Logger implements LoggerLike {
         if (!transport || !shouldDispatchEventToTransport(event, transport, index)) continue;
         if (transport.minLevel !== undefined && event.level < toLevelValue(transport.minLevel))
           continue;
-        const transportStart = diagnostics ? loggerDiagnosticNow() : undefined;
-        if (diagnostics) {
+        const transportStart = transportDiagnostics ? loggerDiagnosticNow() : undefined;
+        if (transportDiagnostics) {
           emitLoggerDiagnostic({
             stage: "transport",
             phase: "start",
@@ -822,7 +824,7 @@ export class Logger implements LoggerLike {
             result = transport.writeBatch([recordForEvent()], context);
           }
           const asyncTransport = this.settleTransport(result, transport, transportStart);
-          if (diagnostics && transportStart !== undefined && !asyncTransport) {
+          if (transportDiagnostics && transportStart !== undefined && !asyncTransport) {
             emitLoggerDiagnostic({
               stage: "transport",
               phase: "end",
@@ -832,7 +834,7 @@ export class Logger implements LoggerLike {
             });
           }
         } catch (error) {
-          if (diagnostics && transportStart !== undefined) {
+          if (transportDiagnostics && transportStart !== undefined) {
             emitLoggerDiagnostic({
               stage: "transport",
               phase: "error",
@@ -846,7 +848,7 @@ export class Logger implements LoggerLike {
         }
       }
     } finally {
-      if (diagnostics && dispatchStart !== undefined) {
+      if (dispatchDiagnostics && dispatchStart !== undefined) {
         emitLoggerDiagnostic({
           stage: "dispatch",
           phase: "end",
