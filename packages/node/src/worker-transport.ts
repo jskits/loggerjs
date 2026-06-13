@@ -13,17 +13,23 @@ import {
 export interface WorkerLike {
   postMessage: (value: unknown, transferList?: ArrayBuffer[]) => void;
   terminate?: () => void | number | Promise<number>;
-  on?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
-  off?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
+  on?: (event: "error" | "exit" | "message", listener: (...args: unknown[]) => void) => unknown;
+  off?: (event: "error" | "exit" | "message", listener: (...args: unknown[]) => void) => unknown;
 }
 
 export interface WorkerTransportMessage {
   type: "loggerjs:batch";
+  id?: number;
   codec: string;
   contentType: string;
   count: number;
   payload: Uint8Array;
 }
+
+export type WorkerTransportProtocolMessage =
+  | { type: "loggerjs:ready" }
+  | { type: "loggerjs:batch:ack"; id: number }
+  | { type: "loggerjs:error"; error?: unknown; message?: string };
 
 export interface WorkerTransportOptions {
   name?: string;
@@ -35,6 +41,17 @@ export interface WorkerTransportOptions {
   codec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
   transferBuffers?: boolean;
+  readyTimeoutMs?: number;
+  ackTimeoutMs?: number;
+  autoEnd?: boolean;
+}
+
+interface PendingBatch {
+  id: number;
+  events: LogEvent[];
+  context: TransportContext;
+  timer?: ReturnType<typeof setTimeout>;
+  resolve: () => void;
 }
 
 function createDefaultWorker(options: WorkerTransportOptions): WorkerLike {
@@ -60,13 +77,52 @@ function transferablePayload(payload: Uint8Array): {
   };
 }
 
+function normalizePositiveTimeout(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return 0;
+  return Math.floor(value);
+}
+
+function protocolMessage(value: unknown): WorkerTransportProtocolMessage | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const message = value as { type?: unknown };
+  if (message.type === "loggerjs:ready") return { type: "loggerjs:ready" };
+  if (message.type === "loggerjs:batch:ack") {
+    const id = (value as { id?: unknown }).id;
+    if (typeof id === "number") return { type: "loggerjs:batch:ack", id };
+  }
+  if (message.type === "loggerjs:error") {
+    const item = value as { error?: unknown; message?: unknown };
+    return {
+      type: "loggerjs:error",
+      error: item.error,
+      message: typeof item.message === "string" ? item.message : undefined,
+    };
+  }
+  return undefined;
+}
+
+function dropBatch(events: LogEvent[], reason: string) {
+  incrementLoggerMetaCounter("transport.dropped", events.length);
+  incrementLoggerMetaCounter(`transport.dropped.${reason}`, events.length);
+}
+
 export function workerTransport(options: WorkerTransportOptions = {}): Transport {
   const codec = options.codec ?? safeJsonCodec();
   const transportName = options.name ?? "worker";
   const fallback = options.fallback;
+  const readyTimeoutMs = normalizePositiveTimeout(options.readyTimeoutMs);
+  const ackTimeoutMs = normalizePositiveTimeout(options.ackTimeoutMs);
+  const autoEnd = options.autoEnd ?? true;
   let worker: WorkerLike | undefined;
   let failed = false;
   let lastContext: TransportContext | undefined;
+  let ready = readyTimeoutMs === 0;
+  let readyPromise: Promise<void> | undefined;
+  let readyTimer: ReturnType<typeof setTimeout> | undefined;
+  let readyResolve: (() => void) | undefined;
+  let readyReject: ((error: Error) => void) | undefined;
+  let nextBatchId = 1;
+  const pendingBatches = new Map<number, PendingBatch>();
 
   const reportInternalError = (error: unknown, operation: string) => {
     lastContext?.reportInternalError(error, {
@@ -77,14 +133,75 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
   };
 
   const markFailed = (error: unknown, operation: string) => {
+    if (failed) return;
     failed = true;
     incrementLoggerMetaCounter("transport.worker.failed");
     reportInternalError(error, operation);
+    readyReject?.(error instanceof Error ? error : new Error(String(error)));
+    failPendingBatches(operation);
   };
 
   const onWorkerError = (error: unknown) => markFailed(error, "worker-error");
   const onWorkerExit = (code: unknown) => {
     if (typeof code === "number" && code !== 0) markFailed(code, "worker-exit");
+  };
+  const onWorkerMessage = (value: unknown) => {
+    const message = protocolMessage(value);
+    if (!message) return;
+    if (message.type === "loggerjs:ready") {
+      ready = true;
+      if (readyTimer) clearTimeout(readyTimer);
+      readyResolve?.();
+      return;
+    }
+    if (message.type === "loggerjs:batch:ack") {
+      const pending = pendingBatches.get(message.id);
+      if (!pending) return;
+      pendingBatches.delete(message.id);
+      if (pending.timer) clearTimeout(pending.timer);
+      pending.resolve();
+      incrementLoggerMetaCounter("transport.worker.ack");
+      return;
+    }
+    markFailed(
+      message.error ?? new Error(message.message ?? "Worker reported an error"),
+      "worker-message",
+    );
+  };
+
+  const fallbackOrDropBatch = async (
+    events: LogEvent[],
+    context: TransportContext,
+    reason: string,
+  ) => {
+    if (fallback) {
+      await fallbackBatch(events, context);
+      return;
+    }
+    dropBatch(events, reason);
+  };
+
+  const failPendingBatch = (pending: PendingBatch, reason: string) => {
+    pendingBatches.delete(pending.id);
+    if (pending.timer) clearTimeout(pending.timer);
+    incrementLoggerMetaCounter("transport.worker.pending-dropped", pending.events.length);
+    void fallbackOrDropBatch(pending.events, pending.context, reason).finally(pending.resolve);
+  };
+
+  function failPendingBatches(reason: string) {
+    for (const pending of Array.from(pendingBatches.values())) failPendingBatch(pending, reason);
+  }
+
+  const waitForReady = async () => {
+    if (ready) return;
+    readyPromise ??= new Promise<void>((resolve, reject) => {
+      readyResolve = resolve;
+      readyReject = reject;
+      readyTimer = setTimeout(() => {
+        reject(new Error(`workerTransport ready timeout after ${readyTimeoutMs}ms`));
+      }, readyTimeoutMs);
+    });
+    await readyPromise;
   };
 
   const getWorker = (): WorkerLike | undefined => {
@@ -94,6 +211,7 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       worker = options.worker ?? options.workerFactory?.() ?? createDefaultWorker(options);
       worker.on?.("error", onWorkerError);
       worker.on?.("exit", onWorkerExit);
+      worker.on?.("message", onWorkerMessage);
       return worker;
     } catch (error) {
       markFailed(error, "create-worker");
@@ -118,7 +236,14 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
     lastContext = context;
     const currentWorker = getWorker();
     if (!currentWorker) {
-      await fallbackBatch(events, context);
+      await fallbackOrDropBatch(events, context, "worker-unavailable");
+      return;
+    }
+    try {
+      await waitForReady();
+    } catch (error) {
+      markFailed(error, "worker-ready-timeout");
+      await fallbackOrDropBatch(events, context, "worker-ready-timeout");
       return;
     }
 
@@ -134,16 +259,31 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       count: events.length,
       payload: transferable.payload,
     };
+    let pending: PendingBatch | undefined;
+    if (ackTimeoutMs > 0) {
+      const id = nextBatchId;
+      nextBatchId += 1;
+      message.id = id;
+      pending = { id, events, context, resolve: () => {} };
+      pending.timer = setTimeout(() => {
+        if (!pending) return;
+        markFailed(
+          new Error(`workerTransport ack timeout after ${ackTimeoutMs}ms`),
+          "worker-ack-timeout",
+        );
+      }, ackTimeoutMs);
+      pendingBatches.set(id, pending);
+    }
 
     try {
       currentWorker.postMessage(message, transferable.transferList);
     } catch (error) {
       markFailed(error, "post-message");
-      await fallbackBatch(events, context);
+      if (!pending) await fallbackOrDropBatch(events, context, "worker-post-message");
     }
   };
 
-  return {
+  const transport: Transport = {
     name: transportName,
     minLevel: options.minLevel,
     log(event, context) {
@@ -154,13 +294,32 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       return postBatch(events, context);
     },
     async flush() {
+      await Promise.all(
+        Array.from(
+          pendingBatches.values(),
+          (pending) =>
+            new Promise<void>((resolve) => {
+              const originalResolve = pending.resolve;
+              pending.resolve = () => {
+                originalResolve();
+                resolve();
+              };
+            }),
+        ),
+      );
       await fallback?.flush?.();
     },
     async close() {
       worker?.off?.("error", onWorkerError);
       worker?.off?.("exit", onWorkerExit);
+      worker?.off?.("message", onWorkerMessage);
+      await transport.flush?.();
       await fallback?.close?.();
-      await worker?.terminate?.();
+      if (autoEnd) await worker?.terminate?.();
+      if (readyTimer) clearTimeout(readyTimer);
+      readyReject = undefined;
+      readyResolve = undefined;
     },
   };
+  return transport;
 }

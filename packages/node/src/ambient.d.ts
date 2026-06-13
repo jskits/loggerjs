@@ -71,8 +71,8 @@ declare module "node:worker_threads" {
     constructor(filename: string | URL, options?: unknown);
     postMessage(value: unknown, transferList?: ArrayBuffer[]): void;
     terminate(): Promise<number>;
-    on?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
-    off?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
+    on?: (event: "error" | "exit" | "message", listener: (...args: unknown[]) => void) => unknown;
+    off?: (event: "error" | "exit" | "message", listener: (...args: unknown[]) => void) => unknown;
   }
 }
 

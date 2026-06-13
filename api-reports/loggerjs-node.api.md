@@ -758,16 +758,27 @@ import { type Codec, type LoggerLevel, type Transport } from "@loggerjs/core";
 export interface WorkerLike {
     postMessage: (value: unknown, transferList?: ArrayBuffer[]) => void;
     terminate?: () => void | number | Promise<number>;
-    on?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
-    off?: (event: "error" | "exit", listener: (...args: unknown[]) => void) => unknown;
+    on?: (event: "error" | "exit" | "message", listener: (...args: unknown[]) => void) => unknown;
+    off?: (event: "error" | "exit" | "message", listener: (...args: unknown[]) => void) => unknown;
 }
 export interface WorkerTransportMessage {
     type: "loggerjs:batch";
+    id?: number;
     codec: string;
     contentType: string;
     count: number;
     payload: Uint8Array;
 }
+export type WorkerTransportProtocolMessage = {
+    type: "loggerjs:ready";
+} | {
+    type: "loggerjs:batch:ack";
+    id: number;
+} | {
+    type: "loggerjs:error";
+    error?: unknown;
+    message?: string;
+};
 export interface WorkerTransportOptions {
     name?: string;
     worker?: WorkerLike;
@@ -778,6 +789,9 @@ export interface WorkerTransportOptions {
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
     transferBuffers?: boolean;
+    readyTimeoutMs?: number;
+    ackTimeoutMs?: number;
+    autoEnd?: boolean;
 }
 export declare function workerTransport(options?: WorkerTransportOptions): Transport;
 ```

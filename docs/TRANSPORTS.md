@@ -31,7 +31,7 @@ them. Treat this table as the production delivery contract:
 | `rotatingFileTransport()` | synchronous shared file destination with size rotation | Local durability path with size rotation; blocks the caller while writing. |
 | `nodeHttpTransport()` | self-wrapped batched HTTP delivery | Uses `batchTransport`; tune queue, retry, and circuit options for production. |
 | `nodeSyslogTransport()` | immediate UDP/TCP syslog write | UDP can drop; TCP still depends on socket state and close/flush behavior. |
-| `workerTransport()` | worker offload with fallback on creation/post failure | Current worker path is fire-and-forget; use fallback until ready/ack lifecycle lands. |
+| `workerTransport()` | worker offload with optional ready/ack lifecycle | Fire-and-forget by default; configure `readyTimeoutMs`, `ackTimeoutMs`, fallback, and `autoEnd` when worker acceptance must be observable. |
 | `browserHttpTransport()` | batched fetch with optional offline queue and beacon pagehide mode | Use an IndexedDB queue for reload survival; beacon mode is best-effort and size limited. |
 | `memoryBrowserHttpOfflineQueue()` | in-memory offline queue | Survives network drops, not reloads or tab close. |
 | `indexedDbBrowserHttpOfflineQueue()` | IndexedDB offline queue | Survives reloads while quota/storage remains available. |
@@ -92,7 +92,7 @@ Notes:
 | `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. |
 | `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport` (Node 18+). |
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
-| `workerTransport({ url })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports a fallback transport if the worker dies. |
+| `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
 
 `nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use
 `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
@@ -112,6 +112,20 @@ records can reach disk before process exit; if the process continues, the
 original async stream may still complete. Use `await flush()` for normal
 drain-and-continue shutdowns, or configure `sync: true` when every write must be
 synchronous.
+
+`workerTransport()` remains compatible with simple workers that only receive
+object messages. Lifecycle is opt-in:
+
+- Set `readyTimeoutMs` when the worker will send `{ type: "loggerjs:ready" }`.
+  If readiness times out, LoggerJS fails the worker and sends the batch to the
+  configured fallback or counts it as `transport.dropped.worker-ready-timeout`.
+- Set `ackTimeoutMs` when the worker will acknowledge each batch with
+  `{ type: "loggerjs:batch:ack", id }`. `flush()` waits for those acks.
+- The main thread posts `{ type: "loggerjs:batch", id?, codec, contentType, count, payload }`.
+- A worker can report failure with `{ type: "loggerjs:error", message, error }`;
+  pending batches fall back or are counted as dropped.
+- `autoEnd` defaults to `true`; set `autoEnd: false` if the worker is shared and
+  should not be terminated by transport `close()`.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 

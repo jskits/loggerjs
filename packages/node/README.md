@@ -74,13 +74,20 @@ rotatingFileTransport({ path: "audit.log", maxBytes: 10 * 1024 * 1024 });
 | `fileTransport` / `rotatingFileTransport` | files, with `mkdir`/`append` controls, optional `sync: true`, crash-path `flushSync`, and size-based rotation |
 | `nodeHttpTransport` | a collector over `fetch`, wrapped in `batchTransport` (batching + retry) |
 | `nodeSyslogTransport` | RFC 5424 syslog over UDP/TCP |
-| `workerTransport` | a worker thread (encodes batches with a codec, optional buffer transfer, fallback on worker death) |
+| `workerTransport` | a worker thread (encodes batches with a codec, optional buffer transfer, ready/ack lifecycle, fallback on worker failure) |
 
 File and process-stream transports share the same internal destination logic for
 write callbacks, drain waiting, `minLength` buffering, close, and sync crash
 flush. Use `await flush()` for normal shutdown. Use `flushSync()` only on fatal
 paths, or configure `fileTransport({ sync: true })` when every write must reach
 the filesystem before the log call returns.
+
+`workerTransport()` is fire-and-forget unless you opt into lifecycle checks.
+Use `readyTimeoutMs` for workers that send `{ type: "loggerjs:ready" }`, and
+`ackTimeoutMs` for workers that acknowledge `{ type: "loggerjs:batch", id }`
+with `{ type: "loggerjs:batch:ack", id }`. Pending batches fall back or are
+counted as drops when readiness, posting, ack, or worker exit fails. Set
+`autoEnd: false` for shared workers you close elsewhere.
 
 ## Integrations (16)
 
