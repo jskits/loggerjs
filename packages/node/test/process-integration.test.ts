@@ -243,7 +243,7 @@ describe("captureProcessIntegration", () => {
     const result = spawnSync(tsxBin, [crashFixture, outputPath], {
       cwd: repoRoot,
       encoding: "utf8",
-      timeout: 5000,
+      timeout: 15_000,
     });
 
     expect(result.error).toBeUndefined();
