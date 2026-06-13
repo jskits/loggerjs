@@ -218,3 +218,20 @@ jobs:
       - name: Skip CloudWatch live integration
         if: env.AWS_REGION == '' || env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == '' || env.CLOUDWATCH_LOG_GROUP == ''
         run: echo "AWS credentials/region or CLOUDWATCH_LOG_GROUP is not configured; skipping CloudWatch live integration."
+
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:quality
