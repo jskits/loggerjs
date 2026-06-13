@@ -36,13 +36,15 @@ Integrations sit outside this flow: they hook platform behavior (console calls, 
 
 - `lazy` — an unevaluated message function, resolved at most once.
 - `err` — the raw error value, not yet normalized.
+- `props` — the user data object, shared by reference unless middleware,
+  processors, or a transport explicitly clone it.
 - `ctx` — a frozen bound context object, shared by reference.
 - `tags` — possibly the logger's frozen tags object, shared by reference.
 - No `id` — id computation is deferred to event projection.
 
 `LogEvent` is the transport-facing compatibility shape: `id`, `time`, `seq`, `level`, `levelName`, `logger` (dotted category), `message` (resolved string), `type`, `tags`, `data`, `error` (normalized `SerializedError`), `context`, `trace`, `source`.
 
-`recordToEvent()` / `eventToRecord()` convert between them. Conversion is lossy in documented ways: a `runtime` source collapses to an integration source, and scalar event data is wrapped as `{ value }`.
+`recordToEvent()` / `eventToRecord()` convert between them. Conversion is lossy in documented ways: a `runtime` source collapses to an integration source, and scalar event data is wrapped as `{ value }`. Object data is not snapshotted by default; clone before logging when later mutation must not affect deferred transports.
 
 ### Mutation contract
 

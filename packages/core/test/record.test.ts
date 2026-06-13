@@ -28,6 +28,10 @@ const recordKeys = [
   "seq",
 ];
 
+function lazyRecordMessage() {
+  return "created";
+}
+
 describe("LogRecord helpers", () => {
   it("creates records with the target field order and defaults", () => {
     const record = createRecord({
@@ -93,6 +97,52 @@ describe("LogRecord helpers", () => {
     expect(record.source).toBe("app");
   });
 
+  it("clones records with explicit nullable field clears", () => {
+    const error = new Error("failed");
+    const context = createBoundContext({ requestId: "req-1" });
+    const record = createRecord({
+      time: 10,
+      level: 30,
+      category: ["api"],
+      type: "order.created",
+      tags: { service: "checkout" },
+      trace: { traceId: "trace-1" },
+      msg: "created",
+      lazy: lazyRecordMessage,
+      props: { orderId: "ord-1" },
+      err: error,
+      ctx: context,
+      source: "integration:fetch",
+      stack: "stack",
+      seq: 2,
+    });
+    const clone = cloneRecord(record, {
+      type: null,
+      tags: null,
+      trace: null,
+      msg: null,
+      lazy: null,
+      props: null,
+      err: null,
+      ctx: null,
+      stack: null,
+    });
+
+    expect(Object.keys(clone)).toEqual(recordKeys);
+    expect(clone).toMatchObject({
+      type: null,
+      tags: null,
+      trace: null,
+      msg: null,
+      lazy: null,
+      props: null,
+      err: null,
+      ctx: null,
+      source: "integration:fetch",
+      stack: null,
+    });
+  });
+
   it("resolves lazy messages at most once", () => {
     const lazy = vi.fn<() => string>(() => "expensive message");
     const record = createRecord({
@@ -144,6 +194,35 @@ describe("LogRecord helpers", () => {
       trace: { traceId: "trace-1" },
       source: { integration: "integration:fetch" },
     });
+  });
+
+  it("keeps record props and event data shared by reference", () => {
+    const props = { orderId: "ord-1" };
+    const record = createRecord({
+      time: 10,
+      level: 30,
+      msg: "created",
+      props,
+      seq: 2,
+    });
+    const event = recordToEvent(record);
+
+    expect(event.data).toBe(props);
+    props.orderId = "ord-2";
+    expect(event.data).toEqual({ orderId: "ord-2" });
+
+    const roundTripped = eventToRecord({
+      id: "evt-1",
+      time: 10,
+      seq: 2,
+      level: 30,
+      levelName: "info",
+      logger: "api",
+      message: "created",
+      data: props,
+    });
+
+    expect(roundTripped.props).toBe(props);
   });
 
   it("round trips app events without fabricating a source", () => {

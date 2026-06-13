@@ -86,22 +86,32 @@ export function createRecord(options: CreateRecordOptions): LogRecord {
   };
 }
 
+function patchField<K extends keyof LogRecord>(
+  record: LogRecord,
+  patch: Partial<LogRecord>,
+  key: K,
+): LogRecord[K] {
+  return Object.prototype.hasOwnProperty.call(patch, key) && patch[key] !== undefined
+    ? (patch[key] as LogRecord[K])
+    : record[key];
+}
+
 export function cloneRecord(record: LogRecord, patch: Partial<LogRecord> = {}): LogRecord {
   return {
-    time: patch.time ?? record.time,
-    level: patch.level ?? record.level,
-    category: patch.category ?? record.category,
-    type: patch.type ?? record.type,
-    tags: patch.tags ?? record.tags,
-    trace: patch.trace ?? record.trace,
-    msg: patch.msg ?? record.msg,
-    lazy: patch.lazy ?? record.lazy,
-    props: patch.props ?? record.props,
-    err: patch.err ?? record.err,
-    ctx: patch.ctx ?? record.ctx,
-    source: patch.source ?? record.source,
-    stack: patch.stack ?? record.stack,
-    seq: patch.seq ?? record.seq,
+    time: patchField(record, patch, "time"),
+    level: patchField(record, patch, "level"),
+    category: patchField(record, patch, "category"),
+    type: patchField(record, patch, "type"),
+    tags: patchField(record, patch, "tags"),
+    trace: patchField(record, patch, "trace"),
+    msg: patchField(record, patch, "msg"),
+    lazy: patchField(record, patch, "lazy"),
+    props: patchField(record, patch, "props"),
+    err: patchField(record, patch, "err"),
+    ctx: patchField(record, patch, "ctx"),
+    source: patchField(record, patch, "source"),
+    stack: patchField(record, patch, "stack"),
+    seq: patchField(record, patch, "seq"),
   };
 }
 

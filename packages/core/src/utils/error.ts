@@ -41,11 +41,11 @@ export function normalizeError(
   if (error && typeof error === "object") {
     const record = error as unknown as Record<string, unknown>;
     return {
+      ...record,
       name: typeof record.name === "string" ? record.name : undefined,
       message: typeof record.message === "string" ? record.message : String(error),
       stack:
         typeof record.stack === "string" ? stackWithLimit(record.stack, maxStackLines) : undefined,
-      ...record,
     };
   }
 
