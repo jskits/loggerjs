@@ -1,4 +1,3 @@
-import { closeSync, createWriteStream, openSync, writeSync, type WriteStream } from "fs";
 import {
   ndjsonCodec,
   toLevelValue,
@@ -7,6 +6,8 @@ import {
   type LoggerLevel,
   type Transport,
 } from "@loggerjs/core";
+import type { WriteStream } from "fs";
+import { createNodeFileDestination } from "./node-destination";
 
 export interface FileTransportOptions {
   path: string;
@@ -14,73 +15,39 @@ export interface FileTransportOptions {
   codec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
   flags?: string;
+  append?: boolean;
+  mkdir?: boolean;
+  sync?: boolean;
+  minLength?: number;
 }
 
 export interface FileTransport extends Transport {
-  stream: WriteStream;
+  stream?: WriteStream;
   flushSync: () => void;
 }
 
 export function fileTransport(options: FileTransportOptions): FileTransport {
   const codec = options.codec ?? ndjsonCodec();
-  const flags = options.flags ?? "a";
-  const stream = createWriteStream(options.path, { flags });
-  let syncFd: number | undefined;
-  const pending: Array<string | Uint8Array> = [];
-
-  const removePending = (payload: string | Uint8Array) => {
-    const index = pending.indexOf(payload);
-    if (index >= 0) pending.splice(index, 1);
-  };
-
-  const getSyncFd = () => {
-    syncFd ??= openSync(options.path, flags);
-    return syncFd;
-  };
+  const destination = createNodeFileDestination({
+    name: options.name ?? "file",
+    path: options.path,
+    flags: options.flags,
+    append: options.append,
+    mkdir: options.mkdir,
+    sync: options.sync,
+    minLength: options.minLength,
+  });
 
   return {
     name: options.name ?? "file",
     minLevel: options.minLevel,
-    stream,
+    stream: destination.stream,
     log(event: LogEvent) {
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
-      const payload = codec.encode(event);
-      pending.push(payload);
-      stream.write(payload, (error?: Error | null) => {
-        if (!error) removePending(payload);
-      });
+      destination.write(codec.encode(event));
     },
-    flush() {
-      return new Promise<void>((resolve, reject) => {
-        stream.write("", (error?: Error | null) => {
-          if (error) {
-            reject(error);
-            return;
-          }
-          pending.splice(0, pending.length);
-          resolve();
-        });
-      });
-    },
-    flushSync() {
-      if (pending.length === 0) return;
-      const fd = getSyncFd();
-      for (const payload of pending.splice(0)) {
-        if (typeof payload === "string") writeSync(fd, payload);
-        else writeSync(fd, payload);
-      }
-    },
-    close() {
-      return new Promise<void>((resolve, reject) => {
-        stream.end?.((error?: Error | null) => {
-          if (syncFd !== undefined) {
-            closeSync(syncFd);
-            syncFd = undefined;
-          }
-          if (error) reject(error);
-          else resolve();
-        });
-      });
-    },
+    flush: destination.flush,
+    flushSync: destination.flushSync,
+    close: destination.close,
   };
 }

@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, rmSync } from "fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { fileTransport } from "../src";
@@ -47,5 +47,28 @@ describe("fileTransport", () => {
     expect(readFileSync(path, "utf8")).toContain("fatal crash");
 
     await transport.close?.();
+  });
+
+  it("creates parent directories when mkdir is enabled", async () => {
+    const path = join(dirname(tempFile()), "nested", "app.log");
+    const transport = fileTransport({ path, mkdir: true, sync: true });
+
+    transport.log?.(event, context);
+
+    expect(readFileSync(path, "utf8")).toContain("fatal crash");
+    await transport.close?.();
+  });
+
+  it("supports sync writes and append control", async () => {
+    const path = tempFile();
+    writeFileSync(path, "existing\n");
+    const transport = fileTransport({ path, sync: true, append: false });
+
+    transport.log?.(event, context);
+    await transport.close?.();
+
+    const content = readFileSync(path, "utf8");
+    expect(content).toContain("fatal crash");
+    expect(content).not.toContain("existing");
   });
 });

@@ -1,4 +1,4 @@
-import { closeSync, existsSync, openSync, renameSync, statSync, unlinkSync, writeSync } from "fs";
+import { existsSync, renameSync, statSync, unlinkSync } from "fs";
 import {
   ndjsonCodec,
   toLevelValue,
@@ -7,6 +7,7 @@ import {
   type LoggerLevel,
   type Transport,
 } from "@loggerjs/core";
+import { createNodeFileDestination } from "./node-destination";
 
 export interface RotatingFileTransportOptions {
   path: string;
@@ -14,6 +15,8 @@ export interface RotatingFileTransportOptions {
   codec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
   flags?: string;
+  append?: boolean;
+  mkdir?: boolean;
   maxBytes?: number;
   maxFiles?: number;
   archivePath?: (path: string, index: number) => string;
@@ -57,26 +60,21 @@ export function rotatingFileTransport(
   options: RotatingFileTransportOptions,
 ): RotatingFileTransport {
   const codec = options.codec ?? ndjsonCodec();
-  const flags = options.flags ?? "a";
   const maxBytes = normalizePositiveInteger(options.maxBytes, 10 * 1024 * 1024);
   const maxFiles = normalizeNonNegativeInteger(options.maxFiles, 5);
   const archivePath = options.archivePath ?? defaultArchivePath;
-  let fd: number | undefined;
+  const destination = createNodeFileDestination({
+    name: options.name ?? "rotating-file",
+    path: options.path,
+    flags: options.flags,
+    append: options.append,
+    mkdir: options.mkdir,
+    sync: true,
+  });
   let bytes = fileSize(options.path);
 
-  const closeFd = () => {
-    if (fd === undefined) return;
-    closeSync(fd);
-    fd = undefined;
-  };
-
-  const getFd = () => {
-    fd ??= openSync(options.path, flags);
-    return fd;
-  };
-
   const rotate = () => {
-    closeFd();
+    destination.releaseSync?.();
 
     if (maxFiles === 0) {
       if (existsSync(options.path)) unlinkSync(options.path);
@@ -99,8 +97,7 @@ export function rotatingFileTransport(
   const writePayload = (payload: string | Uint8Array) => {
     const size = payloadBytes(payload);
     if (bytes > 0 && bytes + size > maxBytes) rotate();
-    if (typeof payload === "string") writeSync(getFd(), payload);
-    else writeSync(getFd(), payload);
+    destination.write(payload);
     bytes += size;
   };
 
@@ -119,12 +116,11 @@ export function rotatingFileTransport(
       }
     },
     flush() {
-      return Promise.resolve();
+      return destination.flush();
     },
-    flushSync() {},
+    flushSync: destination.flushSync,
     close() {
-      closeFd();
-      return Promise.resolve();
+      return destination.close();
     },
     rotate,
     currentBytes: () => bytes,

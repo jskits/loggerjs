@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { afterEach, describe, expect, it } from "vitest";
 import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
 import { rotatingFileTransport } from "../src";
@@ -90,5 +90,15 @@ describe("rotatingFileTransport", () => {
     expect(content).not.toContain("debug");
     expect(content).toContain("warn");
     expect(content).toContain("error");
+  });
+
+  it("creates parent directories through the shared destination", async () => {
+    const path = join(dirname(tempFile()), "nested", "app.log");
+    const transport = rotatingFileTransport({ path, mkdir: true });
+
+    transport.log?.(event("created"), context);
+    await transport.close?.();
+
+    expect(read(path)).toContain("created");
   });
 });

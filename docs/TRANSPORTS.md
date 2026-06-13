@@ -26,9 +26,9 @@ them. Treat this table as the production delivery contract:
 | `batchTransport(inner)` | batched queue with optional retry/circuit breaker | Use around raw I/O transports when you need queue bounds, retries, backoff, or drop accounting. |
 | `retryTransport(inner)` | retried immediate delivery | Use when the inner transport already owns batching or when per-call retry is acceptable. |
 | `fallbackTransport(primary, fallback)` | fallback after primary failure | Use for local backup sinks, not as a replacement for queueing. |
-| `stdoutTransport()` / `stderrTransport()` | immediate stream write with drain-aware `flush()` | Local process sink; no retry after stream failure. |
-| `fileTransport()` | immediate file stream write with crash-path `flushSync()` | Local durability path; prefer one writer process per file. |
-| `rotatingFileTransport()` | synchronous local file writes | Local durability path with size rotation; blocks the caller while writing. |
+| `stdoutTransport()` / `stderrTransport()` | immediate stream write with drain-aware `flush()` and optional `minLength` buffering | Local process sink; `EPIPE` is treated as clean shutdown by default. |
+| `fileTransport()` | shared file destination with async stream mode, optional `sync: true`, `mkdir`, `append`, `minLength`, and crash-path `flushSync()` | Local durability path; prefer one writer process per file. |
+| `rotatingFileTransport()` | synchronous shared file destination with size rotation | Local durability path with size rotation; blocks the caller while writing. |
 | `nodeHttpTransport()` | self-wrapped batched HTTP delivery | Uses `batchTransport`; tune queue, retry, and circuit options for production. |
 | `nodeSyslogTransport()` | immediate UDP/TCP syslog write | UDP can drop; TCP still depends on socket state and close/flush behavior. |
 | `workerTransport()` | worker offload with fallback on creation/post failure | Current worker path is fire-and-forget; use fallback until ready/ack lifecycle lands. |
@@ -87,9 +87,9 @@ Notes:
 
 | Transport | What it does |
 | --- | --- |
-| `stdoutTransport()` / `stderrTransport()` | NDJSON lines with write backpressure tracking; `flush()` waits for pending writes. |
-| `fileTransport({ path })` | Append NDJSON to a file; supports `flushSync()` for crash paths. |
-| `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives. Synchronous writes; use one logger process per file. |
+| `stdoutTransport()` / `stderrTransport()` | NDJSON lines with write backpressure tracking, clean `EPIPE` handling, and optional `minLength` buffering; `flush()` waits for pending writes. |
+| `fileTransport({ path })` | Append NDJSON to a file by default; supports `mkdir`, `append: false`, async `minLength` buffering, `sync: true`, and `flushSync()` for crash paths. |
+| `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. |
 | `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport` (Node 18+). |
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ url })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports a fallback transport if the worker dies. |
@@ -105,6 +105,13 @@ nodeHttpTransport({
   transformPayload: nodeCompressionPayloadTransform({ format: "brotli" }),
 });
 ```
+
+`fileTransport().flushSync()` is a crash-path primitive. In async stream mode it
+writes currently buffered or pending payloads through a synchronous fd so fatal
+records can reach disk before process exit; if the process continues, the
+original async stream may still complete. Use `await flush()` for normal
+drain-and-continue shutdowns, or configure `sync: true` when every write must be
+synchronous.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 

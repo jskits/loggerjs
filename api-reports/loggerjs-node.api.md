@@ -214,17 +214,21 @@ export declare function fastifyIntegration(logger: LoggerLike, options?: Fastify
 ## file-transport.d.ts
 
 ```ts
-import { type WriteStream } from "fs";
 import { type Codec, type LoggerLevel, type Transport } from "@loggerjs/core";
+import type { WriteStream } from "fs";
 export interface FileTransportOptions {
     path: string;
     name?: string;
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
     flags?: string;
+    append?: boolean;
+    mkdir?: boolean;
+    sync?: boolean;
+    minLength?: number;
 }
 export interface FileTransport extends Transport {
-    stream: WriteStream;
+    stream?: WriteStream;
     flushSync: () => void;
 }
 export declare function fileTransport(options: FileTransportOptions): FileTransport;
@@ -372,6 +376,42 @@ import type { LoggerLike } from "@loggerjs/core";
 import { type ExpressIntegrationOptions, type ExpressRequestHandler } from "./express-integration.js";
 export type NestMiddleware = ExpressRequestHandler;
 export declare function nestMiddlewareIntegration(logger: LoggerLike, options?: ExpressIntegrationOptions): NestMiddleware;
+```
+
+## node-destination.d.ts
+
+```ts
+import { type WriteStream } from "fs";
+import type { TransportContext } from "@loggerjs/core";
+import type { WritableLike } from "./internal-types.js";
+export interface NodeDestination {
+    stream?: WriteStream;
+    write: (payload: string | Uint8Array, context?: TransportContext) => void;
+    flush: () => Promise<void>;
+    flushSync: () => void;
+    close: () => Promise<void>;
+    closeSync: () => void;
+    releaseSync?: () => void;
+}
+export interface NodeStreamDestinationOptions {
+    name: string;
+    stream: WritableLike;
+    minLength?: number;
+    ignoreEpipe?: boolean;
+    reportOperation?: string;
+    syncWrite?: (payload: string | Uint8Array) => void;
+}
+export interface NodeFileDestinationOptions {
+    name: string;
+    path: string;
+    flags?: string;
+    append?: boolean;
+    mkdir?: boolean;
+    sync?: boolean;
+    minLength?: number;
+}
+export declare function createNodeStreamDestination(options: NodeStreamDestinationOptions): NodeDestination;
+export declare function createNodeFileDestination(options: NodeFileDestinationOptions): NodeDestination;
 ```
 
 ## node-fetch-integration.d.ts
@@ -575,6 +615,8 @@ export interface RotatingFileTransportOptions {
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
     flags?: string;
+    append?: boolean;
+    mkdir?: boolean;
     maxBytes?: number;
     maxFiles?: number;
     archivePath?: (path: string, index: number) => string;
@@ -651,6 +693,8 @@ export interface StdoutTransportOptions {
     stream?: WritableLike;
     codec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
+    minLength?: number;
+    ignoreEpipe?: boolean;
 }
 export declare function stdoutTransport(options?: StdoutTransportOptions): Transport;
 export declare function stderrTransport(options?: Omit<StdoutTransportOptions, "stream">): Transport;

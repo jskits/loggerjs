@@ -94,7 +94,8 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 Crash-path guidance:
 
 - Keep at least one local transport for fatal process events.
-- Prefer `flushSync()` for final synchronous shutdown when the transport supports it.
+- Prefer `flushSync()` for final synchronous shutdown when the transport supports it; use `await flush()` for normal drain-and-continue shutdowns.
+- Use `fileTransport({ sync: true })` when every write must reach the filesystem before the log call returns.
 - Use HTTP/OTLP remote transports for normal delivery, not as the only fatal-path sink.
 - Keep processor work synchronous and bounded; crash handlers should not perform slow enrichment.
 

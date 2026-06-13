@@ -70,4 +70,71 @@ describe("stdoutTransport", () => {
     await flushPromise;
     expect(flushed).toBe(true);
   });
+
+  it("buffers writes until minLength is reached", async () => {
+    const chunks: Array<string | Uint8Array> = [];
+    const payloads = ["abc", "def"];
+    const transport = stdoutTransport({
+      minLength: 6,
+      codec: {
+        name: "message",
+        contentType: "text/plain",
+        encode: () => payloads.shift() ?? "",
+      },
+      stream: {
+        write(chunk, callback) {
+          chunks.push(chunk);
+          callback?.();
+          return true;
+        },
+      },
+    });
+
+    transport.log?.({ ...event, message: "abc" }, context);
+    expect(chunks).toEqual([]);
+
+    transport.log?.({ ...event, message: "def" }, context);
+    await transport.flush?.();
+
+    expect(chunks).toEqual(["abcdef"]);
+  });
+
+  it("treats EPIPE as a clean stdout shutdown by default", async () => {
+    const reportInternalError = vi.fn<TransportContext["reportInternalError"]>();
+    const error = new Error("closed pipe") as Error & { code: string };
+    error.code = "EPIPE";
+    const transport = stdoutTransport({
+      stream: {
+        write() {
+          throw error;
+        },
+      },
+    });
+
+    transport.log?.(event, { ...context, reportInternalError });
+
+    await expect(transport.flush?.()).resolves.toBeUndefined();
+    expect(reportInternalError).not.toHaveBeenCalled();
+  });
+
+  it("reports non-EPIPE write failures and rejects flush", async () => {
+    const reportInternalError = vi.fn<TransportContext["reportInternalError"]>();
+    const error = new Error("stream failed");
+    const transport = stdoutTransport({
+      stream: {
+        write() {
+          throw error;
+        },
+      },
+    });
+
+    transport.log?.(event, { ...context, reportInternalError });
+
+    await expect(transport.flush?.()).rejects.toThrow("stream failed");
+    expect(reportInternalError).toHaveBeenCalledWith(error, {
+      phase: "transport",
+      transport: "stdout",
+      operation: "write",
+    });
+  });
 });

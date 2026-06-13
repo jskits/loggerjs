@@ -70,11 +70,17 @@ rotatingFileTransport({ path: "audit.log", maxBytes: 10 * 1024 * 1024 });
 
 | Transport | Delivers to |
 | --- | --- |
-| `stdoutTransport` / `stderrTransport` | process streams, one NDJSON line per log |
-| `fileTransport` / `rotatingFileTransport` | files, with size-based rotation |
+| `stdoutTransport` / `stderrTransport` | process streams, one NDJSON line per log, drain-aware flush, optional `minLength` buffering, clean `EPIPE` shutdown |
+| `fileTransport` / `rotatingFileTransport` | files, with `mkdir`/`append` controls, optional `sync: true`, crash-path `flushSync`, and size-based rotation |
 | `nodeHttpTransport` | a collector over `fetch`, wrapped in `batchTransport` (batching + retry) |
 | `nodeSyslogTransport` | RFC 5424 syslog over UDP/TCP |
 | `workerTransport` | a worker thread (encodes batches with a codec, optional buffer transfer, fallback on worker death) |
+
+File and process-stream transports share the same internal destination logic for
+write callbacks, drain waiting, `minLength` buffering, close, and sync crash
+flush. Use `await flush()` for normal shutdown. Use `flushSync()` only on fatal
+paths, or configure `fileTransport({ sync: true })` when every write must reach
+the filesystem before the log call returns.
 
 ## Integrations (16)
 
