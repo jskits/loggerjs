@@ -86,19 +86,19 @@ configuration, ❌ no checked first-party equivalent, 📊 measured in this repo
 ## Performance Snapshot
 
 Current measured Node snapshot from [BENCHMARKS.md](BENCHMARKS.md), recorded on
-2026-06-12 with Node 22.22.2, pino 10.3.1, winston 3.19.0, LogTape 2.1.3, and
-`BENCH_ITERATIONS=200000`:
+2026-06-14 with Node 22.22.2, pino 10.3.1, winston 3.19.0, LogTape 2.1.3, and
+`BENCH_ITERATIONS=1000000`:
 
 | Scenario | ns/op | Read |
 | --- | ---: | --- |
-| loggerjs disabled debug, lazy message | 5 | Disabled level path is at pino parity in this run |
-| pino disabled debug | 6 | Effectively the same class of overhead |
-| loggerjs lean record sink | 268 | Comparable lean JSON output via `fastEventJsonCodec` |
-| pino NDJSON noop sink | 228 | Faster direct JSON path |
-| loggerjs full-envelope record sink | 303 | Adds `id`, `seq`, and `levelName` |
-| node console info noop stream | 549 | Slower than LoggerJS structured sink in this run |
-| winston JSON noop sink | 2,436 | Roughly 9x slower than LoggerJS lean sink in this run |
-| LogTape JSON lines noop sink | 4,842 | Roughly 18x slower than LoggerJS lean sink in this run |
+| loggerjs disabled debug, lazy message | 2 | Disabled level path is at pino parity in this run |
+| pino disabled debug | 7 | Effectively the same class of overhead |
+| loggerjs lean record sink | 267 | Comparable lean JSON output via `fastEventJsonCodec` (~84% of pino) |
+| pino NDJSON noop sink | 224 | Faster direct JSON path |
+| loggerjs full-envelope record sink | 301 | Adds `id`, `seq`, and `levelName` (~74% of pino) |
+| node console info noop stream | 698 | Slower than LoggerJS structured sink in this run |
+| winston JSON noop sink | 2,723 | Roughly 10x slower than LoggerJS lean sink in this run |
+| LogTape JSON lines noop sink | 5,057 | Roughly 19x slower than LoggerJS lean sink in this run |
 
 The honest interpretation is narrow:
 

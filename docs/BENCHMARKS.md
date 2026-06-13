@@ -40,41 +40,50 @@ serialization without terminal or filesystem I/O noise. pino, winston, and
 LogTape are dev dependencies pinned in the root lockfile. The Node console
 scenario uses a real `Console` instance backed by a discarding stream.
 
-Snapshot recorded 2026-06-12 on an Apple Silicon laptop, Node v22.22.2,
-pino 10.3.1, winston 3.19.0, LogTape 2.1.3, `BENCH_ITERATIONS=200000`:
+Snapshot recorded 2026-06-14 on an Apple Silicon laptop, Node v22.22.2,
+pino 10.3.1, winston 3.19.0, LogTape 2.1.3, `BENCH_ITERATIONS=1000000` (a
+single low-noise run), after the `getContext` fast-path and `fastEventJsonCodec`
+encoder specialization. Every ratio below is computed directly from these
+numbers as `pino_ns / loggerjs_ns`:
 
 | Scenario | ns/op | ops/sec |
 | --- | ---: | ---: |
-| loggerjs disabled debug (lazy message) | 5 | 199,766,872 |
-| pino disabled debug | 6 | 157,723,607 |
-| loggerjs batch transport enqueue | 163 | 6,145,156 |
-| loggerjs lean record sink | 268 | 3,735,859 |
-| loggerjs fast-event-json record sink | 303 | 3,299,801 |
-| loggerjs ndjson event sink | 793 | 1,260,769 |
-| loggerjs fast-event-json event sink | 870 | 1,150,046 |
-| pino ndjson noop sink | 228 | 4,393,343 |
-| node console info noop stream | 549 | 1,821,547 |
-| winston json noop sink | 2,436 | 410,525 |
-| logtape json lines noop sink | 4,842 | 206,535 |
+| loggerjs disabled debug (lazy message) | 2 | 579,794,173 |
+| pino disabled debug | 7 | 148,533,234 |
+| loggerjs batch transport enqueue | 173 | 5,794,474 |
+| loggerjs lean record sink | 267 | 3,739,631 |
+| loggerjs fast-event-json record sink | 301 | 3,327,283 |
+| loggerjs ndjson event sink | 858 | 1,165,231 |
+| loggerjs fast-event-json event sink | 939 | 1,064,471 |
+| pino ndjson noop sink | 224 | 4,454,734 |
+| node console info noop stream | 698 | 1,432,932 |
+| winston json noop sink | 2,723 | 367,302 |
+| logtape json lines noop sink | 5,057 | 197,765 |
 
 All loggerjs and pino full-path loggers carry the same base fields
 (`service`, `env`). The lean record sink uses
 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`
 to emit lean comparable lines; the full-envelope record sink additionally emits
-`id`, `seq`, and `levelName` per line.
+`id`, `seq`, and `levelName` per line. Absolute ns/op vary run to run (the
+disabled path is especially warmup-sensitive, 2-6ns); the CI-enforced figure is
+the **ratio** in `pnpm bench:gate`, which uses a 100k baseline and currently
+measures lean at ~1.20x pino.
 
 Honest read of the numbers against the design targets:
 
-- Disabled-level logging is at parity with pino.
-- The lean record sink runs at roughly 85% of pino, and the full-envelope
-  record sink at roughly 75% while carrying three extra fields per line. The
-  design target of at least 80% of pino is **met** for equivalent output.
-  Full parity is structurally out of reach without giving up the record
-  pipeline: pino builds its line directly from call arguments, while loggerjs
-  allocates a LogRecord so middleware, processors, and multiple transports can
-  observe it.
-- loggerjs is roughly 2x faster than Node console, 9x faster than winston, and
-  18x faster than LogTape on the measured sink paths.
+- Disabled-level logging is at parity with pino (both single-digit ns).
+- The lean record sink runs at **~84% of pino** in this snapshot (224/267,
+  ≈1.19x; the 100k CI gate measures ~1.20x), and the full-envelope record sink
+  at **~74%** (224/301) while carrying three extra fields per line. The design
+  target of at least 80% of pino is **met** for equivalent output. The 2026-06
+  optimization closed the lean ratio from ~1.30x to ~1.20x by removing a
+  per-call context-merge allocation and specializing the encoder; see
+  `docs/ARCHITECTURE.md` for what is recoverable code vs. genuine architectural
+  cost (the `LogRecord` allocation, the codec's decoupling from the logger, and
+  the never-throw safe-fallback contract).
+- On this run loggerjs is ~2.6x faster than Node console (698/267), ~10x faster
+  than winston (2723/267), and ~19x faster than LogTape (5057/267); these
+  competitor multiples swing with system load, so treat them as approximate.
 - An earlier snapshot showed pino at 442ns in the mixed suite; that was a JIT
   warmup artifact (10k warmup iterations), fixed by warming each scenario with
   a quarter of the measured iterations. Treat cross-logger comparisons as

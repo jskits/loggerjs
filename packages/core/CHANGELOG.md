@@ -1,5 +1,32 @@
 # @loggerjs/core
 
+## 0.3.1
+
+### Patch Changes
+
+- perf: cut hot-path overhead on the lean record path (~1.30x → ~1.20x of pino)
+
+  Two semantics-preserving optimizations to the synchronous logging hot path:
+
+  - `getContext()` no longer runs `addedProviders.map()`, an argument spread, and
+    a `mergeContext({})` allocation on every log call when no global provider or
+    added providers are configured (the common case). It now returns the managed
+    context directly via a real fast path. This removed three per-call object
+    allocations.
+  - `emitRecord()` skips allocating the middleware-context object and its
+    `reportInternalError` closure when the logger has no middleware.
+  - `fastEventJsonCodec` resolves its `includeId`/`includeSeq`/`includeLevelName`
+    (and other `includeX`) toggles once at codec creation instead of on every
+    `encode`, builds the record/event header in a single template literal instead
+    of a chain of `+=` concatenations, and guards the optional error/context/
+    trace tails on the field directly so a null field skips the helper call. The
+    single-item encode path also dispatches straight to the concrete encoder.
+
+  Output is byte-for-byte identical; the never-throw safe-fallback contract,
+  escaping, and prototype-pollution-safe data serialization are unchanged. The
+  benchmark regression gate is tightened (lean 2x → 1.5x, fast-event 2.2x → 1.7x)
+  so a regression like the context-merge allocation is caught earlier.
+
 ## 0.3.0
 
 ### Minor Changes

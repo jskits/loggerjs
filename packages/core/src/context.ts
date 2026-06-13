@@ -64,8 +64,12 @@ export function resetContextManager(): void {
 }
 
 export function getContext(): BoundContext | undefined {
-  const provided = mergeContext(provider?.(), ...addedProviders.map((entry) => entry.provider()));
   const managed = manager.get();
+  // True fast path: with no global provider and no added providers (the common
+  // case) there is nothing to merge, so skip the .map() array allocation, the
+  // spread, and the mergeContext({}) object/Object.keys allocations entirely.
+  if (provider === undefined && addedProviders.length === 0) return managed;
+  const provided = mergeContext(provider?.(), ...addedProviders.map((entry) => entry.provider()));
   // Fast paths: most log calls have no ambient context at all, and merging
   // allocates twice. Managed contexts are already frozen BoundContexts and
   // can be returned as-is.

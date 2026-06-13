@@ -432,10 +432,15 @@ export class Logger implements LoggerLike {
   }
 
   private emitRecord(record: ReturnType<typeof createRecord>, levelName: EnabledLogLevelName) {
-    const processedRecord = runMiddleware(record, this.middleware, {
-      now: this.clock,
-      reportInternalError: (error, detail) => this.reportInternalError(error, detail),
-    });
+    // Skip the middleware-context object and closure allocation on the hot
+    // path when there is no middleware to run (the common case).
+    const processedRecord =
+      this.middleware.length === 0
+        ? record
+        : runMiddleware(record, this.middleware, {
+            now: this.clock,
+            reportInternalError: (error, detail) => this.reportInternalError(error, detail),
+          });
     if (!processedRecord) return;
 
     if (this.processors.length > 0) {

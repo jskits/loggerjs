@@ -70,6 +70,36 @@ function hasFullHeader(options: FastEventJsonCodecOptions): boolean {
   );
 }
 
+// Resolve every `includeX ?? true` toggle once per codec instead of on every
+// encode call. Threading these baked booleans through the encoders lets V8 keep
+// the hot path monomorphic and removes the per-call option lookups, the way
+// pino compiles its serializer a single time at logger creation.
+interface ResolvedFlags {
+  fullHeader: boolean;
+  includeId: boolean;
+  includeSeq: boolean;
+  includeLevelName: boolean;
+  includeData: boolean;
+  includeError: boolean;
+  includeContext: boolean;
+  includeTrace: boolean;
+  includeSource: boolean;
+}
+
+function resolveFlags(options: FastEventJsonCodecOptions): ResolvedFlags {
+  return {
+    fullHeader: hasFullHeader(options),
+    includeId: options.includeId ?? true,
+    includeSeq: options.includeSeq ?? true,
+    includeLevelName: options.includeLevelName ?? true,
+    includeData: options.includeData ?? true,
+    includeError: options.includeError ?? true,
+    includeContext: options.includeContext ?? true,
+    includeTrace: options.includeTrace ?? true,
+    includeSource: options.includeSource ?? true,
+  };
+}
+
 function createStringify(options: SafeStringifyOptions): JsonStringify {
   if (hasSafeOptions(options)) return (value) => safeJsonStringify(value, options);
   return JSON.stringify;
@@ -108,6 +138,8 @@ function tryFlatObjectJson(value: Record<string, unknown>): string | undefined {
   if (proto !== Object.prototype && proto !== null) return undefined;
   let output = "{";
   let first = true;
+  // Object.keys (not for..in) on purpose: it returns only own enumerable keys,
+  // so a polluted Object.prototype cannot leak inherited keys into log output.
   for (const key of Object.keys(value)) {
     const item = value[key];
     let encoded: string;
@@ -194,66 +226,78 @@ function errorForRecord(record: LogRecord): LogEvent["error"] | undefined {
 
 function encodeEvent(
   event: LogEvent,
-  options: FastEventJsonCodecOptions,
+  flags: ResolvedFlags,
   stringify: JsonStringify,
   tagsFragment: (tags: NonNullable<LogEvent["tags"]>) => string,
 ): string {
   let output: string;
-  if (hasFullHeader(options)) {
+  if (flags.fullHeader) {
     output = `{"id":${asJsonString(event.id)},"time":${event.time},"seq":${event.seq},"level":${event.level},"levelName":${asJsonString(event.levelName)},"logger":${asJsonString(event.logger)},"message":${asJsonString(event.message)}`;
   } else {
-    output = "{";
-    if (options.includeId ?? true) output += `"id":${asJsonString(event.id)},`;
-    output += `"time":${event.time}`;
-    if (options.includeSeq ?? true) output += `,"seq":${event.seq}`;
-    output += `,"level":${event.level}`;
-    if (options.includeLevelName ?? true) output += `,"levelName":${asJsonString(event.levelName)}`;
-    output += `,"logger":${asJsonString(event.logger)},"message":${asJsonString(event.message)}`;
+    // Build the header in one template literal: empty conditional fragments cost
+    // nothing, and a single concatenation avoids the chain of intermediate
+    // strings the previous `+=` sequence allocated per call.
+    const idPart = flags.includeId ? `"id":${asJsonString(event.id)},` : "";
+    const seqPart = flags.includeSeq ? `,"seq":${event.seq}` : "";
+    const levelNamePart = flags.includeLevelName
+      ? `,"levelName":${asJsonString(event.levelName)}`
+      : "";
+    output = `{${idPart}"time":${event.time}${seqPart},"level":${event.level}${levelNamePart},"logger":${asJsonString(event.logger)},"message":${asJsonString(event.message)}`;
   }
   if (event.type !== undefined) output += `,"type":${asJsonString(event.type)}`;
   if (event.tags !== undefined) output += tagsFragment(event.tags);
-  if (options.includeData ?? true) output = appendField(output, "data", event.data, stringify);
-  if (options.includeError ?? true) output = appendField(output, "error", event.error, stringify);
-  if (options.includeContext ?? true)
+  if (flags.includeData && event.data !== undefined)
+    output = appendField(output, "data", event.data, stringify);
+  if (flags.includeError && event.error !== undefined)
+    output = appendField(output, "error", event.error, stringify);
+  if (flags.includeContext && event.context !== undefined)
     output = appendField(output, "context", event.context, stringify);
-  if (options.includeTrace ?? true) output = appendField(output, "trace", event.trace, stringify);
-  if (options.includeSource ?? true)
+  if (flags.includeTrace && event.trace !== undefined)
+    output = appendField(output, "trace", event.trace, stringify);
+  if (flags.includeSource && event.source !== undefined)
     output = appendField(output, "source", event.source, stringify);
   return `${output}}`;
 }
 
 function encodeRecord(
   record: LogRecord,
-  options: FastEventJsonCodecOptions,
+  flags: ResolvedFlags,
   stringify: JsonStringify,
   tagsFragment: (tags: NonNullable<LogRecord["tags"]>) => string,
 ): string {
-  const levelName = toLevelName(record.level);
   let output: string;
-  if (hasFullHeader(options)) {
+  if (flags.fullHeader) {
     // The default id only contains [0-9a-z-] and the level name, so it never
     // needs escaping.
+    const levelName = toLevelName(record.level);
     output = `{"id":"${defaultRecordId(record, levelName)}${timeFragment(record.time)}${record.seq}${levelFragment(record.level)}${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
   } else {
-    output = "{";
-    if (options.includeId ?? true) output += `"id":"${defaultRecordId(record, levelName)}",`;
-    output += `"time":${record.time}`;
-    if (options.includeSeq ?? true) output += `,"seq":${record.seq}`;
-    output += `,"level":${record.level}`;
-    if (options.includeLevelName ?? true) output += `,"levelName":"${levelName}"`;
-    output += `,"logger":${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+    // The header is built in one template literal so it costs a single
+    // concatenation per record; empty conditional fragments cost nothing. The
+    // level name is resolved only when the id or the levelName field needs it,
+    // so the lean envelope (both off) skips the lookup. The "info" default is
+    // never emitted in that case — both fragments stay empty.
+    const levelName =
+      flags.includeId || flags.includeLevelName ? toLevelName(record.level) : "info";
+    const idPart = flags.includeId ? `"id":"${defaultRecordId(record, levelName)}",` : "";
+    const seqPart = flags.includeSeq ? `,"seq":${record.seq}` : "";
+    const levelNamePart = flags.includeLevelName ? `,"levelName":"${levelName}"` : "";
+    output = `{${idPart}"time":${record.time}${seqPart},"level":${record.level}${levelNamePart},"logger":${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
   }
   if (record.type !== null) output += `,"type":${asJsonString(record.type)}`;
   if (record.tags !== null) output += tagsFragment(record.tags);
-  if (options.includeData ?? true)
-    output = appendDataField(output, record.props ?? undefined, stringify);
-  if (options.includeError ?? true)
+  // Guard each optional tail on the record field directly so a null field skips
+  // the helper call (and its argument evaluation) entirely, matching the prior
+  // `?? undefined` no-op behavior without the per-call cost.
+  if (flags.includeData && record.props != null)
+    output = appendDataField(output, record.props, stringify);
+  if (flags.includeError && record.err != null)
     output = appendField(output, "error", errorForRecord(record), stringify);
-  if (options.includeContext ?? true)
-    output = appendField(output, "context", record.ctx ?? undefined, stringify);
-  if (options.includeTrace ?? true)
-    output = appendField(output, "trace", record.trace ?? undefined, stringify);
-  if ((options.includeSource ?? true) && record.source !== "app")
+  if (flags.includeContext && record.ctx != null)
+    output = appendField(output, "context", record.ctx, stringify);
+  if (flags.includeTrace && record.trace != null)
+    output = appendField(output, "trace", record.trace, stringify);
+  if (flags.includeSource && record.source !== "app")
     output += `,"source":{"integration":${asJsonString(record.source)}}`;
   return `${output}}`;
 }
@@ -262,25 +306,25 @@ type TagsFragment = (tags: NonNullable<LogEvent["tags"]>) => string;
 
 function encodeItem(
   item: LogEvent | LogRecord,
-  options: FastEventJsonCodecOptions,
+  flags: ResolvedFlags,
   stringify: JsonStringify,
   tagsFragment: TagsFragment,
 ): string {
   return isLogRecord(item)
-    ? encodeRecord(item, options, stringify, tagsFragment)
-    : encodeEvent(item, options, stringify, tagsFragment);
+    ? encodeRecord(item, flags, stringify, tagsFragment)
+    : encodeEvent(item, flags, stringify, tagsFragment);
 }
 
 function encodeArray(
   items: readonly (LogEvent | LogRecord)[],
-  options: FastEventJsonCodecOptions,
+  flags: ResolvedFlags,
   stringify: JsonStringify,
   tagsFragment: TagsFragment,
 ): string {
   let output = "[";
   for (let index = 0; index < items.length; index += 1) {
     if (index > 0) output += ",";
-    output += encodeItem(items[index]!, options, stringify, tagsFragment);
+    output += encodeItem(items[index]!, flags, stringify, tagsFragment);
   }
   return `${output}]`;
 }
@@ -321,6 +365,9 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
   const stringify = createStringify(options);
   const safeStringify: JsonStringify = (value) => safeJsonStringify(value, options);
   const useNativeEventJson = canUseNativeEventJson(options);
+  // Bake the envelope toggles once so neither the fast nor the safe encoder
+  // re-derives them per call.
+  const flags = resolveFlags(options);
   const tagsFragment = createTagsFragment(stringify, true);
   // The fallback must not reuse the fast fragments: a cached entry or the
   // fast stringify could throw on the exact payload that triggered fallback.
@@ -328,10 +375,13 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
   const fastEncode = (input: CodecInput): string => {
     if (isCodecArray(input)) {
       if (useNativeEventJson && !hasLogRecord(input)) return JSON.stringify(input);
-      return encodeArray(input, options, stringify, tagsFragment);
+      return encodeArray(input, flags, stringify, tagsFragment);
     }
-    if (useNativeEventJson && !isLogRecord(input)) return JSON.stringify(input);
-    return encodeItem(input, options, stringify, tagsFragment);
+    // Dispatch the single-item case directly to the concrete encoder, skipping
+    // the encodeItem indirection and resolving the record/event branch once.
+    if (isLogRecord(input)) return encodeRecord(input, flags, stringify, tagsFragment);
+    if (useNativeEventJson) return JSON.stringify(input);
+    return encodeEvent(input, flags, stringify, tagsFragment);
   };
   return {
     name: "fast-event-json",
@@ -346,8 +396,8 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
         incrementLoggerMetaCounter("codec.fallback");
         incrementLoggerMetaCounter("codec.fallback.fast-event-json");
       }
-      if (isCodecArray(input)) return encodeArray(input, options, safeStringify, safeTagsFragment);
-      return encodeItem(input, options, safeStringify, safeTagsFragment);
+      if (isCodecArray(input)) return encodeArray(input, flags, safeStringify, safeTagsFragment);
+      return encodeItem(input, flags, safeStringify, safeTagsFragment);
     },
     decode(payload) {
       return JSON.parse(payload) as LogEvent | LogEvent[];

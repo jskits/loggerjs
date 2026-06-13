@@ -402,19 +402,33 @@ Initial internal budget:
 
 Benchmarking must cover Node and real browsers, not only synthetic Node loops. The suite should compare pino, winston, LogTape, native console, native `JSON.stringify`, current LoggerJS, and target LoggerJS paths.
 
-### Decision: 80% of pino is the accepted ceiling, not a milestone toward parity
+### Decision: ~80% of pino is the accepted ceiling, not a milestone toward parity
 
-Status as of 2026-06: the Node NDJSON full path measures ~85% of pino for
-equivalent output (lean envelope) and ~75% while emitting `id`, `seq`, and
+Status as of 2026-06: the Node NDJSON full path measures ~84% of pino for
+equivalent output (lean envelope) and ~74% while emitting `id`, `seq`, and
 `levelName` on top of pino's fields (see `docs/BENCHMARKS.md` for the
-snapshot). The 80% target is met, and we deliberately stop here.
+snapshot). The 80% target is met for equivalent output.
 
-The remaining gap is structural, not unoptimized code. pino builds its output
-line directly from call arguments; LoggerJS allocates a `LogRecord` so that
+A profiling pass in 2026-06 corrected an earlier overstatement that "the gap is
+structural, not unoptimized code." Two recoverable inefficiencies were found
+and fixed, moving the lean ratio from ~1.30x pino to ~1.20x: (1) `getContext`
+ran an `addedProviders.map()` + spread + `mergeContext({})` on every call even
+with no ambient context configured — allocating three objects to merge nothing;
+(2) `fastEventJsonCodec` re-derived its `includeX` toggles and built the line
+through a chain of `+=` concatenations on every encode, instead of baking the
+flags once at codec creation and emitting the header in a single template
+(pino's "compile the serializer once" technique).
+
+The *residual* gap to pino is genuinely structural. pino builds its output line
+directly from call arguments; LoggerJS allocates a `LogRecord` (~12ns) so that
 middleware, processors, integrations, and multiple transports can observe one
-shared value. Closing the gap would require a fusion fast path that bypasses
-the record whenever a logger has exactly one sync transport and no
-middleware. That path is rejected because it would:
+shared value, and the codec stays decoupled from the logger (per-call WeakMap
+fragment lookups, a safe-fallback `try/catch` that must never lose a log). The
+record allocation itself is small; the decoupling and the never-throw contract
+are the real cost, and they are the architecture's whole point. Closing the
+last ~17% would require a fusion fast path that bypasses the record whenever a
+logger has exactly one sync transport and no middleware. That path is rejected
+because it would:
 
 - create a performance cliff where adding the first middleware silently costs
   30%+ of throughput,

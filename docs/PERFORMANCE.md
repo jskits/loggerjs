@@ -8,9 +8,9 @@ Reference numbers (Apple Silicon, Node 22 — see BENCHMARKS.md for the full tab
 | --- | ---: |
 | Disabled level call | ~5 ns |
 | Enabled pipeline, record fast path, noop sink | ~101 ns |
-| Batch transport enqueue (default settings) | ~163 ns |
-| Full NDJSON line to a sink (lean envelope) | ~268 ns (~85% of pino) |
-| Full NDJSON line with id/seq/levelName | ~303 ns |
+| Batch transport enqueue (default settings) | ~173 ns |
+| Full NDJSON line to a sink (lean envelope) | ~267 ns (~84% of pino, ≈1.20×) |
+| Full NDJSON line with id/seq/levelName | ~301 ns (~74% of pino) |
 
 ## Free Wins (Defaults Already Do This)
 
