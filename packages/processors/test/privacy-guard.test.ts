@@ -84,4 +84,27 @@ describe("privacyGuardProcessor", () => {
       context: { authorization: "Bearer secret.token" },
     });
   });
+
+  it("bounds adversarial email-like input before pattern matching", () => {
+    const processor = privacyGuardProcessor({
+      targets: ["message"],
+      maxStringLength: 128,
+      truncateSuffix: "~",
+    });
+    const startedAt = performance.now();
+    const processed = processor(
+      {
+        ...event,
+        message: `prefix a@${"a.".repeat(32_768)}!`,
+      },
+      context,
+    );
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(processed).toBeTruthy();
+    if (!processed) throw new Error("privacy guard unexpectedly dropped");
+    expect(processed.message.endsWith("~")).toBe(true);
+    expect(processed.message.length).toBeLessThanOrEqual(129);
+    expect(elapsedMs).toBeLessThan(100);
+  });
 });

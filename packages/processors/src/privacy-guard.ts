@@ -31,6 +31,7 @@ interface NormalizedPrivacyOptions {
   denyKeys: readonly PrivacyGuardMatcher[];
   allowKeys: readonly PrivacyGuardMatcher[];
   patterns: readonly PrivacyPattern[];
+  redactDefaultEmailPattern: boolean;
   replacement: string;
   maxDepth: number;
   maxStringLength: number;
@@ -80,10 +81,6 @@ function passesLuhn(input: string): boolean {
 
 const DEFAULT_PATTERNS: readonly PrivacyPattern[] = [
   {
-    name: "email",
-    pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
-  },
-  {
     name: "bearer-token",
     pattern: /\bBearer\s+[A-Za-z0-9._~+/=-]+\b/g,
   },
@@ -93,6 +90,105 @@ const DEFAULT_PATTERNS: readonly PrivacyPattern[] = [
     validate: passesLuhn,
   },
 ];
+
+function isAsciiAlpha(code: number): boolean {
+  return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+function isAsciiAlphaNumeric(code: number): boolean {
+  return isAsciiAlpha(code) || (code >= 48 && code <= 57);
+}
+
+function hasChar(code: number, chars: string): boolean {
+  return chars.includes(String.fromCharCode(code));
+}
+
+function isEmailLocalChar(code: number): boolean {
+  return isAsciiAlphaNumeric(code) || hasChar(code, "._%+-");
+}
+
+function isEmailDomainChar(code: number): boolean {
+  return isAsciiAlphaNumeric(code) || hasChar(code, "-.");
+}
+
+function hasValidEmailDomain(input: string, start: number, end: number): boolean {
+  let labelLength = 0;
+  let dotCount = 0;
+  let tldStart = -1;
+
+  for (let index = start; index < end; index += 1) {
+    const code = input.charCodeAt(index);
+    if (code === 46) {
+      if (labelLength === 0) return false;
+      dotCount += 1;
+      labelLength = 0;
+      tldStart = index + 1;
+      continue;
+    }
+    labelLength += 1;
+  }
+
+  if (dotCount === 0 || labelLength === 0 || tldStart < 0 || end - tldStart < 2) return false;
+  for (let index = tldStart; index < end; index += 1) {
+    if (!isAsciiAlpha(input.charCodeAt(index))) return false;
+  }
+  return true;
+}
+
+function redactEmailAddresses(
+  input: string,
+  path: string,
+  options: NormalizedPrivacyOptions,
+): GuardResult {
+  let output = "";
+  let last = 0;
+  let changed = false;
+  let index = 0;
+
+  while (index < input.length) {
+    const startCode = input.charCodeAt(index);
+    if (!isAsciiAlphaNumeric(startCode)) {
+      index += 1;
+      continue;
+    }
+
+    const localStart = index;
+    let cursor = index + 1;
+    while (cursor < input.length && isEmailLocalChar(input.charCodeAt(cursor))) {
+      cursor += 1;
+    }
+
+    if (input.charCodeAt(cursor) !== 64) {
+      index = cursor + 1;
+      continue;
+    }
+
+    const domainStart = cursor + 1;
+    cursor = domainStart;
+    while (cursor < input.length && isEmailDomainChar(input.charCodeAt(cursor))) {
+      cursor += 1;
+    }
+
+    if (
+      domainStart < cursor &&
+      hasValidEmailDomain(input, domainStart, cursor) &&
+      (cursor >= input.length || !isEmailLocalChar(input.charCodeAt(cursor)))
+    ) {
+      output += input.slice(last, localStart);
+      output += options.replacement;
+      options.onRedact?.(path, "email");
+      last = cursor;
+      changed = true;
+      index = cursor;
+      continue;
+    }
+
+    index = domainStart;
+  }
+
+  if (!changed) return { value: input, changed: false };
+  return { value: output + input.slice(last), changed: true };
+}
 
 function matcherMatches(
   matcher: PrivacyGuardMatcher,
@@ -124,12 +220,26 @@ function redact(path: string, reason: string, options: NormalizedPrivacyOptions)
 
 function guardString(input: string, path: string, options: NormalizedPrivacyOptions): GuardResult {
   let value = input;
+  let changed = false;
+
+  if (value.length > options.maxStringLength) {
+    options.onRedact?.(path, "max-string-length");
+    value = `${value.slice(0, options.maxStringLength)}${options.truncateSuffix}`;
+    changed = true;
+  }
+
+  if (options.redactDefaultEmailPattern) {
+    const emailResult = redactEmailAddresses(value, path, options);
+    value = emailResult.value as string;
+    changed ||= emailResult.changed;
+  }
 
   for (const item of options.patterns) {
     item.pattern.lastIndex = 0;
     value = value.replace(item.pattern, (match) => {
       if (item.validate && !item.validate(match)) return match;
       options.onRedact?.(path, item.name);
+      changed = true;
       return item.replacement ?? options.replacement;
     });
   }
@@ -137,9 +247,10 @@ function guardString(input: string, path: string, options: NormalizedPrivacyOpti
   if (value.length > options.maxStringLength) {
     options.onRedact?.(path, "max-string-length");
     value = `${value.slice(0, options.maxStringLength)}${options.truncateSuffix}`;
+    changed = true;
   }
 
-  return { value, changed: value !== input };
+  return { value, changed: changed || value !== input };
 }
 
 function guardValue(
@@ -224,6 +335,7 @@ export function privacyGuardProcessor(options: PrivacyGuardOptions = {}): Proces
     denyKeys: options.denyKeys ?? DEFAULT_DENY_KEYS,
     allowKeys: options.allowKeys ?? [],
     patterns: options.patterns ?? DEFAULT_PATTERNS,
+    redactDefaultEmailPattern: options.patterns === undefined,
     replacement: options.replacement ?? "[REDACTED]",
     maxDepth: Math.max(0, Math.floor(options.maxDepth ?? 8)),
     maxStringLength: Math.max(1, Math.floor(options.maxStringLength ?? 8_192)),

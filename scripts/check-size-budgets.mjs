@@ -11,7 +11,7 @@ const budgets = [
   ["@loggerjs/node", "packages/node/dist/index.js", 74_000, 15_200],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 14_000, 3_400],
-  ["@loggerjs/processors", "packages/processors/dist/index.js", 49_000, 11_300],
+  ["@loggerjs/processors", "packages/processors/dist/index.js", 49_600, 11_600],
   ["@loggerjs/otel", "packages/otel/dist/index.js", 10_000, 3_000],
   ["@loggerjs/sentry", "packages/sentry/dist/index.js", 4_000, 1_500],
   ["@loggerjs/loki", "packages/loki/dist/index.js", 8_000, 3_000],
