@@ -4,4 +4,6 @@ packages:
 allowBuilds:
   esbuild: true
   msgpackr-extract: true
+  sharp: true
   simple-git-hooks: false
+  workerd: true

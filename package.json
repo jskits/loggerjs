@@ -27,6 +27,7 @@
     "clean:all": "pnpm clean && rm -rf node_modules",
     "commit": "cz",
     "compat:node": "pnpm smoke:packages",
+    "compat:runtimes": "node scripts/smoke-runtimes.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
@@ -59,6 +60,7 @@
     "commitizen": "^4.3.1",
     "cz-git": "^1.13.1",
     "lint-staged": "^17.0.7",
+    "miniflare": "^4.20260611.0",
     "oxfmt": "^0.54.0",
     "oxlint": "^1.69.0",
     "pino": "^10.3.1",
@@ -67,7 +69,8 @@
     "turbo": "^2.9.17",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "workerd": "^1.20260612.1"
   },
   "simple-git-hooks": {
     "commit-msg": "pnpm exec commitlint --edit \"$1\"",

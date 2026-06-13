@@ -68,6 +68,39 @@ jobs:
 
       - run: node scripts/smoke-packages.mjs --smoke-only
 
+  runtime-compat:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - bun
+          - deno
+          - workers
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@v2
+        if: matrix.runtime == 'bun'
+
+      - uses: denoland/setup-deno@v2
+        if: matrix.runtime == 'deno'
+        with:
+          deno-version: v2.x
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: node scripts/smoke-runtimes.mjs --runtime=${{ matrix.runtime }}
+
   bench:
     runs-on: ubuntu-latest
     steps:
