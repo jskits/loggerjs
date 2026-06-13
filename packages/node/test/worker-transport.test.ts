@@ -248,6 +248,35 @@ describe("workerTransport", () => {
     expect(worker.terminate).not.toHaveBeenCalled();
   });
 
+  it("keeps message listeners until pending acks flush on close", async () => {
+    const worker = new FakeWorker();
+    const transport = workerTransport({
+      worker,
+      codec: textCodec,
+      readyTimeoutMs: 1000,
+      ackTimeoutMs: 1000,
+    });
+
+    const logPromise = transport.log?.(event, createContext());
+    await Promise.resolve();
+    worker.emit("message", { type: "loggerjs:ready" });
+    await logPromise;
+
+    const message = worker.messages[0]?.value as WorkerTransportMessage;
+    let closed = false;
+    const closePromise = transport.close?.()?.then(() => {
+      closed = true;
+    });
+    await Promise.resolve();
+    expect(closed).toBe(false);
+
+    worker.emit("message", { type: "loggerjs:batch:ack", id: message.id });
+    await closePromise;
+
+    expect(closed).toBe(true);
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  });
+
   it("does not expose sync flush", () => {
     const transport = workerTransport({
       worker: {

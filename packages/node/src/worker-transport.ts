@@ -339,10 +339,10 @@ export function workerTransport(options: WorkerTransportOptions = {}): Transport
       await fallback?.flush?.();
     },
     async close() {
+      await transport.flush?.();
       worker?.off?.("error", onWorkerError);
       worker?.off?.("exit", onWorkerExit);
       worker?.off?.("message", onWorkerMessage);
-      await transport.flush?.();
       await fallback?.close?.();
       if (autoEnd) await worker?.terminate?.();
       if (readyTimer) clearTimeout(readyTimer);
