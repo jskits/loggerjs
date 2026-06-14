@@ -1,0 +1,4 @@
+interface:
+  display_name: "LoggerJS"
+  short_description: "Use LoggerJS in JS/TS apps"
+  default_prompt: "Use $loggerjs to add production-ready structured logging to this JavaScript or TypeScript app."

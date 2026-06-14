@@ -1,0 +1,11 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "LoggerJS",
+      "description": "Skills for adding production-ready LoggerJS structured logging to JavaScript and TypeScript projects.",
+      "skills": ["loggerjs"]
+    }
+  ]
+}
