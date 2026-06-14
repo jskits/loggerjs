@@ -10,4 +10,5 @@ LoggerJS 在站点构建时发布面向 LLM 的文档入口。
 
 - [llms.txt](/zh/llms.txt) 是中文站点的高价值文档地图。
 - [llms-full.txt](/zh/llms-full.txt) 汇总中文导览页和关键仓库来源，适合更大的上下文窗口。
+- [AI Skill](/zh/AI-SKILL) 说明如何安装 LoggerJS skill 给 coding agent 使用。
 - 英文入口仍保留在 [llms.txt](/llms.txt) 和 [llms-full.txt](/llms-full.txt)。

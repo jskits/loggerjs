@@ -91,6 +91,7 @@ await logger.flush();
 - [生产配方](/zh/PRODUCTION-RECIPES)、[运维](/zh/OPERATIONS) 和 [性能](/zh/PERFORMANCE) 帮助做上线选择。
 - [基准](/zh/BENCHMARKS)、[基准矩阵](/zh/BENCHMARK-MATRIX) 和 [对比](/zh/COMPARISON) 把性能与定位绑定到仓库证据。
 - [包](/zh/reference/packages)、[API 报告](/zh/reference/api/) 和 [示例](/zh/examples) 由当前仓库生成。
+- [AI Skill](/zh/AI-SKILL)、[llms.txt](/zh/llms.txt) 和 [llms-full.txt](/zh/llms-full.txt) 帮助 coding agent 直接使用 LoggerJS。
 
 ---
 
@@ -698,3 +699,587 @@ description: "生产可靠性、观测和交付强化计划。"
 
 - [英文原文](/PROPOSAL-PRODUCTION-HARDENING)
 - [中文首页](/zh/)
+
+---
+
+# AI Skill
+
+Source: https://github.com/jskits/loggerjs/blob/main/docs/zh/AI-SKILL.md
+
+---
+title: "AI Skill"
+description: "安装并使用 LoggerJS AI skill，让 coding agent 直接完成 LoggerJS 接入。"
+---
+
+# AI Skill
+
+LoggerJS 提供可安装的 AI skill，供 coding agent 使用。这个 skill 会指导 agent 选择 LoggerJS 包、按运行时新增 logger 模块、配置生产日志、从现有 logger 迁移，并在目标项目里完成验证。
+
+当你希望 agent 直接把 LoggerJS 接入应用，而不是只阅读文档时，使用这个 skill。
+
+## 安装
+
+从 GitHub 仓库安装：
+
+```bash
+npx skills add jskits/loggerjs --skill loggerjs
+```
+
+安装到指定 agent：
+
+```bash
+npx skills add jskits/loggerjs --skill loggerjs --agent codex
+npx skills add jskits/loggerjs --skill loggerjs --agent claude-code
+```
+
+不安装，单次使用：
+
+```bash
+npx skills use jskits/loggerjs --skill loggerjs
+```
+
+从本地 checkout 开发或测试：
+
+```bash
+npx skills add . --skill loggerjs
+npx skills use . --skill loggerjs
+```
+
+## 包含内容
+
+- `skills/loggerjs/SKILL.md`：接入或迁移 LoggerJS 的主流程。
+- `skills/loggerjs/references/package-selection.md`：包和运行时选择规则。
+- `skills/loggerjs/references/runtime-recipes.md`：Node、浏览器、library、pretty、OpenTelemetry 和 Sentry 配方。
+- `skills/loggerjs/references/production-checklist.md`：隐私、可靠性、生命周期、性能和 vendor 投递护栏。
+- `skills/loggerjs/references/migration.md`：从 console、pino、winston、loglevel、debug 和现有 wrapper 迁移。
+- `skills/loggerjs/references/troubleshooting.md`：常见投递、flush、浏览器、codec 和 TypeScript 问题。
+- `skills/loggerjs/scripts/inspect-loggerjs-project.mjs`：只读项目识别脚本，根据目标应用推荐 LoggerJS 包。
+
+## 示例 prompt
+
+```text
+Use $loggerjs to add production-ready structured logging to this Node API.
+```
+
+```text
+Use $loggerjs to migrate this React app from console warnings/errors to LoggerJS browser logging.
+```
+
+```text
+Use $loggerjs to review this service's existing pino setup and propose the smallest safe LoggerJS migration.
+```
+
+## 和 llms.txt 的关系
+
+skill 本身保持短而可执行。需要精确 API 或更完整设计上下文时，它会指向面向 LLM 的文档：
+
+- [llms.txt](/zh/llms.txt)：中文文档地图。
+- [llms-full.txt](/zh/llms-full.txt)：适合更大上下文窗口的扩展文档和 skill 上下文。
+- [参考](/zh/reference/)：生成的包、API 和示例参考。
+
+---
+
+# LoggerJS AI Skill
+
+Source: https://github.com/jskits/loggerjs/blob/main/skills/loggerjs/SKILL.md
+
+---
+name: loggerjs
+description: Use LoggerJS in JavaScript or TypeScript projects. Trigger when adding structured logging, choosing LoggerJS packages for Node.js, browser, worker, edge, CLI, or library code, configuring transports, integrations, processors, codecs, OpenTelemetry or vendor delivery, migrating from console, pino, winston, loglevel, debug, or other loggers, or troubleshooting LoggerJS logging behavior.
+---
+
+# LoggerJS
+
+## Overview
+
+Use this skill to integrate LoggerJS into a real JavaScript or TypeScript codebase with the smallest correct package set, a runtime-appropriate logger module, production guardrails, and repo-local validation.
+
+LoggerJS is an isomorphic structured logging toolkit: a zero-dependency core plus platform packages for Node.js, browsers, workers, edge runtimes, transports, integrations, processors, codecs, and vendor delivery.
+
+## Workflow
+
+1. Inspect the target project before changing code.
+   - Run `node <skill-dir>/scripts/inspect-loggerjs-project.mjs <project-dir>` when the skill files are available locally.
+   - Otherwise inspect `package.json`, lockfiles, framework config, existing logger dependencies, and current logging call sites manually.
+2. Choose the minimum package set.
+   - Read `references/package-selection.md` when runtime, package, or vendor choice is not obvious.
+   - Prefer `@loggerjs/node` for Node services/CLIs, `@loggerjs/browser` for frontend apps, and `@loggerjs/core` for runtime-neutral libraries.
+3. Add one centralized logger module per runtime boundary.
+   - Keep app code importing from the local logger module, not directly from many LoggerJS package paths.
+   - Platform packages re-export core APIs, so start with one platform package unless a vendor or processor package is needed.
+4. Configure production safety before broad rollout.
+   - Read `references/production-checklist.md` before adding browser delivery, vendor delivery, persistent queues, or automatic capture.
+   - Add redaction/privacy processors before transports that leave the process.
+   - Never place vendor API keys, long-lived tokens, or private ingestion credentials in browser code.
+5. Migrate incrementally.
+   - Read `references/migration.md` when replacing console, pino, winston, loglevel, debug, consola, or a custom wrapper.
+   - Preserve existing call-site semantics first, then improve structure, context, and delivery.
+6. Validate with the target repo's own gates.
+   - Run the package manager install command if dependencies changed.
+   - Run typecheck/build/tests or the closest project-local equivalents.
+   - For browser apps, verify no secret-bearing environment variables are bundled client-side.
+
+## Reference Map
+
+- `references/package-selection.md`: package matrix, runtime detection, install commands, and vendor package choices.
+- `references/runtime-recipes.md`: minimal Node, browser, library, local pretty, OpenTelemetry, and Sentry recipes.
+- `references/production-checklist.md`: privacy, reliability, lifecycle, performance, and browser credential guardrails.
+- `references/migration.md`: incremental migration patterns from existing loggers.
+- `references/troubleshooting.md`: common missing-log, duplicate-log, browser, flush, codec, and delivery failures.
+
+Use the public docs when exact API details or broader context are needed:
+
+- Concise map: `https://jskits.github.io/loggerjs/llms.txt`
+- Full context: `https://jskits.github.io/loggerjs/llms-full.txt`
+- Package/API reference: `https://jskits.github.io/loggerjs/reference/`
+
+## Implementation Rules
+
+- Prefer TypeScript examples and ESM imports.
+- Keep LoggerJS setup in a small module such as `src/logger.ts`, `src/lib/logger.ts`, or the framework's existing observability/logging module.
+- Keep disabled-level hot paths cheap: avoid eager string interpolation, `JSON.stringify`, expensive context builders, or stack parsing before the logger level gate.
+- Use lazy messages or structured data for expensive values.
+- Use processors only when event-level behavior is needed. No-processor record paths are the fastest path.
+- Treat integrations as opt-in automatic capture. Add only the platform hooks the app actually needs.
+- Treat codecs as transport-owned. Do not pre-stringify records in application code before LoggerJS sees them.
+- Pair remote transports with bounded batching, retry/backoff, circuit-breakers, or offline queues where appropriate.
+- Make `flush()` part of controlled shutdown, tests that assert delivery, CLI exit paths, and requestless scripts.
+- In libraries, prefer `getLogger(["package-or-feature"])`; do not force host applications to configure transports.
+
+## Minimal Patterns
+
+Node service:
+
+```ts
+import { captureProcessIntegration, createLogger, stdoutTransport } from "@loggerjs/node";
+import { redactProcessor } from "@loggerjs/processors";
+
+export const logger = createLogger({
+  name: "api",
+  level: process.env.LOG_LEVEL ?? "info",
+  tags: { service: "api", env: process.env.NODE_ENV ?? "dev" },
+  processors: [redactProcessor()],
+  transports: [stdoutTransport()],
+  integrations: [captureProcessIntegration()],
+});
+```
+
+Browser app:
+
+```ts
+import {
+  browserHttpTransport,
+  captureBrowserErrorsIntegration,
+  captureFetchIntegration,
+  createLogger,
+  pageLifecycleIntegration,
+} from "@loggerjs/browser";
+import { redactProcessor } from "@loggerjs/processors";
+
+export const logger = createLogger({
+  name: "web",
+  level: "info",
+  processors: [redactProcessor()],
+  transports: [
+    browserHttpTransport({
+      url: "/api/logs",
+      maxBatchSize: 20,
+      flushIntervalMs: 1500,
+      useBeaconOnPageHide: true,
+    }),
+  ],
+  integrations: [
+    captureBrowserErrorsIntegration(),
+    captureFetchIntegration(),
+    pageLifecycleIntegration(),
+  ],
+});
+```
+
+Library code:
+
+```ts
+import { getLogger } from "@loggerjs/core";
+
+const logger = getLogger(["my-library"]);
+
+export function doWork() {
+  logger.debug("work started");
+}
+```
+
+## Output Expectations
+
+When reporting the result, include the files changed, the selected LoggerJS packages, the runtime assumptions, and the validation commands that passed or could not be run.
+
+---
+
+# LoggerJS AI Skill Package Selection
+
+Source: https://github.com/jskits/loggerjs/blob/main/skills/loggerjs/references/package-selection.md
+
+# Package Selection
+
+Use the smallest package set that matches the target runtime and delivery path.
+
+## Runtime Matrix
+
+| Target | Start with | Add when needed |
+| --- | --- | --- |
+| Node service, API, worker process, CLI | `@loggerjs/node` | `@loggerjs/processors`, `@loggerjs/pretty`, `@loggerjs/otel`, vendor transports |
+| Browser SPA, frontend route, web widget | `@loggerjs/browser` | `@loggerjs/processors`, browser-safe vendor proxy transport |
+| Shared library with no delivery ownership | `@loggerjs/core` | Usually none; the host app owns transports |
+| Isomorphic app with separate client/server bundles | `@loggerjs/node` on server and `@loggerjs/browser` on client | Shared local wrapper types if needed |
+| Edge or worker runtime without Node APIs | `@loggerjs/core` or `@loggerjs/browser` if browser APIs exist | Custom fetch transport or platform-specific delivery |
+| Local developer pretty logs | Runtime package plus `@loggerjs/pretty` | Keep production structured transport separate |
+
+## Common Add-ons
+
+| Need | Package |
+| --- | --- |
+| Redaction, sampling, routing, dedupe, fingerprinting, buffering | `@loggerjs/processors` |
+| MessagePack or richer serialization helpers | `@loggerjs/codecs` |
+| OpenTelemetry trace mapping or OTLP HTTP logs | `@loggerjs/otel` |
+| Sentry logs, breadcrumbs, or captured exceptions | `@loggerjs/sentry` |
+| Datadog Logs API | `@loggerjs/datadog` |
+| Elasticsearch bulk indexing | `@loggerjs/elastic` |
+| Grafana Loki push API | `@loggerjs/loki` |
+| Amazon CloudWatch Logs | `@loggerjs/cloudwatch` |
+| SQLite, PostgreSQL, or custom database sink | `@loggerjs/database` |
+
+## Install Commands
+
+Use the package manager already used by the repo.
+
+```bash
+npm install @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/node @loggerjs/processors
+yarn add @loggerjs/node @loggerjs/processors
+bun add @loggerjs/node @loggerjs/processors
+```
+
+For browsers:
+
+```bash
+npm install @loggerjs/browser @loggerjs/processors
+```
+
+For libraries:
+
+```bash
+npm install @loggerjs/core
+```
+
+## Selection Rules
+
+- If the project has `express`, `fastify`, `koa`, `hapi`, `nestjs`, `prisma`, `bullmq`, or Node server scripts, choose `@loggerjs/node`.
+- If it has `react`, `vue`, `svelte`, `vite`, `next`, `nuxt`, `angular`, `astro`, browser entry files, or `window`/`document` logging, choose `@loggerjs/browser` for the client bundle.
+- If it has both SSR/server and browser code, configure separate logger modules for server and client.
+- If the package is a published library, has `exports` or `main`, and should not decide delivery, use `@loggerjs/core` with `getLogger()`.
+- If migrating from an existing logger, install LoggerJS beside it first and preserve the old API through a local adapter when that reduces call-site churn.
+- Do not install every vendor package up front. Add vendor transports only when the destination is known and credentials/configuration exist.
+
+## Credential Boundaries
+
+- Browser code may send to your own ingestion endpoint, not directly to services that require private ingestion credentials.
+- Node services may own vendor credentials through server-side environment variables.
+- For edge runtimes, confirm whether the platform permits the needed network APIs and environment-secret model before adding vendor delivery.
+
+---
+
+# LoggerJS AI Skill Runtime Recipes
+
+Source: https://github.com/jskits/loggerjs/blob/main/skills/loggerjs/references/runtime-recipes.md
+
+# Runtime Recipes
+
+Use these as starting points, then adjust names, tags, transports, and integrations to the target app.
+
+## Node Service
+
+```ts
+import { captureProcessIntegration, createLogger, stdoutTransport } from "@loggerjs/node";
+import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
+
+const logger = createLogger({
+  name: "api",
+  level: process.env.LOG_LEVEL ?? "info",
+  tags: { service: "api", env: process.env.NODE_ENV ?? "dev" },
+  processors: [redactProcessor(), tagsProcessor({ runtime: "node" })],
+  transports: [stdoutTransport()],
+  integrations: [captureProcessIntegration()],
+});
+
+logger.info("server started", { port: 3000 });
+await logger.flush();
+```
+
+Use stdout first for container platforms that already collect process output. Add OTLP, Loki, Datadog, CloudWatch, or database transports only when the deployment needs direct delivery.
+
+## Browser App
+
+```ts
+import {
+  browserHttpTransport,
+  captureBrowserErrorsIntegration,
+  captureConsoleIntegration,
+  captureFetchIntegration,
+  createLogger,
+  pageLifecycleIntegration,
+} from "@loggerjs/browser";
+import { redactProcessor, sampleProcessor } from "@loggerjs/processors";
+
+export const logger = createLogger({
+  name: "web",
+  level: "info",
+  tags: { app: "web" },
+  processors: [
+    redactProcessor(),
+    sampleProcessor({ rates: { trace: 0.05, debug: 0.2, info: 1, warn: 1, error: 1, fatal: 1 } }),
+  ],
+  transports: [
+    browserHttpTransport({
+      url: "/api/logs",
+      maxBatchSize: 20,
+      flushIntervalMs: 1500,
+      useBeaconOnPageHide: true,
+    }),
+  ],
+  integrations: [
+    captureConsoleIntegration({ levels: ["warn", "error"] }),
+    captureBrowserErrorsIntegration(),
+    captureFetchIntegration(),
+    pageLifecycleIntegration(),
+  ],
+});
+```
+
+Use a server-owned ingestion endpoint for browser logs. Add IndexedDB/offline persistence when reload survival matters and the app can tolerate storage quota failures.
+
+## Library
+
+```ts
+import { getLogger } from "@loggerjs/core";
+
+const logger = getLogger(["my-library"]);
+
+export function parseInput(value: unknown) {
+  logger.debug("parse input", { valueType: typeof value });
+}
+```
+
+Library code should not configure transports globally. Let the host app call `configure()` or create application loggers.
+
+## Local Pretty Output
+
+```ts
+import { createLogger } from "@loggerjs/node";
+import { prettyStdoutTransport } from "@loggerjs/pretty";
+
+export const logger = createLogger({
+  name: "dev",
+  level: "debug",
+  transports: [prettyStdoutTransport()],
+});
+```
+
+Keep pretty output for local development. Production should still have structured delivery.
+
+## OpenTelemetry Delivery
+
+```ts
+import { createLogger, stdoutTransport } from "@loggerjs/node";
+import { openTelemetryTraceProcessor, otlpHttpTransport } from "@loggerjs/otel";
+
+export const logger = createLogger({
+  name: "api",
+  processors: [openTelemetryTraceProcessor()],
+  transports: [
+    stdoutTransport(),
+    otlpHttpTransport({
+      url: process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ?? "http://localhost:4318/v1/logs",
+      resource: { "service.name": "api" },
+    }),
+  ],
+});
+```
+
+Use this when the app already has OpenTelemetry tracing or an OTLP collector.
+
+## Sentry Delivery
+
+```ts
+import { createLogger } from "@loggerjs/core";
+import { sentryTransport } from "@loggerjs/sentry";
+import * as Sentry from "@sentry/node";
+
+export const logger = createLogger({
+  name: "api",
+  transports: [sentryTransport({ sentry: Sentry, captureMessages: true })],
+});
+```
+
+Use Sentry as an error/alerting path, not as the only high-volume structured-log sink unless the project has accepted that cost and retention model.
+
+---
+
+# LoggerJS AI Skill Production Checklist
+
+Source: https://github.com/jskits/loggerjs/blob/main/skills/loggerjs/references/production-checklist.md
+
+# Production Checklist
+
+Apply this before broad rollout or before adding automatic capture.
+
+## Privacy
+
+- Add `redactProcessor()` or a stricter privacy processor before any remote transport.
+- Redact tokens, cookies, authorization headers, passwords, secrets, session IDs, and user-provided free-form fields.
+- Keep raw request/response bodies out of default logs unless the app has a clear data classification rule.
+- In browser code, assume all bundled environment variables and network payloads are inspectable by users.
+
+## Reliability
+
+- Use bounded queues. Choose an explicit drop policy instead of allowing unbounded memory growth.
+- Pair network transports with batch size, flush interval, retry/backoff, and circuit-breaker settings appropriate to the destination.
+- Call `flush()` on controlled shutdown, CLI exit, worker teardown, and tests that assert delivery.
+- Use crash-path synchronous flush only for local process-safe transports; remote network delivery is best-effort during crashes.
+- Track LoggerJS self-metrics, drop counters, and transport errors in the app's existing observability path.
+
+## Browser Lifecycle
+
+- Enable page lifecycle integration when logs matter during tab close or navigation.
+- Treat `sendBeacon` as a last-chance attempt, not a delivery guarantee.
+- Use IndexedDB/offline queues when reload survival matters, but handle quota, private browsing, eviction, and blocked upgrades.
+- Prefer sampling or rate limits for high-volume browser debug/info events.
+
+## Performance
+
+- Keep expensive message construction behind the logger level gate.
+- Prefer structured data over preformatted strings when fields are later redacted, routed, or indexed.
+- Use processors only when event-level behavior is required; processor use disables the pure record fast path.
+- Keep hot-path browser integrations scoped to needed signals.
+- Benchmark if changing codec, batching, sampling, or high-volume call sites.
+
+## Vendor Delivery
+
+- Server-side vendor packages may use private credentials from environment variables.
+- Browser logs should flow through an application-owned ingestion endpoint or a public-safe token model.
+- Name the target service and region/site explicitly for Datadog, CloudWatch, Loki, Elasticsearch, Sentry, or OTLP.
+- Add a fallback or secondary transport when delivery is operationally critical.
+
+---
+
+# LoggerJS AI Skill Migration
+
+Source: https://github.com/jskits/loggerjs/blob/main/skills/loggerjs/references/migration.md
+
+# Migration
+
+Migrate in slices. Keep existing call-site behavior working first, then improve structure.
+
+## From `console`
+
+1. Add a local logger module.
+2. Replace new or touched `console.log`, `console.warn`, and `console.error` calls with `logger.info`, `logger.warn`, and `logger.error`.
+3. For broad capture, add console integration with a narrow level set such as `["warn", "error"]`.
+4. Keep debug/info console capture off by default in production unless sampled.
+
+Example:
+
+```ts
+logger.info("order created", { orderId });
+logger.error(error, "payment failed", { orderId });
+```
+
+## From pino
+
+Map these first:
+
+| pino concept | LoggerJS direction |
+| --- | --- |
+| `level` | `level` in `createLogger()` |
+| bindings/base fields | `tags`, context provider, or local wrapper |
+| serializers | processor or middleware |
+| destination/transport | LoggerJS transport |
+| `child()` | separate named/category logger or wrapper adding tags/context |
+| `flush()` | `await logger.flush()` |
+
+Preserve the existing wrapper API if many call sites use pino-specific argument ordering. Replace internals first, then gradually convert call sites to structured LoggerJS calls.
+
+## From winston
+
+Map these first:
+
+| winston concept | LoggerJS direction |
+| --- | --- |
+| format pipeline | processors/middleware plus transport-owned codec |
+| transports array | LoggerJS transports array |
+| exception/rejection handlers | Node process integration |
+| defaultMeta | tags or context provider |
+| custom format redaction | `redactProcessor()` or privacy processor |
+
+Do not pre-stringify in a format step before LoggerJS. Keep raw fields available for redaction, routing, and transport-specific codecs.
+
+## From loglevel/debug/consola/tslog
+
+- Keep the same public wrapper names if they are widely used.
+- Map namespaces to `name` or category tags.
+- Replace string-only calls with structured data where the surrounding code already has field values.
+- Use `@loggerjs/pretty` for local developer ergonomics when the old logger was mainly human-readable.
+
+## Safe Rollout Pattern
+
+1. Add LoggerJS alongside the old logger.
+2. Create an adapter with the old logger's common methods.
+3. Send to stdout or a test/memory transport first.
+4. Add redaction and production transport.
+5. Switch one module or route at a time.
+6. Remove the old logger dependency only after call sites and tests no longer import it.
+
+---
+
+# LoggerJS AI Skill Troubleshooting
+
+Source: https://github.com/jskits/loggerjs/blob/main/skills/loggerjs/references/troubleshooting.md
+
+# Troubleshooting
+
+## No Logs Appear
+
+- Confirm the logger `level` allows the emitted level.
+- Confirm at least one transport is configured.
+- Confirm the app imports the configured local logger, not a fresh unconfigured logger.
+- In libraries using `getLogger()`, confirm the host app configured the registry.
+- Await `logger.flush()` in scripts, tests, and short-lived processes.
+
+## Duplicate Logs
+
+- Check whether both direct LoggerJS calls and console integration are capturing the same message.
+- Ensure integration setup runs once per app lifecycle, not once per request or React render.
+- In hot reload/dev servers, keep teardown logic or guard initialization with module-level state.
+
+## Browser Delivery Fails
+
+- Check network status, CORS, ingestion endpoint path, response status, and content type expectations.
+- Do not send browser logs directly to private vendor APIs that require secret credentials.
+- Enable page lifecycle flush for navigation/tab-close cases.
+- Use an offline queue only after deciding quota and drop behavior.
+
+## Process Exits Before Delivery
+
+- Await `logger.flush()` before `process.exit()`.
+- For CLIs, set `process.exitCode` and return instead of calling `process.exit()` immediately.
+- Use stdout/file transports for crash-path reliability; remote network transports are best-effort during fatal shutdown.
+
+## Encoding or Serialization Errors
+
+- Do not call `JSON.stringify()` on log data before passing it to LoggerJS.
+- Use built-in codecs or transport-owned codecs so Error, BigInt, circular values, and rich objects can be handled safely.
+- Check LoggerJS meta counters when payloads are dropped, coerced, or encoded with fallback behavior.
+
+## TypeScript Import Errors
+
+- Use public package exports, not `dist` or source-internal paths.
+- Re-run install after adding a LoggerJS package.
+- For exact exports, check `https://jskits.github.io/loggerjs/reference/packages` and the package API report.

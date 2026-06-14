@@ -8,6 +8,7 @@ const nav = [
   { text: "Concepts", link: "/CONCEPTS" },
   { text: "Production", link: "/PRODUCTION-RECIPES" },
   { text: "Reference", link: "/reference/" },
+  { text: "AI Skill", link: "/AI-SKILL" },
   { text: "LLMs", link: "/llms" },
 ];
 
@@ -16,6 +17,7 @@ const zhNav = [
   { text: "概念", link: "/zh/CONCEPTS" },
   { text: "生产", link: "/zh/PRODUCTION-RECIPES" },
   { text: "参考", link: "/zh/reference/" },
+  { text: "AI Skill", link: "/zh/AI-SKILL" },
   { text: "LLMs", link: "/zh/llms" },
 ];
 
@@ -28,6 +30,7 @@ const sidebar = [
       { text: "Concepts", link: "/CONCEPTS" },
       { text: "Migration", link: "/MIGRATION" },
       { text: "Comparison", link: "/COMPARISON" },
+      { text: "AI Skill", link: "/AI-SKILL" },
     ],
   },
   {
@@ -81,6 +84,7 @@ const zhSidebar = [
       { text: "核心概念", link: "/zh/CONCEPTS" },
       { text: "迁移指南", link: "/zh/MIGRATION" },
       { text: "对比", link: "/zh/COMPARISON" },
+      { text: "AI Skill", link: "/zh/AI-SKILL" },
     ],
   },
   {

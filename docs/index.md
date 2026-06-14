@@ -83,3 +83,4 @@ await logger.flush();
 - [Production Recipes](/PRODUCTION-RECIPES), [Operations](/OPERATIONS), and [Performance](/PERFORMANCE) cover rollout choices.
 - [Benchmarks](/BENCHMARKS), [Benchmark Matrix](/BENCHMARK-MATRIX), and [Comparison](/COMPARISON) keep performance and positioning grounded in checked-in evidence.
 - [Packages](/reference/packages), [API Reports](/reference/api/), and [Examples](/examples) are generated from the current repository.
+- [AI Skill](/AI-SKILL), [llms.txt](/llms.txt), and [llms-full.txt](/llms-full.txt) help coding agents use LoggerJS directly.

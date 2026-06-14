@@ -83,3 +83,4 @@ await logger.flush();
 - [生产配方](/zh/PRODUCTION-RECIPES)、[运维](/zh/OPERATIONS) 和 [性能](/zh/PERFORMANCE) 帮助做上线选择。
 - [基准](/zh/BENCHMARKS)、[基准矩阵](/zh/BENCHMARK-MATRIX) 和 [对比](/zh/COMPARISON) 把性能与定位绑定到仓库证据。
 - [包](/zh/reference/packages)、[API 报告](/zh/reference/api/) 和 [示例](/zh/examples) 由当前仓库生成。
+- [AI Skill](/zh/AI-SKILL)、[llms.txt](/zh/llms.txt) 和 [llms-full.txt](/zh/llms-full.txt) 帮助 coding agent 直接使用 LoggerJS。

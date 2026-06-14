@@ -10,5 +10,6 @@ LoggerJS publishes LLM-friendly documentation entry points with each site build.
 
 - [llms.txt](/llms.txt) is the curated map of high-value documentation.
 - [llms-full.txt](/llms-full.txt) expands the key source documents into a single context file.
+- [AI Skill](/AI-SKILL) explains how to install the LoggerJS skill for coding agents.
 
-The generated files are based on the repository README, core docs, package metadata, examples, and API report links.
+The generated files are based on the repository README, core docs, AI skill, package metadata, examples, and API report links.

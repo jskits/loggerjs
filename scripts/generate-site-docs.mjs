@@ -617,6 +617,15 @@ node examples/pretty-output/node.mjs
   );
 }
 
+const skillContextSources = [
+  ["LoggerJS AI Skill", "skills/loggerjs/SKILL.md"],
+  ["LoggerJS AI Skill Package Selection", "skills/loggerjs/references/package-selection.md"],
+  ["LoggerJS AI Skill Runtime Recipes", "skills/loggerjs/references/runtime-recipes.md"],
+  ["LoggerJS AI Skill Production Checklist", "skills/loggerjs/references/production-checklist.md"],
+  ["LoggerJS AI Skill Migration", "skills/loggerjs/references/migration.md"],
+  ["LoggerJS AI Skill Troubleshooting", "skills/loggerjs/references/troubleshooting.md"],
+];
+
 function generateLlmsPage() {
   writeFileIfChanged(
     join(docsRoot, "llms.md"),
@@ -632,8 +641,9 @@ LoggerJS publishes LLM-friendly documentation entry points with each site build.
 
 - [llms.txt](/llms.txt) is the curated map of high-value documentation.
 - [llms-full.txt](/llms-full.txt) expands the key source documents into a single context file.
+- [AI Skill](/AI-SKILL) explains how to install the LoggerJS skill for coding agents.
 
-The generated files are based on the repository README, core docs, package metadata, examples, and API report links.
+The generated files are based on the repository README, core docs, AI skill, package metadata, examples, and API report links.
 `,
   );
 }
@@ -668,6 +678,11 @@ function generateLlmsFiles(packages, reports, exampleItems) {
 
 Use this file as the concise entry point for LoggerJS documentation. Prefer the guide and concept docs first, then package/API references when exact exports or subpaths matter. Performance claims are benchmark-environment dependent; use the benchmark docs for methodology and reproduction commands.
 
+## AI Skill
+
+- [AI Skill](${siteLink("/AI-SKILL")}): Install and use the LoggerJS AI skill with coding agents.
+- [Skill Source](${sourceDirectoryLink("skills/loggerjs")}): Installable skill package with workflow, references, and project inspector.
+
 ## Docs
 
 ${docsList}
@@ -697,6 +712,8 @@ ${exampleList}
   const expandedDocs = [
     ["Repository README", "README.md"],
     ...docsCatalog.map(([title, slug]) => [title, `docs/${slug}.md`]),
+    ["AI Skill", "docs/AI-SKILL.md"],
+    ...skillContextSources,
   ]
     .map(([title, path]) => {
       const contents = readFileSync(join(repoRoot, path), "utf8").trim();
@@ -926,6 +943,7 @@ LoggerJS 在站点构建时发布面向 LLM 的文档入口。
 
 - [llms.txt](/zh/llms.txt) 是中文站点的高价值文档地图。
 - [llms-full.txt](/zh/llms-full.txt) 汇总中文导览页和关键仓库来源，适合更大的上下文窗口。
+- [AI Skill](/zh/AI-SKILL) 说明如何安装 LoggerJS skill 给 coding agent 使用。
 - 英文入口仍保留在 [llms.txt](/llms.txt) 和 [llms-full.txt](/llms-full.txt)。
 `,
   );
@@ -961,6 +979,11 @@ function generateChineseLlmsFiles(packages, reports, exampleItems) {
 
 这个文件是中文站点的 LLM 入口。优先阅读快速开始和核心概念，再在需要精确 export、subpath 或类型声明时查看包和 API 参考。性能声明依赖 benchmark 环境，请结合基准文档的方法和复现命令理解。
 
+## AI Skill
+
+- [AI Skill](${zhSiteLink("/AI-SKILL")}): 安装并使用 LoggerJS AI skill，让 coding agent 直接完成 LoggerJS 接入。
+- [Skill Source](${sourceDirectoryLink("skills/loggerjs")}): 可安装 skill 包，包含 workflow、references 和项目识别脚本。
+
 ## 中文文档
 
 ${docsList}
@@ -991,6 +1014,8 @@ ${exampleList}
   const expandedDocs = [
     ["中文首页", "docs/zh/index.md"],
     ...zhDocsCatalog.map((doc) => [doc.title, `docs/zh/${doc.slug}.md`]),
+    ["AI Skill", "docs/zh/AI-SKILL.md"],
+    ...skillContextSources,
   ]
     .map(([title, path]) => {
       const contents = readFileSync(join(repoRoot, path), "utf8").trim();

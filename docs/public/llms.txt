@@ -4,6 +4,11 @@
 
 Use this file as the concise entry point for LoggerJS documentation. Prefer the guide and concept docs first, then package/API references when exact exports or subpaths matter. Performance claims are benchmark-environment dependent; use the benchmark docs for methodology and reproduction commands.
 
+## AI Skill
+
+- [AI Skill](https://jskits.github.io/loggerjs/AI-SKILL): Install and use the LoggerJS AI skill with coding agents.
+- [Skill Source](https://github.com/jskits/loggerjs/tree/main/skills/loggerjs): Installable skill package with workflow, references, and project inspector.
+
 ## Docs
 
 - [Getting Started](https://jskits.github.io/loggerjs/GETTING-STARTED): Install packages and create the first Node.js or browser logger.
