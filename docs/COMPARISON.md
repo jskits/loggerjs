@@ -37,11 +37,13 @@ automatic integrations, structured middleware, reliable transport delivery,
 offline browser persistence, codec choice per destination, and vendor/DB/OTLP
 delivery from one mental model.
 
-Pino is still the best default when the main requirement is the fastest direct
-Node.js JSON logger. Winston is still the mature, flexible Node transport and
-format ecosystem. LogTape is the closest architectural peer for library-first
-usage and multi-runtime categories. Bunyan is a stable legacy JSON logger for
-Node services.
+Pino is still the mature default when the main requirement is a minimal,
+Node-first JSON logger with a large ecosystem. On the current M1 Max reference
+benchmark, LoggerJS's equivalent lean/prepared paths are faster, but the ranking
+is CPU/Node-V8 dependent. Winston is still the mature, flexible Node transport
+and format ecosystem. LogTape is the closest architectural peer for
+library-first usage and multi-runtime categories. Bunyan is a stable legacy JSON
+logger for Node services.
 
 ## At A Glance
 
@@ -59,7 +61,7 @@ configuration, ❌ no checked first-party equivalent, 📊 measured in this repo
 | Built-in batching/retry/offline | ✅ shared primitives | ⚠️ transport-dependent | ⚠️ transport-dependent | ⚠️ sink-dependent | ⚠️ stream-dependent |
 | Transport-owned codecs | ✅ explicit boundary | ⚠️ logger/transport formatting | ⚠️ format pipeline | ⚠️ sink formatting | ⚠️ serializers |
 | Privacy/redaction | ✅ processors + sanitizers | ✅ built-in redaction | ⚠️ custom formats | ✅ redaction package | ⚠️ serializers/custom |
-| Fastest direct Node JSON path | 📊 close to Pino | 📊 fastest measured | ❌ slower measured | ❌ slower measured | Not measured here |
+| Direct Node JSON path | 📊 faster on M1 reference lean/prepared paths | 📊 same class; can lead on other CPUs/V8s | ❌ slower measured | ❌ slower measured | Not measured here |
 
 ## Detailed Matrix
 
@@ -161,12 +163,14 @@ redaction and sampling stay centralized.
 
 ## Where Another Logger May Be Better
 
-### Choose Pino When Absolute Node JSON Throughput Is The Main Requirement
+### Choose Pino When Minimal Node JSON Logging Is The Main Requirement
 
-Pino remains the reference point for low-overhead Node JSON logging. Its direct
-JSON path is faster in the current LoggerJS benchmark, and its ecosystem is
-mature for Node web services. If the application only needs app-authored server
-logs to stdout or a Pino transport, Pino is the simpler and faster choice.
+Pino remains the reference point for low-overhead Node JSON logging and has a
+mature ecosystem for Node web services. Current LoggerJS paired A/B numbers put
+the lean/prepared equivalent-output paths ahead on the M1 Max reference machine,
+but that ranking is CPU/Node-V8 dependent. If the application only needs
+app-authored server logs to stdout or a Pino transport, Pino is still the
+simpler and more battle-tested choice.
 
 ### Choose Winston When You Need Its Mature Transport/Format Ecosystem
 
@@ -227,7 +231,8 @@ Keep marketing and README claims inside these boundaries unless new evidence is
 added:
 
 - Do not claim LoggerJS is universally faster than Pino. The measured direct
-  Node JSON path is still faster in Pino.
+  Node JSON ranking is CPU/Node-V8 dependent; cite the benchmark matrix for the
+  exact machines tested.
 - Do not claim full Deno/Bun first-party support until the repo has tests and
   package metadata for those runtimes.
 - Do not claim every vendor feature is richer than ecosystem plugins. LoggerJS
