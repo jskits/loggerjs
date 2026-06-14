@@ -32,8 +32,6 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - uses: actions/configure-pages@v6
-
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:build
 
