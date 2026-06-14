@@ -173,7 +173,28 @@ Tune iteration counts with:
 ```bash
 BENCH_ITERATIONS=200000 pnpm bench:node
 BENCH_BROWSER_ITERATIONS=100000 pnpm bench:browser
+BENCH_BROWSER_IDB_ITERATIONS=5000 pnpm bench:browser
 ```
+
+## Browser Scenarios
+
+`pnpm bench:browser` runs in a local headless Chrome and measures browser-facing
+paths from the built `dist` packages:
+
+- Enabled browser logger with no transports.
+- Browser HTTP transport enqueue with a no-op `fetchFn`.
+- IndexedDB transport enqueue into the in-memory transport buffer.
+- JSON and fast event JSON encoding for browser batches.
+- IndexedDB transport flush of a persisted batch.
+- IndexedDB HTTP offline queue enqueue.
+
+The IndexedDB scenarios use a separate iteration count because they exercise
+real browser storage I/O. Tune it with `BENCH_BROWSER_IDB_ITERATIONS`; the
+default is intentionally smaller than `BENCH_BROWSER_ITERATIONS` so routine
+browser benchmark runs remain fast. Browser storage numbers are sensitive to
+Chrome version, profile state, device storage, private browsing policy, quota,
+and Storage Buckets support, so cite them only with the measured browser and
+hardware context.
 
 ## Size Budgets
 

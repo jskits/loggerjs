@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const iterations = Number.parseInt(process.env.BENCH_BROWSER_ITERATIONS ?? "50000", 10);
+const indexedDbIterations = Number.parseInt(process.env.BENCH_BROWSER_IDB_ITERATIONS ?? "2000", 10);
 
 const chromeCandidates = [
   process.env.CHROME_BIN,
@@ -74,10 +75,17 @@ const page = `<!doctype html>
   </head>
   <body>
     <script type="module">
-      import { createLogger, browserHttpTransport, jsonCodec } from "@loggerjs/browser";
+      import {
+        createLogger,
+        browserHttpTransport,
+        indexedDbBrowserHttpOfflineQueue,
+        indexedDbTransport,
+        jsonCodec,
+      } from "@loggerjs/browser";
       import { fastEventJsonCodec } from "@loggerjs/codecs";
 
       const iterations = ${JSON.stringify(iterations)};
+      const indexedDbIterations = ${JSON.stringify(indexedDbIterations)};
       const warmupIterations = Math.min(5000, Math.max(500, Math.floor(iterations / 10)));
       let blackhole = 0;
 
@@ -97,6 +105,53 @@ const page = `<!doctype html>
           elapsedMs,
           opsPerSecond: count / (elapsedMs / 1000),
           nsPerOp: (elapsedMs * 1000000) / count,
+        };
+      }
+
+      async function measureAsync(name, fn, count = indexedDbIterations) {
+        const start = performance.now();
+        for (let index = 0; index < count; index++) consume(await fn(index));
+        const elapsedMs = performance.now() - start;
+        return {
+          name,
+          iterations: count,
+          elapsedMs,
+          opsPerSecond: count / (elapsedMs / 1000),
+          nsPerOp: (elapsedMs * 1000000) / count,
+        };
+      }
+
+      function deleteDatabase(name) {
+        return new Promise((resolve) => {
+          const request = indexedDB.deleteDatabase(name);
+          request.addEventListener("success", () => resolve(), { once: true });
+          request.addEventListener("error", () => resolve(), { once: true });
+          request.addEventListener("blocked", () => resolve(), { once: true });
+        });
+      }
+
+      function event(index, prefix = "browser") {
+        return {
+          id: prefix + "-" + index,
+          time: 1700000000000 + index,
+          seq: index,
+          level: 30,
+          levelName: "info",
+          logger: "bench.browser",
+          message: "browser event",
+          data: { index, ok: true },
+        };
+      }
+
+      function offlineEntry(index) {
+        return {
+          id: "offline-" + index,
+          url: "/logs",
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(event(index, "offline")),
+          keepalive: true,
+          createdAt: 1700000000000 + index,
         };
       }
 
@@ -120,19 +175,81 @@ const page = `<!doctype html>
       }));
       const json = jsonCodec();
       const fastJson = fastEventJsonCodec();
+      const runId = String(Date.now()) + "-" + Math.random().toString(36).slice(2);
+      const indexedDbEnqueue = indexedDbTransport({
+        dbName: "loggerjs-bench-enqueue-" + runId,
+        storeName: "logs",
+        batchSize: iterations + 1,
+        flushIntervalMs: 60000,
+        flushOnPageHide: false,
+        maxBufferSize: iterations + 1024,
+        maxEntries: iterations + indexedDbIterations + 1024,
+        codec: json,
+      });
+      const indexedDbEnqueueLogger = createLogger({ level: "debug", transports: [indexedDbEnqueue] });
+      const indexedDbFlush = indexedDbTransport({
+        dbName: "loggerjs-bench-flush-" + runId,
+        storeName: "logs",
+        batchSize: indexedDbIterations + 1,
+        flushIntervalMs: 60000,
+        flushOnPageHide: false,
+        maxBufferSize: indexedDbIterations + 1024,
+        maxEntries: indexedDbIterations + 1024,
+        codec: json,
+      });
+      const indexedDbFlushLogger = createLogger({ level: "debug", transports: [indexedDbFlush] });
+      const offlineQueue = indexedDbBrowserHttpOfflineQueue({
+        dbName: "loggerjs-bench-offline-" + runId,
+        storeName: "http-offline",
+        maxEntries: indexedDbIterations + 1024,
+      });
 
-      const rows = [
-        measure("browser logger no transports", (index) => noTransportLogger.info("browser event", { index })),
-        measure("browser http enqueue", (index) => httpLogger.info("browser event", { index })),
-        measure("browser json encode batch", () => json.encode(sampleBatch), Math.max(5000, Math.floor(iterations / 5))),
-        measure("browser fast-json encode batch", () => fastJson.encode(sampleBatch), Math.max(5000, Math.floor(iterations / 5))),
-      ];
-      await httpLogger.flush();
+      const rows = [];
+      try {
+        rows.push(measure("browser logger no transports", (index) => noTransportLogger.info("browser event", { index })));
+        rows.push(measure("browser http enqueue", (index) => httpLogger.info("browser event", { index })));
+        rows.push(
+          measure("browser indexeddb transport enqueue", (index) =>
+            indexedDbEnqueueLogger.info("browser idb event", { index }),
+          ),
+        );
+        await indexedDbEnqueue.clear();
+        rows.push(measure("browser json encode batch", () => json.encode(sampleBatch), Math.max(5000, Math.floor(iterations / 5))));
+        rows.push(measure("browser fast-json encode batch", () => fastJson.encode(sampleBatch), Math.max(5000, Math.floor(iterations / 5))));
+        await indexedDbFlush.clear();
+        rows.push(
+          await measureAsync("browser indexeddb transport flush", async (index) => {
+            indexedDbFlushLogger.info("browser idb flush", { index });
+            if (index + 1 >= indexedDbIterations) await indexedDbFlushLogger.flush();
+          }),
+        );
+        await indexedDbFlush.clear();
+        await offlineQueue.clear();
+        rows.push(
+          await measureAsync("browser indexeddb offline queue enqueue", async (index) => {
+            await offlineQueue.enqueue(offlineEntry(index));
+          }),
+        );
+        blackhole ^= await offlineQueue.size();
+        await offlineQueue.clear();
+        await httpLogger.flush();
+      } finally {
+        await Promise.allSettled([
+          indexedDbEnqueue.close?.(),
+          indexedDbFlush.close?.(),
+          Promise.resolve().then(() => offlineQueue.close()),
+        ]);
+        await Promise.allSettled([
+          deleteDatabase("loggerjs-bench-enqueue-" + runId),
+          deleteDatabase("loggerjs-bench-flush-" + runId),
+          deleteDatabase("loggerjs-bench-offline-" + runId),
+        ]);
+      }
 
       await fetch("/result", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ iterations, rows, blackhole }),
+        body: JSON.stringify({ iterations, indexedDbIterations, rows, blackhole }),
       });
     </script>
   </body>
@@ -215,6 +332,7 @@ try {
   const result = await resultPromise;
   clearTimeout(timeout);
   console.log(`Browser benchmark iterations: ${result.iterations}`);
+  console.log(`Browser IndexedDB iterations: ${result.indexedDbIterations}`);
   console.log("| Scenario | ops/sec | ns/op | iterations |");
   console.log("| --- | ---: | ---: | ---: |");
   for (const row of result.rows) {
