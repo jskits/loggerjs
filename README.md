@@ -1,5 +1,9 @@
 <div align="center">
 
+<a href="https://jskits.github.io/loggerjs/">
+  <img src="docs/public/logo.svg" alt="LoggerJS logo" width="96" height="96" />
+</a>
+
 # LoggerJS
 
 **Isomorphic structured logging for JavaScript — one pipeline from browser to server, built for automatic collection, composable processing, and measured performance.**
