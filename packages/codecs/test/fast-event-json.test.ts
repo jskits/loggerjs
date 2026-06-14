@@ -383,4 +383,35 @@ describe("codec adapters", () => {
       },
     ]);
   });
+
+  it("decodes projector payloads when parse and unproject are provided", () => {
+    const projector = projectorCodec({
+      name: "roundtrip-projector",
+      contentType: "application/json",
+      project: (input) => ({ events: Array.isArray(input) ? input : [input] }),
+      serialize: JSON.stringify,
+      parse: (payload) => JSON.parse(String(payload)) as { events: LogEvent[] },
+      unproject: (wire) => wire.events,
+    });
+    const event = sampleEvent({ id: "evt-projector" });
+
+    expect(projector.decode?.(projector.encode(event))).toMatchObject([
+      {
+        id: "evt-projector",
+        logger: "api",
+        message: "created",
+      },
+    ]);
+  });
+
+  it("omits projector decode when parse or unproject are not provided", () => {
+    const projector = projectorCodec({
+      name: "encode-only-projector",
+      contentType: "application/json",
+      project: (input) => input,
+      serialize: JSON.stringify,
+    });
+
+    expect(projector.decode).toBeUndefined();
+  });
 });
