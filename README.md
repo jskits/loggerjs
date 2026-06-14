@@ -428,7 +428,7 @@ LoggerJS shines when the logging problem spans **browser and server** collection
 | Library-safe (silent until configured) |           ✅            |  ⚠️  |   ⚠️    |   ✅    |
 | Direct Node JSON throughput            |      ✅ 1.19× pino      |  ✅  | slower  | slower  |
 
-On the direct Node JSON path loggerjs and pino are in the same class — on the M1 Max reference loggerjs lean is ~1.19× pino, , while on other CPUs pino can lead (it's CPU/V8-dependent; reproduce with `BENCH_AB`; see the checked-in [benchmark matrix](docs/BENCHMARK-MATRIX.md)). LoggerJS reaches that throughput while adding a record pipeline that works the same in the browser, captures automatically, and delivers reliably.
+On the direct Node JSON path loggerjs and pino are in the same class — on the M1 Max reference loggerjs lean is ~1.19× pino, while on other CPUs pino can lead (it's CPU/V8-dependent; reproduce with `BENCH_AB`; see the checked-in [benchmark matrix](docs/BENCHMARK-MATRIX.md)). LoggerJS reaches that throughput while adding a record pipeline that works the same in the browser, captures automatically, and delivers reliably.
 
 ## Documentation
 
