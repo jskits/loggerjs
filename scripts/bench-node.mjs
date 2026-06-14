@@ -172,6 +172,7 @@ async function main() {
     includeSeq: false,
     includeLevelName: false,
   });
+  const preparedLeanRecordEncoder = core.createPreparedRecordEncoder(leanFastEventJsonCodec);
   const loggerjsLeanRecordLogger = core.createLogger({
     level: "debug",
     tags: benchTags,
@@ -184,6 +185,19 @@ async function main() {
       },
     ],
   });
+  const loggerjsPreparedLeanRecordLogger = core.createLogger({
+    level: "debug",
+    tags: benchTags,
+    transports: [
+      {
+        name: "prepared-lean-record-sink",
+        write(record) {
+          consume(preparedLeanRecordEncoder(record));
+        },
+      },
+    ],
+  });
+  const preparedFastEventRecordEncoder = core.createPreparedRecordEncoder(fastEventJsonCodec);
   const loggerjsFastEventLogger = core.createLogger({
     level: "debug",
     tags: benchTags,
@@ -276,6 +290,9 @@ async function main() {
     measure("loggerjs lean record sink", (index) =>
       loggerjsLeanRecordLogger.info("order created", { index }),
     ),
+    measure("loggerjs prepared lean record sink", (index) =>
+      loggerjsPreparedLeanRecordLogger.info("order created", { index }),
+    ),
     measure("loggerjs fast-event-json event sink", (index) =>
       loggerjsFastEventLogger.info("order created", { index }),
     ),
@@ -306,6 +323,11 @@ async function main() {
     measure(
       "fast-event-json encode record batch",
       () => fastEventJsonCodec.encode(sampleRecordBatch),
+      Math.max(10_000, Math.floor(iterations / 5)),
+    ),
+    measure(
+      "fast-event-json prepared encode record",
+      () => preparedFastEventRecordEncoder(sampleRecordBatch[0]),
       Math.max(10_000, Math.floor(iterations / 5)),
     ),
     measure(

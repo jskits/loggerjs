@@ -9,15 +9,17 @@ import { fileURLToPath } from "node:url";
 // accidental allocation or a dropped fast path), not 10% noise.
 //
 // Reference ratios as of 2026-06-14 (Apple Silicon, Node 22), after the
-// getContext fast-path and fast-event-json encoder specialization:
+// getContext fast-path, fast-event-json encoder specialization, and
+// codec-owned prepared record encoders:
 //   disabled debug lazy log          / pino disabled debug   ~0.7-1.8
 //   enabled logger record write      / pino ndjson noop sink ~0.45
 //   batch transport enqueue          / pino ndjson noop sink ~0.75
-//   loggerjs lean record sink        / pino ndjson noop sink ~1.20 (was ~1.30)
+//   loggerjs lean record sink        / pino ndjson noop sink ~1.10-1.25
+//   loggerjs prepared lean record    / pino ndjson noop sink ~1.02-1.15
 //   loggerjs fast-event-json record  / pino ndjson noop sink ~1.33
 // The lean/fast-event limits are tightened from the old 2x/2.2x slack: that
 // slack let the context-merge allocation regression (which pushed lean from
-// ~1.20x to ~1.30x) pass unnoticed. The gate runs at 100k iterations, so the
+// ~1.05-1.15x to ~1.30x) pass unnoticed. The gate runs at 100k iterations, so the
 // margin above the reference stays wide enough to absorb run-to-run noise
 // rather than chase sub-10% drift; use a higher BENCH_GATE_ITERATIONS run for
 // fine-grained ratio audits.
@@ -26,6 +28,7 @@ const GATES = [
   ["enabled logger record write transport", "pino ndjson noop sink", 1],
   ["batch transport enqueue", "pino ndjson noop sink", 1.5],
   ["loggerjs lean record sink", "pino ndjson noop sink", 1.5],
+  ["loggerjs prepared lean record sink", "pino ndjson noop sink", 1.45],
   ["loggerjs fast-event-json record sink", "pino ndjson noop sink", 1.7],
 ];
 

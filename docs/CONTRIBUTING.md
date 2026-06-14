@@ -47,7 +47,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 - **Codecs must not lose logs**: wrap risky encodes and fall back to `safeJsonStringify`; count fallbacks in meta.
 - **Shared objects are frozen, replaced not mutated** (`record.tags`, `record.ctx`).
 - **Hot-path changes need numbers.** Run `pnpm bench:node` before/after and put the relevant line in the commit message; update `docs/BENCHMARKS.md` when the snapshot moves materially. Benchmark warmup must stay proportionate to iterations — see the warmup note in BENCHMARKS.md for the time we got this wrong.
-- **Performance has a documented ceiling**: read the "80% of pino" decision in [ARCHITECTURE.md](ARCHITECTURE.md) before proposing a record-bypassing fast path.
+- **Performance has a documented boundary**: read the record-pipeline decision in [ARCHITECTURE.md](ARCHITECTURE.md) before proposing a record-bypassing fast path.
 
 ## Tests
 

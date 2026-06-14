@@ -8,9 +8,10 @@ Reference numbers (Apple Silicon, Node 22 — see BENCHMARKS.md for the full tab
 | --- | ---: |
 | Disabled level call | ~5 ns |
 | Enabled pipeline, record fast path, noop sink | ~101 ns |
-| Batch transport enqueue (default settings) | ~173 ns |
-| Full NDJSON line to a sink (lean envelope) | ~267 ns (~84% of pino, ≈1.20×) |
-| Full NDJSON line with id/seq/levelName | ~301 ns (~74% of pino) |
+| Batch transport enqueue (default settings) | ~169 ns |
+| Prepared lean NDJSON line to a sink | ~242 ns (~95% of pino in the current snapshot) |
+| Full NDJSON line to a sink (lean envelope) | ~261 ns (~88% of pino) |
+| Full NDJSON line with id/seq/levelName | ~296 ns (~78% of pino) |
 
 ## Free Wins (Defaults Already Do This)
 
@@ -48,6 +49,7 @@ Practical guidance:
 
 - Highest throughput: `fastEventJsonCodec()` from `@loggerjs/codecs`, optionally with the lean envelope (`includeId/includeSeq/includeLevelName: false`) when downstream does not need those fields.
 - `ndjsonCodec()` (the stdout default) is within ~10% of fast-event-json on the event path.
+- Prepared record encoders help custom sinks. When a record-aware transport writes a codec directly, wrap the codec once with `createPreparedRecordEncoder(codec)` so codec-owned logger/tag fragments can be reused without moving serialization into the logger.
 - `safeJsonCodec()` pays a full normalization walk per item — use it where hostile payloads are routine, not as the throughput path.
 - Custom `idFactory` (UUIDs etc.) costs per-log; the default id is near-free and sortable.
 
@@ -71,4 +73,4 @@ Per-event network calls are the dominant real-world cost; every remote transport
 
 Performance is gated in CI: `pnpm bench:gate` measures the suite and enforces machine-independent ratios against pino on the same hardware (see BENCHMARKS.md). If you contribute changes to the hot path, run it locally; structural regressions fail the pull request.
 
-The deliberate end-state of optimization is documented in ARCHITECTURE.md ("80% of pino is the accepted ceiling"): LoggerJS allocates one record per log so middleware, integrations, and multiple transports can observe it — that is the architecture's value, and the remaining gap to pino is the price, accepted with eyes open.
+The deliberate end-state of optimization is documented in ARCHITECTURE.md: keep the shared `LogRecord` pipeline as the default architecture, but allow codec/transport-owned preparation for stable fragments. Fusion paths that bypass the record remain rejected as the default because they would create a separate semantic hot path.

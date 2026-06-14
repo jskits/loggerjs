@@ -32,6 +32,19 @@ export interface MetricsCodecOptions<TPayload = string | Uint8Array> {
 export declare function metricsCodec<TPayload = string | Uint8Array>(codec: Codec<TPayload>, options?: MetricsCodecOptions<TPayload>): Codec<TPayload>;
 ```
 
+## codecs/prepared.d.ts
+
+```ts
+import type { Codec, EncodeContext, LogRecord } from "../types.js";
+/**
+ * Creates a record encoder that lets codecs prepare stable logger/category
+ * fragments without moving serialization into the logger. Transports keep
+ * owning codecs; this helper only memoizes the codec-owned prepared encoder for
+ * the current record category and tags object identity.
+ */
+export declare function createPreparedRecordEncoder<TPayload = string | Uint8Array>(codec: Codec<TPayload>): (record: LogRecord, context?: EncodeContext) => TPayload;
+```
+
 ## context.d.ts
 
 ```ts
@@ -123,6 +136,7 @@ export * from "./utils/error.js";
 export * from "./utils/safe-stringify.js";
 export * from "./codecs/json.js";
 export * from "./codecs/metrics.js";
+export * from "./codecs/prepared.js";
 export * from "./transports/console.js";
 export * from "./transports/memory.js";
 export * from "./transports/batch.js";
@@ -807,11 +821,29 @@ export interface Transport {
     flushSync?: () => void;
     close?: () => void | Promise<void>;
 }
+/**
+ * Stable-fragment hints for codecs that can prepare a record encoder.
+ * Hints are an optimization only: prepared encoders must still produce the same
+ * bytes as `encode(record)` for every record, including records with mutable
+ * tag objects.
+ */
+export interface RecordEncoderHints {
+    category: readonly string[];
+    tags: Tags | null;
+}
+/**
+ * Codec-owned encoder for LogRecord hot paths. Transports may cache and call it
+ * without making the logger own serialization.
+ */
+export interface PreparedRecordEncoder<TPayload = string | Uint8Array> {
+    encode: (record: LogRecord, context?: EncodeContext) => TPayload;
+}
 export interface Codec<TPayload = string | Uint8Array> {
     name: string;
     contentType: string;
     encode: (input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context?: EncodeContext) => TPayload;
     decode?: (payload: TPayload) => LogEvent | LogEvent[];
+    prepareRecordEncoder?: (hints: RecordEncoderHints) => PreparedRecordEncoder<TPayload>;
 }
 export type EncodedPayload = string | Uint8Array;
 export interface PayloadTransformContext {

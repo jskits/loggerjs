@@ -17,6 +17,7 @@ export * from "./utils/error";
 export * from "./utils/safe-stringify";
 export * from "./codecs/json";
 export * from "./codecs/metrics";
+export * from "./codecs/prepared";
 export * from "./transports/console";
 export * from "./transports/memory";
 export * from "./transports/batch";

@@ -30,9 +30,9 @@ contract as explicit as a production Node logger.
 
 - Keep provider-, format-, and platform-specific behavior in transport, codec,
   processor, or integration packages. Core defines contracts.
-- Keep the hot path allocation model. The accepted target is documented as
-  roughly 80% of Pino for equivalent Node NDJSON output, not eventual Pino
-  parity at the cost of LoggerJS's pipeline.
+- Keep the hot path allocation model. The shared `LogRecord` pipeline remains
+  the default; codec/transport-owned prepared encoders are acceptable because
+  they reuse stable fragments without making core own serialization.
 - Do not wait in normal `logger.info()` calls for transport startup. Readiness is
   explicit through `logger.ready()` / `transport.ready()`.
 - Treat browser delivery as best effort unless the target destination has

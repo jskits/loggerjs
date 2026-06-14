@@ -1,6 +1,13 @@
 import { incrementLoggerMetaCounter } from "../meta";
 import { runLoggerDiagnostic } from "../diagnostics";
-import type { Codec, LogEvent, LogRecord } from "../types";
+import type {
+  Codec,
+  EncodeContext,
+  LogEvent,
+  LogRecord,
+  PreparedRecordEncoder,
+  RecordEncoderHints,
+} from "../types";
 
 export interface MetricsCodecOptions<TPayload = string | Uint8Array> {
   name?: string;
@@ -33,27 +40,51 @@ export function metricsCodec<TPayload = string | Uint8Array>(
 ): Codec<TPayload> {
   const name = options.name ?? codec.name;
   const byteLength = options.byteLength ?? defaultByteLength;
+  const recordPayload = (payload: TPayload) => {
+    const bytes = byteLength(payload);
+    incrementLoggerMetaCounter("codec.encode");
+    incrementLoggerMetaCounter(`codec.encode.${name}`);
+    incrementLoggerMetaCounter("codec.encoded.bytes", bytes);
+    incrementLoggerMetaCounter(`codec.encoded.bytes.${name}`, bytes);
+    return payload;
+  };
+  const recordEncodeError = (error: unknown): never => {
+    incrementLoggerMetaCounter("codec.encode.errors");
+    incrementLoggerMetaCounter(`codec.encode.errors.${name}`);
+    throw error;
+  };
   const wrapped: Codec<TPayload> = {
     name: `metrics(${codec.name})`,
     contentType: codec.contentType,
     encode(input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context) {
       return runLoggerDiagnostic({ stage: "encode", codec: name }, () => {
         try {
-          const payload = codec.encode(input, context);
-          const bytes = byteLength(payload);
-          incrementLoggerMetaCounter("codec.encode");
-          incrementLoggerMetaCounter(`codec.encode.${name}`);
-          incrementLoggerMetaCounter("codec.encoded.bytes", bytes);
-          incrementLoggerMetaCounter(`codec.encoded.bytes.${name}`, bytes);
-          return payload;
+          return recordPayload(codec.encode(input, context));
         } catch (error) {
-          incrementLoggerMetaCounter("codec.encode.errors");
-          incrementLoggerMetaCounter(`codec.encode.errors.${name}`);
-          throw error;
+          return recordEncodeError(error);
         }
       });
     },
   };
+
+  if (codec.prepareRecordEncoder) {
+    wrapped.prepareRecordEncoder = (hints: RecordEncoderHints): PreparedRecordEncoder<TPayload> => {
+      const prepared = codec.prepareRecordEncoder?.(hints);
+      return {
+        encode(record: LogRecord, context?: EncodeContext) {
+          return runLoggerDiagnostic({ stage: "encode", codec: name }, () => {
+            try {
+              return recordPayload(
+                prepared ? prepared.encode(record, context) : codec.encode(record, context),
+              );
+            } catch (error) {
+              return recordEncodeError(error);
+            }
+          });
+        },
+      };
+    };
+  }
 
   if (codec.decode) {
     wrapped.decode = (payload: TPayload) => {

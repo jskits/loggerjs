@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createRecord, recordToEvent, type LogEvent } from "@loggerjs/core";
+import {
+  createPreparedRecordEncoder,
+  createRecord,
+  recordToEvent,
+  type LogEvent,
+} from "@loggerjs/core";
 import { fastEventJsonCodec, msgpackrCodec, projectorCodec } from "../src";
 
 function sampleEvent(patch: Partial<LogEvent> = {}): LogEvent {
@@ -185,6 +190,95 @@ describe("fast event json hostile inputs", () => {
     const record = createRecord({ time: 1700000000000, level: 30, msg: "created", seq: 7 });
     const encoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;
     expect(encoded.id).toBe(recordToEvent(record).id);
+  });
+
+  it("prepares full record encoders without changing bytes", () => {
+    const codec = fastEventJsonCodec();
+    const encode = createPreparedRecordEncoder(codec);
+    const tags = Object.freeze({ service: "checkout", env: "test" });
+    const record = createRecord({
+      time: 1700000000000,
+      level: 30,
+      category: ["api", "orders"],
+      type: "order.created",
+      tags,
+      msg: "created",
+      props: { orderId: "ord-1", amount: 42 },
+      ctx: { requestId: "req-1" },
+      trace: { traceId: "trace-1" },
+      source: "test",
+      seq: 7,
+    });
+
+    expect(encode(record)).toBe(codec.encode(record));
+  });
+
+  it("prepares lean record encoders without changing bytes", () => {
+    const codec = fastEventJsonCodec({
+      includeId: false,
+      includeSeq: false,
+      includeLevelName: false,
+    });
+    const encode = createPreparedRecordEncoder(codec);
+    const record = createRecord({
+      time: 1700000000000,
+      level: 30,
+      category: ["api"],
+      tags: Object.freeze({ service: "checkout" }),
+      msg: "created",
+      props: { orderId: "ord-1" },
+      seq: 7,
+    });
+
+    expect(encode(record)).toBe(
+      '{"time":1700000000000,"level":30,"logger":"api","message":"created","tags":{"service":"checkout"},"data":{"orderId":"ord-1"}}',
+    );
+    expect(encode(record)).toBe(codec.encode(record));
+  });
+
+  it("does not freeze mutable prepared tags", () => {
+    const codec = fastEventJsonCodec({
+      includeId: false,
+      includeSeq: false,
+      includeLevelName: false,
+    });
+    const encode = createPreparedRecordEncoder(codec);
+    const tags = { service: "checkout" };
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: ["api"],
+      tags,
+      msg: "created",
+      seq: 1,
+    });
+
+    expect(encode(record)).toBe(codec.encode(record));
+    tags.service = "billing";
+    expect(encode(record)).toBe(codec.encode(record));
+    expect(JSON.parse(encode(record)) as LogEvent).toMatchObject({
+      tags: { service: "billing" },
+    });
+  });
+
+  it("keeps the safe fallback contract on prepared record encoders", () => {
+    const codec = fastEventJsonCodec();
+    const encode = createPreparedRecordEncoder(codec);
+    const record = createRecord({
+      time: 1,
+      level: 30,
+      category: ["api"],
+      tags: Object.freeze({ big: 10n }) as unknown as Record<string, string>,
+      msg: "created",
+      props: { value: 10n },
+      seq: 1,
+    });
+
+    expect(encode(record)).toBe(codec.encode(record));
+    expect(JSON.parse(encode(record)) as LogEvent).toMatchObject({
+      tags: { big: "10" },
+      data: { value: "10" },
+    });
   });
 
   it("truncates deep nesting when safe options are set", () => {

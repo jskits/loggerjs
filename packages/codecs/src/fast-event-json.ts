@@ -8,8 +8,10 @@ import {
   safeJsonStringify,
   type Codec,
   type CodecInput,
+  type PreparedRecordEncoder,
   type LogEvent,
   type LogRecord,
+  type RecordEncoderHints,
   type SafeStringifyOptions,
 } from "@loggerjs/core";
 
@@ -224,6 +226,45 @@ function errorForRecord(record: LogRecord): LogEvent["error"] | undefined {
   return normalizeError(record.err);
 }
 
+interface PreparedRecordFragments {
+  category: readonly string[];
+  logger: string;
+  tags: LogRecord["tags"];
+  tagsFragment?: string;
+}
+
+function tryPrepareTagsFragment(
+  tags: LogRecord["tags"],
+  tagsFragment: (tags: NonNullable<LogRecord["tags"]>) => string,
+): string | undefined {
+  if (tags === null || !Object.isFrozen(tags)) return undefined;
+  try {
+    return tagsFragment(tags);
+  } catch {
+    return undefined;
+  }
+}
+
+function loggerFragmentForRecord(
+  record: LogRecord,
+  prepared: PreparedRecordFragments | undefined,
+): string {
+  if (prepared && record.category === prepared.category) return prepared.logger;
+  return loggerFragment(record.category);
+}
+
+function tagsFragmentForRecord(
+  record: LogRecord,
+  tagsFragment: (tags: NonNullable<LogRecord["tags"]>) => string,
+  prepared: PreparedRecordFragments | undefined,
+): string {
+  if (record.tags === null) return "";
+  if (prepared && record.tags === prepared.tags && prepared.tagsFragment !== undefined) {
+    return prepared.tagsFragment;
+  }
+  return tagsFragment(record.tags);
+}
+
 function encodeEvent(
   event: LogEvent,
   flags: ResolvedFlags,
@@ -264,13 +305,14 @@ function encodeRecord(
   flags: ResolvedFlags,
   stringify: JsonStringify,
   tagsFragment: (tags: NonNullable<LogRecord["tags"]>) => string,
+  prepared?: PreparedRecordFragments,
 ): string {
   let output: string;
   if (flags.fullHeader) {
     // The default id only contains [0-9a-z-] and the level name, so it never
     // needs escaping.
     const levelName = toLevelName(record.level);
-    output = `{"id":"${defaultRecordId(record, levelName)}${timeFragment(record.time)}${record.seq}${levelFragment(record.level)}${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+    output = `{"id":"${defaultRecordId(record, levelName)}${timeFragment(record.time)}${record.seq}${levelFragment(record.level)}${loggerFragmentForRecord(record, prepared)},"message":${asJsonString(resolveMessage(record))}`;
   } else {
     // The header is built in one template literal so it costs a single
     // concatenation per record; empty conditional fragments cost nothing. The
@@ -282,10 +324,10 @@ function encodeRecord(
     const idPart = flags.includeId ? `"id":"${defaultRecordId(record, levelName)}",` : "";
     const seqPart = flags.includeSeq ? `,"seq":${record.seq}` : "";
     const levelNamePart = flags.includeLevelName ? `,"levelName":"${levelName}"` : "";
-    output = `{${idPart}"time":${record.time}${seqPart},"level":${record.level}${levelNamePart},"logger":${loggerFragment(record.category)},"message":${asJsonString(resolveMessage(record))}`;
+    output = `{${idPart}"time":${record.time}${seqPart},"level":${record.level}${levelNamePart},"logger":${loggerFragmentForRecord(record, prepared)},"message":${asJsonString(resolveMessage(record))}`;
   }
   if (record.type !== null) output += `,"type":${asJsonString(record.type)}`;
-  if (record.tags !== null) output += tagsFragment(record.tags);
+  output += tagsFragmentForRecord(record, tagsFragment, prepared);
   // Guard each optional tail on the record field directly so a null field skips
   // the helper call (and its argument evaluation) entirely, matching the prior
   // `?? undefined` no-op behavior without the per-call cost.
@@ -401,6 +443,29 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
     },
     decode(payload) {
       return JSON.parse(payload) as LogEvent | LogEvent[];
+    },
+    prepareRecordEncoder(hints: RecordEncoderHints): PreparedRecordEncoder<string> {
+      const prepared: PreparedRecordFragments = {
+        category: hints.category,
+        logger: loggerFragment(hints.category),
+        tags: hints.tags,
+        tagsFragment: tryPrepareTagsFragment(hints.tags, tagsFragment),
+      };
+      return {
+        encode(record: LogRecord) {
+          try {
+            return encodeRecord(record, flags, stringify, tagsFragment, prepared);
+          } catch {
+            incrementLoggerMetaCounter("codec.fallback");
+            incrementLoggerMetaCounter("codec.fallback.fast-event-json");
+          }
+          return encodeRecord(record, flags, safeStringify, safeTagsFragment, {
+            category: prepared.category,
+            logger: prepared.logger,
+            tags: prepared.tags,
+          });
+        },
+      };
     },
   };
 }

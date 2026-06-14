@@ -33,7 +33,7 @@ Key differences:
 - pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
 - pino-pretty's role is `consoleTransport()` (pretty by default).
 - For Pino-shaped NDJSON, use `pinoCompatCodec()` from `@loggerjs/codecs`. Root data merging is opt-in (`mergeData: true`) and reserved key collisions are nested by default instead of overwriting `time`, `level`, `msg`, `pid`, `hostname`, or `err`.
-- For the fastest LoggerJS lean envelope, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Expect ~84% of pino throughput on that path (≈1.20×, [BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
+- For the fastest LoggerJS lean envelope, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Record-aware custom transports can wrap it with `createPreparedRecordEncoder(codec)` to reuse stable logger/tag fragments. In the current benchmark snapshot the plain lean path is ~88% of pino and the prepared lean path is ~95% of pino ([BENCHMARKS.md](BENCHMARKS.md)); in exchange you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
 
 ## From winston
 
@@ -62,7 +62,7 @@ Key differences:
 - `defaultMeta` → `tags` and/or `bindings`.
 - Per-transport `level` maps directly to `minLevel` on any transport.
 - Child loggers replace `winston.loggers` registries for per-module configuration; library authors should prefer `getLogger()` from core.
-- Throughput on the same path measures roughly 9x winston ([BENCHMARKS.md](BENCHMARKS.md)).
+- Throughput on the fastest comparable path measures roughly 11x winston in the current snapshot ([BENCHMARKS.md](BENCHMARKS.md)).
 
 ## From console.log
 

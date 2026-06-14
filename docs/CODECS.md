@@ -10,11 +10,15 @@ interface Codec<TPayload = string | Uint8Array> {
   contentType: string;
   encode(input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context?: EncodeContext): TPayload;
   decode?(payload: TPayload): LogEvent | LogEvent[];
+  prepareRecordEncoder?(hints: RecordEncoderHints): PreparedRecordEncoder<TPayload>;
 }
 ```
 
 - `encode` accepts single items or batches, events or records. `normalizeCodecInput()` from core projects records to events for codecs that only understand events.
 - `decode` is optional; built-in codecs implement it with `JSON.parse` for symmetric round trips of their own output.
+- `prepareRecordEncoder` is optional. Record-aware transports can call
+  `createPreparedRecordEncoder(codec)` to let the codec cache stable
+  category/tags fragments while keeping serialization owned by the transport.
 
 ## Built-in Codecs
 
@@ -51,7 +55,7 @@ fastEventJsonCodec({
 })
 ```
 
-With the three header flags off, output is a lean LoggerJS envelope: `{"time":...,"level":30,"logger":"api","message":"...","data":{...}}`. This is the configuration behind the headline benchmark numbers in [BENCHMARKS.md](BENCHMARKS.md). Use `pinoCompatCodec()` when you need Pino field names such as `msg`, `err`, `pid`, and `hostname`.
+With the three header flags off, output is a lean LoggerJS envelope: `{"time":...,"level":30,"logger":"api","message":"...","data":{...}}`. This is the configuration behind the headline benchmark numbers in [BENCHMARKS.md](BENCHMARKS.md), and record-aware custom transports can pair it with `createPreparedRecordEncoder(codec)` for the fastest stable-fragment path. Use `pinoCompatCodec()` when you need Pino field names such as `msg`, `err`, `pid`, and `hostname`.
 
 ## Pino Compatibility
 
@@ -101,5 +105,8 @@ Guidelines:
 
 - **Never throw out of `encode`.** Wrap risky paths and fall back to `safeJsonStringify` from core; count fallbacks with `incrementLoggerMetaCounter("codec.fallback")`. A throwing codec turns into a transport failure and, inside a batch transport, a poison batch that burns retries.
 - Use `normalizeCodecInput()` unless you deliberately implement a record fast path.
+- If you implement `prepareRecordEncoder`, its output must be byte-for-byte
+  identical to `encode(record)` for the same record and must keep the same
+  fallback behavior.
 - For binary formats return `Uint8Array` and set an accurate `contentType` — HTTP transports send it.
 - Implement `decode` only when symmetric round trips are part of your feature (replay, local query); it is not required for delivery.

@@ -402,33 +402,36 @@ Initial internal budget:
 
 Benchmarking must cover Node and real browsers, not only synthetic Node loops. The suite should compare pino, winston, LogTape, native console, native `JSON.stringify`, current LoggerJS, and target LoggerJS paths.
 
-### Decision: ~80% of pino is the accepted ceiling, not a milestone toward parity
+### Decision: keep the record pipeline; optimize through codec-owned preparation
 
-Status as of 2026-06: the Node NDJSON full path measures ~84% of pino for
-equivalent output (lean envelope) and ~74% while emitting `id`, `seq`, and
-`levelName` on top of pino's fields (see `docs/BENCHMARKS.md` for the
-snapshot). The 80% target is met for equivalent output.
+Status as of 2026-06: the Node NDJSON full path measures ~88% of pino for
+equivalent plain lean output, and the codec-owned prepared lean path measures
+~95% of pino in the current local snapshot. The full-envelope path measures
+~78% while emitting `id`, `seq`, and `levelName` on top of pino's fields (see
+`docs/BENCHMARKS.md` for the snapshot). The original 80% target is met for
+equivalent output without moving serialization into the logger.
 
 A profiling pass in 2026-06 corrected an earlier overstatement that "the gap is
 structural, not unoptimized code." Two recoverable inefficiencies were found
-and fixed, moving the lean ratio from ~1.30x pino to ~1.20x: (1) `getContext`
+and fixed, moving the lean ratio from ~1.30x pino to ~1.10x in this snapshot:
+(1) `getContext`
 ran an `addedProviders.map()` + spread + `mergeContext({})` on every call even
 with no ambient context configured — allocating three objects to merge nothing;
 (2) `fastEventJsonCodec` re-derived its `includeX` toggles and built the line
 through a chain of `+=` concatenations on every encode, instead of baking the
 flags once at codec creation and emitting the header in a single template
-(pino's "compile the serializer once" technique).
+(pino's "compile the serializer once" technique); and (3) codec-owned prepared
+record encoders let transports reuse logger/category/tags fragments without
+making the logger own JSON serialization.
 
-The *residual* gap to pino is genuinely structural. pino builds its output line
-directly from call arguments; LoggerJS allocates a `LogRecord` (~12ns) so that
-middleware, processors, integrations, and multiple transports can observe one
-shared value, and the codec stays decoupled from the logger (per-call WeakMap
-fragment lookups, a safe-fallback `try/catch` that must never lose a log). The
-record allocation itself is small; the decoupling and the never-throw contract
-are the real cost, and they are the architecture's whole point. Closing the
-last ~17% would require a fusion fast path that bypasses the record whenever a
-logger has exactly one sync transport and no middleware. That path is rejected
-because it would:
+The remaining gap to pino is now mostly structural and noisy at benchmark
+scale. pino builds its output line directly from call arguments; LoggerJS still
+allocates a `LogRecord` so middleware, processors, integrations, and multiple
+transports can observe one shared value, and the codec still owns a never-throw
+safe-fallback contract. Closing the last few percent consistently would require
+a fusion fast path that bypasses the record whenever a logger has exactly one
+sync transport and no middleware. That path is rejected as the default because
+it would:
 
 - create a performance cliff where adding the first middleware silently costs
   30%+ of throughput,
@@ -439,8 +442,9 @@ because it would:
   this class of dual-path defect).
 
 Remaining performance budget goes to the default paths (batch enqueue,
-default codecs) and to regression gating, not to peak numbers. Revisit only
-if a use case demonstrates that the last ~20% matters in production.
+default codecs, prepared codec contracts) and to regression gating, not to
+fusion-only peak numbers. Revisit only if a use case demonstrates that a
+separate semantic hot path matters in production.
 
 ## Reliability
 

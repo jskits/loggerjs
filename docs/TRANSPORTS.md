@@ -281,12 +281,14 @@ A record-aware transport opts into the fast path (no event projection when the l
 
 ```ts
 import { fastEventJsonCodec } from "@loggerjs/codecs";
+import { createPreparedRecordEncoder } from "@loggerjs/core";
 
 const codec = fastEventJsonCodec();
+const encodeRecord = createPreparedRecordEncoder(codec);
 const recordSink: Transport = {
   name: "record-sink",
   write(record, context) {
-    push(codec.encode(record));
+    push(encodeRecord(record));
     // Need the event shape instead? context.toEvent(record) converts once
     // and is memoized, so other transports share the same projection.
   },

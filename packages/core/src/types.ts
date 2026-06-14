@@ -155,6 +155,25 @@ export interface Transport {
   close?: () => void | Promise<void>;
 }
 
+/**
+ * Stable-fragment hints for codecs that can prepare a record encoder.
+ * Hints are an optimization only: prepared encoders must still produce the same
+ * bytes as `encode(record)` for every record, including records with mutable
+ * tag objects.
+ */
+export interface RecordEncoderHints {
+  category: readonly string[];
+  tags: Tags | null;
+}
+
+/**
+ * Codec-owned encoder for LogRecord hot paths. Transports may cache and call it
+ * without making the logger own serialization.
+ */
+export interface PreparedRecordEncoder<TPayload = string | Uint8Array> {
+  encode: (record: LogRecord, context?: EncodeContext) => TPayload;
+}
+
 export interface Codec<TPayload = string | Uint8Array> {
   name: string;
   contentType: string;
@@ -163,6 +182,7 @@ export interface Codec<TPayload = string | Uint8Array> {
     context?: EncodeContext,
   ) => TPayload;
   decode?: (payload: TPayload) => LogEvent | LogEvent[];
+  prepareRecordEncoder?: (hints: RecordEncoderHints) => PreparedRecordEncoder<TPayload>;
 }
 
 export type EncodedPayload = string | Uint8Array;

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { createRecord, jsonCodec, ndjsonCodec, safeJsonCodec } from "../src";
+import {
+  createPreparedRecordEncoder,
+  createRecord,
+  jsonCodec,
+  metricsCodec,
+  ndjsonCodec,
+  safeJsonCodec,
+  type Codec,
+  type LogRecord,
+} from "../src";
 
 describe("core codecs", () => {
   it("accepts LogRecord batches through the compatibility projection", () => {
@@ -67,5 +76,97 @@ describe("core codecs", () => {
       data: { err: unknown };
     };
     expect(nativeLine.data.err).toEqual({});
+  });
+
+  it("caches prepared record encoders by category and tags identity", () => {
+    let prepareCalls = 0;
+    const codec: Codec<string> = {
+      name: "prepared-test",
+      contentType: "text/plain",
+      encode(input) {
+        return `fallback:${Array.isArray(input) ? input.length : 1}`;
+      },
+      prepareRecordEncoder(hints) {
+        prepareCalls += 1;
+        return {
+          encode(record: LogRecord) {
+            return `${hints.category.join(".")}:${Object.keys(hints.tags ?? {}).join(",")}:${record.seq}`;
+          },
+        };
+      },
+    };
+    const encode = createPreparedRecordEncoder(codec);
+    const sharedTags = Object.freeze({ service: "checkout" });
+    const first = createRecord({
+      time: 1,
+      level: 30,
+      category: ["api"],
+      tags: sharedTags,
+      msg: "one",
+      seq: 1,
+    });
+    const second = { ...first, msg: "two", seq: 2 };
+    const third = createRecord({
+      time: 1,
+      level: 30,
+      category: ["api"],
+      tags: { service: "checkout" },
+      msg: "three",
+      seq: 3,
+    });
+
+    expect(encode(first)).toBe("api:service:1");
+    expect(encode(second)).toBe("api:service:2");
+    expect(encode(third)).toBe("api:service:3");
+    expect(prepareCalls).toBe(2);
+  });
+
+  it("falls back when a codec has no prepared record encoder", () => {
+    const codec: Codec<string> = {
+      name: "plain",
+      contentType: "text/plain",
+      encode(input) {
+        return Array.isArray(input) ? "batch" : "single";
+      },
+    };
+    const encode = createPreparedRecordEncoder(codec);
+
+    expect(encode(createRecord({ time: 1, level: 30, msg: "one", seq: 1 }))).toBe("single");
+  });
+
+  it("keeps prepared encoders through metricsCodec wrappers", () => {
+    const codec: Codec<string> = {
+      name: "prepared-test",
+      contentType: "text/plain",
+      encode() {
+        return "fallback";
+      },
+      prepareRecordEncoder() {
+        return {
+          encode(record) {
+            return `prepared:${record.seq}`;
+          },
+        };
+      },
+    };
+    const encode = createPreparedRecordEncoder(metricsCodec(codec));
+
+    expect(encode(createRecord({ time: 1, level: 30, msg: "one", seq: 1 }))).toBe("prepared:1");
+  });
+
+  it("falls back to plain encode when prepareRecordEncoder throws", () => {
+    const codec: Codec<string> = {
+      name: "prepare-throws",
+      contentType: "text/plain",
+      encode(input) {
+        return `plain:${Array.isArray(input) ? input.length : 1}`;
+      },
+      prepareRecordEncoder() {
+        throw new Error("prepare failed");
+      },
+    };
+    const encode = createPreparedRecordEncoder(codec);
+
+    expect(encode(createRecord({ time: 1, level: 30, msg: "one", seq: 1 }))).toBe("plain:1");
   });
 });

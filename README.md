@@ -46,7 +46,7 @@ Zero-dependency core, zero platform APIs, a type surface that compiles without D
 <td width="50%" valign="top">
 
 ⚡ **Performance with receipts**<br/>
-Disabled levels cost ~2-5ns (pino parity). The lean NDJSON path runs at ~84% of pino (≈1.20×) — [measured](docs/BENCHMARKS.md), published, and CI-gated.
+Disabled levels cost ~2-5ns (pino parity). Codec-owned prepared lean NDJSON runs at ~95% of pino in the current snapshot — [measured](docs/BENCHMARKS.md), published, and CI-gated.
 
 </td>
 <td width="50%" valign="top">
@@ -267,13 +267,14 @@ Measured on an Apple Silicon laptop, Node v22.22.2, against pino 10.3.1 / winsto
 | Logger / path                                      |   ns/op | Relative                          |
 | -------------------------------------------------- | ------: | --------------------------------- |
 | **loggerjs** — disabled level (lazy message)       |   **2** | parity with pino (7)              |
-| **loggerjs** — batch transport enqueue             | **173** | —                                 |
-| **loggerjs** — lean NDJSON, comparable line        | **267** | **~84% of pino (≈1.20×)**         |
-| **loggerjs** — full envelope (`+id/seq/levelName`) | **301** | ~74% of pino, 3 extra fields/line |
-| pino — NDJSON noop sink                            |     224 | 1.00× baseline                    |
-| Node `console` — noop stream                       |     698 | loggerjs ~2.6× faster             |
-| winston — JSON noop sink                           |   2,723 | loggerjs ~10× faster              |
-| LogTape — JSON lines noop sink                     |   5,057 | loggerjs ~19× faster              |
+| **loggerjs** — batch transport enqueue             | **169** | —                                 |
+| **loggerjs** — prepared lean NDJSON                | **242** | **~95% of pino (≈1.05×)**         |
+| **loggerjs** — lean NDJSON, comparable line        | **261** | ~88% of pino                      |
+| **loggerjs** — full envelope (`+id/seq/levelName`) | **296** | ~78% of pino, 3 extra fields/line |
+| pino — NDJSON noop sink                            |     230 | 1.00× baseline                    |
+| Node `console` — noop stream                       |     636 | loggerjs ~2.6× faster             |
+| winston — JSON noop sink                           |   2,712 | loggerjs ~11× faster              |
+| LogTape — JSON lines noop sink                     |   5,051 | loggerjs ~21× faster              |
 
 The hot path is deliberate: level gating before any allocation, lazy message resolution, frozen shared tags, memoized ids, a record fast path that skips event projection, and fragment-cached serialization — all guarded by `pnpm bench:gate` in CI. The remaining gap to pino is a [documented architectural decision](docs/ARCHITECTURE.md), not an accident: LoggerJS allocates one record per log so middleware, integrations, and multiple transports can observe it. pino builds its line directly from call arguments and carries no such pipeline.
 
@@ -393,7 +394,7 @@ LoggerJS shines when the logging problem spans **browser and server** collection
 | Built-in batching / retry / offline    |    ✅    |  ⚠️  |   ⚠️    |   ⚠️    |
 | Transport-owned codecs                 |    ✅    |  ⚠️  |   ⚠️    |   ⚠️    |
 | Library-safe (silent until configured) |    ✅    |  ⚠️  |   ⚠️    |   ✅    |
-| Fastest direct Node JSON path          |   ~84%   |  ✅  | slower  | slower  |
+| Fastest direct Node JSON path          | ~95% prepared |  ✅  | slower  | slower  |
 
 Pino is still the best choice when the only requirement is the fastest direct Node JSON logger. LoggerJS trades a small, measured slice of that throughput for a record pipeline that works the same in the browser, captures automatically, and delivers reliably.
 
