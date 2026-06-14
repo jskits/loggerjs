@@ -87,6 +87,7 @@ Crash-path `flushSync`, beacon on page close, offline replay, batch retry with c
 ## Table of Contents
 
 - [Install](#install)
+- [AI Skill](#ai-skill)
 - [Quick Start](#quick-start)
   - [Node](#node)
   - [Browser](#browser)
@@ -117,6 +118,30 @@ npm install @loggerjs/browser @loggerjs/processors
 <sub>Using pnpm or yarn? Swap `npm install` for `pnpm add` / `yarn add`. Add vendor packages (`@loggerjs/otel`, `@loggerjs/sentry`, `@loggerjs/datadog`, …) only when you deliver to that destination.</sub>
 
 All packages ship **ESM + CJS** with full TypeScript declarations and granular subpath exports (`@loggerjs/node/transport-stdout`, `@loggerjs/browser/integration-console`, …) so bundlers tree-shake to exactly what you import.
+
+## AI Skill
+
+LoggerJS includes an installable AI skill for coding agents. Use it when you want an agent to add LoggerJS to a JavaScript or TypeScript app, choose the right runtime packages, configure production logging, or migrate from console, pino, winston, loglevel, debug, or an existing wrapper.
+
+```bash
+# Install the LoggerJS skill
+npx skills add jskits/loggerjs --skill loggerjs
+
+# Install it for a specific agent
+npx skills add jskits/loggerjs --skill loggerjs --agent codex
+npx skills add jskits/loggerjs --skill loggerjs --agent claude-code
+
+# Use it once without installing
+npx skills use jskits/loggerjs --skill loggerjs
+```
+
+Then ask your agent:
+
+```text
+Use $loggerjs to add production-ready structured logging to this Node API.
+```
+
+The skill lives in [`skills/loggerjs`](skills/loggerjs), and the full usage guide is in [docs/AI-SKILL.md](docs/AI-SKILL.md).
 
 ## Quick Start
 
