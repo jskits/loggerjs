@@ -1,0 +1,17 @@
+# Default ownership for the repository.
+* @unadlib
+
+# Keep security and governance changes explicitly reviewed.
+/SECURITY.md @unadlib
+/GOVERNANCE.md @unadlib
+/.github/CODEOWNERS @unadlib
+
+# Core package and public API surfaces.
+/packages/core/ @unadlib
+/docs/API-STABILITY.md @unadlib
+
+# Benchmark claims and performance gates.
+/docs/BENCHMARKS.md @unadlib
+/docs/BENCHMARK-MATRIX.md @unadlib
+/scripts/bench-*.mjs @unadlib
+/scripts/check-bench-regression.mjs @unadlib
