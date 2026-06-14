@@ -76,4 +76,39 @@ export declare function formatPrettyEvent(event: LogEvent, options?: PrettyForma
 ```ts
 export * from "./formatter.js";
 export * from "./console-transport.js";
+export * from "./stream-transport.js";
+```
+
+## stream-transport.d.ts
+
+```ts
+import { type LoggerLevel, type Transport } from "@loggerjs/core";
+import { type PrettyFormatterOptions } from "./formatter.js";
+export interface PrettyWritableLike {
+    isTTY?: boolean;
+    write: (chunk: string) => unknown;
+    on?: (event: "error", listener: (error: Error) => void) => unknown;
+    off?: (event: "error", listener: (error: Error) => void) => unknown;
+    once?: (event: "drain", listener: () => void) => unknown;
+    end?: (callback?: (error?: Error | null) => void) => unknown;
+}
+export interface PrettyProcessLike {
+    stdout?: PrettyWritableLike;
+    stderr?: PrettyWritableLike;
+    env?: Record<string, string | undefined>;
+}
+export interface PrettyStreamTransportOptions extends PrettyFormatterOptions {
+    name?: string;
+    stream?: PrettyWritableLike;
+    process?: PrettyProcessLike;
+    minLevel?: LoggerLevel;
+    newline?: string;
+    endOnClose?: boolean;
+}
+export type PrettyStdoutTransportOptions = Omit<PrettyStreamTransportOptions, "stream"> & {
+    stream?: PrettyWritableLike;
+};
+export declare function prettyStreamTransport(options?: PrettyStreamTransportOptions): Transport;
+export declare function prettyStdoutTransport(options?: PrettyStdoutTransportOptions): Transport;
+export declare function prettyStderrTransport(options?: PrettyStdoutTransportOptions): Transport;
 ```

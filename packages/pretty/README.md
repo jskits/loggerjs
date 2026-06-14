@@ -28,6 +28,28 @@ const logger = createLogger({
 `prettyConsoleTransport()` writes through the unpatched console registry, so it
 can run beside `captureConsoleIntegration()` without feedback loops.
 
+## Node Terminal
+
+```ts
+import { createLogger } from "@loggerjs/core";
+import { prettyStdoutTransport } from "@loggerjs/pretty/transport-stream";
+
+const logger = createLogger({
+  transports: [
+    prettyStdoutTransport({
+      colors: "auto",
+      mode: "expanded",
+      minLevel: "debug",
+    }),
+  ],
+});
+```
+
+`prettyStdoutTransport()` and `prettyStderrTransport()` use ANSI colors when the
+target stream is a TTY. They honor `NO_COLOR` and `FORCE_COLOR`, and their
+`flush()` waits for `drain` when the stream reports backpressure. Use these for
+local development; keep `stdoutTransport()` for production NDJSON.
+
 ## Formatter
 
 ```ts

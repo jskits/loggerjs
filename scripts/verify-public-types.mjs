@@ -60,7 +60,11 @@ import { queueIntegration } from "@loggerjs/node/integration-queue";
 import { serverlessIntegration } from "@loggerjs/node/integration-serverless";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
-import { formatPrettyEvent, prettyConsoleTransport } from "@loggerjs/pretty";
+import {
+  formatPrettyEvent,
+  prettyConsoleTransport,
+  prettyStdoutTransport,
+} from "@loggerjs/pretty";
 import { fastEventJsonCodec, msgpackrCodec, type MsgpackrCodecOptions } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
 import { openTelemetryLogBridgeTransport } from "@loggerjs/otel/log-bridge";
@@ -148,6 +152,7 @@ serverlessIntegration(logger, async () => ({ ok: true }), { captureResult: true 
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
 formatPrettyEvent({ id: "evt", time: 1, seq: 1, level: 30, levelName: "info", logger: "app", message: "hello" });
 prettyConsoleTransport({ mode: "compact", browserStyles: false });
+prettyStdoutTransport({ stream: { write() {} }, process: { env: {} } });
 sqliteTransport({
   database: {
     prepare: () => ({

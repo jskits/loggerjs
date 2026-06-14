@@ -46,9 +46,13 @@ const checks = [
   ["@loggerjs/node/transport-file", ["fileTransport"]],
   ["@loggerjs/node/transport-stdout", ["stdoutTransport", "stderrTransport"]],
   ["@loggerjs/node/transport-syslog", ["nodeSyslogTransport", "formatSyslogMessage"]],
-  ["@loggerjs/pretty", ["formatPrettyEvent", "prettyConsoleTransport"]],
+  ["@loggerjs/pretty", ["formatPrettyEvent", "prettyConsoleTransport", "prettyStreamTransport"]],
   ["@loggerjs/pretty/formatter", ["formatPrettyEvent"]],
   ["@loggerjs/pretty/transport-console", ["prettyConsoleTransport"]],
+  [
+    "@loggerjs/pretty/transport-stream",
+    ["prettyStreamTransport", "prettyStdoutTransport", "prettyStderrTransport"],
+  ],
   ["@loggerjs/database", ["databaseTransport", "sqliteTransport", "postgresTransport"]],
   [
     "@loggerjs/database/transport",
