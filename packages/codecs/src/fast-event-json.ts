@@ -74,8 +74,7 @@ function hasFullHeader(options: FastEventJsonCodecOptions): boolean {
 
 // Resolve every `includeX ?? true` toggle once per codec instead of on every
 // encode call. Threading these baked booleans through the encoders lets V8 keep
-// the hot path monomorphic and removes the per-call option lookups, the way
-// pino compiles its serializer a single time at logger creation.
+// the hot path monomorphic and removes the per-call option lookups.
 interface ResolvedFlags {
   fullHeader: boolean;
   includeId: boolean;

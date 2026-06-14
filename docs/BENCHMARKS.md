@@ -112,11 +112,12 @@ equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02
 across all 22 runs, and held even on rounds where a GC pause pushed the absolute
 spread past 80%. The prepared encoder is ~8% faster than plain lean.
 
-**This ranking is environment-dependent.** pino's serializer is generated at
-runtime (`new Function`), so its throughput swings widely with CPU and Node/V8
-version; loggerjs's static serialization stayed ~242 ns across the machines we
-tested while pino ranged ~205-310 ns. On a different chip pino can come out
-ahead. Always reproduce on your own hardware: `BENCH_AB=1 pnpm bench:node`.
+**This ranking is environment-dependent.** pino and loggerjs both use hand-tuned
+JSON hot paths, and small CPU, scheduler, and Node/V8 differences can change
+which one wins. The table above is an empirical result for the listed reference
+machine, not a mechanism claim or a universal ranking. Always reproduce on your
+own hardware: `BENCH_AB=1 pnpm bench:node`, then add durable rows with
+`pnpm bench:matrix`.
 
 ### Sequential suite (single 1,000,000-iteration run, same machine)
 

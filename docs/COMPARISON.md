@@ -110,9 +110,10 @@ The honest interpretation:
 - On the M1 Max reference machine LoggerJS lean and prepared are **faster than
   Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across
   22 runs). This is **not** a universal "beats Pino" claim: the ranking is
-  CPU/Node-V8 dependent — pino's runtime-generated serializer swings ~205-310ns
-  across machines while loggerjs's static serialization stays ~242ns. Reproduce
-  on your hardware with `BENCH_AB=1 pnpm bench:node`.
+  CPU/Node-V8 dependent, and the docs treat the difference as an empirical
+  benchmark result rather than a proven mechanism. Reproduce on your hardware
+  with `BENCH_AB=1 pnpm bench:node` and use `pnpm bench:matrix` for durable
+  cross-machine evidence.
 - LoggerJS reaches Pino's class on equivalent output **without** giving up its
   record pipeline — that pipeline is a deliberate design, not accidental
   overhead.

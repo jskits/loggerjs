@@ -409,12 +409,11 @@ measured with the drift-canceling paired A/B harness, the lean Node NDJSON path
 runs at ~1.19x pino and the codec-owned prepared lean path at ~1.28x — i.e.
 **faster than pino** for equivalent output. The full-envelope path is ~0.9x pino
 while emitting `id`, `seq`, and `levelName` on top of pino's fields (see
-`docs/BENCHMARKS.md`). This ranking is **CPU/Node-V8 dependent**: pino's
-serializer is generated at runtime, so its throughput swings widely by
-environment (~205-310ns across the machines tested), while loggerjs's static
-serialization stays ~242ns and on a different chip pino can lead. The point is
-that loggerjs reaches pino's class **without** moving serialization into the
-logger.
+`docs/BENCHMARKS.md`). This ranking is **CPU/Node-V8 dependent**: pino and
+loggerjs both use hand-tuned JSON hot paths, and the current docs treat the
+difference as an empirical benchmark result rather than assigning a low-level
+cause. On a different chip or Node/V8 build pino can lead. The point is that
+loggerjs reaches pino's class **without** moving serialization into the logger.
 
 Getting here took a 2026-06 profiling pass that also corrected an earlier
 overstatement ("the gap is structural, not unoptimized code"). Three changes,
@@ -424,7 +423,7 @@ none of which touch the architecture, moved the lean ratio from ~1.30x pino to
 ambient context is configured (it had been allocating three objects to merge
 nothing); (2) `fastEventJsonCodec` bakes its `includeX` toggles once at codec
 creation and emits the header in a single template instead of a chain of `+=`
-concatenations (pino's "compile the serializer once" technique); and (3)
+concatenations (stable decisions happen outside the per-record call); and (3)
 codec-owned prepared record encoders let transports reuse logger/category/tags
 fragments without making the logger own JSON serialization.
 
