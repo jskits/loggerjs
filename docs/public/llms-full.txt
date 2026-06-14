@@ -24,7 +24,7 @@ Source: https://github.com/jskits/loggerjs/blob/main/README.md
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522.13-339933?logo=node.js&logoColor=white)](package.json)
 [![modules](https://img.shields.io/badge/modules-ESM%20%2B%20CJS-F7DF1E)](#packages)
 
-[Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Pretty](docs/PRETTY.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [Architecture](docs/ARCHITECTURE.md)
+[Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Pretty](docs/PRETTY.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [AI Skill](docs/AI-SKILL.md) · [Architecture](docs/ARCHITECTURE.md)
 
 <sub>**13 packages** · **35 integrations** (**19 browser / 16 Node.js**) · **25+ transports** (core / browser / Node.js / pretty / vendor) · **27 runtime-neutral processors** · **8 codecs** · **zero-dependency core**</sub>
 
@@ -431,6 +431,7 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 | [Benchmarks](docs/BENCHMARKS.md)                 | Methodology, measured snapshot, regression gate, size budgets                   |
 | [Comparison](docs/COMPARISON.md)                 | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
 | [Migration](docs/MIGRATION.md)                   | Coming from pino, winston, or console.log                                       |
+| [AI Skill](docs/AI-SKILL.md)                     | Install and use the LoggerJS AI skill with coding agents                        |
 | [Architecture](docs/ARCHITECTURE.md)             | The full design document and recorded decisions                                 |
 | [Contributing](docs/CONTRIBUTING.md)             | Repo workflow, CI gates, engineering conventions                                |
 | [Release](docs/RELEASE.md)                       | Versioning and publish workflow                                                 |
