@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LoggerJS Pretty Browser Demo</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background: #f6f8fb;
+        color: #1f2937;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        width: min(1080px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0;
+      }
+
+      header {
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: #526071;
+        line-height: 1.5;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 22px 0;
+      }
+
+      button {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #ffffff;
+        color: #111827;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 650;
+        min-height: 38px;
+        padding: 0 14px;
+      }
+
+      button:hover {
+        border-color: #64748b;
+      }
+
+      .shell {
+        border: 1px solid #d7dee8;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #101827;
+        box-shadow: 0 16px 50px rgba(15, 23, 42, 0.14);
+      }
+
+      .shell-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 0 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        color: #cbd5e1;
+        font-size: 13px;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #64748b;
+      }
+
+      .dot.red {
+        background: #ef4444;
+      }
+
+      .dot.yellow {
+        background: #f59e0b;
+      }
+
+      .dot.green {
+        background: #22c55e;
+      }
+
+      #log-output {
+        min-height: 360px;
+        max-height: 62vh;
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .log-line {
+        border-left: 3px solid #64748b;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        background: rgba(255, 255, 255, 0.045);
+        color: #e5e7eb;
+      }
+
+      .log-line.info {
+        border-left-color: #60a5fa;
+      }
+
+      .log-line.warn {
+        border-left-color: #f59e0b;
+      }
+
+      .log-line.error,
+      .log-line.fatal {
+        border-left-color: #ef4444;
+      }
+
+      .log-line.debug {
+        border-left-color: #22d3ee;
+      }
+
+      .line-text {
+        margin: 0;
+        padding: 10px 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font:
+          13px/1.55 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          "Liberation Mono",
+          monospace;
+      }
+
+      details {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 8px 12px 10px;
+      }
+
+      summary {
+        cursor: pointer;
+        color: #cbd5e1;
+        font-weight: 650;
+      }
+
+      .detail-value {
+        margin: 8px 0 0;
+        color: #bfdbfe;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font:
+          12px/1.5 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          "Liberation Mono",
+          monospace;
+      }
+
+      .status {
+        margin-top: 14px;
+        font-size: 13px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          background: #111827;
+          color: #e5e7eb;
+        }
+
+        p {
+          color: #aab5c4;
+        }
+
+        button {
+          background: #172033;
+          color: #f8fafc;
+          border-color: #334155;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>LoggerJS Pretty Browser Demo</h1>
+        <p>
+          This local HTML file uses a prebuilt browser bundle from this example directory. Logs
+          render below and also appear in DevTools.
+        </p>
+      </header>
+
+      <div class="toolbar">
+        <button id="emit-sample" type="button">Emit Sample Logs</button>
+        <button id="emit-error" type="button">Emit Error</button>
+        <button id="clear" type="button">Clear</button>
+      </div>
+
+      <section class="shell" aria-label="Pretty log output">
+        <div class="shell-bar">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span>prettyConsoleTransport output</span>
+        </div>
+        <div id="log-output"></div>
+      </section>
+
+      <p class="status" id="status">Loading LoggerJS modules...</p>
+    </main>
+
+    <script src="./browser.bundle.js"></script>
+  </body>
+</html>
