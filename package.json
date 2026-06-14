@@ -30,6 +30,10 @@
     "commit": "cz",
     "compat:node": "pnpm smoke:packages",
     "compat:runtimes": "node scripts/smoke-runtimes.mjs",
+    "docs:build": "node scripts/generate-site-docs.mjs && vitepress build docs",
+    "docs:dev": "node scripts/generate-site-docs.mjs && vitepress dev docs",
+    "docs:generate": "node scripts/generate-site-docs.mjs",
+    "docs:preview": "vitepress preview docs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
@@ -84,6 +88,7 @@
     "tsx": "4.22.4",
     "turbo": "^2.9.17",
     "typescript": "^6.0.3",
+    "vitepress": "1.6.4",
     "vitest": "^4.1.8",
     "winston": "^3.19.0",
     "workerd": "^1.20260612.1"

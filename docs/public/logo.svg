@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">LoggerJS logo</title>
+  <desc id="desc">A structured log pipeline mark with the letters LJ.</desc>
+  <rect width="96" height="96" rx="22" fill="#0b5c52"/>
+  <path d="M24 28h12v30h18v10H24V28Z" fill="#f7fbfa"/>
+  <path d="M59 28h12v28c0 9-5 15-15 15-5 0-9-1-13-4l4-9c2 2 5 3 8 3 3 0 4-2 4-6V28Z" fill="#8ee3d7"/>
+  <path d="M22 76h52" stroke="#d7b56d" stroke-width="6" stroke-linecap="round"/>
+</svg>

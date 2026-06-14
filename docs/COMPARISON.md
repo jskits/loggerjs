@@ -9,7 +9,7 @@ roadmap.
 The comparison uses first-party behavior unless a cell explicitly says
 "ecosystem". Sources were checked on 2026-06-12:
 
-- LoggerJS repository docs: [README](../README.md), [Concepts](CONCEPTS.md),
+- LoggerJS repository docs: [README](https://github.com/jskits/loggerjs/blob/main/README.md), [Concepts](CONCEPTS.md),
   [Transports](TRANSPORTS.md), [Integrations](INTEGRATIONS.md),
   [Processors](PROCESSORS.md), [Codecs](CODECS.md), [Benchmarks](BENCHMARKS.md).
 - Pino official docs: <https://getpino.io/>,
