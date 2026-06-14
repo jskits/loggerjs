@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/browser",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Browser transports and integrations for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/browser#readme",
   "bugs": {

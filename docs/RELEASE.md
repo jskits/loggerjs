@@ -27,21 +27,26 @@ changeset publish --tag canary
 
 ## NPM Publishing
 
-The release workflow is `.github/workflows/release.yml`. Configure the GitHub secret `NPM_AUTH_TOKEN` with an npm granular access token that can publish every `@loggerjs/*` package. The token needs read/write access to the `@loggerjs` scope or all packages, and bypass 2FA must be enabled for non-interactive publishing. `NPM_TOKEN` is accepted as a fallback name.
+The release workflow is `.github/workflows/release.yml`. Each publishable `@loggerjs/*` package should be configured on npmjs.com with a Trusted Publisher entry for:
 
-The workflow uses token authentication for npm publishing and OIDC for provenance:
+- Organization or user: `jskits`
+- Repository: `loggerjs`
+- Workflow filename: `release.yml`
+- Allowed action: `npm publish`
 
-- `actions/setup-node` sets the npm registry and configures npm to read auth from `NODE_AUTH_TOKEN`.
-- Publish steps map `secrets.NPM_AUTH_TOKEN` or `secrets.NPM_TOKEN` to `NODE_AUTH_TOKEN`, which is what npm expects.
-- `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm uses for provenance.
-- The workflow upgrades to npm 11 so provenance support is current.
+The workflow uses npm Trusted Publisher/OIDC for npm publishing; it does not read `NPM_AUTH_TOKEN`, `NPM_TOKEN`, or `NODE_AUTH_TOKEN`.
+
+- `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm exchanges during `npm publish`.
+- `actions/setup-node` sets the npm registry for the publish command without configuring a long-lived token.
+- The release job runs on a GitHub-hosted Ubuntu runner with Node 24 and upgrades to npm 11 so Trusted Publisher support is current.
 - Every publishable package sets `publishConfig.provenance=true`, the publish step sets `NPM_CONFIG_PROVENANCE=true`, and the publish script passes `--provenance` explicitly to `pnpm publish`.
+- `npm whoami` is not a useful preflight for Trusted Publisher because OIDC authentication only exists during the publish operation.
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
 Commits do not trigger publishing. To publish, first consume pending changesets with `pnpm version-packages`, commit the versioned package metadata, and push that commit through normal CI. After the version commit is on `main`, create and push a release tag such as `v0.0.3`; `.github/workflows/release.yml` only listens to `v*` tag pushes and rejects tags whose commits are not reachable from `origin/main`. The release job blocks if pending changesets still exist, runs `pnpm release:publish`, publishes each not-yet-published workspace package with `pnpm publish --provenance`, then creates package release tags with the idempotent `changeset tag` command before pushing `@loggerjs/*` package tags.
 
-For an organization-level npm secret, make sure the secret's repository access includes `jskits/loggerjs`. Public repositories are not covered when the secret is limited to private repositories only.
+If npm returns an authentication error during publish, verify that every package's Trusted Publisher settings exactly match the repository owner, repository name, workflow filename, and optional environment name. npm checks these fields only when a publish is attempted.
 
 References:
 

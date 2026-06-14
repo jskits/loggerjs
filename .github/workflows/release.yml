@@ -35,11 +35,11 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: pnpm
+          package-manager-cache: false
 
-      - name: Use npm trusted publishing CLI
+      - name: Use npm CLI with trusted publishing support
         run: |
           npm install -g npm@11
           npm --version
@@ -62,50 +62,28 @@ jobs:
           echo "Pending changesets must be versioned and committed before tagging a release."
           exit 1
 
-      - name: Validate npm publish token
+      - name: Verify trusted publishing configuration
         run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            {
-              echo "### Missing npm publish token"
-              echo
-              echo "The release job cannot read \`NPM_AUTH_TOKEN\` or \`NPM_TOKEN\`."
-              echo
-              echo "If the token is configured as an organization secret, check that its repository access includes \`jskits/loggerjs\`. Public repositories are not covered by a private-repositories-only policy."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error title=NPM publish token is unavailable::Configure NPM_AUTH_TOKEN as a repository secret or grant the organization secret access to jskits/loggerjs."
-            exit 1
-          fi
-
-          if ! npm_user="$(npm whoami --registry=https://registry.npmjs.org 2>&1)"; then
-            {
-              echo "### npm authentication failed"
-              echo
-              echo "The release job received a token, but npm rejected it."
-              echo
-              echo "Use an npm granular access token with read/write publish access to the \`@loggerjs\` scope and bypass 2FA enabled."
-              echo
-              echo "\`\`\`"
-              printf '%s\n' "$npm_user"
-              echo "\`\`\`"
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error title=NPM authentication failed::npm whoami rejected the configured token."
-            exit 1
-          fi
-
-          echo "Authenticated to npm as ${npm_user}."
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
+          {
+            echo "### npm Trusted Publisher"
+            echo
+            echo "This release publishes through npm Trusted Publisher/OIDC."
+            echo
+            echo "- npm package settings must trust \`jskits/loggerjs\` via workflow \`release.yml\`."
+            echo "- The workflow has \`permissions.id-token: write\` so npm can exchange the GitHub OIDC token during \`npm publish\`."
+            echo "- No \`NPM_AUTH_TOKEN\`, \`NPM_TOKEN\`, or \`NODE_AUTH_TOKEN\` publish secret is used."
+            echo
+            echo "\`npm whoami\` is intentionally skipped because OIDC authentication only exists during the publish operation."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish dry run
         run: pnpm release:publish:dry-run
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
       - name: Publish packages
         run: pnpm release:publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
       - name: Push release tags

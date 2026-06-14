@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/pretty",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Pretty console and terminal output helpers for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/pretty#readme",
   "bugs": {
