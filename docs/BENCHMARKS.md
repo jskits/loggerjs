@@ -9,6 +9,8 @@ pnpm bench
 pnpm bench:node
 pnpm bench:browser
 pnpm bench:gate
+pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
+pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 pnpm size:check
 ```
 
@@ -41,6 +43,30 @@ median ratio with its min/max spread, and warns when the baseline (pino) spread
 exceeds 25% — the signal that the machine is too noisy to trust the absolute ns
 (the ratios stay fair regardless). Quote a cross-logger ratio only from this
 mode with a stable baseline, never from a single sequential run.
+
+### Cross-machine benchmark matrix
+
+When you need to support a stronger statement such as "LoggerJS was faster than
+pino on every machine we tested," collect multiple local A/B artifacts and
+aggregate them:
+
+```bash
+pnpm build
+pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
+
+# after copying artifacts from other machines into benchmarks/matrix/
+pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
+```
+
+`pnpm bench:matrix` wraps the `BENCH_AB=1 BENCH_JSON=1` harness, runs it several
+times, records CPU/OS/Node/dependency/Git metadata, and writes JSON plus
+Markdown artifacts under `benchmarks/matrix/` by default. That directory is
+ignored because it is local evidence. Commit only an intentionally curated
+aggregate such as `docs/BENCHMARK-MATRIX.md`.
+
+Use the matrix wording carefully: it can prove the listed
+machine/runtime/dependency combinations, not a universal result for every
+future CPU, Node/V8 version, or pino release.
 
 ## Node Scenarios
 
