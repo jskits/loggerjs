@@ -7,6 +7,7 @@ A transport delivers log records or events to a destination. This page catalogs 
 | Runtime | Transport support | Notes |
 | --- | --- | --- |
 | Core / runtime-neutral | `consoleTransport`, `memoryTransport`, `testTransport`, `batchTransport`, `retryTransport`, `fallbackTransport` | These do not require browser or Node.js-only APIs. Wrappers work around any transport available in the current runtime. |
+| Pretty / developer UX | `prettyConsoleTransport`, `prettyStreamTransport`, `prettyStdoutTransport`, `prettyStderrTransport` | Browser DevTools and Node terminal display transports from `@loggerjs/pretty`. They are for human-readable output, not durable production delivery. |
 | Browser / frontend | `browserHttpTransport`, IndexedDB queues/store, WebSocket, service worker, BroadcastChannel, offline-first replay | Uses browser APIs such as `fetch`, `sendBeacon`, `IndexedDB`, `navigator.onLine`, service workers, and BroadcastChannel with feature detection and fallbacks where available. |
 | Node.js / server | `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, `nodeSyslogTransport`, `workerTransport` | Uses Node.js streams, filesystem, worker threads, network sockets, and Node fetch. |
 | Vendor / observability | OTLP, Sentry, Datadog, Elastic, Loki, CloudWatch | HTTP wire transports run where their `fetch`/crypto/runtime requirements are present; SDK/provider adapters require the application-provided SDK object or provider. Vendor credentials are usually safer on servers or trusted workers. |
@@ -21,6 +22,7 @@ them. Treat this table as the production delivery contract:
 | Transport or wrapper | Default posture | Production note |
 | --- | --- | --- |
 | `consoleTransport()` | immediate local write | Human/dev output; no retry or durability beyond the console target. |
+| `prettyConsoleTransport()` / `prettyStdoutTransport()` / `prettyStderrTransport()` | immediate human-readable local write | Developer UX only. Use structured transports for production delivery. |
 | `memoryTransport()` | in-memory ring buffer | Diagnostic cache only; lost on process/page exit. |
 | `testTransport()` | in-memory assertion sink | Test-only; not a production delivery mechanism. |
 | `batchTransport(inner)` | batched queue with optional retry/circuit breaker | Use around raw I/O transports when you need queue bounds, retries, backoff, or drop accounting. |
@@ -82,6 +84,18 @@ Notes:
 - Byte estimation walks the payload; it is skipped entirely unless `maxBytes` is finite.
 - Drops are always counted in logger meta (`transport.dropped.*`); the `onDrop` event conversion only happens when a listener is registered.
 - A failed batch is re-queued at the head; the circuit breaker stops hammering a dead endpoint.
+
+## Pretty / Developer UX (`@loggerjs/pretty`)
+
+| Transport / helper | What it does |
+| --- | --- |
+| `prettyConsoleTransport()` | Browser DevTools and local console output with level labels, readable details, optional `%c` browser styles, raw object arguments, and console-capture loop filtering. |
+| `prettyStreamTransport({ stream })` | Writes human-readable lines to any writable stream-like target. Uses ANSI colors when configured or when auto-detected. |
+| `prettyStdoutTransport()` / `prettyStderrTransport()` | Node terminal helpers over `process.stdout` / `process.stderr`; honor `NO_COLOR` and `FORCE_COLOR`, support `minLevel`, and let `flush()` wait for `drain`. |
+| `formatPrettyEvent()` | Shared formatter for custom display transports. Returns plain text, ANSI text, browser console args, and raw details. |
+
+Pretty transports are display sinks. They do not batch, retry, persist, or speak
+collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance.
 
 ## Node.js / Server (`@loggerjs/node`)
 

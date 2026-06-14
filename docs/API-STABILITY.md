@@ -33,6 +33,7 @@ These package names and documented root imports are part of the v1 contract:
 - `@loggerjs/core`
 - `@loggerjs/browser`
 - `@loggerjs/node`
+- `@loggerjs/pretty`
 - `@loggerjs/processors`
 - `@loggerjs/codecs`
 - `@loggerjs/otel`
@@ -163,6 +164,30 @@ Stable semantics:
   performs sync-capable flushes, waits for bounded async flush, then exits.
 - `workerTransport()` remains an object-message worker API with optional ready
   and ack lifecycles.
+
+### Pretty Developer UX Surface
+
+Stable:
+
+- `formatPrettyEvent`
+- `prettyConsoleTransport`
+- `prettyStreamTransport`
+- `prettyStdoutTransport`
+- `prettyStderrTransport`
+
+Stable semantics:
+
+- Pretty output is transport-owned display behavior. It does not mutate the
+  record/event pipeline and does not replace structured production transports.
+- `prettyConsoleTransport()` writes through the unpatched console registry and
+  filters console-capture loop events by default.
+- `prettyStdoutTransport()` / `prettyStderrTransport()` honor `NO_COLOR`,
+  `FORCE_COLOR`, `minLevel`, and stream `drain` for async `flush()`.
+
+Compatible but tunable:
+
+- Exact colors, spacing, label width, and compact/expanded layout may be refined
+  before v1 as long as option names and high-level behavior remain.
 
 ### Processors and Middleware
 

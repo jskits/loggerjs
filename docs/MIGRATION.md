@@ -31,7 +31,9 @@ Key differences:
 - pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data before serialization.
 - pino redaction maps to `redactProcessor({ paths, censor, remove })`; `replacement` is the LoggerJS-native name for `censor`, and exact key/path matching is preferred on hot loggers.
 - pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
-- pino-pretty's role is `consoleTransport()` (pretty by default).
+- pino-pretty's role is `prettyStdoutTransport()` / `prettyStderrTransport()`
+  for terminals, or `prettyConsoleTransport()` for browser DevTools. The core
+  `consoleTransport()` remains a basic local console sink.
 - For Pino-shaped NDJSON, use `pinoCompatCodec()` from `@loggerjs/codecs`. Root data merging is opt-in (`mergeData: true`) and reserved key collisions are nested by default instead of overwriting `time`, `level`, `msg`, `pid`, `hostname`, or `err`.
 - For the fastest LoggerJS lean envelope, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Record-aware custom transports can wrap it with `createPreparedRecordEncoder(codec)` to reuse stable logger/tag fragments. On the M1 Max reference machine the plain lean path measures ~1.19× pino and the prepared lean path ~1.28× (paired A/B; ranking vs pino is CPU/V8-dependent — reproduce with `BENCH_AB`, see [BENCHMARKS.md](BENCHMARKS.md)); on top of that throughput you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
 

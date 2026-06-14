@@ -12,9 +12,9 @@
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522.13-339933?logo=node.js&logoColor=white)](package.json)
 [![modules](https://img.shields.io/badge/modules-ESM%20%2B%20CJS-F7DF1E)](#packages)
 
-[Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [Architecture](docs/ARCHITECTURE.md)
+[Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Pretty](docs/PRETTY.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [Architecture](docs/ARCHITECTURE.md)
 
-<sub>**12 packages** · **35 integrations** (**19 browser / 16 Node.js**) · **25+ transports** (core / browser / Node.js / vendor) · **27 runtime-neutral processors** · **8 codecs** · **zero-dependency core**</sub>
+<sub>**13 packages** · **35 integrations** (**19 browser / 16 Node.js**) · **25+ transports** (core / browser / Node.js / pretty / vendor) · **27 runtime-neutral processors** · **8 codecs** · **zero-dependency core**</sub>
 
 </div>
 
@@ -24,7 +24,7 @@ LoggerJS is a monorepo of logging packages around a dependency-free, platform-ne
 
 - **Integrations** collect logs automatically from platform behavior — browser console calls, script errors, fetch/XHR failures, Web Vitals, route changes, Node process crashes, HTTP servers, serverless handlers, queue and database clients. All opt-in.
 - **Middleware / processors** synchronously enrich, redact, sample, dedupe, rate-limit, fingerprint, buffer (fingers-crossed), route, and tag logs before delivery. Middleware run on raw records; processors run on projected events.
-- **Transports** deliver logs anywhere — console, stdout, files, HTTP, IndexedDB, WebSocket, service workers, worker threads, OTLP, Sentry, Datadog, Elasticsearch, Loki, CloudWatch, SQL databases — with reusable batching, retry, backoff, and circuit-breaker wrappers where the destination needs them.
+- **Transports** deliver logs anywhere — console, pretty DevTools/terminal output, stdout, files, HTTP, IndexedDB, WebSocket, service workers, worker threads, OTLP, Sentry, Datadog, Elasticsearch, Loki, CloudWatch, SQL databases — with reusable batching, retry, backoff, and circuit-breaker wrappers where the destination needs them.
 - **Codecs belong to transports.** The pipeline keeps values raw; each destination owns its serialization. Built-in codecs are fast by default and never lose a log to an encoding error.
 
 <table>
@@ -285,6 +285,7 @@ The hot path is deliberate: level gating before any allocation, lazy message res
 | [`@loggerjs/core`](packages/core)             | Logger, record/event model, registry, context, middleware kernel, integration API, console/memory/test/batch transports, json/safe-json/ndjson codecs. **Zero dependencies.**                                      |
 | [`@loggerjs/browser`](packages/browser)       | HTTP / IndexedDB / WebSocket / service-worker / broadcast-channel transports, offline queues, ZIP export, **19 browser integrations**                                                                              |
 | [`@loggerjs/node`](packages/node)             | stdout / stderr / file / rotating-file / HTTP / syslog / worker transports, AsyncLocalStorage context, **16 Node integrations**                                                                                    |
+| [`@loggerjs/pretty`](packages/pretty)         | Browser DevTools and Node terminal pretty output: styled console transport, ANSI stdout/stderr transports, and shared formatter                                                                                    |
 | [`@loggerjs/processors`](packages/processors) | redact, privacy-guard, sample, dynamic-sampler, rate-limit, dedupe, fingerprint, filter, route, level-override, normalize-error, stack-parser, enrich, tags, trace, fingers-crossed, breadcrumbs, schema-dev-check |
 | [`@loggerjs/codecs`](packages/codecs)         | fast-event-json (the performance codec), msgpackr, projector                                                                                                                                                       |
 | [`@loggerjs/otel`](packages/otel)             | OTLP JSON mapping, OTLP/HTTP transport, OpenTelemetry log bridge, active-span trace processor                                                                                                                      |
@@ -307,7 +308,7 @@ Vendor HTTP transports speak wire protocols directly; SDK/provider adapters use 
 | Capability family | Browser / frontend | Node.js / server | Runtime-neutral |
 | --- | --- | --- | --- |
 | Integrations | 19 first-party browser collectors | 16 first-party Node.js collectors | Core exposes the integration API; automatic capture lives in platform packages. |
-| Transports | HTTP, IndexedDB, WebSocket, service worker, BroadcastChannel, offline-first | stdout/stderr, files, rotation, HTTP, syslog, worker threads, database-backed transports | console, memory, test, batch/retry/fallback wrappers; vendor HTTP transports can run where their credentials and fetch/runtime requirements are safe. |
+| Transports | HTTP, IndexedDB, WebSocket, service worker, BroadcastChannel, offline-first, pretty DevTools console | stdout/stderr, files, rotation, HTTP, syslog, worker threads, database-backed transports, pretty terminal stdout/stderr | console, memory, test, batch/retry/fallback wrappers; vendor HTTP transports can run where their credentials and fetch/runtime requirements are safe. |
 | Processors / middleware | All 27 supported | All 27 supported | `@loggerjs/processors` has no browser or Node.js platform dependency; only routed transport targets are runtime-specific. |
 
 See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRANSPORTS.md), and [docs/PROCESSORS.md](docs/PROCESSORS.md) for the full support notes.
@@ -315,11 +316,13 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 </details>
 
 <details>
-<summary><strong>25+ transports</strong> — core/browser/Node.js/vendor destinations plus reusable reliability wrappers</summary>
+<summary><strong>25+ transports</strong> — core/browser/Node.js/pretty/vendor destinations plus reusable reliability wrappers</summary>
 
 <br/>
 
 **Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport`, plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
+
+**Pretty developer UX** (`@loggerjs/pretty`) — `prettyConsoleTransport` for browser DevTools or local consoles · `prettyStdoutTransport` / `prettyStderrTransport` for Node terminals · `formatPrettyEvent` for custom display sinks
 
 **Node.js / server** (`@loggerjs/node`) — `stdoutTransport` · `stderrTransport` · `fileTransport` · `rotatingFileTransport` · `nodeHttpTransport` · `nodeSyslogTransport` · `workerTransport`
 
@@ -405,6 +408,7 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 | [Getting Started](docs/GETTING-STARTED.md)             | Install, first loggers, levels, context, typed events, registry                 |
 | [Concepts](docs/CONCEPTS.md)                           | The pipeline model: records, events, middleware, processors, transports, codecs |
 | [Transports](docs/TRANSPORTS.md)                       | Every built-in transport, batch reliability options, writing your own           |
+| [Pretty Output](docs/PRETTY.md)                        | Browser DevTools and Node terminal pretty output UX                             |
 | [Integrations](docs/INTEGRATIONS.md)                   | All integrations, the integration API, writing your own                         |
 | [Processors](docs/PROCESSORS.md)                       | The middleware/processor toolbox and ordering guidance                          |
 | [Codecs](docs/CODECS.md)                               | Serialization ownership, fast-by-default semantics, custom codecs               |

@@ -187,6 +187,7 @@ For crash paths, transports that support it expose `flushSync()`; see [OPERATION
 
 - [CONCEPTS.md](CONCEPTS.md) — the pipeline model: records, events, middleware, processors, transports, codecs.
 - [TRANSPORTS.md](TRANSPORTS.md) — every built-in transport and how to write your own.
+- [PRETTY.md](PRETTY.md) — browser DevTools and Node terminal pretty output.
 - [INTEGRATIONS.md](INTEGRATIONS.md) — automatic collection for browser and Node.
 - [PROCESSORS.md](PROCESSORS.md) — the middleware/processor toolbox.
 - [CODECS.md](CODECS.md) — serialization ownership and the codec contract.
