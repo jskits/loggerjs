@@ -264,17 +264,17 @@ await withContext({ requestId: "req_123" }, async () => {
 
 Reference machine: Apple M1 Max (64 GB), Node v22.21.1, against pino 10.3.1 / winston 3.19.0 / LogTape 2.1.3. The loggerjs-vs-pino rows use the drift-canceling paired A/B harness (`BENCH_AB`, 22 runs); competitor rows are the sequential suite. Full methodology and the regression gate live in [docs/BENCHMARKS.md](docs/BENCHMARKS.md), with checked-in machine evidence in [docs/BENCHMARK-MATRIX.md](docs/BENCHMARK-MATRIX.md).
 
-| Logger / path                                      |   ns/op | Relative                          |
-| -------------------------------------------------- | ------: | --------------------------------- |
-| **loggerjs** — disabled level (lazy message)       |   **3** | parity with pino (9)              |
-| **loggerjs** — prepared lean NDJSON                | **224** | **1.28× pino** (faster)           |
-| **loggerjs** — lean NDJSON, comparable line        | **242** | **1.19× pino** (faster)           |
-| pino — NDJSON noop sink                            |     287 | 1.00× baseline                    |
-| **loggerjs** — full envelope (`+id/seq/levelName`) | **307** | ~0.9× pino, 3 extra fields/line   |
-| **loggerjs** — batch transport enqueue             | **172** | —                                 |
-| Node `console` — noop stream                       |     769 | loggerjs ~3× faster               |
-| winston — JSON noop sink                           |   2,726 | loggerjs ~11× faster              |
-| LogTape — JSON lines noop sink                     |   6,584 | loggerjs ~27× faster              |
+| Logger / path                                      |   ns/op | Relative                        |
+| -------------------------------------------------- | ------: | ------------------------------- |
+| **loggerjs** — disabled level (lazy message)       |   **3** | parity with pino (9)            |
+| **loggerjs** — prepared lean NDJSON                | **224** | **1.28× pino** (faster)         |
+| **loggerjs** — lean NDJSON, comparable line        | **242** | **1.19× pino** (faster)         |
+| pino — NDJSON noop sink                            |     287 | 1.00× baseline                  |
+| **loggerjs** — full envelope (`+id/seq/levelName`) | **307** | ~0.9× pino, 3 extra fields/line |
+| **loggerjs** — batch transport enqueue             | **172** | —                               |
+| Node `console` — noop stream                       |     769 | loggerjs ~3× faster             |
+| winston — JSON noop sink                           |   2,726 | loggerjs ~11× faster            |
+| LogTape — JSON lines noop sink                     |   6,584 | loggerjs ~27× faster            |
 
 The hot path is deliberate: level gating before any allocation, lazy message resolution, frozen shared tags, memoized ids, a record fast path that skips event projection, and fragment-cached serialization — all guarded by `pnpm bench:gate` in CI. On the M1 Max reference, loggerjs's static serialization (lean and prepared) edges out pino's runtime-generated serializer — and the ranking is **CPU/V8-dependent** (pino swings ~205–310ns across machines; reproduce with `BENCH_AB=1 pnpm bench:node`). LoggerJS keeps one record per log so middleware, integrations, and multiple transports can observe it, and reaches pino's class **without** giving that pipeline up — see the [architecture note](docs/ARCHITECTURE.md).
 
@@ -305,11 +305,11 @@ Vendor HTTP transports speak wire protocols directly; SDK/provider adapters use 
 
 <br/>
 
-| Capability family | Browser / frontend | Node.js / server | Runtime-neutral |
-| --- | --- | --- | --- |
-| Integrations | 19 first-party browser collectors | 16 first-party Node.js collectors | Core exposes the integration API; automatic capture lives in platform packages. |
-| Transports | HTTP, IndexedDB, WebSocket, service worker, BroadcastChannel, offline-first, pretty DevTools console | stdout/stderr, files, rotation, HTTP, syslog, worker threads, database-backed transports, pretty terminal stdout/stderr | console, memory, test, batch/retry/fallback wrappers; vendor HTTP transports can run where their credentials and fetch/runtime requirements are safe. |
-| Processors / middleware | All 27 supported | All 27 supported | `@loggerjs/processors` has no browser or Node.js platform dependency; only routed transport targets are runtime-specific. |
+| Capability family       | Browser / frontend                                                                                   | Node.js / server                                                                                                        | Runtime-neutral                                                                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Integrations            | 19 first-party browser collectors                                                                    | 16 first-party Node.js collectors                                                                                       | Core exposes the integration API; automatic capture lives in platform packages.                                                                       |
+| Transports              | HTTP, IndexedDB, WebSocket, service worker, BroadcastChannel, offline-first, pretty DevTools console | stdout/stderr, files, rotation, HTTP, syslog, worker threads, database-backed transports, pretty terminal stdout/stderr | console, memory, test, batch/retry/fallback wrappers; vendor HTTP transports can run where their credentials and fetch/runtime requirements are safe. |
+| Processors / middleware | All 27 supported                                                                                     | All 27 supported                                                                                                        | `@loggerjs/processors` has no browser or Node.js platform dependency; only routed transport targets are runtime-specific.                             |
 
 See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRANSPORTS.md), and [docs/PROCESSORS.md](docs/PROCESSORS.md) for the full support notes.
 
@@ -390,38 +390,38 @@ Codecs fall back to a safe representation on circular references instead of thro
 
 LoggerJS shines when the logging problem spans **browser and server** collection from one mental model. A fair, repo-sourced snapshot (full matrix and sources in [docs/COMPARISON.md](docs/COMPARISON.md)):
 
-| Capability                             | LoggerJS | Pino | Winston | LogTape |
-| -------------------------------------- | :------: | :--: | :-----: | :-----: |
-| Isomorphic (browser + Node, one API)   |    ✅    |  ⚠️  |   ⚠️    |   ✅    |
-| Automatic collection (integrations)    |  ✅ 19 browser / 16 Node   |  ❌  |   ⚠️    |   ⚠️    |
-| Built-in batching / retry / offline    |    ✅    |  ⚠️  |   ⚠️    |   ⚠️    |
-| Transport-owned codecs                 |    ✅    |  ⚠️  |   ⚠️    |   ⚠️    |
-| Library-safe (silent until configured) |    ✅    |  ⚠️  |   ⚠️    |   ✅    |
-| Direct Node JSON throughput            | ✅ 1.19× pino (M1) |  ✅  | slower  | slower  |
+| Capability                             |        LoggerJS         | Pino | Winston | LogTape |
+| -------------------------------------- | :---------------------: | :--: | :-----: | :-----: |
+| Isomorphic (browser + Node, one API)   |           ✅            |  ⚠️  |   ⚠️    |   ✅    |
+| Automatic collection (integrations)    | ✅ 19 browser / 16 Node |  ❌  |   ⚠️    |   ⚠️    |
+| Built-in batching / retry / offline    |           ✅            |  ⚠️  |   ⚠️    |   ⚠️    |
+| Transport-owned codecs                 |           ✅            |  ⚠️  |   ⚠️    |   ⚠️    |
+| Library-safe (silent until configured) |           ✅            |  ⚠️  |   ⚠️    |   ✅    |
+| Direct Node JSON throughput            |      ✅ 1.19× pino      |  ✅  | slower  | slower  |
 
 On the direct Node JSON path loggerjs and pino are in the same class — on the M1 Max reference loggerjs lean is ~1.19× pino(it's CPU/V8-dependent; reproduce with `BENCH_AB`; see the checked-in [benchmark matrix](docs/BENCHMARK-MATRIX.md)). LoggerJS reaches that throughput while adding a record pipeline that works the same in the browser, captures automatically, and delivers reliably.
 
 ## Documentation
 
-| Doc                                        | Contents                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------- |
-| [Getting Started](docs/GETTING-STARTED.md)             | Install, first loggers, levels, context, typed events, registry                 |
-| [Concepts](docs/CONCEPTS.md)                           | The pipeline model: records, events, middleware, processors, transports, codecs |
-| [Transports](docs/TRANSPORTS.md)                       | Every built-in transport, batch reliability options, writing your own           |
-| [Pretty Output](docs/PRETTY.md)                        | Browser DevTools and Node terminal pretty output UX                             |
-| [Integrations](docs/INTEGRATIONS.md)                   | All integrations, the integration API, writing your own                         |
-| [Processors](docs/PROCESSORS.md)                       | The middleware/processor toolbox and ordering guidance                          |
-| [Codecs](docs/CODECS.md)                               | Serialization ownership, fast-by-default semantics, custom codecs               |
-| [Performance](docs/PERFORMANCE.md)                     | Tuning guide: fast path, codec choice, batching                                 |
-| [Operations](docs/OPERATIONS.md)                       | Privacy defaults, offline queues, crash paths, delivery reliability             |
-| [Production Recipes](docs/PRODUCTION-RECIPES.md)       | Browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments                |
-| [API Stability](docs/API-STABILITY.md)                 | v1 stable API subset and pre-1.0 compatibility policy                           |
-| [Benchmarks](docs/BENCHMARKS.md)                       | Methodology, measured snapshot, regression gate, size budgets                   |
-| [Comparison](docs/COMPARISON.md)                       | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
-| [Migration](docs/MIGRATION.md)                         | Coming from pino, winston, or console.log                                       |
-| [Architecture](docs/ARCHITECTURE.md)                   | The full design document and recorded decisions                                 |
-| [Contributing](docs/CONTRIBUTING.md)                   | Repo workflow, CI gates, engineering conventions                                |
-| [Release](docs/RELEASE.md)                             | Versioning and publish workflow                                                 |
+| Doc                                              | Contents                                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------------------------- |
+| [Getting Started](docs/GETTING-STARTED.md)       | Install, first loggers, levels, context, typed events, registry                 |
+| [Concepts](docs/CONCEPTS.md)                     | The pipeline model: records, events, middleware, processors, transports, codecs |
+| [Transports](docs/TRANSPORTS.md)                 | Every built-in transport, batch reliability options, writing your own           |
+| [Pretty Output](docs/PRETTY.md)                  | Browser DevTools and Node terminal pretty output UX                             |
+| [Integrations](docs/INTEGRATIONS.md)             | All integrations, the integration API, writing your own                         |
+| [Processors](docs/PROCESSORS.md)                 | The middleware/processor toolbox and ordering guidance                          |
+| [Codecs](docs/CODECS.md)                         | Serialization ownership, fast-by-default semantics, custom codecs               |
+| [Performance](docs/PERFORMANCE.md)               | Tuning guide: fast path, codec choice, batching                                 |
+| [Operations](docs/OPERATIONS.md)                 | Privacy defaults, offline queues, crash paths, delivery reliability             |
+| [Production Recipes](docs/PRODUCTION-RECIPES.md) | Browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments                |
+| [API Stability](docs/API-STABILITY.md)           | v1 stable API subset and pre-1.0 compatibility policy                           |
+| [Benchmarks](docs/BENCHMARKS.md)                 | Methodology, measured snapshot, regression gate, size budgets                   |
+| [Comparison](docs/COMPARISON.md)                 | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
+| [Migration](docs/MIGRATION.md)                   | Coming from pino, winston, or console.log                                       |
+| [Architecture](docs/ARCHITECTURE.md)             | The full design document and recorded decisions                                 |
+| [Contributing](docs/CONTRIBUTING.md)             | Repo workflow, CI gates, engineering conventions                                |
+| [Release](docs/RELEASE.md)                       | Versioning and publish workflow                                                 |
 
 Runnable examples live in [`examples/`](examples): [Node basics](examples/node-basic), [browser basics](examples/browser-basic), [OpenTelemetry](examples/otel-basic), [Sentry](examples/sentry-basic).
 
