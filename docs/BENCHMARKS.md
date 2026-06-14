@@ -62,7 +62,9 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 times, records CPU/OS/Node/dependency/Git metadata, and writes JSON plus
 Markdown artifacts under `benchmarks/matrix/` by default. That directory is
 ignored because it is local evidence. Commit only an intentionally curated
-aggregate such as `docs/BENCHMARK-MATRIX.md`.
+aggregate such as [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md). The checked-in
+matrix is the evidence file to cite when making cross-machine performance
+statements.
 
 Use the matrix wording carefully: it can prove the listed
 machine/runtime/dependency combinations, not a universal result for every

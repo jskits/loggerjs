@@ -1,31 +1,36 @@
-# LoggerJS Benchmark Matrix - macbookpro-node22
+# LoggerJS Benchmark Matrix
 
 Generated: 2026-06-14T05:36:18.303Z
 
-| Field        | Value                                        |
-| ------------ | -------------------------------------------- |
-| Git          | main@5d7e4e3bf423                            |
-| Runtime      | v22.21.1, V8 12.4.254.21-node.33             |
-| OS           | darwin/arm64 24.6.0                          |
-| CPU          | Apple M1 Max (10 logical cores)              |
-| Memory       | 64 GB                                        |
-| Dependencies | pino 10.3.1, winston 3.19.0, LogTape 2.1.3   |
-| Sampling     | 5 runs, 120 rounds x 5000 ops, 100000 warmup |
+This table is the checked-in evidence matrix for loggerjs-vs-pino Node hot-path
+claims. Ratios are paired per-round latency medians from the interleaved A/B
+harness, not one-off sequential-run ratios. A ratio below `1.00x` means the
+LoggerJS path had lower latency than pino on that machine.
 
-| Path              | Median ns/op | p25..p75 | Min..max |
-| ----------------- | -----------: | -------: | -------: |
-| pino ndjson       |          286 | 285..289 | 285..334 |
-| loggerjs lean     |          244 | 243..244 | 241..278 |
-| loggerjs prepared |          223 | 222..229 | 221..253 |
+| Label             | Platform     | CPU          | Node     | Git          | Runs | Pino ns | Lean ns | Prepared ns |     Lean / pino | Prepared / pino | Result                          |
+| ----------------- | ------------ | ------------ | -------- | ------------ | ---: | ------: | ------: | ----------: | --------------: | --------------: | ------------------------------- |
+| macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 5d7e4e3bf423 |    5 |     286 |     244 |         223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
 
-| Ratio                             | Median latency | Throughput vs baseline | Wins |
-| --------------------------------- | -------------: | ---------------------: | ---: |
-| loggerjs lean / pino ndjson       |         0.843x |                 118.6% |  5/5 |
-| loggerjs prepared / pino ndjson   |         0.773x |                 129.3% |  5/5 |
-| loggerjs prepared / loggerjs lean |         0.919x |                 108.8% |  5/5 |
+## Row Details
 
-Baseline pino spread across local samples: 21.2%
+| Label             | Memory | Dependencies                               | Sampling                                     | Baseline spread | Prepared / lean |
+| ----------------- | -----: | ------------------------------------------ | -------------------------------------------- | --------------: | --------------: |
+| macbookpro-node22 |  64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup |           21.2% | 0.919x (108.8%) |
 
-Interpretation: these are paired A/B ratios for this machine and runtime only.
-Use `pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md`
-to combine artifacts from multiple machines into a publishable matrix.
+## Reproduce
+
+```bash
+pnpm build
+pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
+
+# after copying artifacts from other machines into benchmarks/matrix/
+pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
+```
+
+Notes:
+
+- The matrix proves only the listed machine/runtime/dependency combinations. Do
+  not turn it into a universal "always faster than pino" claim.
+- Add new rows when testing new CPUs, operating systems, Node/V8 versions, or
+  pino releases.
+- If a row is captured from a dirty worktree, mark the Git column with `*`.

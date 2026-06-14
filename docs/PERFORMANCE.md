@@ -1,8 +1,8 @@
 # Performance Guide
 
-This page is the user-facing companion to [BENCHMARKS.md](BENCHMARKS.md) (measured numbers) and the Performance Budget section of [ARCHITECTURE.md](ARCHITECTURE.md) (targets and decisions). It tells you how to configure LoggerJS for throughput and which habits keep the hot path hot.
+This page is the user-facing companion to [BENCHMARKS.md](BENCHMARKS.md) (measured numbers), [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md) (checked-in machine evidence), and the Performance Budget section of [ARCHITECTURE.md](ARCHITECTURE.md) (targets and decisions). It tells you how to configure LoggerJS for throughput and which habits keep the hot path hot.
 
-Reference numbers (Apple M1 Max, Node v22.21.1 — see BENCHMARKS.md for full methodology). The loggerjs-vs-pino figures come from the paired A/B harness; ranking vs pino is CPU/Node-V8 dependent — reproduce with `BENCH_AB=1 pnpm bench:node`:
+Reference numbers (Apple M1 Max, Node v22.21.1 — see [BENCHMARKS.md](BENCHMARKS.md) for methodology and [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md) for the checked-in row). The loggerjs-vs-pino figures come from the paired A/B harness; ranking vs pino is CPU/Node-V8 dependent — reproduce with `BENCH_AB=1 pnpm bench:node`:
 
 | Path | Cost |
 | --- | ---: |

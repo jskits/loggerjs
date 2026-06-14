@@ -46,7 +46,7 @@ Zero-dependency core, zero platform APIs, a type surface that compiles without D
 <td width="50%" valign="top">
 
 ⚡ **Performance with receipts**<br/>
-Disabled levels cost ~3ns (pino parity). On the M1 Max reference machine, lean NDJSON runs at ~1.19× pino throughput and the prepared encoder at ~1.28× — faster than pino for equivalent output — [measured](docs/BENCHMARKS.md) with a drift-canceling A/B harness and CI-gated. Ranking vs pino is CPU/V8-dependent.
+Disabled levels cost ~3ns (pino parity). On the M1 Max reference machine, lean NDJSON runs at ~1.19× pino throughput and the prepared encoder at ~1.28× — faster than pino for equivalent output — [measured](docs/BENCHMARKS.md) with a drift-canceling A/B harness, checked into the [benchmark matrix](docs/BENCHMARK-MATRIX.md), and CI-gated. Ranking vs pino is CPU/V8-dependent.
 
 </td>
 <td width="50%" valign="top">
@@ -262,7 +262,7 @@ await withContext({ requestId: "req_123" }, async () => {
 
 ## Performance
 
-Reference machine: Apple M1 Max (64 GB), Node v22.21.1, against pino 10.3.1 / winston 3.19.0 / LogTape 2.1.3. The loggerjs-vs-pino rows use the drift-canceling paired A/B harness (`BENCH_AB`, 22 runs); competitor rows are the sequential suite. Full methodology and the regression gate live in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+Reference machine: Apple M1 Max (64 GB), Node v22.21.1, against pino 10.3.1 / winston 3.19.0 / LogTape 2.1.3. The loggerjs-vs-pino rows use the drift-canceling paired A/B harness (`BENCH_AB`, 22 runs); competitor rows are the sequential suite. Full methodology and the regression gate live in [docs/BENCHMARKS.md](docs/BENCHMARKS.md), with checked-in machine evidence in [docs/BENCHMARK-MATRIX.md](docs/BENCHMARK-MATRIX.md).
 
 | Logger / path                                      |   ns/op | Relative                          |
 | -------------------------------------------------- | ------: | --------------------------------- |
@@ -396,7 +396,7 @@ LoggerJS shines when the logging problem spans **browser and server** collection
 | Library-safe (silent until configured) |    ✅    |  ⚠️  |   ⚠️    |   ✅    |
 | Direct Node JSON throughput            | ✅ 1.19× pino (M1) |  ✅  | slower  | slower  |
 
-On the direct Node JSON path loggerjs and pino are in the same class — on the M1 Max reference loggerjs lean is ~1.19× pino, while on other CPUs pino can lead (it's CPU/V8-dependent; reproduce with `BENCH_AB`). LoggerJS reaches that throughput while adding a record pipeline that works the same in the browser, captures automatically, and delivers reliably.
+On the direct Node JSON path loggerjs and pino are in the same class — on the M1 Max reference loggerjs lean is ~1.19× pino, while on other CPUs pino can lead (it's CPU/V8-dependent; reproduce with `BENCH_AB`; see the checked-in [benchmark matrix](docs/BENCHMARK-MATRIX.md)). LoggerJS reaches that throughput while adding a record pipeline that works the same in the browser, captures automatically, and delivers reliably.
 
 ## Documentation
 

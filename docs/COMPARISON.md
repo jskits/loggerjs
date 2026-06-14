@@ -85,10 +85,11 @@ configuration, ❌ no checked first-party equivalent, 📊 measured in this repo
 
 ## Performance Snapshot
 
-Current measured snapshot from [BENCHMARKS.md](BENCHMARKS.md) — reference
-machine Apple M1 Max (64 GB), Node v22.21.1, pino 10.3.1, winston 3.19.0,
-LogTape 2.1.3. The loggerjs-vs-pino rows are the drift-canceling paired A/B
-(22 runs); competitor rows are the sequential suite:
+Current measured snapshot from [BENCHMARKS.md](BENCHMARKS.md) and the
+checked-in [benchmark matrix](BENCHMARK-MATRIX.md) — reference machine Apple M1
+Max (64 GB), Node v22.21.1, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The
+loggerjs-vs-pino rows are the drift-canceling paired A/B (22 runs); competitor
+rows are the sequential suite:
 
 | Scenario | ns/op | Read |
 | --- | ---: | --- |
