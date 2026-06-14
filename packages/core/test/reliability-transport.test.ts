@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  createRecord,
   fallbackTransport,
   getLoggerMetaStats,
   recordToEvent,
   resetLoggerMetaStats,
   retryTransport,
   type LogEvent,
+  type LogRecord,
   type RetryTransportOptions,
   type Transport,
   type TransportContext,
+  type TransportOperation,
 } from "../src";
 
 const event: LogEvent = {
@@ -20,6 +23,22 @@ const event: LogEvent = {
   logger: "test",
   message: "created",
 };
+
+const record = createRecord({
+  time: 1,
+  level: 30,
+  category: "test",
+  msg: "created",
+  seq: 1,
+});
+
+const secondRecord = createRecord({
+  time: 2,
+  level: 30,
+  category: "test",
+  msg: "updated",
+  seq: 2,
+});
 
 function createContext(errors: unknown[] = []): TransportContext {
   return {
@@ -62,6 +81,100 @@ describe("fallbackTransport", () => {
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.fallback": 1,
     });
+  });
+
+  it("preserves order when a failed batch falls back to single writes", async () => {
+    resetLoggerMetaStats();
+    const errors: unknown[] = [];
+    const primaryError = new Error("batch down");
+    const onFallback = vi.fn<(detail: { operation: TransportOperation; error: unknown }) => void>();
+    const primary: Transport = {
+      name: "primary",
+      writeBatch() {
+        throw primaryError;
+      },
+    };
+    const fallbackRecords: number[] = [];
+    const fallback: Transport = {
+      name: "fallback",
+      write(next) {
+        fallbackRecords.push(next.seq);
+      },
+    };
+
+    await fallbackTransport(primary, fallback, { onFallback }).writeBatch?.(
+      [record, secondRecord],
+      createContext(errors),
+    );
+
+    expect(fallbackRecords).toEqual([1, 2]);
+    expect(onFallback).toHaveBeenCalledWith({ operation: "writeBatch", error: primaryError });
+    expect(errors).toEqual([primaryError]);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.fallback": 1,
+    });
+  });
+
+  it("adapts event logs to write-only primary transports", async () => {
+    const records: LogRecord[] = [];
+    const fallbackLog = vi.fn<NonNullable<Transport["log"]>>();
+    const primary: Transport = {
+      name: "primary",
+      write(next) {
+        records.push(next);
+      },
+    };
+    const fallback: Transport = {
+      name: "fallback",
+      log: fallbackLog,
+    };
+
+    await fallbackTransport(primary, fallback).log?.(event, createContext());
+
+    expect(records.map((item) => item.msg)).toEqual(["created"]);
+    expect(fallbackLog).not.toHaveBeenCalled();
+  });
+
+  it("delegates lifecycle hooks to primary and fallback transports", async () => {
+    const calls: string[] = [];
+    const primary: Transport = {
+      name: "primary",
+      async flush() {
+        calls.push("primary:flush");
+      },
+      flushSync() {
+        calls.push("primary:flushSync");
+      },
+      async close() {
+        calls.push("primary:close");
+      },
+    };
+    const fallback: Transport = {
+      name: "fallback",
+      async flush() {
+        calls.push("fallback:flush");
+      },
+      flushSync() {
+        calls.push("fallback:flushSync");
+      },
+      async close() {
+        calls.push("fallback:close");
+      },
+    };
+    const transport = fallbackTransport(primary, fallback);
+
+    await transport.flush?.();
+    transport.flushSync?.();
+    await transport.close?.();
+
+    expect(calls).toEqual([
+      "primary:flush",
+      "fallback:flush",
+      "primary:flushSync",
+      "fallback:flushSync",
+      "primary:close",
+      "fallback:close",
+    ]);
   });
 });
 
@@ -161,6 +274,49 @@ describe("retryTransport", () => {
       "transport.circuit.open": 1,
       "transport.circuit.skipped": 1,
       "transport.fallback": 2,
+    });
+  });
+
+  it("throws the primary error when retries exhaust without fallback", async () => {
+    resetLoggerMetaStats();
+    const primaryError = new Error("remote down");
+    const primary: Transport = {
+      name: "remote",
+      log() {
+        throw primaryError;
+      },
+    };
+
+    await expect(
+      retryTransport(primary, { maxRetries: 0 }).log?.(event, createContext()),
+    ).rejects.toBe(primaryError);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.retry.exhausted": 1,
+    });
+  });
+
+  it("throws a circuit-open error when no fallback can receive skipped logs", async () => {
+    resetLoggerMetaStats();
+    const primary: Transport = {
+      name: "remote",
+      log() {
+        throw new Error("remote down");
+      },
+    };
+    const transport = retryTransport(primary, {
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 1,
+      circuitBreakerResetMs: 10_000,
+    });
+
+    await expect(transport.log?.(event, createContext())).rejects.toThrow("remote down");
+    await expect(
+      transport.log?.({ ...event, id: "evt-2", seq: 2 }, createContext()),
+    ).rejects.toThrow("loggerjs transport circuit is open: retry(remote)");
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.retry.exhausted": 1,
+      "transport.circuit.open": 1,
+      "transport.circuit.skipped": 1,
     });
   });
 
