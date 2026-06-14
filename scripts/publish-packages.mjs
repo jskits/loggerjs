@@ -106,6 +106,11 @@ function registryEndpoint(path) {
   return new URL(path.replace(/^\//, ""), base).toString();
 }
 
+function escapedPackageName(name) {
+  if (name.startsWith("@")) return name.replace("/", "%2f");
+  return encodeURIComponent(name);
+}
+
 async function readResponseBody(response) {
   const text = await response.text();
   if (!text) return "";
@@ -155,14 +160,16 @@ async function requestGithubOidcToken() {
 
 async function verifyNpmOidcExchange(pkg) {
   const token = await requestGithubOidcToken();
-  const packageName = encodeURIComponent(pkg.manifest.name);
   const response = await fetch(
-    registryEndpoint(`/-/npm/v1/oidc/token/exchange/package/${packageName}`),
+    registryEndpoint(
+      `/-/npm/v1/oidc/token/exchange/package/${escapedPackageName(pkg.manifest.name)}`,
+    ),
     {
       method: "POST",
       headers: {
         accept: "application/json",
         authorization: `Bearer ${token}`,
+        "npm-command": "publish",
       },
     },
   );
