@@ -61,6 +61,12 @@ const packageCoverageThresholds = {
     lines: 88,
     statements: 81,
   },
+  "packages/pretty/src/**/*.ts": {
+    branches: 68,
+    functions: 75,
+    lines: 82,
+    statements: 73,
+  },
   "packages/processors/src/**/*.ts": {
     branches: 78,
     functions: 97,
