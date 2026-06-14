@@ -42,6 +42,7 @@
     "prepare": "simple-git-hooks",
     "release": "pnpm check && pnpm release:publish",
     "release:publish": "node scripts/publish-packages.mjs",
+    "release:publish:preflight": "node scripts/publish-packages.mjs --oidc-preflight",
     "release:publish:dry-run": "node scripts/publish-packages.mjs --dry-run",
     "release:canary:dry-run": "pnpm check && pnpm publish -r --dry-run --tag canary --access public --no-git-checks --json",
     "release:dry-run": "pnpm check && pnpm smoke:packages && pnpm exec changeset status --verbose && pnpm publish -r --dry-run --access public --no-git-checks --json",

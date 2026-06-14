@@ -39,14 +39,15 @@ The workflow uses npm Trusted Publisher/OIDC for npm publishing; it does not rea
 - `permissions.id-token: write` lets GitHub Actions mint the OIDC token npm exchanges during `npm publish`.
 - `actions/setup-node` sets the npm registry for the publish command without configuring a long-lived token.
 - The release job runs on a GitHub-hosted Ubuntu runner with Node 24 and upgrades to npm 11 so Trusted Publisher support is current.
+- Before publishing, the release job runs `pnpm release:publish:preflight` to exchange a GitHub OIDC token for each unpublished package. This catches missing or mismatched npm Trusted Publisher settings before any new package version is published.
 - Every publishable package sets `publishConfig.provenance=true`, the publish step sets `NPM_CONFIG_PROVENANCE=true`, and the publish script passes `--provenance` explicitly to `pnpm publish`.
 - `npm whoami` is not a useful preflight for Trusted Publisher because OIDC authentication only exists during the publish operation.
 
 npm requires package provenance to come from a public source repository, and the package `repository` metadata must match that source repo.
 
-Commits do not trigger publishing. To publish, first consume pending changesets with `pnpm version-packages`, commit the versioned package metadata, and push that commit through normal CI. After the version commit is on `main`, create and push a release tag such as `v0.0.3`; `.github/workflows/release.yml` only listens to `v*` tag pushes and rejects tags whose commits are not reachable from `origin/main`. The release job blocks if pending changesets still exist, runs `pnpm release:publish`, publishes each not-yet-published workspace package with `pnpm publish --provenance`, then creates package release tags with the idempotent `changeset tag` command before pushing `@loggerjs/*` package tags.
+Commits do not trigger publishing. To publish, first consume pending changesets with `pnpm version-packages`, commit the versioned package metadata, and push that commit through normal CI. After the version commit is on `main`, create and push a release tag such as `v0.0.3`; `.github/workflows/release.yml` only listens to `v*` tag pushes and rejects tags whose commits are not reachable from `origin/main`. The release job blocks if pending changesets still exist, verifies npm OIDC access for each unpublished package, runs `pnpm release:publish`, publishes each not-yet-published workspace package with `pnpm publish --provenance`, then creates package release tags with the idempotent `changeset tag` command before pushing `@loggerjs/*` package tags.
 
-If npm returns an authentication error during publish, verify that every package's Trusted Publisher settings exactly match the repository owner, repository name, workflow filename, and optional environment name. npm checks these fields only when a publish is attempted.
+If npm returns an authentication error during publish or `pnpm release:publish:preflight`, verify that every package's Trusted Publisher settings exactly match the repository owner, repository name, workflow filename, optional environment name, and allowed action. npm checks these fields only when OIDC access is exchanged or publish is attempted. The publish script is idempotent for reruns: already published package versions are skipped before publishing the remaining packages.
 
 References:
 

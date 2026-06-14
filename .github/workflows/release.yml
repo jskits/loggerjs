@@ -76,6 +76,9 @@ jobs:
             echo "\`npm whoami\` is intentionally skipped because OIDC authentication only exists during the publish operation."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify npm OIDC access
+        run: pnpm release:publish:preflight
+
       - name: Publish dry run
         run: pnpm release:publish:dry-run
         env:
