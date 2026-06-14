@@ -50,18 +50,18 @@ logger for Node services.
 Legend: ✅ first-party fit, 🧩 ecosystem fit, ⚠️ partial or depends on the chosen
 configuration, ❌ no checked first-party equivalent, 📊 measured in this repo.
 
-| Capability                      | LoggerJS                       | Pino                           | Winston                  | LogTape               | Bunyan                |
-| ------------------------------- | ------------------------------ | ------------------------------ | ------------------------ | --------------------- | --------------------- |
-| Node server logging             | ✅ first-party                 | ✅ first-party                 | ✅ first-party           | ✅ first-party        | ✅ first-party        |
-| Browser runtime                 | ✅ first-party                 | ⚠️ browser API                 | ⚠️ not primary           | ✅ first-party        | ⚠️ bundler support    |
-| Library-safe default            | ✅ silent until configured     | ⚠️ app-oriented                | ⚠️ app-oriented          | ✅ core design        | ⚠️ app-oriented       |
-| Automatic browser capture       | ✅ 19 first-party integrations | ❌ none checked                | ❌ none checked          | ❌ none checked       | ❌ none checked       |
-| Automatic Node collection       | ✅ 16 first-party integrations | 🧩 ecosystem                   | ⚠️ exceptions/rejections | ✅ framework packages | ⚠️ stream/custom      |
-| Multi-destination delivery      | ✅ transports                  | ✅ transports                  | ✅ transports            | ✅ sinks              | ✅ streams            |
-| Built-in batching/retry/offline | ✅ shared primitives           | ⚠️ transport-dependent         | ⚠️ transport-dependent   | ⚠️ sink-dependent     | ⚠️ stream-dependent   |
-| Transport-owned codecs          | ✅ explicit boundary           | ⚠️ logger/transport formatting | ⚠️ format pipeline       | ⚠️ sink formatting    | ⚠️ serializers        |
-| Privacy/redaction               | ✅ processors + sanitizers     | ✅ built-in redaction          | ⚠️ custom formats        | ✅ redaction package  | ⚠️ serializers/custom |
-| Direct Node JSON path           | ✅ 1.19× pino                  | 📊 baseline                    | ❌ slower measured       | ❌ slower measured    | Not measured here     |
+| Capability                      | LoggerJS                       | Pino                                                | Winston                  | LogTape               | Bunyan                |
+| ------------------------------- | ------------------------------ | --------------------------------------------------- | ------------------------ | --------------------- | --------------------- |
+| Node server logging             | ✅ first-party                 | ✅ first-party                                      | ✅ first-party           | ✅ first-party        | ✅ first-party        |
+| Browser runtime                 | ✅ first-party                 | ⚠️ browser API                                      | ⚠️ not primary           | ✅ first-party        | ⚠️ bundler support    |
+| Library-safe default            | ✅ silent until configured     | ⚠️ app-oriented                                     | ⚠️ app-oriented          | ✅ core design        | ⚠️ app-oriented       |
+| Automatic browser capture       | ✅ 19 first-party integrations | ❌ none checked                                     | ❌ none checked          | ❌ none checked       | ❌ none checked       |
+| Automatic Node collection       | ✅ 16 first-party integrations | 🧩 ecosystem                                        | ⚠️ exceptions/rejections | ✅ framework packages | ⚠️ stream/custom      |
+| Multi-destination delivery      | ✅ transports                  | ✅ transports                                       | ✅ transports            | ✅ sinks              | ✅ streams            |
+| Built-in batching/retry/offline | ✅ shared primitives           | ⚠️ transport-dependent                              | ⚠️ transport-dependent   | ⚠️ sink-dependent     | ⚠️ stream-dependent   |
+| Transport-owned codecs          | ✅ explicit boundary           | ⚠️ logger/transport formatting                      | ⚠️ format pipeline       | ⚠️ sink formatting    | ⚠️ serializers        |
+| Privacy/redaction               | ✅ processors + sanitizers     | ✅ built-in redaction                               | ⚠️ custom formats        | ✅ redaction package  | ⚠️ serializers/custom |
+| Direct Node JSON path           | ✅ 1.19× pino on M1            | 📊 baseline(same class; can lead on other CPUs/V8s) | ❌ slower measured       | ❌ slower measured    | Not measured here     |
 
 ## Detailed Matrix
 
