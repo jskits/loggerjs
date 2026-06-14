@@ -89,6 +89,133 @@ function measure(name, fn, count = iterations) {
   };
 }
 
+function abPercentile(sortedAsc, p) {
+  if (sortedAsc.length === 0) return Number.NaN;
+  const pos = (sortedAsc.length - 1) * p;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  if (lo === hi) return sortedAsc[lo];
+  return sortedAsc[lo] + (sortedAsc[hi] - sortedAsc[lo]) * (pos - lo);
+}
+
+function abStats(samples) {
+  const sorted = samples.toSorted((a, b) => a - b);
+  return {
+    median: abPercentile(sorted, 0.5),
+    p25: abPercentile(sorted, 0.25),
+    p75: abPercentile(sorted, 0.75),
+    min: sorted[0],
+    max: sorted[sorted.length - 1],
+  };
+}
+
+// Paired per-round ratio a/b: both contenders are timed back-to-back inside the
+// same round, so frequency scaling, P/E-core scheduling, GC pauses, and
+// background load hit them almost equally and cancel in the ratio. This is the
+// only trustworthy cross-logger comparison when the machine is not perfectly
+// quiet — the normal suite times each logger once, at a different moment, so a
+// single sequential run's cross-logger ratio is hostage to per-moment drift.
+function abRatioStats(samplesA, samplesB) {
+  const ratios = samplesA.map((a, index) => a / samplesB[index]).toSorted((x, y) => x - y);
+  return {
+    median: abPercentile(ratios, 0.5),
+    min: ratios[0],
+    max: ratios[ratios.length - 1],
+  };
+}
+
+// Interleaved A/B contest. Every round runs a small batch of EACH contender
+// back-to-back, rotating the start position so none is always first or last,
+// and repeats for many rounds. Reports per-contender ns/op plus paired
+// per-round ratios, which stay valid even on a loaded or thermally drifting
+// machine. Tune with BENCH_AB_ROUNDS / BENCH_AB_BATCH / BENCH_AB_WARMUP.
+function runInterleavedAB(contenders, options = {}) {
+  const rounds = Number.parseInt(process.env.BENCH_AB_ROUNDS ?? "60", 10);
+  const batch = Number.parseInt(process.env.BENCH_AB_BATCH ?? "5000", 10);
+  const warmup = Number.parseInt(process.env.BENCH_AB_WARMUP ?? "100000", 10);
+  const baselineName = options.baseline ?? contenders[0].name;
+
+  // Settle JIT and inline caches for every contender before any timing.
+  for (const contender of contenders) {
+    for (let index = 0; index < warmup; index++) consume(contender.run(index));
+  }
+
+  const samples = new Map(contenders.map((contender) => [contender.name, []]));
+  const count = contenders.length;
+  for (let round = 0; round < rounds; round++) {
+    const offset = round % count;
+    for (let step = 0; step < count; step++) {
+      const contender = contenders[(offset + step) % count];
+      const start = performance.now();
+      for (let index = 0; index < batch; index++) consume(contender.run(index));
+      samples.get(contender.name).push(((performance.now() - start) * 1_000_000) / batch);
+    }
+  }
+
+  const summary = contenders.map((contender) => ({
+    name: contender.name,
+    ...abStats(samples.get(contender.name)),
+  }));
+  const base = summary.find((entry) => entry.name === baselineName);
+
+  // Every non-baseline contender vs the baseline, plus consecutive non-baseline
+  // pairs (e.g. prepared vs lean) — the most robust internal comparison.
+  const nonBaseline = contenders.filter((contender) => contender.name !== baselineName);
+  const pairs = nonBaseline.map((contender) => [contender.name, baselineName]);
+  for (let index = 1; index < nonBaseline.length; index++) {
+    pairs.push([nonBaseline[index].name, nonBaseline[index - 1].name]);
+  }
+  const ratios = pairs.map(([a, b]) => {
+    const stats = abRatioStats(samples.get(a), samples.get(b));
+    return { a, b, median: stats.median, min: stats.min, max: stats.max };
+  });
+  const spreadPct = ((base.max - base.min) / base.median) * 100;
+
+  if (process.env.BENCH_JSON) {
+    console.log(
+      JSON.stringify({
+        mode: "ab",
+        rounds,
+        batch,
+        warmup,
+        baseline: baselineName,
+        summary,
+        ratios,
+        baselineSpreadPct: spreadPct,
+      }),
+    );
+    return;
+  }
+
+  console.log(
+    `Interleaved A/B — ${rounds} rounds x ${batch} ops/contender, order rotated, ${warmup} warmup/contender`,
+  );
+  console.log(
+    "Each round times all contenders back-to-back, so drift hits them equally and cancels in the ratio.\n",
+  );
+  console.log("Per-contender ns/op  (median [p25..p75], min..max):");
+  for (const entry of summary) {
+    console.log(
+      `  ${entry.name.padEnd(22)} ${entry.median.toFixed(1).padStart(7)}  [${entry.p25.toFixed(1)}..${entry.p75.toFixed(1)}]  (min ${entry.min.toFixed(1)}, max ${entry.max.toFixed(1)})`,
+    );
+  }
+  console.log("\nPaired per-round ratios  (median [min..max]):");
+  for (const ratio of ratios) {
+    const pct = (1 / ratio.median) * 100;
+    console.log(
+      `  ${`${ratio.a} / ${ratio.b}`.padEnd(40)} ${ratio.median.toFixed(3)}x  [${ratio.min.toFixed(3)}..${ratio.max.toFixed(3)}]  => ${ratio.a} is ${pct.toFixed(1)}% of ${ratio.b}`,
+    );
+  }
+  console.log(
+    `\nBaseline "${baselineName}" stability: median ${base.median.toFixed(1)}ns, spread ${spreadPct.toFixed(0)}% (min ${base.min.toFixed(1)}, max ${base.max.toFixed(1)})`,
+  );
+  if (spreadPct > 25) {
+    console.log(
+      "  WARNING: baseline spread > 25% -> machine is drifting; the paired ratios stay fair, but the absolute per-contender ns are noisy.",
+    );
+  }
+}
+
 async function main() {
   const noopTransport = { name: "noop", log() {} };
   const noopWriteTransport = { name: "noop-write", write() {} };
@@ -265,6 +392,33 @@ async function main() {
       }),
     ],
   });
+
+  // Apples-to-apples cross-logger comparison. The normal suite times each
+  // logger once at a different point in the run, so its loggerjs-vs-pino ratio
+  // drifts with CPU frequency and scheduling. BENCH_AB interleaves the
+  // contenders so they share identical conditions every round. Use this — not a
+  // single sequential run — to settle any loggerjs-vs-pino question.
+  if (process.env.BENCH_AB) {
+    // The suite patches console for the console scenario; restore it so the
+    // A/B report reaches stdout.
+    Object.assign(console, originalConsole);
+    runInterleavedAB(
+      [
+        { name: "pino ndjson", run: (index) => pinoLogger.info({ index }, "order created") },
+        {
+          name: "loggerjs lean",
+          run: (index) => loggerjsLeanRecordLogger.info("order created", { index }),
+        },
+        {
+          name: "loggerjs prepared",
+          run: (index) => loggerjsPreparedLeanRecordLogger.info("order created", { index }),
+        },
+      ],
+      { baseline: "pino ndjson" },
+    );
+    await batchLogger.flush();
+    return;
+  }
 
   const rows = [
     measure("disabled debug lazy log", (index) => disabledLogger.debug(() => `skip ${index}`)),

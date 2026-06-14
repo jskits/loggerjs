@@ -20,6 +20,28 @@ CI runs the gate on every pull request.
 
 `pnpm bench` builds the workspace first, then runs Node and browser benchmarks. Browser benchmarks use a local headless Chrome binary. Set `CHROME_BIN` when Chrome is not installed in a standard location.
 
+### Apples-to-apples cross-logger ratios (`BENCH_AB`)
+
+The normal suite times each logger **once**, at a different point in the run, so
+its loggerjs-vs-pino ratio drifts with CPU frequency scaling and P/E-core
+scheduling — a single sequential run can make either logger look better purely
+by *when* it was measured. To compare two loggers fairly, use the interleaved
+A/B mode:
+
+```bash
+BENCH_AB=1 node scripts/bench-node.mjs
+# tune: BENCH_AB_ROUNDS (default 60), BENCH_AB_BATCH (5000), BENCH_AB_WARMUP (100000)
+BENCH_AB=1 BENCH_JSON=1 node scripts/bench-node.mjs   # machine-readable
+```
+
+Each round times every contender (pino, lean, prepared) **back-to-back** and
+rotates the start position, so drift hits them equally and cancels in the
+**paired per-round ratio**. The report prints per-contender ns/op plus the
+median ratio with its min/max spread, and warns when the baseline (pino) spread
+exceeds 25% — the signal that the machine is too noisy to trust the absolute ns
+(the ratios stay fair regardless). Quote a cross-logger ratio only from this
+mode with a stable baseline, never from a single sequential run.
+
 ## Node Scenarios
 
 - Disabled debug log with a lazy message.
