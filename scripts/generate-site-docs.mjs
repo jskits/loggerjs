@@ -6,6 +6,9 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const docsRoot = join(repoRoot, "docs");
 const referenceRoot = join(docsRoot, "reference");
 const apiDocsRoot = join(referenceRoot, "api");
+const zhDocsRoot = join(docsRoot, "zh");
+const zhReferenceRoot = join(zhDocsRoot, "reference");
+const zhApiDocsRoot = join(zhReferenceRoot, "api");
 const apiReportsRoot = join(repoRoot, "api-reports");
 const siteUrl = "https://jskits.github.io/loggerjs";
 const repoUrl = "https://github.com/jskits/loggerjs";
@@ -56,6 +59,259 @@ const docsCatalog = [
   ["Architecture", "ARCHITECTURE", "Design rules, pipeline internals, and recorded decisions."],
   ["Contributing", "CONTRIBUTING", "Repository workflow, CI gates, and engineering conventions."],
   ["Release", "RELEASE", "Versioning and publishing workflow."],
+];
+
+const zhDocsCatalog = [
+  {
+    title: "快速开始",
+    slug: "GETTING-STARTED",
+    description: "安装 LoggerJS，并创建第一个 Node.js 或浏览器 logger。",
+    bullets: [
+      "Node 服务通常安装 `@loggerjs/node` 和 `@loggerjs/processors`；浏览器应用安装 `@loggerjs/browser` 和 `@loggerjs/processors`。",
+      "平台包会重新导出 `@loggerjs/core`，应用代码可以从一个入口开始使用。",
+      "`createLogger()` 组合 category、level、tags、processors、transports 和 integrations。",
+      "浏览器 HTTP 传输支持批量、离线队列、`online` 重放和 pagehide beacon 兜底。",
+      "禁用级别只做一次数值比较；昂贵消息可以用 lazy message 函数延迟计算。",
+      "库作者优先使用 `getLogger()` registry，让宿主应用决定输出位置和级别。",
+    ],
+  },
+  {
+    title: "核心概念",
+    slug: "CONCEPTS",
+    description: "理解 record、event、middleware、processor、transport、codec 与 integration。",
+    bullets: [
+      "热路径先做 level gate，再构造保留原始值的 `LogRecord`。",
+      "middleware 看到 record，适合早期过滤、补字段和低成本脱敏。",
+      "配置 processor 后会投影成 `LogEvent`，适合依赖解析后字段的路由、指纹和缓冲。",
+      "record-aware transport 可以保持 fast path；event transport 通过 memoized projection 复用转换结果。",
+      "codec 属于 transport，管线内部不提前 stringify，避免破坏结构化脱敏和多目的地格式选择。",
+      "integration 在管线外捕获 console、错误、fetch、process 事件，再通过同一 capture API 进入管线。",
+    ],
+  },
+  {
+    title: "传输",
+    slug: "TRANSPORTS",
+    description: "内置 transport、可靠性边界、批量/重试/降级以及自定义 transport。",
+    bullets: [
+      "runtime-neutral transport 覆盖 console、memory、test、batch、retry 和 fallback。",
+      "Node transport 覆盖 stdout/stderr、文件、轮转文件、HTTP、syslog 和 worker offload。",
+      "Browser transport 覆盖 HTTP、IndexedDB、WebSocket、Service Worker、BroadcastChannel 和 ZIP 导出。",
+      "生产路径通常需要显式队列上限、retry/backoff、circuit breaker 和 drop counters。",
+      "浏览器 pagehide beacon 是最后机会投递，不应作为唯一持久化保证。",
+      "自定义 transport 可以实现 record 或 event 接口，并通过 `flush()` / `close()` 明确定义生命周期。",
+    ],
+  },
+  {
+    title: "友好输出",
+    slug: "PRETTY",
+    description: "浏览器 DevTools 和 Node 终端的人类可读输出。",
+    bullets: [
+      "`@loggerjs/pretty` 面向开发体验，不替代生产结构化投递。",
+      "浏览器输出保留原始对象参数，方便在 DevTools 中展开检查。",
+      "Node 终端输出支持 ANSI 颜色，并尊重 `NO_COLOR` / `FORCE_COLOR`。",
+      "pretty transport 默认避免 console capture 递归。",
+      "生产环境建议并行配置结构化 transport，把 pretty 仅作为本地显示 sink。",
+    ],
+  },
+  {
+    title: "集成",
+    slug: "INTEGRATIONS",
+    description: "浏览器和 Node.js 自动采集，以及 integration API。",
+    bullets: [
+      "integration 是命名的 `setup(api)`，负责 hook 平台行为并返回 teardown。",
+      "浏览器可采集 console、错误、unhandled rejection、fetch/XHR、路由和生命周期。",
+      "Node 可采集 process 异常、warning、HTTP framework、queue 和数据库边界。",
+      "`api.guard()` 防止 hook 后再次触发 logger 形成递归。",
+      "`api.unpatched` 保存原始函数，transport 和 integration 可以安全调用未 patch 的 API。",
+    ],
+  },
+  {
+    title: "处理器",
+    slug: "PROCESSORS",
+    description: "middleware / processor 目录、顺序和使用场景。",
+    bullets: [
+      "middleware 在 record 阶段运行，适合最便宜的过滤、采样、脱敏和上下文补齐。",
+      "processor 在 event 阶段运行，适合基于 message、normalized error、trace 或 source 的逻辑。",
+      "redact、sample、dedupe、fingerprint、route、buffer/fingers-crossed 是常见处理能力。",
+      "processor 顺序会影响结果，应把 drop/filter 放在更靠前的位置。",
+      "只要配置了 processor，该 logger 就会关闭 record fast path，这是换取 event-level 行为的明确成本。",
+    ],
+  },
+  {
+    title: "编解码",
+    slug: "CODECS",
+    description: "序列化归属、快速默认行为和自定义 codec 合约。",
+    bullets: [
+      "codec 只在 transport 边界运行，middleware 和 processor 保持结构化原始值。",
+      "`fastEventJsonCodec()` 面向高吞吐 NDJSON/JSON 输出。",
+      "`structuredCodec` 保留 Error、BigInt、Date、Map、Set、TypedArray、循环引用等丰富类型。",
+      "遇到循环引用或 BigInt 等原生 stringify 会抛错的输入时，codec 会安全降级并增加 meta counter。",
+      "自定义 codec 应明确 content type、encode/decode 能力和错误降级策略。",
+    ],
+  },
+  {
+    title: "生产配方",
+    slug: "PRODUCTION-RECIPES",
+    description: "浏览器 HTTP/offline、Node stdout+OTLP、Loki、Datadog 等部署组合。",
+    bullets: [
+      "浏览器生产组合通常是 HTTP batching、IndexedDB offline queue、page lifecycle flush 和隐私脱敏。",
+      "Node 服务建议 stdout 作为平台采集路径，并按需并行 OTLP 或 vendor transport。",
+      "Loki/Datadog 等 wire transport 应外包给 batch/retry 包装器来获得队列和重试。",
+      "错误告警路径可以用 route/fallback/fingers-crossed 组合拆到独立 transport。",
+      "所有配方都应配合 queue/drop/circuit 自指标，而不是假设投递永远成功。",
+    ],
+  },
+  {
+    title: "运维",
+    slug: "OPERATIONS",
+    description: "隐私、离线重放、崩溃路径、可靠性和 trace 关联。",
+    bullets: [
+      "把 PII 脱敏放在靠前的 middleware/processor，避免原始敏感数据进入多个目的地。",
+      "浏览器离线队列需要容量、TTL、drop policy 和 quota 监控。",
+      "Node 崩溃路径优先使用支持 `flushSync()` 的本地 transport。",
+      "transport 错误不会抛回业务代码，应通过 internal error handler 和 meta counters 观测。",
+      "trace context 可用 W3C `traceparent` / baggage helper 与应用上下文合并。",
+    ],
+  },
+  {
+    title: "性能",
+    slug: "PERFORMANCE",
+    description: "热路径调优、批量、codec 选择和性能护栏。",
+    bullets: [
+      "最快路径是禁用级别直接返回、无 processor 的 record fast path、record-aware transport 和 lean codec。",
+      "昂贵消息使用 lazy message，避免在 disabled level 上做字符串拼接或 JSON 序列化。",
+      "batch 大小、等待时间、并发、重试和队列边界需要按目的地能力调节。",
+      "prepared encoder 复用稳定 logger/tag 片段，适合高频结构化输出。",
+      "性能结论受 CPU/V8/运行环境影响，应使用仓库 benchmark 命令复现。",
+    ],
+  },
+  {
+    title: "基准",
+    slug: "BENCHMARKS",
+    description: "基准方法、命令和当前机器快照。",
+    bullets: [
+      "基准覆盖 disabled levels、lean NDJSON、prepared encoder、batch、browser delivery 和包体大小。",
+      "`BENCH_AB=1 pnpm bench:node` 用 paired A/B 减少运行噪声。",
+      "不要把单台机器数字扩展成普遍结论；不同 CPU/V8 版本可能改变排序。",
+      "`pnpm bench:gate` 是 CI 护栏，用于阻止明显退化。",
+      "公开文档中的性能表述应始终链接到方法和可复现命令。",
+    ],
+  },
+  {
+    title: "基准矩阵",
+    slug: "BENCHMARK-MATRIX",
+    description: "跨机器基准证据和记录方式。",
+    bullets: [
+      "矩阵用于收集不同机器、Node 版本和运行环境下的 benchmark 结果。",
+      "每行结果都要保留机器、CPU、Node、命令和时间戳。",
+      "新增结果前应确认命令、依赖版本和工作树状态。",
+      "矩阵支持定位趋势，不应被写成绝对排名声明。",
+    ],
+  },
+  {
+    title: "对比",
+    slug: "COMPARISON",
+    description: "LoggerJS 与其他 JavaScript logger 的定位对比。",
+    bullets: [
+      "Pino 是 Node 低开销 JSON logging 的主要参照。",
+      "Winston、LogTape、Bunyan、loglevel、debug、consola、tslog 等各有生态和定位。",
+      "LoggerJS 的差异点是同一 record pipeline 同时服务浏览器、Node、worker、edge 和多 transport fan-out。",
+      "对比页面只采用仓库可验证资料和官方文档，避免营销式断言。",
+      "性能对比必须保留机器依赖和复现路径。",
+    ],
+  },
+  {
+    title: "迁移",
+    slug: "MIGRATION",
+    description: "从 pino、winston 或 console.log 迁移到 LoggerJS。",
+    bullets: [
+      "从 console 迁移时，先保持输出语义，再逐步补 category、tags、context 和 transport。",
+      "从 pino 迁移时，重点映射 level、bindings、serializers、destination 和 flush 行为。",
+      "从 winston 迁移时，重点拆分 format/transport/exception handling 到 LoggerJS pipeline。",
+      "热路径迁移应优先选择 lean codec、record-aware transport 和最少 processor。",
+      "迁移阶段可以并行输出到旧系统和新系统，确认字段和投递语义后再切换。",
+    ],
+  },
+  {
+    title: "API 稳定性",
+    slug: "API-STABILITY",
+    description: "v1 稳定 API 子集和 pre-1.0 兼容策略。",
+    bullets: [
+      "稳定 API 以 package export、TypeScript declaration 和 API report 为准。",
+      "pre-1.0 阶段仍会尽量保守处理用户可见破坏性变更。",
+      "新增 public API 后需要更新构建产物和 API report。",
+      "内部 helper、未导出类型和测试工具不承诺稳定。",
+      "文档中的 API 示例应优先使用稳定入口，而不是深层内部路径。",
+    ],
+  },
+  {
+    title: "架构",
+    slug: "ARCHITECTURE",
+    description: "设计规则、管线内部和记录过的技术决策。",
+    bullets: [
+      "核心不依赖平台 API，平台包通过 transport 和 integration 扩展能力。",
+      "record fast path 是性能边界：无 processor 时不投影 event。",
+      "serialization 只发生在 transport 边界。",
+      "middleware 必须替换共享字段，不能原地修改 frozen context/tags。",
+      "所有 transport/integration 错误都隔离并上报 meta，不污染业务控制流。",
+      "架构文档记录长期 invariants，修改前应先确认对应测试和 API 报告。",
+    ],
+  },
+  {
+    title: "贡献",
+    slug: "CONTRIBUTING",
+    description: "仓库工作流、CI gate 和工程约定。",
+    bullets: [
+      "提交前运行与改动范围匹配的测试，公共 API 改动要更新 API report。",
+      "代码风格由 `oxfmt` 和 `oxlint` 约束。",
+      "包导出、public types、size budget 和 smoke tests 都是发布前护栏。",
+      "文档或站点改动应运行 `pnpm docs:build`。",
+      "提交信息走 conventional commit，并满足仓库 commitlint scope 约束。",
+    ],
+  },
+  {
+    title: "发布",
+    slug: "RELEASE",
+    description: "版本和发布流程。",
+    bullets: [
+      "发布前先在本地完成版本变更、检查和提交。",
+      "tag 推送触发 GitHub Actions 发布流程。",
+      "包发布应以 `pnpm check` 和 dry-run/pack 验证为前置。",
+      "API、文档和 changelog 应与实际导出保持一致。",
+      "失败发布需要先定位当前最新 workflow/job，不要基于旧日志猜测。",
+    ],
+  },
+  {
+    title: "测试清单",
+    slug: "TEST-INVENTORY",
+    description: "测试覆盖清单和验证入口。",
+    bullets: [
+      "单元测试覆盖 core、codecs、transports、processors 和平台包行为。",
+      "浏览器 E2E、runtime smoke、package pack check 和 public type check 覆盖发布面。",
+      "live integration 测试依赖外部服务配置，缺少 secret 时应明确跳过或标记阻塞。",
+      "`pnpm test:inventory:check` 用于保持测试清单与仓库一致。",
+    ],
+  },
+  {
+    title: "基线",
+    slug: "BASELINE",
+    description: "当前项目基线和质量状态摘要。",
+    bullets: [
+      "基线页面记录当前仓库质量、性能和发布状态的快照。",
+      "它不是 API 文档，主要用于判断后续变更是否偏离既定标准。",
+      "更新基线时应注明日期、命令和证据来源。",
+    ],
+  },
+  {
+    title: "生产强化提案",
+    slug: "PROPOSAL-PRODUCTION-HARDENING",
+    description: "生产可靠性、观测和交付强化计划。",
+    bullets: [
+      "提案聚焦可靠投递、浏览器持久化、崩溃路径、观测指标和文档闭环。",
+      "每项强化都应落到代码、测试、文档和可验证行为。",
+      "提案内容可能随实现推进而变化，最终行为以包 API 和正式文档为准。",
+    ],
+  },
 ];
 
 const packageOrder = [
@@ -112,6 +368,10 @@ function titleFromSlug(slug) {
 
 function siteLink(path) {
   return `${siteUrl}${path}`;
+}
+
+function zhSiteLink(path) {
+  return `${siteUrl}/zh${path}`;
 }
 
 function sourceFileLink(path) {
@@ -455,6 +715,300 @@ ${expandedDocs}
   );
 }
 
+function generateChineseGuidePages() {
+  mkdirSync(zhDocsRoot, { recursive: true });
+
+  for (const doc of zhDocsCatalog) {
+    const bullets = doc.bullets.map((bullet) => `- ${bullet}`).join("\n");
+    const related = docsCatalog.some(([, slug]) => slug === doc.slug)
+      ? `\n## 相关链接\n\n- [英文原文](/${doc.slug})\n- [中文首页](/zh/)\n`
+      : `\n## 相关链接\n\n- [英文原文](/${doc.slug})\n- [中文首页](/zh/)\n`;
+
+    writeFileIfChanged(
+      join(zhDocsRoot, `${doc.slug}.md`),
+      `---
+title: ${yamlString(doc.title)}
+description: ${yamlString(doc.description)}
+---
+${generatedNotice}
+
+# ${doc.title}
+
+${doc.description}
+
+## 要点
+
+${bullets}
+${related}
+`,
+    );
+  }
+}
+
+function generateChineseReferenceIndex() {
+  mkdirSync(zhReferenceRoot, { recursive: true });
+
+  writeFileIfChanged(
+    join(zhReferenceRoot, "index.md"),
+    `---
+title: ${yamlString("参考")}
+description: ${yamlString("由仓库包元数据、API report 和示例目录生成的 LoggerJS 参考索引。")}
+---
+${generatedNotice}
+
+# 参考
+
+这一节根据当前仓库自动生成，帮助快速定位包、API report 和示例。
+
+## 生成内容
+
+- [包](/zh/reference/packages)：包说明、export subpaths、依赖和源码链接。
+- [API 报告](/zh/reference/api/)：从 \`packages/*/dist/**/*.d.ts\` 生成的公共声明报告。
+- [示例](/zh/examples)：可运行示例和依赖说明。
+
+## 源材料
+
+- [Repository README](${sourceFileLink("README.md")})
+- [API reports](${sourceDirectoryLink("api-reports")})
+- [Package folders](${sourceDirectoryLink("packages")})
+- [Examples](${sourceDirectoryLink("examples")})
+`,
+  );
+}
+
+function generateChinesePackagesPage(packages) {
+  const rows = packages
+    .map(
+      (pkg) =>
+        `| [\`${pkg.name}\`](${sourceDirectoryLink(pkg.dir)}) | ${pkg.description} | ${pkg.exports.length} | ${formatList(pkg.dependencies)} |`,
+    )
+    .join("\n");
+
+  const sections = packages
+    .map(
+      (pkg) => `## ${pkg.name}
+
+${pkg.description}
+
+- 版本：\`${pkg.version}\`
+- 源码：[${pkg.dir}](${sourceDirectoryLink(pkg.dir)})
+- README：[${pkg.dir}/README.md](${sourceFileLink(`${pkg.dir}/README.md`)})
+- API 报告：[${pkg.name}](/zh/reference/api/${pkg.slug})
+- Export subpaths：${formatList(pkg.exports)}
+- Runtime dependencies：${formatList(pkg.dependencies)}
+`,
+    )
+    .join("\n");
+
+  writeFileIfChanged(
+    join(zhReferenceRoot, "packages.md"),
+    `---
+title: ${yamlString("包")}
+description: ${yamlString("所有 LoggerJS workspace packages 的生成参考。")}
+---
+${generatedNotice}
+
+# 包
+
+LoggerJS 以一组小包发布：无依赖 core 负责公共模型，平台包在 core 之上增加运行时 transport 和 integration。
+
+| 包 | 说明 | Export subpaths | Runtime dependencies |
+| --- | --- | ---: | --- |
+${rows}
+
+${sections}
+`,
+  );
+}
+
+function generateChineseApiPages(reports) {
+  rmSync(zhApiDocsRoot, { recursive: true, force: true });
+  mkdirSync(zhApiDocsRoot, { recursive: true });
+
+  const rows = reports
+    .map(
+      (report) =>
+        `| [\`${report.packageName}\`](/zh/reference/api/${report.slug}) | [api-reports/${report.file}](${sourceFileLink(`api-reports/${report.file}`)}) |`,
+    )
+    .join("\n");
+
+  writeFileIfChanged(
+    join(zhApiDocsRoot, "index.md"),
+    `---
+title: ${yamlString("API 报告")}
+description: ${yamlString("LoggerJS packages 的公共 API declaration reports。")}
+---
+${generatedNotice}
+
+# API 报告
+
+这些页面镜像 \`pnpm build && pnpm api:report\` 生成并签入仓库的 API reports。声明内容保留英文和 TypeScript 原文，中文站点负责入口、导航和上下文说明。
+
+| 包 | 源报告 |
+| --- | --- |
+${rows}
+`,
+  );
+
+  for (const report of reports) {
+    const source = readFileSync(join(apiReportsRoot, report.file), "utf8")
+      .replace(`# API Report: ${report.packageName}`, `# ${report.packageName} API`)
+      .replace(
+        "Update with `pnpm build && pnpm api:report` after intentional public API changes.",
+        `源报告：[api-reports/${report.file}](${sourceFileLink(`api-reports/${report.file}`)}).`,
+      );
+
+    writeFileIfChanged(
+      join(zhApiDocsRoot, `${report.slug}.md`),
+      `---
+title: ${yamlString(`${report.packageName} API`)}
+description: ${yamlString(`${report.packageName} 的公共声明报告。`)}
+---
+${generatedNotice}
+
+> 声明内容来自仓库 API report，保留英文注释和 TypeScript 原文，便于与发布产物逐项核对。
+
+${source}
+`,
+    );
+  }
+}
+
+function generateChineseExamplesPage(exampleItems) {
+  const rows = exampleItems
+    .map(
+      (example) =>
+        `| [${example.title}](${sourceDirectoryLink(example.dir)}) | ${example.description} | ${formatList(example.dependencies)} | ${formatList(example.scripts)} |`,
+    )
+    .join("\n");
+
+  writeFileIfChanged(
+    join(zhDocsRoot, "examples.md"),
+    `---
+title: ${yamlString("示例")}
+description: ${yamlString("LoggerJS 可运行示例索引。")}
+---
+${generatedNotice}
+
+# 示例
+
+可运行示例位于仓库 \`examples/\` 目录。示例直接引用本地 \`dist\` 输出时，需要先构建 packages。
+
+| 示例 | 展示内容 | 依赖 | Scripts |
+| --- | --- | --- | --- |
+${rows}
+
+## 本地运行
+
+\`\`\`bash
+pnpm install
+pnpm build
+pnpm --filter loggerjs-node-basic-example start
+pnpm --filter loggerjs-browser-basic-example dev
+node examples/pretty-output/node.mjs
+\`\`\`
+`,
+  );
+}
+
+function generateChineseLlmsPage() {
+  writeFileIfChanged(
+    join(zhDocsRoot, "llms.md"),
+    `---
+title: ${yamlString("LLMs")}
+description: ${yamlString("LoggerJS 面向 LLM 的中文文档入口。")}
+---
+${generatedNotice}
+
+# LLMs
+
+LoggerJS 在站点构建时发布面向 LLM 的文档入口。
+
+- [llms.txt](/zh/llms.txt) 是中文站点的高价值文档地图。
+- [llms-full.txt](/zh/llms-full.txt) 汇总中文导览页和关键仓库来源，适合更大的上下文窗口。
+- 英文入口仍保留在 [llms.txt](/llms.txt) 和 [llms-full.txt](/llms-full.txt)。
+`,
+  );
+}
+
+function generateChineseLlmsFiles(packages, reports, exampleItems) {
+  mkdirSync(join(docsRoot, "public", "zh"), { recursive: true });
+
+  const docsList = zhDocsCatalog
+    .map((doc) => `- [${doc.title}](${zhSiteLink(`/${doc.slug}`)}): ${doc.description}`)
+    .join("\n");
+  const packageList = packages
+    .map((pkg) => `- [${pkg.name}](${zhSiteLink("/reference/packages")}): ${pkg.description}`)
+    .join("\n");
+  const apiList = reports
+    .map(
+      (report) =>
+        `- [${report.packageName} API](${zhSiteLink(`/reference/api/${report.slug}`)}): 公共声明报告。`,
+    )
+    .join("\n");
+  const exampleList = exampleItems
+    .map(
+      (example) =>
+        `- [${example.title}](${sourceDirectoryLink(example.dir)}): ${example.description}`,
+    )
+    .join("\n");
+
+  writeFileIfChanged(
+    join(docsRoot, "public", "zh", "llms.txt"),
+    `\uFEFF# LoggerJS 中文文档
+
+> 面向 JavaScript 的同构结构化日志：从浏览器采集到服务端投递，围绕 records、middleware、processors、transports、integrations 和 transport-owned codecs 构建。
+
+这个文件是中文站点的 LLM 入口。优先阅读快速开始和核心概念，再在需要精确 export、subpath 或类型声明时查看包和 API 参考。性能声明依赖 benchmark 环境，请结合基准文档的方法和复现命令理解。
+
+## 中文文档
+
+${docsList}
+
+## 参考
+
+- [参考索引](${zhSiteLink("/reference/")}): 生成的包、API 和示例参考。
+- [包](${zhSiteLink("/reference/packages")}): 包说明、export subpaths、依赖和源码链接。
+- [API 报告](${zhSiteLink("/reference/api/")}): 从构建后的 .d.ts 文件生成的公共声明报告。
+- [示例](${zhSiteLink("/examples")}): 可运行示例和依赖说明。
+
+## Packages
+
+${packageList}
+
+## Optional
+
+${apiList}
+
+${exampleList}
+
+- [Repository README](${sourceFileLink("README.md")}): GitHub README source.
+- [英文 llms.txt](${siteLink("/llms.txt")}): 英文文档地图。
+- [中文完整 LLM context](${zhSiteLink("/llms-full.txt")}): 更大的中文上下文入口。
+`,
+  );
+
+  const expandedDocs = [
+    ["中文首页", "docs/zh/index.md"],
+    ...zhDocsCatalog.map((doc) => [doc.title, `docs/zh/${doc.slug}.md`]),
+  ]
+    .map(([title, path]) => {
+      const contents = readFileSync(join(repoRoot, path), "utf8").trim();
+      return `# ${title}\n\nSource: ${sourceFileLink(path)}\n\n${contents}`;
+    })
+    .join("\n\n---\n\n");
+
+  writeFileIfChanged(
+    join(docsRoot, "public", "zh", "llms-full.txt"),
+    `\uFEFF# LoggerJS 中文完整 LLM Context
+
+> 从中文站点页面生成的扩展文档上下文；API report 和源码链接保留英文原文，便于核对真实 export 和类型声明。
+
+${expandedDocs}
+`,
+  );
+}
+
 const packages = packageMetadata();
 const reports = apiReports();
 const exampleItems = examples();
@@ -465,7 +1019,14 @@ generateApiPages(reports);
 generateExamplesPage(exampleItems);
 generateLlmsPage();
 generateLlmsFiles(packages, reports, exampleItems);
+generateChineseGuidePages();
+generateChineseReferenceIndex();
+generateChinesePackagesPage(packages);
+generateChineseApiPages(reports);
+generateChineseExamplesPage(exampleItems);
+generateChineseLlmsPage();
+generateChineseLlmsFiles(packages, reports, exampleItems);
 
 console.log(
-  `Generated ${relative(repoRoot, referenceRoot)}, ${relative(repoRoot, join(docsRoot, "examples.md"))}, and LLM files.`,
+  `Generated ${relative(repoRoot, referenceRoot)}, ${relative(repoRoot, zhReferenceRoot)}, examples, and LLM files.`,
 );

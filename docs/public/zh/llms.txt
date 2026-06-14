@@ -1,0 +1,78 @@
+﻿# LoggerJS 中文文档
+
+> 面向 JavaScript 的同构结构化日志：从浏览器采集到服务端投递，围绕 records、middleware、processors、transports、integrations 和 transport-owned codecs 构建。
+
+这个文件是中文站点的 LLM 入口。优先阅读快速开始和核心概念，再在需要精确 export、subpath 或类型声明时查看包和 API 参考。性能声明依赖 benchmark 环境，请结合基准文档的方法和复现命令理解。
+
+## 中文文档
+
+- [快速开始](https://jskits.github.io/loggerjs/zh/GETTING-STARTED): 安装 LoggerJS，并创建第一个 Node.js 或浏览器 logger。
+- [核心概念](https://jskits.github.io/loggerjs/zh/CONCEPTS): 理解 record、event、middleware、processor、transport、codec 与 integration。
+- [传输](https://jskits.github.io/loggerjs/zh/TRANSPORTS): 内置 transport、可靠性边界、批量/重试/降级以及自定义 transport。
+- [友好输出](https://jskits.github.io/loggerjs/zh/PRETTY): 浏览器 DevTools 和 Node 终端的人类可读输出。
+- [集成](https://jskits.github.io/loggerjs/zh/INTEGRATIONS): 浏览器和 Node.js 自动采集，以及 integration API。
+- [处理器](https://jskits.github.io/loggerjs/zh/PROCESSORS): middleware / processor 目录、顺序和使用场景。
+- [编解码](https://jskits.github.io/loggerjs/zh/CODECS): 序列化归属、快速默认行为和自定义 codec 合约。
+- [生产配方](https://jskits.github.io/loggerjs/zh/PRODUCTION-RECIPES): 浏览器 HTTP/offline、Node stdout+OTLP、Loki、Datadog 等部署组合。
+- [运维](https://jskits.github.io/loggerjs/zh/OPERATIONS): 隐私、离线重放、崩溃路径、可靠性和 trace 关联。
+- [性能](https://jskits.github.io/loggerjs/zh/PERFORMANCE): 热路径调优、批量、codec 选择和性能护栏。
+- [基准](https://jskits.github.io/loggerjs/zh/BENCHMARKS): 基准方法、命令和当前机器快照。
+- [基准矩阵](https://jskits.github.io/loggerjs/zh/BENCHMARK-MATRIX): 跨机器基准证据和记录方式。
+- [对比](https://jskits.github.io/loggerjs/zh/COMPARISON): LoggerJS 与其他 JavaScript logger 的定位对比。
+- [迁移](https://jskits.github.io/loggerjs/zh/MIGRATION): 从 pino、winston 或 console.log 迁移到 LoggerJS。
+- [API 稳定性](https://jskits.github.io/loggerjs/zh/API-STABILITY): v1 稳定 API 子集和 pre-1.0 兼容策略。
+- [架构](https://jskits.github.io/loggerjs/zh/ARCHITECTURE): 设计规则、管线内部和记录过的技术决策。
+- [贡献](https://jskits.github.io/loggerjs/zh/CONTRIBUTING): 仓库工作流、CI gate 和工程约定。
+- [发布](https://jskits.github.io/loggerjs/zh/RELEASE): 版本和发布流程。
+- [测试清单](https://jskits.github.io/loggerjs/zh/TEST-INVENTORY): 测试覆盖清单和验证入口。
+- [基线](https://jskits.github.io/loggerjs/zh/BASELINE): 当前项目基线和质量状态摘要。
+- [生产强化提案](https://jskits.github.io/loggerjs/zh/PROPOSAL-PRODUCTION-HARDENING): 生产可靠性、观测和交付强化计划。
+
+## 参考
+
+- [参考索引](https://jskits.github.io/loggerjs/zh/reference/): 生成的包、API 和示例参考。
+- [包](https://jskits.github.io/loggerjs/zh/reference/packages): 包说明、export subpaths、依赖和源码链接。
+- [API 报告](https://jskits.github.io/loggerjs/zh/reference/api/): 从构建后的 .d.ts 文件生成的公共声明报告。
+- [示例](https://jskits.github.io/loggerjs/zh/examples): 可运行示例和依赖说明。
+
+## Packages
+
+- [@loggerjs/core](https://jskits.github.io/loggerjs/zh/reference/packages): Tiny isomorphic structured logger core for loggerjs.
+- [@loggerjs/browser](https://jskits.github.io/loggerjs/zh/reference/packages): Browser transports and integrations for loggerjs.
+- [@loggerjs/node](https://jskits.github.io/loggerjs/zh/reference/packages): Node.js transports and integrations for loggerjs.
+- [@loggerjs/pretty](https://jskits.github.io/loggerjs/zh/reference/packages): Pretty console and terminal output helpers for loggerjs.
+- [@loggerjs/processors](https://jskits.github.io/loggerjs/zh/reference/packages): Reusable loggerjs event processors.
+- [@loggerjs/codecs](https://jskits.github.io/loggerjs/zh/reference/packages): Serialization codecs for loggerjs.
+- [@loggerjs/otel](https://jskits.github.io/loggerjs/zh/reference/packages): OpenTelemetry mapping and OTLP JSON transport for loggerjs.
+- [@loggerjs/sentry](https://jskits.github.io/loggerjs/zh/reference/packages): Sentry adapter transport for loggerjs.
+- [@loggerjs/datadog](https://jskits.github.io/loggerjs/zh/reference/packages): Datadog Logs transport for loggerjs.
+- [@loggerjs/elastic](https://jskits.github.io/loggerjs/zh/reference/packages): Elasticsearch bulk transport for loggerjs.
+- [@loggerjs/loki](https://jskits.github.io/loggerjs/zh/reference/packages): Grafana Loki transport for loggerjs.
+- [@loggerjs/cloudwatch](https://jskits.github.io/loggerjs/zh/reference/packages): Amazon CloudWatch Logs transport for loggerjs.
+- [@loggerjs/database](https://jskits.github.io/loggerjs/zh/reference/packages): SQLite, PostgreSQL, and custom database transports for loggerjs.
+
+## Optional
+
+- [@loggerjs/core API](https://jskits.github.io/loggerjs/zh/reference/api/core): 公共声明报告。
+- [@loggerjs/browser API](https://jskits.github.io/loggerjs/zh/reference/api/browser): 公共声明报告。
+- [@loggerjs/node API](https://jskits.github.io/loggerjs/zh/reference/api/node): 公共声明报告。
+- [@loggerjs/pretty API](https://jskits.github.io/loggerjs/zh/reference/api/pretty): 公共声明报告。
+- [@loggerjs/processors API](https://jskits.github.io/loggerjs/zh/reference/api/processors): 公共声明报告。
+- [@loggerjs/codecs API](https://jskits.github.io/loggerjs/zh/reference/api/codecs): 公共声明报告。
+- [@loggerjs/otel API](https://jskits.github.io/loggerjs/zh/reference/api/otel): 公共声明报告。
+- [@loggerjs/sentry API](https://jskits.github.io/loggerjs/zh/reference/api/sentry): 公共声明报告。
+- [@loggerjs/datadog API](https://jskits.github.io/loggerjs/zh/reference/api/datadog): 公共声明报告。
+- [@loggerjs/elastic API](https://jskits.github.io/loggerjs/zh/reference/api/elastic): 公共声明报告。
+- [@loggerjs/loki API](https://jskits.github.io/loggerjs/zh/reference/api/loki): 公共声明报告。
+- [@loggerjs/cloudwatch API](https://jskits.github.io/loggerjs/zh/reference/api/cloudwatch): 公共声明报告。
+- [@loggerjs/database API](https://jskits.github.io/loggerjs/zh/reference/api/database): 公共声明报告。
+
+- [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic): Browser HTTP transport, offline queue, lifecycle capture, and browser integrations.
+- [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic): Node stdout transport, process capture, typed events, and redaction.
+- [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic): OTLP JSON transport and OpenTelemetry trace context mapping.
+- [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output): Browser and terminal pretty output demos for local developer experience.
+- [Sentry Basic](https://github.com/jskits/loggerjs/tree/main/examples/sentry-basic): Sentry adapter transport with structured logs, breadcrumbs, and errors.
+
+- [Repository README](https://github.com/jskits/loggerjs/blob/main/README.md): GitHub README source.
+- [英文 llms.txt](https://jskits.github.io/loggerjs/llms.txt): 英文文档地图。
+- [中文完整 LLM context](https://jskits.github.io/loggerjs/zh/llms-full.txt): 更大的中文上下文入口。
