@@ -402,20 +402,21 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 
 | Doc                                        | Contents                                                                        |
 | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| [Getting Started](docs/GETTING-STARTED.md) | Install, first loggers, levels, context, typed events, registry                 |
-| [Concepts](docs/CONCEPTS.md)               | The pipeline model: records, events, middleware, processors, transports, codecs |
-| [Transports](docs/TRANSPORTS.md)           | Every built-in transport, batch reliability options, writing your own           |
-| [Integrations](docs/INTEGRATIONS.md)       | All integrations, the integration API, writing your own                         |
-| [Processors](docs/PROCESSORS.md)           | The middleware/processor toolbox and ordering guidance                          |
-| [Codecs](docs/CODECS.md)                   | Serialization ownership, fast-by-default semantics, custom codecs               |
-| [Performance](docs/PERFORMANCE.md)         | Tuning guide: fast path, codec choice, batching                                 |
-| [Operations](docs/OPERATIONS.md)           | Privacy defaults, offline queues, crash paths, delivery reliability             |
-| [Benchmarks](docs/BENCHMARKS.md)           | Methodology, measured snapshot, regression gate, size budgets                   |
-| [Comparison](docs/COMPARISON.md)           | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
-| [Migration](docs/MIGRATION.md)             | Coming from pino, winston, or console.log                                       |
-| [Architecture](docs/ARCHITECTURE.md)       | The full design document and recorded decisions                                 |
-| [Contributing](docs/CONTRIBUTING.md)       | Repo workflow, CI gates, engineering conventions                                |
-| [Release](docs/RELEASE.md)                 | Versioning and publish workflow                                                 |
+| [Getting Started](docs/GETTING-STARTED.md)             | Install, first loggers, levels, context, typed events, registry                 |
+| [Concepts](docs/CONCEPTS.md)                           | The pipeline model: records, events, middleware, processors, transports, codecs |
+| [Transports](docs/TRANSPORTS.md)                       | Every built-in transport, batch reliability options, writing your own           |
+| [Integrations](docs/INTEGRATIONS.md)                   | All integrations, the integration API, writing your own                         |
+| [Processors](docs/PROCESSORS.md)                       | The middleware/processor toolbox and ordering guidance                          |
+| [Codecs](docs/CODECS.md)                               | Serialization ownership, fast-by-default semantics, custom codecs               |
+| [Performance](docs/PERFORMANCE.md)                     | Tuning guide: fast path, codec choice, batching                                 |
+| [Operations](docs/OPERATIONS.md)                       | Privacy defaults, offline queues, crash paths, delivery reliability             |
+| [Production Recipes](docs/PRODUCTION-RECIPES.md)       | Browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments                |
+| [Benchmarks](docs/BENCHMARKS.md)                       | Methodology, measured snapshot, regression gate, size budgets                   |
+| [Comparison](docs/COMPARISON.md)                       | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
+| [Migration](docs/MIGRATION.md)                         | Coming from pino, winston, or console.log                                       |
+| [Architecture](docs/ARCHITECTURE.md)                   | The full design document and recorded decisions                                 |
+| [Contributing](docs/CONTRIBUTING.md)                   | Repo workflow, CI gates, engineering conventions                                |
+| [Release](docs/RELEASE.md)                             | Versioning and publish workflow                                                 |
 
 Runnable examples live in [`examples/`](examples): [Node basics](examples/node-basic), [browser basics](examples/browser-basic), [OpenTelemetry](examples/otel-basic), [Sentry](examples/sentry-basic).
 

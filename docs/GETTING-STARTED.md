@@ -192,4 +192,5 @@ For crash paths, transports that support it expose `flushSync()`; see [OPERATION
 - [CODECS.md](CODECS.md) — serialization ownership and the codec contract.
 - [PERFORMANCE.md](PERFORMANCE.md) — configuring for throughput.
 - [OPERATIONS.md](OPERATIONS.md) — privacy, offline queues, crash paths.
+- [PRODUCTION-RECIPES.md](PRODUCTION-RECIPES.md) — browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments.
 - [MIGRATION.md](MIGRATION.md) — coming from pino, winston, or console.
