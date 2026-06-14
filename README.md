@@ -411,6 +411,7 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 | [Performance](docs/PERFORMANCE.md)                     | Tuning guide: fast path, codec choice, batching                                 |
 | [Operations](docs/OPERATIONS.md)                       | Privacy defaults, offline queues, crash paths, delivery reliability             |
 | [Production Recipes](docs/PRODUCTION-RECIPES.md)       | Browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments                |
+| [API Stability](docs/API-STABILITY.md)                 | v1 stable API subset and pre-1.0 compatibility policy                           |
 | [Benchmarks](docs/BENCHMARKS.md)                       | Methodology, measured snapshot, regression gate, size budgets                   |
 | [Comparison](docs/COMPARISON.md)                       | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
 | [Migration](docs/MIGRATION.md)                         | Coming from pino, winston, or console.log                                       |

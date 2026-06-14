@@ -193,4 +193,5 @@ For crash paths, transports that support it expose `flushSync()`; see [OPERATION
 - [PERFORMANCE.md](PERFORMANCE.md) — configuring for throughput.
 - [OPERATIONS.md](OPERATIONS.md) — privacy, offline queues, crash paths.
 - [PRODUCTION-RECIPES.md](PRODUCTION-RECIPES.md) — browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments.
+- [API-STABILITY.md](API-STABILITY.md) — v1 stable API subset and pre-1.0 compatibility policy.
 - [MIGRATION.md](MIGRATION.md) — coming from pino, winston, or console.
