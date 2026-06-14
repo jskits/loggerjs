@@ -2,16 +2,16 @@
 
 This page is the user-facing companion to [BENCHMARKS.md](BENCHMARKS.md) (measured numbers) and the Performance Budget section of [ARCHITECTURE.md](ARCHITECTURE.md) (targets and decisions). It tells you how to configure LoggerJS for throughput and which habits keep the hot path hot.
 
-Reference numbers (Apple Silicon, Node 22 — see BENCHMARKS.md for the full table):
+Reference numbers (Apple M1 Max, Node v22.21.1 — see BENCHMARKS.md for full methodology). The loggerjs-vs-pino figures come from the paired A/B harness; ranking vs pino is CPU/Node-V8 dependent — reproduce with `BENCH_AB=1 pnpm bench:node`:
 
 | Path | Cost |
 | --- | ---: |
-| Disabled level call | ~5 ns |
-| Enabled pipeline, record fast path, noop sink | ~101 ns |
-| Batch transport enqueue (default settings) | ~169 ns |
-| Prepared lean NDJSON line to a sink | ~242 ns (~95% of pino in the current snapshot) |
-| Full NDJSON line to a sink (lean envelope) | ~261 ns (~88% of pino) |
-| Full NDJSON line with id/seq/levelName | ~296 ns (~78% of pino) |
+| Disabled level call | ~3 ns (pino parity) |
+| Enabled pipeline, record fast path, noop sink | ~83 ns |
+| Batch transport enqueue (default settings) | ~172 ns |
+| Prepared lean NDJSON line to a sink | ~224 ns (1.28× pino) |
+| Lean NDJSON line to a sink | ~242 ns (1.19× pino) |
+| Full NDJSON line with id/seq/levelName | ~307 ns |
 
 ## Free Wins (Defaults Already Do This)
 

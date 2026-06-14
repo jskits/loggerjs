@@ -404,34 +404,37 @@ Benchmarking must cover Node and real browsers, not only synthetic Node loops. T
 
 ### Decision: keep the record pipeline; optimize through codec-owned preparation
 
-Status as of 2026-06: the Node NDJSON full path measures ~88% of pino for
-equivalent plain lean output, and the codec-owned prepared lean path measures
-~95% of pino in the current local snapshot. The full-envelope path measures
-~78% while emitting `id`, `seq`, and `levelName` on top of pino's fields (see
-`docs/BENCHMARKS.md` for the snapshot). The original 80% target is met for
-equivalent output without moving serialization into the logger.
+Status as of 2026-06: on the reference machine (Apple M1 Max, Node v22.21.1),
+measured with the drift-canceling paired A/B harness, the lean Node NDJSON path
+runs at ~1.19x pino and the codec-owned prepared lean path at ~1.28x — i.e.
+**faster than pino** for equivalent output. The full-envelope path is ~0.9x pino
+while emitting `id`, `seq`, and `levelName` on top of pino's fields (see
+`docs/BENCHMARKS.md`). This ranking is **CPU/Node-V8 dependent**: pino's
+serializer is generated at runtime, so its throughput swings widely by
+environment (~205-310ns across the machines tested), while loggerjs's static
+serialization stays ~242ns and on a different chip pino can lead. The point is
+that loggerjs reaches pino's class **without** moving serialization into the
+logger.
 
-A profiling pass in 2026-06 corrected an earlier overstatement that "the gap is
-structural, not unoptimized code." Two recoverable inefficiencies were found
-and fixed, moving the lean ratio from ~1.30x pino to ~1.10x in this snapshot:
-(1) `getContext`
-ran an `addedProviders.map()` + spread + `mergeContext({})` on every call even
-with no ambient context configured — allocating three objects to merge nothing;
-(2) `fastEventJsonCodec` re-derived its `includeX` toggles and built the line
-through a chain of `+=` concatenations on every encode, instead of baking the
-flags once at codec creation and emitting the header in a single template
-(pino's "compile the serializer once" technique); and (3) codec-owned prepared
-record encoders let transports reuse logger/category/tags fragments without
-making the logger own JSON serialization.
+Getting here took a 2026-06 profiling pass that also corrected an earlier
+overstatement ("the gap is structural, not unoptimized code"). Three changes,
+none of which touch the architecture, moved the lean ratio from ~1.30x pino to
+~0.84x on this machine: (1) `getContext` no longer runs an
+`addedProviders.map()` + spread + `mergeContext({})` on every call when no
+ambient context is configured (it had been allocating three objects to merge
+nothing); (2) `fastEventJsonCodec` bakes its `includeX` toggles once at codec
+creation and emits the header in a single template instead of a chain of `+=`
+concatenations (pino's "compile the serializer once" technique); and (3)
+codec-owned prepared record encoders let transports reuse logger/category/tags
+fragments without making the logger own JSON serialization.
 
-The remaining gap to pino is now mostly structural and noisy at benchmark
-scale. pino builds its output line directly from call arguments; LoggerJS still
-allocates a `LogRecord` so middleware, processors, integrations, and multiple
-transports can observe one shared value, and the codec still owns a never-throw
-safe-fallback contract. Closing the last few percent consistently would require
-a fusion fast path that bypasses the record whenever a logger has exactly one
-sync transport and no middleware. That path is rejected as the default because
-it would:
+LoggerJS still allocates a `LogRecord` per log so middleware, processors,
+integrations, and multiple transports can observe one shared value, and the
+codec still owns a never-throw safe-fallback contract — and it now matches or
+beats pino on tested hardware anyway. A fusion fast path that bypasses the
+record whenever a logger has exactly one sync transport and no middleware is
+therefore rejected as the default, with even less reason than before, because it
+would:
 
 - create a performance cliff where adding the first middleware silently costs
   30%+ of throughput,
