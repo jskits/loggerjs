@@ -19,6 +19,7 @@
       "@loggerjs/browser": ["./packages/browser/src/index.ts"],
       "@loggerjs/database": ["./packages/database/src/index.ts"],
       "@loggerjs/node": ["./packages/node/src/index.ts"],
+      "@loggerjs/pretty": ["./packages/pretty/src/index.ts"],
       "@loggerjs/processors": ["./packages/processors/src/index.ts"],
       "@loggerjs/codecs": ["./packages/codecs/src/index.ts"],
       "@loggerjs/otel": ["./packages/otel/src/index.ts"],

@@ -46,6 +46,9 @@ const checks = [
   ["@loggerjs/node/transport-file", ["fileTransport"]],
   ["@loggerjs/node/transport-stdout", ["stdoutTransport", "stderrTransport"]],
   ["@loggerjs/node/transport-syslog", ["nodeSyslogTransport", "formatSyslogMessage"]],
+  ["@loggerjs/pretty", ["formatPrettyEvent", "prettyConsoleTransport"]],
+  ["@loggerjs/pretty/formatter", ["formatPrettyEvent"]],
+  ["@loggerjs/pretty/transport-console", ["prettyConsoleTransport"]],
   ["@loggerjs/database", ["databaseTransport", "sqliteTransport", "postgresTransport"]],
   [
     "@loggerjs/database/transport",
@@ -92,6 +95,7 @@ const workspacePackages = {
   "@loggerjs/core": "packages/core",
   "@loggerjs/database": "packages/database",
   "@loggerjs/node": "packages/node",
+  "@loggerjs/pretty": "packages/pretty",
   "@loggerjs/otel": "packages/otel",
   "@loggerjs/sentry": "packages/sentry",
   "@loggerjs/loki": "packages/loki",

@@ -88,6 +88,7 @@ function smokeTarballs(tarballs) {
 import { createLogger, defineEvent } from "@loggerjs/core";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
+import { prettyConsoleTransport } from "@loggerjs/pretty";
 import { fastEventJsonCodec, msgpackrCodec } from "@loggerjs/codecs";
 import { redactProcessor } from "@loggerjs/processors";
 import { otlpJsonCodec } from "@loggerjs/otel/codec-otlp-json";
@@ -106,6 +107,7 @@ if (!(msgpackrCodec().encode([]) instanceof Uint8Array)) throw new Error("bad ms
 otlpJsonCodec().encode([]);
 browserHttpTransport({ url: "http://localhost/logs", fetchFn: async () => new Response(null, { status: 200 }) });
 stdoutTransport();
+prettyConsoleTransport({ console: { info() {} }, browserStyles: false });
 sentryTransport({ sentry: {} });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
 datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
@@ -119,6 +121,7 @@ await logger.flush();
 const { createLogger } = require("@loggerjs/core");
 const { msgpackrCodec } = require("@loggerjs/codecs");
 const { stdoutTransport } = require("@loggerjs/node/transport-stdout");
+const { prettyConsoleTransport } = require("@loggerjs/pretty");
 const { sentryTransport } = require("@loggerjs/sentry/transport");
 const { lokiTransport } = require("@loggerjs/loki/transport");
 const { datadogLogsTransport } = require("@loggerjs/datadog/transport");
@@ -127,6 +130,7 @@ const logger = createLogger({ transports: [{ log() {} }] });
 logger.info("cjs smoke");
 if (!(msgpackrCodec().encode([]) instanceof Uint8Array)) throw new Error("bad msgpack payload");
 stdoutTransport();
+prettyConsoleTransport({ console: { info() {} }, browserStyles: false });
 sentryTransport({ sentry: {} });
 lokiTransport({ url: "http://localhost/loki", fetchFn: async () => new Response(null, { status: 204 }) });
 datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, { status: 202 }) });
@@ -148,6 +152,7 @@ import { databaseTransport } from "@loggerjs/database/transport";
 import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 import { otlpJsonCodec } from "@loggerjs/otel/codec-otlp-json";
+import { prettyConsoleTransport } from "@loggerjs/pretty/transport-console";
 import { openTelemetryTraceProcessor } from "@loggerjs/otel/trace";
 import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
 import { sentryTransport, type SentryLike } from "@loggerjs/sentry";
@@ -169,7 +174,7 @@ const transport: Transport = {
 
 const logger = createLogger({
   processors: [redactProcessor(), tagsProcessor({ runtime: "packed-consumer" })],
-  transports: [transport, stdoutTransport()],
+  transports: [transport, stdoutTransport(), prettyConsoleTransport({ console: { info() {} }, browserStyles: false })],
 });
 
 logger.event(OrderEvent, { orderId: "ord_123" });

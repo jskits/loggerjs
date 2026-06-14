@@ -192,6 +192,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/pretty:
+    dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/otel:
     dependencies:
       '@loggerjs/core':

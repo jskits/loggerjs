@@ -14,6 +14,7 @@ const workspacePackages = {
   "@loggerjs/core": "packages/core",
   "@loggerjs/database": "packages/database",
   "@loggerjs/node": "packages/node",
+  "@loggerjs/pretty": "packages/pretty",
   "@loggerjs/otel": "packages/otel",
   "@loggerjs/processors": "packages/processors",
   "@loggerjs/sentry": "packages/sentry",
@@ -59,6 +60,7 @@ import { queueIntegration } from "@loggerjs/node/integration-queue";
 import { serverlessIntegration } from "@loggerjs/node/integration-serverless";
 import { nodeHttpTransport } from "@loggerjs/node/transport-http";
 import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
+import { formatPrettyEvent, prettyConsoleTransport } from "@loggerjs/pretty";
 import { fastEventJsonCodec, msgpackrCodec, type MsgpackrCodecOptions } from "@loggerjs/codecs";
 import { redact } from "@loggerjs/processors";
 import { openTelemetryLogBridgeTransport } from "@loggerjs/otel/log-bridge";
@@ -144,6 +146,8 @@ nodeHttpClientIntegration({ captureRequestHeaders: ["x-request-id"] });
 queueIntegration({ client: { send: async () => ({}) }, capturePayload: false });
 serverlessIntegration(logger, async () => ({ ok: true }), { captureResult: true });
 nodeHttpTransport({ url: "http://localhost:4318/v1/logs" });
+formatPrettyEvent({ id: "evt", time: 1, seq: 1, level: 30, levelName: "info", logger: "app", message: "hello" });
+prettyConsoleTransport({ mode: "compact", browserStyles: false });
 sqliteTransport({
   database: {
     prepare: () => ({

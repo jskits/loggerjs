@@ -11,6 +11,7 @@ const packages = [
   ["@loggerjs/browser", "packages/browser"],
   ["@loggerjs/database", "packages/database"],
   ["@loggerjs/node", "packages/node"],
+  ["@loggerjs/pretty", "packages/pretty"],
   ["@loggerjs/codecs", "packages/codecs"],
   ["@loggerjs/processors", "packages/processors"],
   ["@loggerjs/otel", "packages/otel"],

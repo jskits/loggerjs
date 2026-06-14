@@ -9,6 +9,7 @@ const budgets = [
   ["@loggerjs/core", "packages/core/dist/index.js", 82_000, 18_100],
   ["@loggerjs/browser", "packages/browser/dist/index.js", 118_000, 25_000],
   ["@loggerjs/node", "packages/node/dist/index.js", 74_000, 15_200],
+  ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 15_600, 3_800],
   ["@loggerjs/processors", "packages/processors/dist/index.js", 49_600, 11_600],
