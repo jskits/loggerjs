@@ -1,0 +1,74 @@
+# LoggerJS
+
+> Isomorphic structured logging for JavaScript: one pipeline from browser collection to server delivery, built around records, middleware, processors, transports, integrations, and transport-owned codecs.
+
+Use this file as the concise entry point for LoggerJS documentation. Prefer the guide and concept docs first, then package/API references when exact exports or subpaths matter. Performance claims are benchmark-environment dependent; use the benchmark docs for methodology and reproduction commands.
+
+## Docs
+
+- [Getting Started](https://jskits.github.io/loggerjs/GETTING-STARTED): Install packages and create the first Node.js or browser logger.
+- [Concepts](https://jskits.github.io/loggerjs/CONCEPTS): Pipeline model: records, events, middleware, processors, transports, codecs, and integrations.
+- [Transports](https://jskits.github.io/loggerjs/TRANSPORTS): All built-in transports, reliability options, and custom transport guidance.
+- [Pretty Output](https://jskits.github.io/loggerjs/PRETTY): Browser DevTools and Node terminal pretty output.
+- [Integrations](https://jskits.github.io/loggerjs/INTEGRATIONS): Browser and Node.js automatic collection plus the integration API.
+- [Processors](https://jskits.github.io/loggerjs/PROCESSORS): Middleware and processor catalog with ordering guidance.
+- [Codecs](https://jskits.github.io/loggerjs/CODECS): Serialization ownership, fast-by-default behavior, and custom codecs.
+- [Production Recipes](https://jskits.github.io/loggerjs/PRODUCTION-RECIPES): Browser HTTP/offline, Node stdout plus OTLP, Loki, and Datadog recipes.
+- [Operations](https://jskits.github.io/loggerjs/OPERATIONS): Privacy, offline replay, crash paths, reliability, and trace correlation.
+- [Performance](https://jskits.github.io/loggerjs/PERFORMANCE): Hot path tuning, batching, codec choice, and guardrails.
+- [Benchmarks](https://jskits.github.io/loggerjs/BENCHMARKS): Benchmark methodology, commands, and measured snapshots.
+- [Benchmark Matrix](https://jskits.github.io/loggerjs/BENCHMARK-MATRIX): Checked-in cross-machine benchmark evidence.
+- [Comparison](https://jskits.github.io/loggerjs/COMPARISON): LoggerJS compared with other JavaScript loggers.
+- [Migration](https://jskits.github.io/loggerjs/MIGRATION): Migration notes from pino, winston, and console.log.
+- [API Stability](https://jskits.github.io/loggerjs/API-STABILITY): Stable v1 API subset and compatibility policy.
+- [Architecture](https://jskits.github.io/loggerjs/ARCHITECTURE): Design rules, pipeline internals, and recorded decisions.
+- [Contributing](https://jskits.github.io/loggerjs/CONTRIBUTING): Repository workflow, CI gates, and engineering conventions.
+- [Release](https://jskits.github.io/loggerjs/RELEASE): Versioning and publishing workflow.
+
+## Reference
+
+- [Reference Index](https://jskits.github.io/loggerjs/reference/): Generated package, API, and example reference.
+- [Packages](https://jskits.github.io/loggerjs/reference/packages): Package descriptions, export subpaths, dependencies, and source links.
+- [API Reports](https://jskits.github.io/loggerjs/reference/api/): Public declaration reports generated from built .d.ts files.
+- [Examples](https://jskits.github.io/loggerjs/examples): Runnable examples and their package dependencies.
+
+## Packages
+
+- [@loggerjs/core](https://jskits.github.io/loggerjs/reference/packages): Tiny isomorphic structured logger core for loggerjs.
+- [@loggerjs/browser](https://jskits.github.io/loggerjs/reference/packages): Browser transports and integrations for loggerjs.
+- [@loggerjs/node](https://jskits.github.io/loggerjs/reference/packages): Node.js transports and integrations for loggerjs.
+- [@loggerjs/pretty](https://jskits.github.io/loggerjs/reference/packages): Pretty console and terminal output helpers for loggerjs.
+- [@loggerjs/processors](https://jskits.github.io/loggerjs/reference/packages): Reusable loggerjs event processors.
+- [@loggerjs/codecs](https://jskits.github.io/loggerjs/reference/packages): Serialization codecs for loggerjs.
+- [@loggerjs/otel](https://jskits.github.io/loggerjs/reference/packages): OpenTelemetry mapping and OTLP JSON transport for loggerjs.
+- [@loggerjs/sentry](https://jskits.github.io/loggerjs/reference/packages): Sentry adapter transport for loggerjs.
+- [@loggerjs/datadog](https://jskits.github.io/loggerjs/reference/packages): Datadog Logs transport for loggerjs.
+- [@loggerjs/elastic](https://jskits.github.io/loggerjs/reference/packages): Elasticsearch bulk transport for loggerjs.
+- [@loggerjs/loki](https://jskits.github.io/loggerjs/reference/packages): Grafana Loki transport for loggerjs.
+- [@loggerjs/cloudwatch](https://jskits.github.io/loggerjs/reference/packages): Amazon CloudWatch Logs transport for loggerjs.
+- [@loggerjs/database](https://jskits.github.io/loggerjs/reference/packages): SQLite, PostgreSQL, and custom database transports for loggerjs.
+
+## Optional
+
+- [@loggerjs/core API](https://jskits.github.io/loggerjs/reference/api/core): Public declaration report.
+- [@loggerjs/browser API](https://jskits.github.io/loggerjs/reference/api/browser): Public declaration report.
+- [@loggerjs/node API](https://jskits.github.io/loggerjs/reference/api/node): Public declaration report.
+- [@loggerjs/pretty API](https://jskits.github.io/loggerjs/reference/api/pretty): Public declaration report.
+- [@loggerjs/processors API](https://jskits.github.io/loggerjs/reference/api/processors): Public declaration report.
+- [@loggerjs/codecs API](https://jskits.github.io/loggerjs/reference/api/codecs): Public declaration report.
+- [@loggerjs/otel API](https://jskits.github.io/loggerjs/reference/api/otel): Public declaration report.
+- [@loggerjs/sentry API](https://jskits.github.io/loggerjs/reference/api/sentry): Public declaration report.
+- [@loggerjs/datadog API](https://jskits.github.io/loggerjs/reference/api/datadog): Public declaration report.
+- [@loggerjs/elastic API](https://jskits.github.io/loggerjs/reference/api/elastic): Public declaration report.
+- [@loggerjs/loki API](https://jskits.github.io/loggerjs/reference/api/loki): Public declaration report.
+- [@loggerjs/cloudwatch API](https://jskits.github.io/loggerjs/reference/api/cloudwatch): Public declaration report.
+- [@loggerjs/database API](https://jskits.github.io/loggerjs/reference/api/database): Public declaration report.
+
+- [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic): Browser HTTP transport, offline queue, lifecycle capture, and browser integrations.
+- [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic): Node stdout transport, process capture, typed events, and redaction.
+- [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic): OTLP JSON transport and OpenTelemetry trace context mapping.
+- [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output): Browser and terminal pretty output demos for local developer experience.
+- [Sentry Basic](https://github.com/jskits/loggerjs/tree/main/examples/sentry-basic): Sentry adapter transport with structured logs, breadcrumbs, and errors.
+
+- [Repository README](https://github.com/jskits/loggerjs/blob/main/README.md): GitHub README source.
+- [Full LLM context](https://jskits.github.io/loggerjs/llms-full.txt): Expanded source-doc context for larger prompts.

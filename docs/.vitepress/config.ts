@@ -39,6 +39,7 @@ export default defineConfig({
       { text: "Concepts", link: "/CONCEPTS" },
       { text: "Production", link: "/PRODUCTION-RECIPES" },
       { text: "Reference", link: "/reference/" },
+      { text: "LLMs", link: "/llms" },
     ],
     sidebar: [
       {
