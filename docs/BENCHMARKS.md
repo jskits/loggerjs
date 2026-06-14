@@ -66,6 +66,11 @@ aggregate such as [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md). The checked-in
 matrix is the evidence file to cite when making cross-machine performance
 statements.
 
+For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions
+workflow `Benchmark Matrix`. It collects Linux x64 rows for Node 20.19.0, 22,
+and 24, then uploads an aggregate Markdown artifact for review. Commit the
+aggregate only after verifying the JSON artifacts and runner metadata.
+
 Use the matrix wording carefully: it can prove the listed
 machine/runtime/dependency combinations, not a universal result for every
 future CPU, Node/V8 version, or pino release.

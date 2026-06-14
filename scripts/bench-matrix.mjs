@@ -330,6 +330,7 @@ to combine artifacts from multiple machines into a publishable matrix.
 function markdownForMatrix(artifacts) {
   const sorted = artifacts.toSorted((a, b) => a.metadata.label.localeCompare(b.metadata.label));
   const generatedAt = new Date().toISOString();
+  const coverage = evidenceCoverage(sorted);
   const rows = sorted
     .map((artifact) => {
       const { metadata, aggregate } = artifact;
@@ -353,10 +354,20 @@ path had lower latency than pino on that machine.
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 ${rows}
 
+## Evidence Coverage
+
+| Requirement | Status | Rows |
+| --- | --- | --- |
+| At least one non-Apple-Silicon runtime | ${coverage.hasNonAppleSilicon ? "Covered" : "Missing"} | ${coverage.platforms} |
+| At least two Node major versions | ${coverage.hasMultipleNodeMajors ? "Covered" : "Missing"} | ${coverage.nodeMajors} |
+
 Notes:
 
 - The matrix proves only the listed machine/runtime combinations. Do not turn
   it into a universal "always faster than pino" claim.
+- Keep README/BENCHMARKS wording scoped to the covered rows. If either evidence
+  requirement above is missing, describe the numbers as reference-machine
+  results.
 - A dirty Git marker (\`*\`) means the artifact was captured with local changes.
 - Reproduce a row with:
 
@@ -365,6 +376,37 @@ pnpm build
 pnpm bench:matrix -- --runs=5 --rounds=120 --label="<machine-node>"
 \`\`\`
 `;
+}
+
+function evidenceCoverage(artifacts) {
+  const platforms = new Set();
+  const nodeMajors = new Set();
+  let hasNonAppleSilicon = false;
+
+  for (const artifact of artifacts) {
+    const { metadata } = artifact;
+    platforms.add(`${metadata.platform}/${metadata.arch}`);
+    nodeMajors.add(nodeMajor(metadata.node));
+    if (!(metadata.platform === "darwin" && metadata.arch === "arm64")) {
+      hasNonAppleSilicon = true;
+    }
+  }
+
+  return {
+    hasNonAppleSilicon,
+    hasMultipleNodeMajors: nodeMajors.size >= 2,
+    platforms: formatSet(platforms),
+    nodeMajors: formatSet(nodeMajors),
+  };
+}
+
+function nodeMajor(version) {
+  const match = /^v?(\d+)/.exec(String(version));
+  return match ? match[1] : "unknown";
+}
+
+function formatSet(values) {
+  return [...values].toSorted().join(", ") || "none";
 }
 
 function resultLabel(leanRatio, preparedRatio) {
