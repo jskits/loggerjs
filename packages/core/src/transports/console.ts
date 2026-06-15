@@ -1,5 +1,6 @@
 import { registerUnpatchedDefaults } from "../integration-api";
 import { safeJsonCodec } from "../codecs/json";
+import { runtimeHost } from "../host";
 import type { Codec, LogEvent, LogRecord, Transport, TransportContext } from "../types";
 
 type ConsoleMethod = "debug" | "info" | "warn" | "error" | "log";
@@ -13,11 +14,10 @@ function methodForEvent(event: LogEvent): ConsoleMethod {
 
 function getConsoleMethod(method: ConsoleMethod): (...args: unknown[]) => void {
   const registry = registerUnpatchedDefaults();
+  const runtimeConsole = runtimeHost.console;
   const writer =
-    registry.console[method] ??
-    (console as unknown as Record<ConsoleMethod, (...args: unknown[]) => void>)[method] ??
-    console.log;
-  return writer.bind(console);
+    registry.console[method] ?? runtimeConsole?.[method] ?? runtimeConsole?.log ?? (() => {});
+  return runtimeConsole ? writer.bind(runtimeConsole) : writer;
 }
 
 function defaultFilter(event: LogEvent): boolean {

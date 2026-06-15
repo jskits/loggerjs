@@ -1,6 +1,7 @@
 import { incrementLoggerMetaCounter } from "../meta";
 import { eventToRecord } from "../record";
 import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
+import { sleep } from "../host";
 
 export type TransportOperation = "write" | "writeBatch" | "log" | "logBatch";
 
@@ -29,9 +30,6 @@ export interface FallbackTransportOptions {
 }
 
 type TransportPayload = LogRecord | LogRecord[] | LogEvent | LogEvent[];
-
-const sleep = (delayMs: number) =>
-  delayMs <= 0 ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 
 function retryDelay(
   attempt: number,

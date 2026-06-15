@@ -2,11 +2,15 @@ import { eventToRecord } from "../record";
 import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
 import { incrementLoggerMetaCounter, setLoggerMetaGauge } from "../meta";
 import { toLevelValue } from "../levels";
+import {
+  clearRuntimeTimeout,
+  runtimeNow,
+  setRuntimeTimeout,
+  sleep,
+  type RuntimeTimerHandle,
+} from "../host";
 
 export type DropPolicy = "drop-oldest" | "drop-newest" | "throw";
-
-const sleep = (delayMs: number) =>
-  delayMs <= 0 ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 
 export interface BatchTransportOptions {
   name?: string;
@@ -147,9 +151,7 @@ function eventForQueueItem(item: QueueItem, context: TransportContext): LogEvent
 }
 
 function nowMs(): number {
-  return typeof performance !== "undefined" && typeof performance.now === "function"
-    ? performance.now()
-    : Date.now();
+  return runtimeNow();
 }
 
 export function batchTransport(
@@ -172,7 +174,7 @@ export function batchTransport(
   const circuitBreakerResetMs = options.circuitBreakerResetMs ?? 30_000;
   const queue: QueueItem[] = [];
   const transportName = options.name ?? `batch(${inner.name ?? "transport"})`;
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timer: RuntimeTimerHandle | undefined;
   let lastContext: TransportContext | undefined;
   let flushing = false;
   let activeFlush: Promise<void> | undefined;
@@ -213,13 +215,13 @@ export function batchTransport(
   });
 
   const clearTimer = () => {
-    if (timer) clearTimeout(timer);
+    clearRuntimeTimeout(timer);
     timer = undefined;
   };
 
   const schedule = (delayMs = flushIntervalMs) => {
-    if (timer || delayMs <= 0) return;
-    timer = setTimeout(() => {
+    if (timer !== undefined || delayMs <= 0) return;
+    timer = setRuntimeTimeout(() => {
       const context = lastContext;
       void flush().catch((error: unknown) => {
         context?.reportInternalError(error, {
@@ -229,6 +231,7 @@ export function batchTransport(
         });
       });
     }, delayMs);
+    if (timer === undefined) return;
     const maybeNodeTimer = timer as unknown as { unref?: () => void };
     maybeNodeTimer.unref?.();
   };

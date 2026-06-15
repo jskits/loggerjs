@@ -5,6 +5,7 @@ import type {
   PayloadTransformOutput,
   PayloadTransformResult,
 } from "./types";
+import { encodeUtf8 } from "./host";
 
 export interface ResolvedPayload<TPayload extends EncodedPayload = EncodedPayload> {
   payload: TPayload;
@@ -23,10 +24,8 @@ export interface EncryptionPayloadTransformOptions {
     | ((context: PayloadTransformContext) => Record<string, string> | undefined);
 }
 
-const textEncoder = new TextEncoder();
-
 export function encodedPayloadToUint8Array(payload: EncodedPayload): Uint8Array {
-  if (typeof payload === "string") return textEncoder.encode(payload);
+  if (typeof payload === "string") return encodeUtf8(payload);
   return payload;
 }
 

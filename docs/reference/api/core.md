@@ -120,6 +120,32 @@ import type { EventDefinition } from "./types.js";
 export declare function defineEvent<TPayload extends Record<string, unknown>>(definition: EventDefinition<TPayload>): EventDefinition<TPayload>;
 ```
 
+## host.d.ts
+
+```ts
+import type { ConsoleMethod } from "./types.js";
+export type RuntimeTimerHandle = unknown;
+interface RuntimeTextEncoder {
+    encode(input?: string): Uint8Array;
+}
+interface RuntimeGlobal {
+    console?: Partial<Record<ConsoleMethod, (...args: unknown[]) => void>>;
+    performance?: {
+        now?: () => number;
+    };
+    setTimeout?: (callback: () => void, delayMs?: number) => RuntimeTimerHandle;
+    clearTimeout?: (handle: RuntimeTimerHandle) => void;
+    TextEncoder?: new () => RuntimeTextEncoder;
+}
+export declare const runtimeHost: RuntimeGlobal;
+export declare function encodeUtf8(input: string): Uint8Array;
+export declare function runtimeNow(): number;
+export declare function setRuntimeTimeout(callback: () => void, delayMs: number): RuntimeTimerHandle | undefined;
+export declare function clearRuntimeTimeout(handle: RuntimeTimerHandle | undefined): void;
+export declare function sleep(delayMs: number): Promise<void>;
+export {};
+```
+
 ## index.d.ts
 
 ```ts
@@ -661,9 +687,15 @@ export declare function retryTransport(inner: Transport, options?: RetryTranspor
 ```ts
 import type { LogEvent, Transport } from "../types.js";
 export type TestTransportMatcher = (event: LogEvent) => boolean;
+export interface TestTransportAbortSignal {
+    readonly aborted: boolean;
+    readonly reason?: unknown;
+    addEventListener?: (...args: any[]) => void;
+    removeEventListener?: (...args: any[]) => void;
+}
 export interface TestTransportWaitOptions {
     timeoutMs?: number;
-    signal?: AbortSignal;
+    signal?: TestTransportAbortSignal;
 }
 export interface TestTransportWaitForCountOptions extends TestTransportWaitOptions {
     matcher?: TestTransportMatcher;

@@ -1,3 +1,5 @@
+import { runtimeHost } from "./host";
+
 export type LoggerMetaStats = Record<string, number>;
 
 const counters = new Map<string, number>();
@@ -51,7 +53,9 @@ function getConsoleError(): (...args: unknown[]) => void {
   const registry = (globalThis as unknown as Record<string, unknown>)[originalConsoleKey] as
     | { error?: (...args: unknown[]) => void }
     | undefined;
-  return registry?.error ?? console.error.bind(console);
+  const runtimeConsole = runtimeHost.console;
+  const writer = runtimeConsole?.error ?? runtimeConsole?.log;
+  return registry?.error ?? (writer ? writer.bind(runtimeConsole) : () => {});
 }
 
 export function reportLoggerMetaError(

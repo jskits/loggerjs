@@ -1,4 +1,5 @@
 import { incrementLoggerMetaCounter } from "./meta";
+import { runtimeHost } from "./host";
 import type {
   CaptureInput,
   ConsoleMethod,
@@ -66,10 +67,8 @@ export function getUnpatchedRegistry(): UnpatchedRegistry {
 }
 
 export function registerUnpatchedDefaults(registry = getUnpatchedRegistry()): UnpatchedRegistry {
-  if (typeof console !== "undefined") {
-    const source = console as unknown as Partial<
-      Record<ConsoleMethod, (...args: unknown[]) => void>
-    >;
+  const source = runtimeHost.console;
+  if (source) {
     for (const method of consoleMethods) {
       registry.console[method] ??= source[method];
     }

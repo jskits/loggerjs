@@ -1,3 +1,5 @@
+import { runtimeNow } from "./host";
+
 export type LoggerDiagnosticStage = "encode" | "dispatch" | "transport" | "flush" | "worker";
 export type LoggerDiagnosticPhase = "start" | "end" | "error";
 
@@ -42,7 +44,7 @@ export function emitLoggerDiagnostic(event: LoggerDiagnosticEvent): void {
 }
 
 export function loggerDiagnosticNow(): number {
-  return globalThis.performance?.now?.() ?? Date.now();
+  return runtimeNow();
 }
 
 export function runLoggerDiagnostic<T>(

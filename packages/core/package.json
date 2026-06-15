@@ -97,6 +97,7 @@
     "build": "pnpm run clean && pnpm run build:js && pnpm run build:types",
     "build:js": "rolldown -c ../../rolldown.config.mjs",
     "build:types": "tsc -p tsconfig.build.json && node ../../scripts/fix-dts-extensions.mjs dist",
+    "typecheck:no-dom": "tsc --noEmit -p tsconfig.no-dom.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"

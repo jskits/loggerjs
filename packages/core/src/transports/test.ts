@@ -1,10 +1,18 @@
 import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
+import { clearRuntimeTimeout, setRuntimeTimeout, type RuntimeTimerHandle } from "../host";
 
 export type TestTransportMatcher = (event: LogEvent) => boolean;
 
+export interface TestTransportAbortSignal {
+  readonly aborted: boolean;
+  readonly reason?: unknown;
+  addEventListener?: (...args: any[]) => void;
+  removeEventListener?: (...args: any[]) => void;
+}
+
 export interface TestTransportWaitOptions {
   timeoutMs?: number;
-  signal?: AbortSignal;
+  signal?: TestTransportAbortSignal;
 }
 
 export interface TestTransportWaitForCountOptions extends TestTransportWaitOptions {
@@ -46,8 +54,8 @@ interface Waiter {
   matcher: TestTransportMatcher | undefined;
   resolve: (events: LogEvent[]) => void;
   reject: (error: unknown) => void;
-  timer: ReturnType<typeof setTimeout> | undefined;
-  signal: AbortSignal | undefined;
+  timer: RuntimeTimerHandle | undefined;
+  signal: TestTransportAbortSignal | undefined;
   onAbort: (() => void) | undefined;
 }
 
@@ -55,7 +63,7 @@ function defaultTimeoutError(timeoutMs: number, count: number) {
   return new Error(`Timed out after ${timeoutMs}ms waiting for ${count} test transport event(s)`);
 }
 
-function abortError(signal: AbortSignal) {
+function abortError(signal: TestTransportAbortSignal) {
   return signal.reason ?? new Error("Test transport wait aborted");
 }
 
@@ -64,9 +72,9 @@ function toFailure(error: unknown) {
 }
 
 function cleanupWaiter(waiter: Waiter) {
-  if (waiter.timer) clearTimeout(waiter.timer);
+  clearRuntimeTimeout(waiter.timer);
   if (waiter.signal && waiter.onAbort) {
-    waiter.signal.removeEventListener("abort", waiter.onAbort);
+    waiter.signal.removeEventListener?.("abort", waiter.onAbort);
   }
 }
 
@@ -151,20 +159,25 @@ export function testTransport(transportOptions: TestTransportOptions = {}): Test
 
       const timeoutMs = waitOptions.timeoutMs ?? 1000;
       if (timeoutMs > 0 && Number.isFinite(timeoutMs)) {
-        waiter.timer = setTimeout(() => {
+        waiter.timer = setRuntimeTimeout(() => {
           removeWaiter(waiter);
           cleanupWaiter(waiter);
           reject(defaultTimeoutError(timeoutMs, count));
         }, timeoutMs);
+        if (waiter.timer === undefined) {
+          reject(defaultTimeoutError(timeoutMs, count));
+          return;
+        }
       }
 
-      if (waitOptions.signal) {
+      const signal = waitOptions.signal;
+      if (signal) {
         waiter.onAbort = () => {
           removeWaiter(waiter);
           cleanupWaiter(waiter);
-          reject(abortError(waitOptions.signal as AbortSignal));
+          reject(abortError(signal));
         };
-        waitOptions.signal.addEventListener("abort", waiter.onAbort, { once: true });
+        signal.addEventListener?.("abort", waiter.onAbort, { once: true });
       }
 
       waiters.push(waiter);
