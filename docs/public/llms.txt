@@ -1,6 +1,6 @@
 # LoggerJS
 
-> Isomorphic structured logging for JavaScript: one pipeline from browser collection to server delivery, built around records, middleware, processors, transports, integrations, and transport-owned codecs.
+> A faster, more powerful isomorphic logger: collect, process, deliver through one fast pipeline built around records, middleware, processors, transports, integrations, and transport-owned codecs.
 
 Use this file as the concise entry point for LoggerJS documentation. Prefer the guide and concept docs first, then package/API references when exact exports or subpaths matter. Performance claims are benchmark-environment dependent; use the benchmark docs for methodology and reproduction commands.
 

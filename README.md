@@ -6,7 +6,7 @@
 
 # LoggerJS
 
-**Isomorphic structured logging for JavaScript — one pipeline from browser to server, built for automatic collection, composable processing, and measured performance.**
+**A faster, more powerful isomorphic logger. Collect, process, deliver — one fast pipeline.**
 
 [![CI](https://github.com/jskits/loggerjs/actions/workflows/ci.yml/badge.svg)](https://github.com/jskits/loggerjs/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@loggerjs/core.svg)](https://www.npmjs.com/package/@loggerjs/core)

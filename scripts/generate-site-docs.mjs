@@ -674,7 +674,7 @@ function generateLlmsFiles(packages, reports, exampleItems) {
     join(docsRoot, "public", "llms.txt"),
     `# LoggerJS
 
-> Isomorphic structured logging for JavaScript: one pipeline from browser collection to server delivery, built around records, middleware, processors, transports, integrations, and transport-owned codecs.
+> A faster, more powerful isomorphic logger: collect, process, deliver through one fast pipeline built around records, middleware, processors, transports, integrations, and transport-owned codecs.
 
 Use this file as the concise entry point for LoggerJS documentation. Prefer the guide and concept docs first, then package/API references when exact exports or subpaths matter. Performance claims are benchmark-environment dependent; use the benchmark docs for methodology and reproduction commands.
 
@@ -975,7 +975,7 @@ function generateChineseLlmsFiles(packages, reports, exampleItems) {
     join(docsRoot, "public", "zh", "llms.txt"),
     `\uFEFF# LoggerJS 中文文档
 
-> 面向 JavaScript 的同构结构化日志：从浏览器采集到服务端投递，围绕 records、middleware、processors、transports、integrations 和 transport-owned codecs 构建。
+> 更快、更强的同构日志库：采集、处理、投递，一条高速管线，围绕 records、middleware、processors、transports、integrations 和 transport-owned codecs 构建。
 
 这个文件是中文站点的 LLM 入口。优先阅读快速开始和核心概念，再在需要精确 export、subpath 或类型声明时查看包和 API 参考。性能声明依赖 benchmark 环境，请结合基准文档的方法和复现命令理解。
 

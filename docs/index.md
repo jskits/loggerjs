@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: LoggerJS
-  text: Isomorphic structured logging for JavaScript
-  tagline: One pipeline from browser collection to server delivery, with composable processing and measured performance.
+  text: A faster, more powerful isomorphic logger
+  tagline: Collect, process, deliver. One fast pipeline.
   image:
     src: /logo.svg
     alt: LoggerJS logo

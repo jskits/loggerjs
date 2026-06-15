@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: LoggerJS
-  text: 面向 JavaScript 的同构结构化日志
-  tagline: 从浏览器采集到服务端投递的一条管线，组合式处理，并用可复现基准约束性能表述。
+  text: 更快、更强的同构日志库
+  tagline: 采集、处理、投递。一条高速管线。
   image:
     src: /logo.svg
     alt: LoggerJS logo
