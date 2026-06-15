@@ -12,6 +12,7 @@ if (!existsSync(packageJsonPath) || !existsSync(entry)) {
 }
 
 const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+const subpathEntries = packageJson.loggerjsSubpathEntries ?? {};
 const dependencyNames = [
   ...Object.keys(packageJson.dependencies ?? {}),
   ...Object.keys(packageJson.peerDependencies ?? {}),
@@ -31,24 +32,42 @@ const isExternal = (id) => {
 };
 
 const platform = packageJson.name === "@loggerjs/node" ? "node" : "neutral";
+const entryInputs = {
+  index: entry,
+  ...Object.fromEntries(
+    Object.entries(subpathEntries).map(([name, relativePath]) => [
+      name,
+      join(packageDir, relativePath),
+    ]),
+  ),
+};
 
-export default defineConfig({
-  input: entry,
-  external: isExternal,
-  platform,
-  tsconfig: join(packageDir, "tsconfig.json"),
-  treeshake: true,
-  output: [
+export default defineConfig(
+  Object.entries(entryInputs).flatMap(([name, input]) => [
     {
-      file: join(packageDir, "dist/index.js"),
-      format: "esm",
-      sourcemap: true,
+      input,
+      external: isExternal,
+      platform,
+      tsconfig: join(packageDir, "tsconfig.json"),
+      treeshake: true,
+      output: {
+        file: join(packageDir, `dist/${name}.js`),
+        format: "esm",
+        sourcemap: true,
+      },
     },
     {
-      exports: "named",
-      file: join(packageDir, "dist/index.cjs"),
-      format: "cjs",
-      sourcemap: true,
+      input,
+      external: isExternal,
+      platform,
+      tsconfig: join(packageDir, "tsconfig.json"),
+      treeshake: true,
+      output: {
+        exports: "named",
+        file: join(packageDir, `dist/${name}.cjs`),
+        format: "cjs",
+        sourcemap: true,
+      },
     },
-  ],
-});
+  ]),
+);

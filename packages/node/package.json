@@ -29,129 +29,129 @@
       "require": "./dist/index.cjs"
     },
     "./transport-http": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/http-transport.d.ts",
+      "import": "./dist/http-transport.js",
+      "require": "./dist/http-transport.cjs"
     },
     "./payload-transforms": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/payload-transforms.d.ts",
+      "import": "./dist/payload-transforms.js",
+      "require": "./dist/payload-transforms.cjs"
     },
     "./transport-file": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/file-transport.d.ts",
+      "import": "./dist/file-transport.js",
+      "require": "./dist/file-transport.cjs"
     },
     "./transport-rotating-file": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/rotating-file-transport.d.ts",
+      "import": "./dist/rotating-file-transport.js",
+      "require": "./dist/rotating-file-transport.cjs"
     },
     "./transport-stdout": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/stdout-transport.d.ts",
+      "import": "./dist/stdout-transport.js",
+      "require": "./dist/stdout-transport.cjs"
     },
     "./transport-syslog": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/syslog-transport.d.ts",
+      "import": "./dist/syslog-transport.js",
+      "require": "./dist/syslog-transport.cjs"
     },
     "./transport-worker": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/worker-transport.d.ts",
+      "import": "./dist/worker-transport.js",
+      "require": "./dist/worker-transport.cjs"
     },
     "./integration-process": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/process-integration.d.ts",
+      "import": "./dist/process-integration.js",
+      "require": "./dist/process-integration.cjs"
     },
     "./integration-cli": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/cli-integration.d.ts",
+      "import": "./dist/cli-integration.js",
+      "require": "./dist/cli-integration.cjs"
     },
     "./integration-koa": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/koa-integration.d.ts",
+      "import": "./dist/koa-integration.js",
+      "require": "./dist/koa-integration.cjs"
     },
     "./integration-nest": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/nest-integration.d.ts",
+      "import": "./dist/nest-integration.js",
+      "require": "./dist/nest-integration.cjs"
     },
     "./integration-hapi": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/hapi-integration.d.ts",
+      "import": "./dist/hapi-integration.js",
+      "require": "./dist/hapi-integration.cjs"
     },
     "./integration-prisma": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/prisma-integration.d.ts",
+      "import": "./dist/prisma-integration.js",
+      "require": "./dist/prisma-integration.cjs"
     },
     "./integration-redis": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/redis-integration.d.ts",
+      "import": "./dist/redis-integration.js",
+      "require": "./dist/redis-integration.cjs"
     },
     "./integration-queue": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/queue-integration.d.ts",
+      "import": "./dist/queue-integration.js",
+      "require": "./dist/queue-integration.cjs"
     },
     "./integration-bullmq": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/bullmq-integration.d.ts",
+      "import": "./dist/bullmq-integration.js",
+      "require": "./dist/bullmq-integration.cjs"
     },
     "./integration-serverless": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/serverless-integration.d.ts",
+      "import": "./dist/serverless-integration.js",
+      "require": "./dist/serverless-integration.cjs"
     },
     "./integration-database": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/database-integration.d.ts",
+      "import": "./dist/database-integration.js",
+      "require": "./dist/database-integration.cjs"
     },
     "./integration-express": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/express-integration.d.ts",
+      "import": "./dist/express-integration.js",
+      "require": "./dist/express-integration.cjs"
     },
     "./integration-fastify": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/fastify-integration.d.ts",
+      "import": "./dist/fastify-integration.js",
+      "require": "./dist/fastify-integration.cjs"
     },
     "./integration-fetch": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/node-fetch-integration.d.ts",
+      "import": "./dist/node-fetch-integration.js",
+      "require": "./dist/node-fetch-integration.cjs"
     },
     "./integration-http-client": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/node-http-client-integration.d.ts",
+      "import": "./dist/node-http-client-integration.js",
+      "require": "./dist/node-http-client-integration.cjs"
     },
     "./integration-diagnostics": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/diagnostics-channel-integration.d.ts",
+      "import": "./dist/diagnostics-channel-integration.js",
+      "require": "./dist/diagnostics-channel-integration.cjs"
     },
     "./logger-diagnostics": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/logger-diagnostics.d.ts",
+      "import": "./dist/logger-diagnostics.js",
+      "require": "./dist/logger-diagnostics.cjs"
     },
     "./context": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/context.d.ts",
+      "import": "./dist/context.js",
+      "require": "./dist/context.cjs"
     }
   },
   "publishConfig": {
@@ -168,5 +168,32 @@
   },
   "dependencies": {
     "@loggerjs/core": "workspace:*"
+  },
+  "loggerjsSubpathEntries": {
+    "http-transport": "src/http-transport.ts",
+    "payload-transforms": "src/payload-transforms.ts",
+    "file-transport": "src/file-transport.ts",
+    "rotating-file-transport": "src/rotating-file-transport.ts",
+    "stdout-transport": "src/stdout-transport.ts",
+    "syslog-transport": "src/syslog-transport.ts",
+    "worker-transport": "src/worker-transport.ts",
+    "process-integration": "src/process-integration.ts",
+    "cli-integration": "src/cli-integration.ts",
+    "koa-integration": "src/koa-integration.ts",
+    "nest-integration": "src/nest-integration.ts",
+    "hapi-integration": "src/hapi-integration.ts",
+    "prisma-integration": "src/prisma-integration.ts",
+    "redis-integration": "src/redis-integration.ts",
+    "queue-integration": "src/queue-integration.ts",
+    "bullmq-integration": "src/bullmq-integration.ts",
+    "serverless-integration": "src/serverless-integration.ts",
+    "database-integration": "src/database-integration.ts",
+    "express-integration": "src/express-integration.ts",
+    "fastify-integration": "src/fastify-integration.ts",
+    "node-fetch-integration": "src/node-fetch-integration.ts",
+    "node-http-client-integration": "src/node-http-client-integration.ts",
+    "diagnostics-channel-integration": "src/diagnostics-channel-integration.ts",
+    "logger-diagnostics": "src/logger-diagnostics.ts",
+    "context": "src/context.ts"
   }
 }

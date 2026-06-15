@@ -69,6 +69,27 @@ Per-event network calls are the dominant real-world cost; every remote transport
 - **Logging through one shared catch-all logger with many processors** when only one route needs them — split loggers by purpose; children are cheap.
 - **Unbounded data payloads.** Encoding cost is proportional to payload size; log identifiers, not entire entities.
 
+## Import Boundaries
+
+The root `@loggerjs/browser` and `@loggerjs/node` entries are preset-style
+convenience imports: they re-export core plus every first-party runtime
+transport and integration. Use them when application simplicity matters more
+than the smallest possible module graph.
+
+For tighter bundles, import the documented subpaths. Browser and Node subpaths
+are built as physical entry bundles and verified by `pnpm verify:entry-boundaries`,
+so a focused import does not point back at the aggregate `dist/index` file:
+
+```ts
+import { browserHttpTransport } from "@loggerjs/browser/transport-http";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
+import { stdoutTransport } from "@loggerjs/node/transport-stdout";
+```
+
+Keep new runtime-specific features behind a subpath entry when they are not part
+of the common preset path. If a new feature makes the root browser/node bundle
+larger, the size-budget diff should explain why the preset entry needs it.
+
 ## Guardrails
 
 Performance is gated in CI: `pnpm bench:gate` measures the suite and enforces machine-independent ratios against pino on the same hardware (see BENCHMARKS.md). If you contribute changes to the hot path, run it locally; structural regressions fail the pull request.

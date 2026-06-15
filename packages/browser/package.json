@@ -29,129 +29,129 @@
       "require": "./dist/index.cjs"
     },
     "./transport-http": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/http-transport.d.ts",
+      "import": "./dist/http-transport.js",
+      "require": "./dist/http-transport.cjs"
     },
     "./payload-transforms": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/payload-transforms.d.ts",
+      "import": "./dist/payload-transforms.js",
+      "require": "./dist/payload-transforms.cjs"
     },
     "./transport-broadcast-channel": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/broadcast-channel-transport.d.ts",
+      "import": "./dist/broadcast-channel-transport.js",
+      "require": "./dist/broadcast-channel-transport.cjs"
     },
     "./transport-service-worker": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/service-worker-transport.d.ts",
+      "import": "./dist/service-worker-transport.js",
+      "require": "./dist/service-worker-transport.cjs"
     },
     "./transport-websocket": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/websocket-transport.d.ts",
+      "import": "./dist/websocket-transport.js",
+      "require": "./dist/websocket-transport.cjs"
     },
     "./offline-indexeddb": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/indexeddb-offline-queue.d.ts",
+      "import": "./dist/indexeddb-offline-queue.js",
+      "require": "./dist/indexeddb-offline-queue.cjs"
     },
     "./transport-indexeddb": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/indexeddb-transport.d.ts",
+      "import": "./dist/indexeddb-transport.js",
+      "require": "./dist/indexeddb-transport.cjs"
     },
     "./offline-first-transport": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/offline-first-transport.d.ts",
+      "import": "./dist/offline-first-transport.js",
+      "require": "./dist/offline-first-transport.cjs"
     },
     "./export-zip": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/zip-export.d.ts",
+      "import": "./dist/zip-export.js",
+      "require": "./dist/zip-export.cjs"
     },
     "./integration-console": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/console-integration.d.ts",
+      "import": "./dist/console-integration.js",
+      "require": "./dist/console-integration.cjs"
     },
     "./integration-context": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/context-propagation-integration.d.ts",
+      "import": "./dist/context-propagation-integration.js",
+      "require": "./dist/context-propagation-integration.cjs"
     },
     "./integration-errors": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/error-integration.d.ts",
+      "import": "./dist/error-integration.js",
+      "require": "./dist/error-integration.cjs"
     },
     "./integration-fetch": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/fetch-integration.d.ts",
+      "import": "./dist/fetch-integration.js",
+      "require": "./dist/fetch-integration.cjs"
     },
     "./integration-xhr": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/xhr-integration.d.ts",
+      "import": "./dist/xhr-integration.js",
+      "require": "./dist/xhr-integration.cjs"
     },
     "./integration-framework-errors": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/framework-error-integration.d.ts",
+      "import": "./dist/framework-error-integration.js",
+      "require": "./dist/framework-error-integration.cjs"
     },
     "./integration-framework-routers": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/framework-router-integrations.d.ts",
+      "import": "./dist/framework-router-integrations.js",
+      "require": "./dist/framework-router-integrations.cjs"
     },
     "./integration-reporting": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/reporting-integration.d.ts",
+      "import": "./dist/reporting-integration.js",
+      "require": "./dist/reporting-integration.cjs"
     },
     "./integration-router": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/router-integration.d.ts",
+      "import": "./dist/router-integration.js",
+      "require": "./dist/router-integration.cjs"
     },
     "./integration-runtime-host": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/runtime-host-integration.d.ts",
+      "import": "./dist/runtime-host-integration.js",
+      "require": "./dist/runtime-host-integration.cjs"
     },
     "./integration-service-worker": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/service-worker-integration.d.ts",
+      "import": "./dist/service-worker-integration.js",
+      "require": "./dist/service-worker-integration.cjs"
     },
     "./integration-user-actions": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/user-action-integration.d.ts",
+      "import": "./dist/user-action-integration.js",
+      "require": "./dist/user-action-integration.cjs"
     },
     "./integration-websocket": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/websocket-integration.d.ts",
+      "import": "./dist/websocket-integration.js",
+      "require": "./dist/websocket-integration.cjs"
     },
     "./integration-web-vitals": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/web-vitals-integration.d.ts",
+      "import": "./dist/web-vitals-integration.js",
+      "require": "./dist/web-vitals-integration.cjs"
     },
     "./integration-performance": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/performance-integration.d.ts",
+      "import": "./dist/performance-integration.js",
+      "require": "./dist/performance-integration.cjs"
     },
     "./integration-page-lifecycle": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/page-lifecycle.d.ts",
+      "import": "./dist/page-lifecycle.js",
+      "require": "./dist/page-lifecycle.cjs"
     }
   },
   "publishConfig": {
@@ -168,5 +168,32 @@
   },
   "dependencies": {
     "@loggerjs/core": "workspace:*"
+  },
+  "loggerjsSubpathEntries": {
+    "http-transport": "src/http-transport.ts",
+    "payload-transforms": "src/payload-transforms.ts",
+    "broadcast-channel-transport": "src/broadcast-channel-transport.ts",
+    "service-worker-transport": "src/service-worker-transport.ts",
+    "websocket-transport": "src/websocket-transport.ts",
+    "indexeddb-offline-queue": "src/indexeddb-offline-queue.ts",
+    "indexeddb-transport": "src/indexeddb-transport.ts",
+    "offline-first-transport": "src/offline-first-transport.ts",
+    "zip-export": "src/zip-export.ts",
+    "console-integration": "src/console-integration.ts",
+    "context-propagation-integration": "src/context-propagation-integration.ts",
+    "error-integration": "src/error-integration.ts",
+    "fetch-integration": "src/fetch-integration.ts",
+    "xhr-integration": "src/xhr-integration.ts",
+    "framework-error-integration": "src/framework-error-integration.ts",
+    "framework-router-integrations": "src/framework-router-integrations.ts",
+    "reporting-integration": "src/reporting-integration.ts",
+    "router-integration": "src/router-integration.ts",
+    "runtime-host-integration": "src/runtime-host-integration.ts",
+    "service-worker-integration": "src/service-worker-integration.ts",
+    "user-action-integration": "src/user-action-integration.ts",
+    "websocket-integration": "src/websocket-integration.ts",
+    "web-vitals-integration": "src/web-vitals-integration.ts",
+    "performance-integration": "src/performance-integration.ts",
+    "page-lifecycle": "src/page-lifecycle.ts"
   }
 }

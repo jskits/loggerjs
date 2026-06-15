@@ -24,7 +24,7 @@
     "bench:matrix:aggregate": "node scripts/bench-matrix.mjs aggregate",
     "bench:node": "node scripts/bench-node.mjs",
     "build": "turbo run build",
-    "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm typecheck:core-platform && pnpm test:inventory:check && pnpm size:check && pnpm verify:exports && pnpm typecheck:public && pnpm api:check && pnpm pack:check && pnpm compat:node",
+    "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm typecheck:core-platform && pnpm test:inventory:check && pnpm size:check && pnpm verify:entry-boundaries && pnpm verify:exports && pnpm typecheck:public && pnpm api:check && pnpm pack:check && pnpm compat:node",
     "clean": "turbo run clean && rm -rf .turbo",
     "clean:all": "pnpm clean && rm -rf node_modules",
     "commit": "cz",
@@ -63,6 +63,7 @@
     "typecheck": "turbo run typecheck",
     "typecheck:core-platform": "node scripts/verify-core-platform-types.mjs",
     "typecheck:public": "node scripts/verify-public-types.mjs",
+    "verify:entry-boundaries": "node scripts/verify-entry-boundaries.mjs",
     "verify:exports": "node scripts/verify-exports.mjs",
     "version-packages": "changeset version",
     "changeset": "changeset"
