@@ -1,79 +1,54 @@
 # @loggerjs/browser
 
-## 0.5.0
+This changelog has been corrected against the git tag history. Untagged generated entries that were later reset are folded into the tagged release where their commits shipped.
 
-### Minor Changes
+## Unreleased (`v0.5.0..HEAD`)
 
-- fix
+- Split public transport/integration subpath exports into physical entry bundles so narrow imports do not point at the aggregate bundle.
+- Added real-browser E2E coverage for IndexedDB offline queue replay, pagehide `sendBeacon`, and service worker delivery.
 
-### Patch Changes
 
-- Updated dependencies []:
-  - @loggerjs/core@0.5.0
+## 0.5.0 - 2026-06-15 (repository tag `v0.5.0`)
 
-## 0.4.0
+- Version alignment for repository tag `v0.5.0`.
+- No package runtime source changes landed between `v0.4.0` and `v0.5.0`.
 
-### Minor Changes
 
-- fix
+## 0.4.0 - 2026-06-15 (repository tag `v0.4.0`)
 
-### Patch Changes
+- Version alignment for repository tag `v0.4.0`.
+- Release focused on docs site, generated references, localization, agent skill docs, and npm Trusted Publisher/OIDC workflow hardening.
 
-- Updated dependencies []:
-  - @loggerjs/core@0.4.0
 
-## 0.3.1
+## 0.3.1 - 2026-06-14 (repository tag `v0.3.1`)
 
-### Patch Changes
+- Version alignment for repository tag `v0.3.1`.
+- Added IndexedDB offline-path benchmark/test coverage; no browser public API changes.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- Updated dependencies []:
-  - @loggerjs/core@0.3.1
 
-## 0.3.0
+## 0.3.0 - 2026-06-13 (repository tag `v0.3.0`)
 
-### Minor Changes
+- Exposed service worker transport readiness for `target: "ready"` and documented browser transport loss windows.
+- Expanded browser integration test coverage for console, errors, fetch/XHR, page lifecycle, Web Vitals, Performance, Reporting, routers, runtime host, user actions, WebSocket, and service worker behavior.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- fix
 
-### Patch Changes
+## 0.1.0 - 2026-06-13 (repository tag `v0.2.0`)
 
-- Updated dependencies []:
-  - @loggerjs/core@0.3.0
+- Added offline-first transport, id-based IndexedDB log removal, context propagation integration, framework router adapters, and browser compression payload transform.
+- Fixed offline queue replay without prior context and retained HTTP batches on payload transform failure.
+- Added Chromium browser example E2E coverage.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-## 0.2.0
 
-### Minor Changes
+## 0.0.2 - 2026-06-12 (package tag `@loggerjs/browser@0.0.2`)
 
-- fix
+- Republished through the explicit provenance publishing path.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-### Patch Changes
 
-- Updated dependencies []:
-  - @loggerjs/core@0.2.0
+## 0.0.1 - 2026-06-12 (package tag `@loggerjs/browser@0.0.1`)
 
-## 0.1.0
-
-### Minor Changes
-
-- fix
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @loggerjs/core@0.1.0
-
-## 0.0.2
-
-### Patch Changes
-
-- [`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e) Thanks [@unadlib](https://github.com/unadlib)! - Republish packages through the explicit provenance publishing path.
-
-- Updated dependencies [[`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e)]:
-  - @loggerjs/core@0.0.2
-
-## 0.1.1
-
-### Patch Changes
-
-- Updated dependencies [[`d9cc28e`](https://github.com/jskits/loggerjs/commit/d9cc28eaf1dae0ac9ae174830a8998f7909edfe7), [`f6e9ec1`](https://github.com/jskits/loggerjs/commit/f6e9ec19b35912a2610b6279f07064d96d90f268), [`fb2a4d4`](https://github.com/jskits/loggerjs/commit/fb2a4d40e93a8c085a942d7eee0d32e980a16ff8)]:
-  - @loggerjs/core@0.1.1
+- Initial browser package with HTTP batching, pagehide beacon delivery, offline queues, IndexedDB storage/export, WebSocket, BroadcastChannel, Service Worker transport, and browser integrations.
+- Updated dependency `@loggerjs/core` to the matching release.

@@ -1,79 +1,44 @@
 # @loggerjs/otel
 
-## 0.5.0
+This changelog has been corrected against the git tag history. Untagged generated entries that were later reset are folded into the tagged release where their commits shipped.
 
-### Minor Changes
+## 0.5.0 - 2026-06-15 (repository tag `v0.5.0`)
 
-- fix
+- Version alignment for repository tag `v0.5.0`.
+- No package runtime source changes landed between `v0.4.0` and `v0.5.0`.
 
-### Patch Changes
 
-- Updated dependencies []:
-  - @loggerjs/core@0.5.0
+## 0.4.0 - 2026-06-15 (repository tag `v0.4.0`)
 
-## 0.4.0
+- Version alignment for repository tag `v0.4.0`.
+- Release focused on docs site, generated references, localization, agent skill docs, and npm Trusted Publisher/OIDC workflow hardening.
 
-### Minor Changes
 
-- fix
+## 0.3.1 - 2026-06-14 (repository tag `v0.3.1`)
 
-### Patch Changes
+- Version alignment for repository tag `v0.3.1`.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- Updated dependencies []:
-  - @loggerjs/core@0.4.0
 
-## 0.3.1
+## 0.3.0 - 2026-06-13 (repository tag `v0.3.0`)
 
-### Patch Changes
+- Version alignment for repository tag `v0.3.0`; no OTLP/log bridge API changes.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- Updated dependencies []:
-  - @loggerjs/core@0.3.1
 
-## 0.3.0
+## 0.1.0 - 2026-06-13 (repository tag `v0.2.0`)
 
-### Minor Changes
+- Version alignment for repository tag `v0.2.0`; no OTLP/log bridge API changes.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- fix
 
-### Patch Changes
+## 0.0.2 - 2026-06-12 (package tag `@loggerjs/otel@0.0.2`)
 
-- Updated dependencies []:
-  - @loggerjs/core@0.3.0
+- Republished through the explicit provenance publishing path.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-## 0.2.0
 
-### Minor Changes
+## 0.0.1 - 2026-06-12 (package tag `@loggerjs/otel@0.0.1`)
 
-- fix
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @loggerjs/core@0.2.0
-
-## 0.1.0
-
-### Minor Changes
-
-- fix
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @loggerjs/core@0.1.0
-
-## 0.0.2
-
-### Patch Changes
-
-- [`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e) Thanks [@unadlib](https://github.com/unadlib)! - Republish packages through the explicit provenance publishing path.
-
-- Updated dependencies [[`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e)]:
-  - @loggerjs/core@0.0.2
-
-## 0.1.1
-
-### Patch Changes
-
-- Updated dependencies [[`d9cc28e`](https://github.com/jskits/loggerjs/commit/d9cc28eaf1dae0ac9ae174830a8998f7909edfe7), [`f6e9ec1`](https://github.com/jskits/loggerjs/commit/f6e9ec19b35912a2610b6279f07064d96d90f268), [`fb2a4d4`](https://github.com/jskits/loggerjs/commit/fb2a4d40e93a8c085a942d7eee0d32e980a16ff8)]:
-  - @loggerjs/core@0.1.1
+- Initial OpenTelemetry package with OTLP/HTTP JSON transport, OTLP codec, active span trace processor, and log bridge transport.
+- Updated dependency `@loggerjs/core` to the matching release.

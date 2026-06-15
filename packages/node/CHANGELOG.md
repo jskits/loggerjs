@@ -1,79 +1,52 @@
 # @loggerjs/node
 
-## 0.5.0
+This changelog has been corrected against the git tag history. Untagged generated entries that were later reset are folded into the tagged release where their commits shipped.
 
-### Minor Changes
+## Unreleased (`v0.5.0..HEAD`)
 
-- fix
+- Split public transport/integration subpath exports into physical entry bundles so narrow imports do not point at the aggregate bundle.
+- Clarified Node runtime compatibility docs: repo development uses Node >=22.13, published package smoke starts at Node 20.19.0.
 
-### Patch Changes
 
-- Updated dependencies []:
-  - @loggerjs/core@0.5.0
+## 0.5.0 - 2026-06-15 (repository tag `v0.5.0`)
 
-## 0.4.0
+- Version alignment for repository tag `v0.5.0`.
+- No package runtime source changes landed between `v0.4.0` and `v0.5.0`.
 
-### Minor Changes
 
-- fix
+## 0.4.0 - 2026-06-15 (repository tag `v0.4.0`)
 
-### Patch Changes
+- Version alignment for repository tag `v0.4.0`.
+- Release focused on docs site, generated references, localization, agent skill docs, and npm Trusted Publisher/OIDC workflow hardening.
 
-- Updated dependencies []:
-  - @loggerjs/core@0.4.0
 
-## 0.3.1
+## 0.3.1 - 2026-06-14 (repository tag `v0.3.1`)
 
-### Patch Changes
+- Version alignment for repository tag `v0.3.1`; process integration tests were expanded.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- Updated dependencies []:
-  - @loggerjs/core@0.3.1
 
-## 0.3.0
+## 0.3.0 - 2026-06-13 (repository tag `v0.3.0`)
 
-### Minor Changes
+- Added shared destination write handling, fatal crash flush coverage, worker lifecycle protocol, worker readiness, logger diagnostics publishing, and stream error handling.
+- Fixed close-time worker listener handling and transport close fallback behavior through core dependency updates.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-- fix
 
-### Patch Changes
+## 0.1.0 - 2026-06-13 (repository tag `v0.2.0`)
 
-- Updated dependencies []:
-  - @loggerjs/core@0.3.0
+- Added process signal flushing, Koa/Nest/Hapi adapters, Prisma/Redis/data/job adapters, and Node compression payload transform support.
+- Added packed-consumer and supported Node runtime smoke coverage.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-## 0.2.0
 
-### Minor Changes
+## 0.0.2 - 2026-06-12 (package tag `@loggerjs/node@0.0.2`)
 
-- fix
+- Republished through the explicit provenance publishing path.
+- Updated dependency `@loggerjs/core` to the matching release.
 
-### Patch Changes
 
-- Updated dependencies []:
-  - @loggerjs/core@0.2.0
+## 0.0.1 - 2026-06-12 (package tag `@loggerjs/node@0.0.1`)
 
-## 0.1.0
-
-### Minor Changes
-
-- fix
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @loggerjs/core@0.1.0
-
-## 0.0.2
-
-### Patch Changes
-
-- [`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e) Thanks [@unadlib](https://github.com/unadlib)! - Republish packages through the explicit provenance publishing path.
-
-- Updated dependencies [[`11d6480`](https://github.com/jskits/loggerjs/commit/11d648002fce4de29babc48a64c8d4d71e4ad94e)]:
-  - @loggerjs/core@0.0.2
-
-## 0.1.1
-
-### Patch Changes
-
-- Updated dependencies [[`d9cc28e`](https://github.com/jskits/loggerjs/commit/d9cc28eaf1dae0ac9ae174830a8998f7909edfe7), [`f6e9ec1`](https://github.com/jskits/loggerjs/commit/f6e9ec19b35912a2610b6279f07064d96d90f268), [`fb2a4d4`](https://github.com/jskits/loggerjs/commit/fb2a4d40e93a8c085a942d7eee0d32e980a16ff8)]:
-  - @loggerjs/core@0.1.1
+- Initial Node package with stdout/stderr/file/rotating-file/http/syslog/worker transports, AsyncLocalStorage context, process capture, diagnostics channel, HTTP/fetch/database/queue/CLI/serverless/framework integrations, and worker offload support.
+- Updated dependency `@loggerjs/core` to the matching release.
