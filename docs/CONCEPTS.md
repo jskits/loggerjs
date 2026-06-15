@@ -54,13 +54,13 @@ Middleware may mutate a record, with one rule: **replace fields, never mutate sh
 
 Both are synchronous and error-isolated. They differ in what they see and when:
 
-| | Middleware | Processor |
-| --- | --- | --- |
-| Input | `LogRecord` | `LogEvent` |
-| Runs | before id/message/error work | after projection |
-| Drop | return `null` | return `false` |
-| Mutate | in place (replace fields) | return a new event |
-| Cost of dropping | cheapest possible | projection already paid |
+|                  | Middleware                   | Processor               |
+| ---------------- | ---------------------------- | ----------------------- |
+| Input            | `LogRecord`                  | `LogEvent`              |
+| Runs             | before id/message/error work | after projection        |
+| Drop             | return `null`                | return `false`          |
+| Mutate           | in place (replace fields)    | return a new event      |
+| Cost of dropping | cheapest possible            | projection already paid |
 
 Prefer middleware for enrichment and early filtering. Use processors when you need the resolved event shape — routing by event fields, fingerprinting normalized errors, buffering events for fingers-crossed delivery.
 
@@ -76,9 +76,15 @@ interface Transport {
   minLevel?: LoggerLevel;
   ready?(): void | Promise<void>;
   write?(record: LogRecord, context: TransportContext): void | Promise<void>;
-  writeBatch?(records: LogRecord[], context: TransportContext): void | Promise<void>;
+  writeBatch?(
+    records: LogRecord[],
+    context: TransportContext,
+  ): void | Promise<void>;
   log?(event: LogEvent, context: TransportContext): void | Promise<void>;
-  logBatch?(events: LogEvent[], context: TransportContext): void | Promise<void>;
+  logBatch?(
+    events: LogEvent[],
+    context: TransportContext,
+  ): void | Promise<void>;
   flush?(): void | Promise<void>;
   flushSync?(): void;
   close?(): void | Promise<void>;

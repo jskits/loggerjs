@@ -95,13 +95,13 @@ console.log(rendered.text);
 
 ## Option Guidance
 
-| Option | Use |
-| --- | --- |
-| `mode: "compact"` | One-line local output. Good for browser consoles and busy CLIs. |
-| `mode: "expanded"` | Multi-line output with one detail per line. Good for local Node debugging. |
-| `colors: "auto"` | Terminal default: use ANSI only when the stream looks interactive. |
-| `browserStyles: "auto"` | Browser default: use CSS console styles only in browser-like runtimes. |
-| `includeData` / `includeError` | On by default because pretty output is for humans. |
+| Option                                                            | Use                                                                        |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `mode: "compact"`                                                 | One-line local output. Good for browser consoles and busy CLIs.            |
+| `mode: "expanded"`                                                | Multi-line output with one detail per line. Good for local Node debugging. |
+| `colors: "auto"`                                                  | Terminal default: use ANSI only when the stream looks interactive.         |
+| `browserStyles: "auto"`                                           | Browser default: use CSS console styles only in browser-like runtimes.     |
+| `includeData` / `includeError`                                    | On by default because pretty output is for humans.                         |
 | `includeContext` / `includeTrace` / `includeSource` / `includeId` | Off by default to keep output readable; enable when debugging correlation. |
 
 ## Production Boundary
