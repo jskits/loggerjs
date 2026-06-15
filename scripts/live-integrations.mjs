@@ -16,6 +16,7 @@ const providerArg = args.get("provider") ?? "all";
 const providers =
   providerArg === "all" ? ["elastic", "loki", "datadog", "cloudwatch"] : providerArg.split(",");
 const checkConfig = args.get("check-config") === "true";
+const requireReady = args.get("require-ready") === "true";
 
 const providerConfig = {
   cloudwatch: {
@@ -32,11 +33,13 @@ const providerConfig = {
     mode: "docker-or-external",
     optional: ["ELASTIC_API_KEY", "ELASTIC_DOCKER_IMAGE", "ELASTIC_URL"],
     required: [],
+    urlEnv: "ELASTIC_URL",
   },
   loki: {
     mode: "docker-or-external",
     optional: ["LOKI_DOCKER_IMAGE", "LOKI_TENANT_ID", "LOKI_URL"],
     required: [],
+    urlEnv: "LOKI_URL",
   },
 };
 
@@ -86,12 +89,22 @@ function formatEnvList(names) {
   return names.length === 0 ? "-" : names.join(", ");
 }
 
-function providerStatus(provider) {
+function providerReadiness(provider) {
   const config = providerConfig[provider];
   if (!config) throw new Error(`Unknown provider: ${provider}`);
   const missing = config.required.filter((name) => !optionalEnv(name));
-  if (missing.length === 0) return "ready";
-  return `missing ${formatEnvList(missing)}`;
+  if (missing.length > 0) {
+    return { ready: false, status: `missing ${formatEnvList(missing)}` };
+  }
+  if (config.mode === "docker-or-external") {
+    if (optionalEnv(config.urlEnv)) return { ready: true, status: `ready via ${config.urlEnv}` };
+    if (dockerAvailable()) return { ready: true, status: "ready via Docker" };
+    return {
+      ready: false,
+      status: `missing ${config.urlEnv} and Docker is unavailable`,
+    };
+  }
+  return { ready: true, status: "ready" };
 }
 
 function reportConfig() {
@@ -99,11 +112,14 @@ function reportConfig() {
     "| Provider | Mode | Required env | Optional env | Status |",
     "| --- | --- | --- | --- | --- |",
   ];
+  const notReady = [];
   for (const provider of providers) {
     const config = providerConfig[provider];
     if (!config) throw new Error(`Unknown provider: ${provider}`);
+    const readiness = providerReadiness(provider);
+    if (!readiness.ready) notReady.push(`${provider}: ${readiness.status}`);
     lines.push(
-      `| ${provider} | ${config.mode} | ${formatEnvList(config.required)} | ${formatEnvList(config.optional)} | ${providerStatus(provider)} |`,
+      `| ${provider} | ${config.mode} | ${formatEnvList(config.required)} | ${formatEnvList(config.optional)} | ${readiness.status} |`,
     );
   }
 
@@ -114,6 +130,9 @@ function reportConfig() {
       process.env.GITHUB_STEP_SUMMARY,
       `### Live integration configuration\n\n${table}\n\n`,
     );
+  }
+  if (requireReady && notReady.length > 0) {
+    throw new Error(`Live integration providers are not ready:\n- ${notReady.join("\n- ")}`);
   }
 }
 
