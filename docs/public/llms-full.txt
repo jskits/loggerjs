@@ -21,7 +21,7 @@ Source: https://github.com/jskits/loggerjs/blob/main/README.md
 [![license](https://img.shields.io/npm/l/@loggerjs/core)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![core dependencies](https://img.shields.io/badge/core_deps-0-44CC11)](packages/core/package.json)
-[![Node](https://img.shields.io/badge/Node-%E2%89%A522.13-339933?logo=node.js&logoColor=white)](package.json)
+[![Node runtime](https://img.shields.io/badge/runtime_Node-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](.github/workflows/ci.yml)
 [![modules](https://img.shields.io/badge/modules-ESM%20%2B%20CJS-F7DF1E)](#packages)
 
 [Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Pretty](docs/PRETTY.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [AI Skill](docs/AI-SKILL.md) · [Architecture](docs/ARCHITECTURE.md)
@@ -465,6 +465,11 @@ Runnable examples live in [`examples/`](examples): [Node basics](examples/node-b
 
 ## Development
 
+Use **Node >=22.13** for repository development and the full `pnpm check` gate.
+Published packages are smoke-tested as packed consumers on **Node 20.19, 22,
+and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain
+floor.
+
 ```bash
 pnpm install
 pnpm check        # format, lint, typecheck, test, build, size budgets, API reports, pack checks
@@ -501,6 +506,8 @@ pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
 All packages ship ESM and CJS entry points with full TypeScript declarations.
+For Node consumers, packed packages are smoke-tested on Node 20.19.0, 22, and
+24. Repository development uses Node >=22.13.0 for the full toolchain.
 
 ## First Logger (Node)
 
@@ -3886,11 +3893,22 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/CONTRIBUTING.md
 ## Setup
 
 ```bash
-pnpm install   # Node ^20.19 or >=22.12, pnpm >= 11.5.3
+pnpm install   # repository development uses Node >=22.13, pnpm >= 11.5.3
 pnpm check     # the full gate — run before pushing
 ```
 
 `pnpm check` is the same gate CI runs on every pull request: format check (oxfmt), lint (oxlint), typecheck, tests (vitest), builds (rolldown + tsc), size budgets, export map verification, public type surface check, API report check, and npm pack validation. CI additionally runs `pnpm bench:gate`.
+
+## Node Version Policy
+
+- **Repository development:** use Node `>=22.13.0`. The root `package.json`
+  `engines` field and local tooling are intentionally set to this floor.
+- **Full CI gate:** runs `pnpm check` on Node 22 and 24, with releases built on
+  Node 24.
+- **Published package runtime compatibility:** packed packages are smoke-tested
+  as consumers on Node 20.19.0, 22, and 24. Node 20.19.0 is the runtime
+  compatibility floor for Node consumers; it does not lower the repo development
+  toolchain requirement.
 
 ## Repository Layout
 

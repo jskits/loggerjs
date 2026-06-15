@@ -13,7 +13,7 @@
 [![license](https://img.shields.io/npm/l/@loggerjs/core)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![core dependencies](https://img.shields.io/badge/core_deps-0-44CC11)](packages/core/package.json)
-[![Node](https://img.shields.io/badge/Node-%E2%89%A522.13-339933?logo=node.js&logoColor=white)](package.json)
+[![Node runtime](https://img.shields.io/badge/runtime_Node-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](.github/workflows/ci.yml)
 [![modules](https://img.shields.io/badge/modules-ESM%20%2B%20CJS-F7DF1E)](#packages)
 
 [Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Pretty](docs/PRETTY.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [AI Skill](docs/AI-SKILL.md) · [Architecture](docs/ARCHITECTURE.md)
@@ -456,6 +456,11 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 Runnable examples live in [`examples/`](examples): [Node basics](examples/node-basic), [browser basics](examples/browser-basic), [OpenTelemetry](examples/otel-basic), [Sentry](examples/sentry-basic).
 
 ## Development
+
+Use **Node >=22.13** for repository development and the full `pnpm check` gate.
+Published packages are smoke-tested as packed consumers on **Node 20.19, 22,
+and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain
+floor.
 
 ```bash
 pnpm install

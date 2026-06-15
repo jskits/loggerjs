@@ -4,9 +4,13 @@
 
 [![npm](https://img.shields.io/npm/v/@loggerjs/node.svg)](https://www.npmjs.com/package/@loggerjs/node)
 [![license](https://img.shields.io/npm/l/@loggerjs/node)](../../LICENSE)
-[![Node](https://img.shields.io/badge/Node-%E2%89%A522.13-339933?logo=node.js&logoColor=white)](package.json)
+[![Node runtime](https://img.shields.io/badge/runtime_Node-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](../../.github/workflows/ci.yml)
 
 The Node platform package for [LoggerJS](../../README.md). It re-exports the entire `@loggerjs/core` API and adds stdout/stderr/file/HTTP/syslog/worker transports, an AsyncLocalStorage context bridge, and integrations that turn process crashes, HTTP frameworks, clients, and queues into structured logs — all opt-in.
+
+`@loggerjs/node` is smoke-tested from packed packages on Node 20.19.0, 22, and
+24. The repository development toolchain uses Node >=22.13.0; that root
+requirement does not raise the published package runtime floor.
 
 ## Install
 
