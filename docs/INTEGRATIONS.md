@@ -14,6 +14,43 @@ Privacy guidance for what to enable and how to sanitize lives in [OPERATIONS.md]
 
 Custom integrations should feature-detect their platform surface and no-op when the surface is unavailable.
 
+## Stability Levels
+
+Integration stability describes the public setup/options contract and teardown
+behavior. It does not mean the underlying platform emits every signal in every
+runtime, browser version, framework version, or deployment mode.
+
+| Level | Meaning |
+| --- | --- |
+| Stable | Intended for v1-compatible application use. Option names, setup/teardown behavior, and high-level captured fields are protected. |
+| Compatible | Public and tested, but exact field shape or framework/runtime edge handling may still be refined before v1. |
+| Runtime-dependent | Public API is stable, but the signal itself depends on platform support, browser policy, framework hooks, or deployment lifecycle behavior. |
+
+| Integration | Stability | Why |
+| --- | --- | --- |
+| `captureConsoleIntegration()` | Stable | Core browser capture primitive with loop prevention and teardown coverage. |
+| `captureBrowserErrorsIntegration()` | Stable | Standard browser error and rejection capture; CSP details vary by browser. |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | Request/response capture contract is stable with explicit sanitization hooks. |
+| `pageLifecycleIntegration()` | Runtime-dependent | API is stable, but pagehide/visibility timing is browser-controlled and best effort. |
+| `captureWebVitalsIntegration()` | Runtime-dependent | Depends on PerformanceObserver and browser metric support. |
+| `capturePerformanceIntegration()` | Runtime-dependent | Entry availability differs by browser, permission policy, and page lifecycle. |
+| `captureReportingIntegration()` | Runtime-dependent | ReportingObserver and report types vary across browsers. |
+| `captureRouterIntegration()` | Stable | History/hash capture is stable for generic browser routing. |
+| Framework router adapters | Compatible | Public adapters are tested, but framework-specific hook shapes may evolve. |
+| `captureFrameworkErrorsIntegration()` | Compatible | Public helper API is stable; framework error hook payloads remain framework-owned. |
+| `captureUserActionsIntegration()` | Compatible | Privacy-first defaults are stable; element metadata heuristics may be tuned. |
+| `captureWebSocketIntegration()` | Compatible | Constructor patching and event capture are public; sampled message details may evolve. |
+| `captureServiceWorkerIntegration()` | Runtime-dependent | Depends on service worker availability and lifecycle messages. |
+| `captureRuntimeHostIntegration()` | Runtime-dependent | Extension and Electron surfaces are host-specific and intentionally opt-in by channel. |
+| `browserContextPropagationIntegration()` | Stable | Ambient context binding contract is stable. |
+| `captureProcessIntegration()` | Stable | Node crash/warning/exit capture and bounded flush behavior are production commitments. |
+| `diagnosticsChannelIntegration()` | Runtime-dependent | Node channel names and payloads come from Node and instrumented libraries. |
+| HTTP framework integrations | Compatible | Express/Fastify/Koa/Nest/Hapi adapters are public; framework lifecycle details may be tuned. |
+| `nodeFetchIntegration()` / `nodeHttpClientIntegration()` | Compatible | Outgoing HTTP capture is public; Node/undici/http edge details may evolve. |
+| `captureCliIntegration()` / `serverlessIntegration()` | Compatible | Lifecycle contract is public; platform-specific invocation metadata may be refined. |
+| `queueIntegration()` / `bullMqIntegration()` | Compatible | Generic and BullMQ operation capture is public; queue payload metadata is intentionally configurable. |
+| `databaseIntegration()` / `prismaIntegration()` / `redisIntegration()` | Compatible | Data-client method wrapping is public; statement/command extraction heuristics may evolve. |
+
 ## Browser / Frontend (`@loggerjs/browser`)
 
 | Integration                                                                                                   | Captures                                                                               | Notes                                                                                                                                                             |

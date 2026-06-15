@@ -13,6 +13,41 @@ A transport delivers log records or events to a destination. This page catalogs 
 | Vendor / observability | OTLP, Sentry, Datadog, Elastic, Loki, CloudWatch | HTTP wire transports run where their `fetch`/crypto/runtime requirements are present; SDK/provider adapters require the application-provided SDK object or provider. Vendor credentials are usually safer on servers or trusted workers. |
 | Database / local app / backend | `databaseTransport`, `postgresTransport`, `sqliteTransport` | Driver-agnostic at the LoggerJS layer, but the application must provide database drivers; intended for Node.js, Electron, CLIs, or backend workers. |
 
+## Stability Levels
+
+Transport stability describes the public API promise, not an absolute delivery
+guarantee. Browser storage, process shutdown, network collectors, and vendor
+backends can still fail; the reliability table below is the delivery contract.
+
+| Level | Meaning |
+| --- | --- |
+| Stable | Intended for v1-compatible application use. Option names and high-level semantics are protected by API reports, tests, and docs. |
+| Compatible | Public and tested, but exact runtime behavior or message shape may still be tuned before v1. Use when the documented caveats fit your deployment. |
+| Runtime-dependent | Public API is stable, but practical reliability depends heavily on browser, worker, storage, network, SDK, or database behavior outside LoggerJS. Validate in your target environment. |
+| Test-only | Built for assertions and fixtures, not production delivery. |
+
+| Transport | Stability | Why |
+| --- | --- | --- |
+| `consoleTransport()` | Stable | Runtime-neutral local sink with loop prevention for console capture. |
+| `memoryTransport()` | Stable | Bounded in-memory diagnostics cache; intentionally non-durable. |
+| `testTransport()` | Test-only | Assertion helper with wait/snapshot APIs. |
+| `batchTransport()` / `retryTransport()` / `fallbackTransport()` | Stable | Core reliability wrappers used by first-party transports. |
+| Pretty transports | Stable | Developer display API is stable; exact colors/layout remain presentation details. |
+| `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | Production local sinks with drain and crash-path behavior. |
+| `rotatingFileTransport()` | Stable | Local size rotation; use one writer process per file. |
+| `nodeHttpTransport()` / `otlpHttpTransport()` | Stable | Self-wrapped batched HTTP delivery with shared reliability options. |
+| `nodeSyslogTransport()` | Stable | Wire formatting is stable; UDP/TCP reliability follows syslog transport semantics. |
+| `workerTransport()` | Compatible | Message protocol is public, but ready/ack/fallback lifecycle tuning may evolve. |
+| `browserHttpTransport()` | Stable | Primary browser remote transport; pagehide beacon remains best effort. |
+| `memoryBrowserHttpOfflineQueue()` | Stable | Stable API for temporary offline periods; not reload-durable. |
+| `indexedDbBrowserHttpOfflineQueue()` / `indexedDbTransport()` / `offlineFirstTransport()` | Runtime-dependent | Stable API, but persistence depends on browser IndexedDB, quota, eviction, private mode, and storage policy. |
+| `browserWebSocketTransport()` | Compatible | Useful for live/debug channels; reconnection and final durability are caller-owned. |
+| `browserServiceWorkerTransport()` | Runtime-dependent | API is public, but delivery depends on service worker registration, activation, and lifetime. |
+| `browserBroadcastChannelTransport()` | Compatible | Same-origin tab fan-out is intentionally lossy and receiver-dependent. |
+| Datadog / Elastic / Loki / CloudWatch transports | Stable | Wire payload APIs are stable; production durability requires batching/retry around raw transports. |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Stable | Adapter contract is stable; delivery follows the SDK/provider object supplied by the app. |
+| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Stable | LoggerJS adapter API is stable; transaction and connection semantics are driver-owned. |
+
 ## Reliability Posture
 
 Transports are composable by default. Some transports include batching or durable
