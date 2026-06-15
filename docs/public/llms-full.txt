@@ -926,6 +926,24 @@ backends can still fail; the reliability table below is the delivery contract.
 | `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Stable | Adapter contract is stable; delivery follows the SDK/provider object supplied by the app. |
 | `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Stable | LoggerJS adapter API is stable; transaction and connection semantics are driver-owned. |
 
+## Import Boundaries
+
+Root package imports are convenience presets. Public transport subpaths are
+documented so users can choose narrower bundles and so new built-in transports
+cannot silently expand the surface without matching docs.
+
+| Runtime | Public transport subpaths |
+| --- | --- |
+| Core | `@loggerjs/core/transport-console`, `@loggerjs/core/transport-batch`, `@loggerjs/core/transport-reliability`, `@loggerjs/core/transport-test` |
+| Browser | `@loggerjs/browser/transport-http`, `@loggerjs/browser/transport-broadcast-channel`, `@loggerjs/browser/transport-service-worker`, `@loggerjs/browser/transport-websocket`, `@loggerjs/browser/transport-indexeddb`, `@loggerjs/browser/offline-first-transport` |
+| Node.js | `@loggerjs/node/transport-http`, `@loggerjs/node/transport-file`, `@loggerjs/node/transport-rotating-file`, `@loggerjs/node/transport-stdout`, `@loggerjs/node/transport-syslog`, `@loggerjs/node/transport-worker` |
+| Pretty | `@loggerjs/pretty/transport-console`, `@loggerjs/pretty/transport-stream` |
+| Observability and data | `@loggerjs/otel/transport-http`, `@loggerjs/sentry/transport`, `@loggerjs/datadog/transport`, `@loggerjs/elastic/transport`, `@loggerjs/loki/transport`, `@loggerjs/cloudwatch/transport`, `@loggerjs/database/transport` |
+
+`pnpm verify:component-docs` fails when a public transport subpath is exported
+without being listed here. New entries should also update the stability and
+reliability tables above.
+
 ## Reliability Posture
 
 Transports are composable by default. Some transports include batching or durable
@@ -1428,6 +1446,21 @@ runtime, browser version, framework version, or deployment mode.
 | `captureCliIntegration()` / `serverlessIntegration()` | Compatible | Lifecycle contract is public; platform-specific invocation metadata may be refined. |
 | `queueIntegration()` / `bullMqIntegration()` | Compatible | Generic and BullMQ operation capture is public; queue payload metadata is intentionally configurable. |
 | `databaseIntegration()` / `prismaIntegration()` / `redisIntegration()` | Compatible | Data-client method wrapping is public; statement/command extraction heuristics may evolve. |
+
+## Import Boundaries
+
+Root package imports are convenience presets. Public integration subpaths are
+documented so users can choose narrower bundles and so new built-in integrations
+cannot silently expand the surface without matching docs.
+
+| Runtime | Public integration subpaths |
+| --- | --- |
+| Browser | `@loggerjs/browser/integration-console`, `@loggerjs/browser/integration-context`, `@loggerjs/browser/integration-errors`, `@loggerjs/browser/integration-fetch`, `@loggerjs/browser/integration-xhr`, `@loggerjs/browser/integration-framework-errors`, `@loggerjs/browser/integration-framework-routers`, `@loggerjs/browser/integration-reporting`, `@loggerjs/browser/integration-router`, `@loggerjs/browser/integration-runtime-host`, `@loggerjs/browser/integration-service-worker`, `@loggerjs/browser/integration-user-actions`, `@loggerjs/browser/integration-websocket`, `@loggerjs/browser/integration-web-vitals`, `@loggerjs/browser/integration-performance`, `@loggerjs/browser/integration-page-lifecycle` |
+| Node.js | `@loggerjs/node/integration-process`, `@loggerjs/node/integration-cli`, `@loggerjs/node/integration-koa`, `@loggerjs/node/integration-nest`, `@loggerjs/node/integration-hapi`, `@loggerjs/node/integration-prisma`, `@loggerjs/node/integration-redis`, `@loggerjs/node/integration-queue`, `@loggerjs/node/integration-bullmq`, `@loggerjs/node/integration-serverless`, `@loggerjs/node/integration-database`, `@loggerjs/node/integration-express`, `@loggerjs/node/integration-fastify`, `@loggerjs/node/integration-fetch`, `@loggerjs/node/integration-http-client`, `@loggerjs/node/integration-diagnostics` |
+
+`pnpm verify:component-docs` fails when a public integration subpath is exported
+without being listed here. New entries should also update the stability table
+above and the runtime validation notes for that integration family.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 
@@ -3056,6 +3089,20 @@ on with low migration risk, and the areas that may still change before v1.
 The checked-in `api-reports/` files are the mechanical source of truth for the
 published TypeScript surface. This document is the human stability contract.
 
+## Current Stabilization Phase
+
+Before v1, the project is prioritizing confidence in the existing public surface
+over adding more built-in transports or integrations. New public component
+subpaths are allowed only when the change also defines their stability level,
+documents runtime and delivery caveats, updates import-boundary docs, keeps size
+budgets honest, and adds validation at the closest practical environment level
+(unit, browser E2E, runtime smoke, Docker-backed live service, or external
+provider smoke).
+
+If a use case can be solved by composing existing transports, processors,
+codecs, or wrappers, prefer documentation and examples over a new core/built-in
+component.
+
 ## Change Policy
 
 For the stable subset below:
@@ -3937,6 +3984,8 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **Size budgets** (`scripts/check-size-budgets.mjs`): every package has raw + gzip ceilings checked after build. Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the reason in the message.
 
+**Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
+
 **Benchmark gate** (`pnpm bench:gate`): hot-path scenarios are limited as ratios against pino measured on the same machine. Limits are generous — they catch structural regressions (an accidental allocation per log, a dropped fast path), not noise. If your change legitimately shifts a ratio, update the limits in `scripts/check-bench-regression.mjs` with justification.
 
 **Changesets**: user-facing changes to published packages need a changeset (`pnpm changeset`); pure repo tooling does not.
@@ -3944,6 +3993,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 ## Engineering Conventions
 
 - **Core stays platform-neutral**: no DOM types, no Node built-ins, feature-detect via `globalThis`. The public type surface must compile without `lib.dom`.
+- **Prefer stabilization over surface expansion before v1**: harden existing transports/integrations first. A new built-in component needs a production use case, runtime-appropriate package placement, tests, stability docs, import-boundary docs, and size-budget evidence.
 - **The pipeline never throws into the app.** Middleware, processors, codecs, and transports are error-isolated; failures report through `onInternalError` and meta counters. New code keeps that property.
 - **Codecs must not lose logs**: wrap risky encodes and fall back to `safeJsonStringify`; count fallbacks in meta.
 - **Shared objects are frozen, replaced not mutated** (`record.tags`, `record.ctx`).
@@ -4002,6 +4052,22 @@ Use the real `canary` dist-tag only from a versioned prerelease branch or workfl
 pnpm check
 changeset publish --tag canary
 ```
+
+## New Component Readiness
+
+Before a release that adds a public transport or integration subpath, verify the
+change includes:
+
+- stability classification in `docs/TRANSPORTS.md` or `docs/INTEGRATIONS.md`;
+- import-boundary coverage checked by `pnpm verify:component-docs`;
+- runtime validation appropriate to the component: browser E2E for browser
+  lifecycle/storage behavior, runtime smoke for edge/runtime claims,
+  Docker-backed live tests for local services, or external-provider smoke for
+  hosted vendors;
+- size-budget evidence from `pnpm size:check`, with any budget increase justified
+  in the change;
+- production docs that spell out delivery, retry, privacy, and credential
+  placement caveats.
 
 ## NPM Publishing
 

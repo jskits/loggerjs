@@ -51,6 +51,21 @@ runtime, browser version, framework version, or deployment mode.
 | `queueIntegration()` / `bullMqIntegration()` | Compatible | Generic and BullMQ operation capture is public; queue payload metadata is intentionally configurable. |
 | `databaseIntegration()` / `prismaIntegration()` / `redisIntegration()` | Compatible | Data-client method wrapping is public; statement/command extraction heuristics may evolve. |
 
+## Import Boundaries
+
+Root package imports are convenience presets. Public integration subpaths are
+documented so users can choose narrower bundles and so new built-in integrations
+cannot silently expand the surface without matching docs.
+
+| Runtime | Public integration subpaths |
+| --- | --- |
+| Browser | `@loggerjs/browser/integration-console`, `@loggerjs/browser/integration-context`, `@loggerjs/browser/integration-errors`, `@loggerjs/browser/integration-fetch`, `@loggerjs/browser/integration-xhr`, `@loggerjs/browser/integration-framework-errors`, `@loggerjs/browser/integration-framework-routers`, `@loggerjs/browser/integration-reporting`, `@loggerjs/browser/integration-router`, `@loggerjs/browser/integration-runtime-host`, `@loggerjs/browser/integration-service-worker`, `@loggerjs/browser/integration-user-actions`, `@loggerjs/browser/integration-websocket`, `@loggerjs/browser/integration-web-vitals`, `@loggerjs/browser/integration-performance`, `@loggerjs/browser/integration-page-lifecycle` |
+| Node.js | `@loggerjs/node/integration-process`, `@loggerjs/node/integration-cli`, `@loggerjs/node/integration-koa`, `@loggerjs/node/integration-nest`, `@loggerjs/node/integration-hapi`, `@loggerjs/node/integration-prisma`, `@loggerjs/node/integration-redis`, `@loggerjs/node/integration-queue`, `@loggerjs/node/integration-bullmq`, `@loggerjs/node/integration-serverless`, `@loggerjs/node/integration-database`, `@loggerjs/node/integration-express`, `@loggerjs/node/integration-fastify`, `@loggerjs/node/integration-fetch`, `@loggerjs/node/integration-http-client`, `@loggerjs/node/integration-diagnostics` |
+
+`pnpm verify:component-docs` fails when a public integration subpath is exported
+without being listed here. New entries should also update the stability table
+above and the runtime validation notes for that integration family.
+
 ## Browser / Frontend (`@loggerjs/browser`)
 
 | Integration                                                                                                   | Captures                                                                               | Notes                                                                                                                                                             |

@@ -107,6 +107,25 @@ contract as explicit as a production Node logger.
 
 ## 5. Remaining Roadmap
 
+### 5.0 Hold Surface Expansion Until the Baseline Is Boring
+
+**Why:** The current first-party surface is already broad. More transports and
+integrations are less valuable than making existing ones predictable, documented,
+and validated in the runtimes where users rely on them.
+
+The default path before v1 is:
+
+- strengthen existing production paths before adding new ones;
+- keep runtime-specific behavior outside `@loggerjs/core`;
+- add new public component subpaths only with stability docs, import-boundary
+  docs, size-budget evidence, and real-environment validation;
+- prefer examples that compose existing processors/transports when that solves
+  the use case.
+
+**Done when:** `pnpm check`, browser E2E, live integration config/readiness, and
+release docs all give maintainers the same answer about whether a public
+component is ready to ship.
+
 ### 5.1 Finish Transport Metric Naming
 
 **Why:** Users need one mental model for degradation across Node, browser,

@@ -7,6 +7,20 @@ on with low migration risk, and the areas that may still change before v1.
 The checked-in `api-reports/` files are the mechanical source of truth for the
 published TypeScript surface. This document is the human stability contract.
 
+## Current Stabilization Phase
+
+Before v1, the project is prioritizing confidence in the existing public surface
+over adding more built-in transports or integrations. New public component
+subpaths are allowed only when the change also defines their stability level,
+documents runtime and delivery caveats, updates import-boundary docs, keeps size
+budgets honest, and adds validation at the closest practical environment level
+(unit, browser E2E, runtime smoke, Docker-backed live service, or external
+provider smoke).
+
+If a use case can be solved by composing existing transports, processors,
+codecs, or wrappers, prefer documentation and examples over a new core/built-in
+component.
+
 ## Change Policy
 
 For the stable subset below:

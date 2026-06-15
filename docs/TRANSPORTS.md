@@ -48,6 +48,24 @@ backends can still fail; the reliability table below is the delivery contract.
 | `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Stable | Adapter contract is stable; delivery follows the SDK/provider object supplied by the app. |
 | `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Stable | LoggerJS adapter API is stable; transaction and connection semantics are driver-owned. |
 
+## Import Boundaries
+
+Root package imports are convenience presets. Public transport subpaths are
+documented so users can choose narrower bundles and so new built-in transports
+cannot silently expand the surface without matching docs.
+
+| Runtime | Public transport subpaths |
+| --- | --- |
+| Core | `@loggerjs/core/transport-console`, `@loggerjs/core/transport-batch`, `@loggerjs/core/transport-reliability`, `@loggerjs/core/transport-test` |
+| Browser | `@loggerjs/browser/transport-http`, `@loggerjs/browser/transport-broadcast-channel`, `@loggerjs/browser/transport-service-worker`, `@loggerjs/browser/transport-websocket`, `@loggerjs/browser/transport-indexeddb`, `@loggerjs/browser/offline-first-transport` |
+| Node.js | `@loggerjs/node/transport-http`, `@loggerjs/node/transport-file`, `@loggerjs/node/transport-rotating-file`, `@loggerjs/node/transport-stdout`, `@loggerjs/node/transport-syslog`, `@loggerjs/node/transport-worker` |
+| Pretty | `@loggerjs/pretty/transport-console`, `@loggerjs/pretty/transport-stream` |
+| Observability and data | `@loggerjs/otel/transport-http`, `@loggerjs/sentry/transport`, `@loggerjs/datadog/transport`, `@loggerjs/elastic/transport`, `@loggerjs/loki/transport`, `@loggerjs/cloudwatch/transport`, `@loggerjs/database/transport` |
+
+`pnpm verify:component-docs` fails when a public transport subpath is exported
+without being listed here. New entries should also update the stability and
+reliability tables above.
+
 ## Reliability Posture
 
 Transports are composable by default. Some transports include batching or durable

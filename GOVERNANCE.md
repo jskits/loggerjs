@@ -17,12 +17,30 @@ decisions explicit enough for additional maintainers to participate safely.
 
 - Public API changes must update `docs/API-STABILITY.md` when they affect the
   stable or experimental surface.
+- New public transport or integration subpaths must update the stability table,
+  import-boundary list, runtime validation guidance, and package size impact in
+  the same change. `pnpm verify:component-docs` enforces the import-boundary
+  documentation requirement.
 - Performance claims must cite `docs/BENCHMARKS.md` or
   `docs/BENCHMARK-MATRIX.md`; broader claims require matching benchmark rows.
 - Security and privacy changes require tests for the failing input or threat
   class.
 - Runtime-specific changes should stay in the matching package rather than
   adding platform dependencies to `@loggerjs/core`.
+
+## Current Expansion Policy
+
+LoggerJS is in a stabilization phase before v1. Prefer hardening existing
+transports, integrations, processors, docs, benchmarks, and runtime validation
+over adding more built-in components. A new built-in component should clear all
+of these gates before merge:
+
+- it addresses a production use case not already covered by composition;
+- it stays in a runtime-appropriate package or a separate adapter package;
+- it has unit tests plus the nearest real-environment or live-service validation
+  practical for that runtime;
+- it has explicit stability, reliability, privacy, and import-boundary docs;
+- it does not grow root aggregate package budgets without justification.
 
 ## Releases
 

@@ -47,6 +47,8 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **Size budgets** (`scripts/check-size-budgets.mjs`): every package has raw + gzip ceilings checked after build. Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the reason in the message.
 
+**Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
+
 **Benchmark gate** (`pnpm bench:gate`): hot-path scenarios are limited as ratios against pino measured on the same machine. Limits are generous — they catch structural regressions (an accidental allocation per log, a dropped fast path), not noise. If your change legitimately shifts a ratio, update the limits in `scripts/check-bench-regression.mjs` with justification.
 
 **Changesets**: user-facing changes to published packages need a changeset (`pnpm changeset`); pure repo tooling does not.
@@ -54,6 +56,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 ## Engineering Conventions
 
 - **Core stays platform-neutral**: no DOM types, no Node built-ins, feature-detect via `globalThis`. The public type surface must compile without `lib.dom`.
+- **Prefer stabilization over surface expansion before v1**: harden existing transports/integrations first. A new built-in component needs a production use case, runtime-appropriate package placement, tests, stability docs, import-boundary docs, and size-budget evidence.
 - **The pipeline never throws into the app.** Middleware, processors, codecs, and transports are error-isolated; failures report through `onInternalError` and meta counters. New code keeps that property.
 - **Codecs must not lose logs**: wrap risky encodes and fall back to `safeJsonStringify`; count fallbacks in meta.
 - **Shared objects are frozen, replaced not mutated** (`record.tags`, `record.ctx`).
