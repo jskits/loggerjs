@@ -5,6 +5,7 @@ import {
   createEncodeContext,
   createRecord,
   eventToRecord,
+  isLogRecord,
   normalizeCategory,
   recordToEvent,
   resolveMessage,
@@ -62,12 +63,20 @@ describe("LogRecord helpers", () => {
 
   it("normalizes categories and bound context for immutable reuse", () => {
     const category = normalizeCategory(["api", "checkout"]);
+    const stringCategory = normalizeCategory("worker");
+    const emptyCategory = normalizeCategory([]);
     const context = createBoundContext({ requestId: "req-1" });
 
     expect(category).toEqual(["api", "checkout"]);
     expect(Object.isFrozen(category)).toBe(true);
+    expect(stringCategory).toEqual(["worker"]);
+    expect(Object.isFrozen(stringCategory)).toBe(true);
+    expect(emptyCategory).toEqual(["app"]);
     expect(context).toEqual({ requestId: "req-1" });
     expect(Object.isFrozen(context)).toBe(true);
+    expect(createBoundContext({})).toBeNull();
+    expect(createBoundContext(null)).toBeNull();
+    expect(createBoundContext(undefined)).toBeNull();
   });
 
   it("clones records with the same field order and patched values", () => {
@@ -80,18 +89,26 @@ describe("LogRecord helpers", () => {
       seq: 2,
     });
     const clone = cloneRecord(record, {
+      time: 11,
       level: 40,
       source: "integration:fetch",
+      seq: 3,
     });
 
     expect(Object.keys(clone)).toEqual(recordKeys);
     expect(clone).not.toBe(record);
     expect(clone).toMatchObject({
+      time: 11,
       level: 40,
       category: ["api"],
       msg: "created",
       props: { orderId: "ord-1" },
       source: "integration:fetch",
+      seq: 3,
+    });
+    expect(cloneRecord(record, { time: undefined, seq: undefined })).toMatchObject({
+      time: 10,
+      seq: 2,
     });
     expect(record.level).toBe(30);
     expect(record.source).toBe("app");
@@ -156,6 +173,39 @@ describe("LogRecord helpers", () => {
     expect(resolveMessage(record)).toBe("expensive message");
     expect(lazy).toHaveBeenCalledTimes(1);
     expect(record.lazy).toBeNull();
+  });
+
+  it("turns lazy message resolver failures into stable record state", () => {
+    const failure = new Error("message failed");
+    const lazy = vi.fn<() => string>(() => {
+      throw failure;
+    });
+    const record = createRecord({
+      time: 10,
+      level: 20,
+      lazy,
+      seq: 2,
+    });
+
+    expect(resolveMessage(record)).toBe("[loggerjs message resolver failed]");
+    expect(resolveMessage(record)).toBe("[loggerjs message resolver failed]");
+    expect(lazy).toHaveBeenCalledTimes(1);
+    expect(record.err).toBe(failure);
+    expect(record.lazy).toBeNull();
+
+    const existingError = new Error("transport failed");
+    const existingErrorRecord = createRecord({
+      time: 11,
+      level: 20,
+      lazy: () => {
+        throw failure;
+      },
+      err: existingError,
+      seq: 3,
+    });
+
+    expect(resolveMessage(existingErrorRecord)).toBe("[loggerjs message resolver failed]");
+    expect(existingErrorRecord.err).toBe(existingError);
   });
 
   it("projects records to the compatibility LogEvent shape", () => {
@@ -270,6 +320,53 @@ describe("LogRecord helpers", () => {
     // A runtime source collapses to a string and projects back as integration.
     expect(record.source).toBe("node");
     expect(recordToEvent(record).source).toEqual({ integration: "node" });
+  });
+
+  it("normalizes sparse event fields when converting events to records", () => {
+    const undefinedData = eventToRecord({
+      id: "evt-1",
+      time: 10,
+      seq: 2,
+      level: 30,
+      levelName: "info",
+      logger: "..",
+      message: "created",
+      data: undefined,
+    });
+    const arrayData = eventToRecord({
+      id: "evt-2",
+      time: 11,
+      seq: 3,
+      level: 30,
+      levelName: "info",
+      logger: "api..orders",
+      message: "items",
+      data: ["a", "b"],
+    });
+
+    expect(undefinedData.category).toEqual(["app"]);
+    expect(undefinedData.props).toBeNull();
+    expect(arrayData.category).toEqual(["api", "orders"]);
+    expect(arrayData.props).toEqual({ value: ["a", "b"] });
+  });
+
+  it("recognizes records without treating partial event-like objects as records", () => {
+    const record = createRecord({ time: 10, level: 30, msg: "created", seq: 2 });
+
+    expect(isLogRecord(record)).toBe(true);
+    expect(isLogRecord(null)).toBe(false);
+    expect(isLogRecord({ category: ["api"] })).toBe(false);
+    expect(
+      isLogRecord({
+        id: "evt-1",
+        time: 10,
+        seq: 2,
+        level: 30,
+        levelName: "info",
+        logger: "api",
+        message: "created",
+      }),
+    ).toBe(false);
   });
 
   it("memoizes the default id time segment without staleness", () => {
