@@ -417,7 +417,7 @@ Codecs fall back to a safe representation on circular references instead of thro
 
 ## How It Compares
 
-LoggerJS shines when the logging problem spans **browser and server** collection from one mental model. A fair, repo-sourced snapshot (full matrix and sources in [docs/COMPARISON.md](docs/COMPARISON.md)):
+LoggerJS shines when the logging problem spans **browser and server** collection from one mental model — and when you want logs delivered to **your own** destinations (HTTP, files, your DB, Loki/Elasticsearch, OTLP) rather than a single vendor's SaaS, from a zero-dependency core that runs under strict CSP, on edge/Workers, and offline. A fair, repo-sourced snapshot (full matrix and sources in [docs/COMPARISON.md](docs/COMPARISON.md)):
 
 | Capability                             |        LoggerJS         | Pino | Winston | LogTape |
 | -------------------------------------- | :---------------------: | :--: | :-----: | :-----: |

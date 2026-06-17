@@ -35,7 +35,11 @@ all sinks, runtimes, payload shapes, or third-party transports.
 LoggerJS is best when the logging problem spans browser and server collection:
 automatic integrations, structured middleware, reliable transport delivery,
 offline browser persistence, codec choice per destination, and vendor/DB/OTLP
-delivery from one mental model.
+delivery from one mental model. Its most defensible niche is **vendor-neutral,
+self-hosted delivery** — logs go to destinations you own (HTTP, files, your DB,
+Loki/Elasticsearch, OTLP), from a zero-dependency core that runs under strict
+CSP, on edge/Workers, and offline — where a Node-only logger or a managed APM
+SaaS is a poorer fit.
 
 Pino is still the mature default when the main requirement is a minimal,
 Node-first JSON logger with a large ecosystem. On the current M1 Max reference
