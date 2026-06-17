@@ -276,7 +276,72 @@ function guardValue(
     return { value: redact(path, "max-depth", options), changed: true };
   }
   if (seen.has(value)) return { value: seen.get(value), changed: true };
-  if (value instanceof Date || value instanceof Error) return { value, changed: false };
+  if (value instanceof Date) return { value, changed: false };
+
+  if (value instanceof Error) {
+    // Recurse into an Error's own-enumerable properties so deny-keys and PII in
+    // them are guarded; returning it verbatim leaked any configured key carried
+    // on the error (matches the redactProcessor fix). name/message/stack are
+    // non-enumerable and preserved unchanged.
+    if (Object.keys(value).length === 0) return { value, changed: false };
+    const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
+    seen.set(value, errorOut);
+    // Non-enumerable message/stack read via the getter (robust to V8's lazy
+    // `stack` accessor); only the extra enumerable props are guarded.
+    for (const field of ["message", "stack"] as const) {
+      Object.defineProperty(errorOut, field, {
+        value: (value as Error)[field],
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+    let changed = false;
+    for (const [childKey, childValue] of Object.entries(value)) {
+      const childPath = path ? `${path}.${childKey}` : childKey;
+      const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);
+      errorOut[childKey] = child.value;
+      changed ||= child.changed;
+    }
+    return { value: changed ? errorOut : value, changed };
+  }
+
+  if (value instanceof Map) {
+    // Maps fell through to Object.entries() (always []), silently dropping
+    // contents; guard string-keyed entries and recurse values instead.
+    const mapOut = new Map<unknown, unknown>();
+    seen.set(value, mapOut);
+    let changed = false;
+    for (const [mapKey, mapValue] of value) {
+      const isStringKey = typeof mapKey === "string";
+      const childPath = isStringKey ? (path ? `${path}.${mapKey}` : (mapKey as string)) : path;
+      const child = guardValue(
+        mapValue,
+        childPath,
+        isStringKey ? (mapKey as string) : key,
+        depth + 1,
+        options,
+        seen,
+      );
+      mapOut.set(mapKey, child.value);
+      changed ||= child.changed;
+    }
+    return { value: changed ? mapOut : value, changed };
+  }
+
+  if (value instanceof Set) {
+    const setOut = new Set<unknown>();
+    seen.set(value, setOut);
+    let changed = false;
+    let index = 0;
+    for (const item of value) {
+      const child = guardValue(item, `${path}[${index}]`, String(index), depth + 1, options, seen);
+      setOut.add(child.value);
+      changed ||= child.changed;
+      index += 1;
+    }
+    return { value: changed ? setOut : value, changed };
+  }
 
   if (Array.isArray(value)) {
     const out: unknown[] = [];

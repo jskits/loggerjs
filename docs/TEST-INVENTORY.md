@@ -19,9 +19,9 @@ pnpm test:inventory:check
 
 | Metric | Count |
 | --- | ---: |
-| Test files | 97 |
-| Test cases | 531 |
-| Passed | 531 |
+| Test files | 99 |
+| Test cases | 545 |
+| Passed | 545 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -42,5 +42,5 @@ pnpm test:inventory:check
 | @loggerjs/node | 21 | 78 |
 | @loggerjs/otel | 3 | 9 |
 | @loggerjs/pretty | 3 | 16 |
-| @loggerjs/processors | 18 | 64 |
+| @loggerjs/processors | 20 | 78 |
 | @loggerjs/sentry | 1 | 3 |

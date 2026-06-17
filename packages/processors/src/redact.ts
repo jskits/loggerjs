@@ -59,8 +59,79 @@ function redactValue(
     return out;
   }
 
-  if (value instanceof Error) return value;
   if (value instanceof Date) return value;
+
+  if (value instanceof Error) {
+    // Redact configured keys carried as own-enumerable properties on an Error
+    // (e.g. `err.password`). Returning the Error verbatim leaked them: errors
+    // arrive raw when nested in data/context (before normalization), and both
+    // JSON.stringify and safeJsonStringify emit an Error's own-enumerable props.
+    // `name`/`message`/`stack` are non-enumerable and copied through unchanged,
+    // so default output is unaffected; only the extra props are redacted.
+    if (Object.keys(value).length === 0) return value;
+    const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
+    seen.set(value, errorOut);
+    // Preserve message/stack as non-enumerable own data properties, read via the
+    // getter (robust to V8's lazy `stack` accessor), so default output is
+    // unchanged and only the extra enumerable props are redacted.
+    for (const field of ["message", "stack"] as const) {
+      Object.defineProperty(errorOut, field, {
+        value: value[field],
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+    for (const [key, child] of Object.entries(value)) {
+      const childPath = path ? `${path}.${key}` : key;
+      if (
+        matchesKey(key, childPath, child, options.keys ?? []) ||
+        pathMatches(childPath, options.paths ?? [])
+      ) {
+        if (options.remove) continue;
+        errorOut[key] = options.replacement;
+      } else {
+        errorOut[key] = redactValue(child, options, childPath, depth + 1, seen);
+      }
+    }
+    return errorOut;
+  }
+
+  if (value instanceof Map) {
+    // Maps fell through to Object.entries() (always []), silently dropping
+    // contents. Redact string-keyed entries by key and recurse values so a
+    // secret in a Map is masked (not dropped) and legitimate Map data survives.
+    const mapOut = new Map<unknown, unknown>();
+    seen.set(value, mapOut);
+    for (const [key, child] of value) {
+      if (typeof key === "string") {
+        const childPath = path ? `${path}.${key}` : key;
+        if (
+          matchesKey(key, childPath, child, options.keys ?? []) ||
+          pathMatches(childPath, options.paths ?? [])
+        ) {
+          if (options.remove) continue;
+          mapOut.set(key, options.replacement);
+          continue;
+        }
+        mapOut.set(key, redactValue(child, options, childPath, depth + 1, seen));
+        continue;
+      }
+      mapOut.set(key, redactValue(child, options, path, depth + 1, seen));
+    }
+    return mapOut;
+  }
+
+  if (value instanceof Set) {
+    const setOut = new Set<unknown>();
+    seen.set(value, setOut);
+    let index = 0;
+    for (const child of value) {
+      setOut.add(redactValue(child, options, `${path}[${index}]`, depth + 1, seen));
+      index += 1;
+    }
+    return setOut;
+  }
 
   const input = value as Record<string, unknown>;
   const out: Record<string, unknown> = {};
