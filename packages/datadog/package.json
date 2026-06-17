@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/datadog",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Datadog Logs transport for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/datadog#readme",
   "bugs": {
