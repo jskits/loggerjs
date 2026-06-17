@@ -17,6 +17,7 @@ const runtimes = new Set(
 );
 const selectedRuntimes = runtimes.size > 0 ? [...runtimes] : ["bun", "deno", "workers"];
 const packageNames = ["@loggerjs/browser", "@loggerjs/core", "@loggerjs/processors"];
+const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
 function run(command, commandArgs, cwd, options = {}) {
   const result = spawnSync(command, commandArgs, {
@@ -33,6 +34,18 @@ function run(command, commandArgs, cwd, options = {}) {
 function commandExists(command) {
   const result = spawnSync(command, ["--version"], { encoding: "utf8" });
   return result.status === 0;
+}
+
+function shouldSkipMissingCommand(runtimeName, command, installHint) {
+  if (commandExists(command)) return false;
+
+  const message = `${command} is required for ${runtimeName} runtime smoke. ${installHint}`;
+  if (isCi) {
+    throw new Error(message);
+  }
+
+  console.warn(`Skipping ${runtimeName} runtime smoke: ${message}`);
+  return true;
 }
 
 function packRuntimePackages() {
@@ -130,8 +143,10 @@ if (typeof globalThis.__LOGGERJS_RUNTIME_SMOKE__ === "string") {
 }
 
 function smokeBun() {
-  if (!commandExists("bun")) {
-    throw new Error("bun is required. Install Bun or run this in CI with oven-sh/setup-bun.");
+  if (
+    shouldSkipMissingCommand("Bun", "bun", "Install Bun or run this in CI with oven-sh/setup-bun.")
+  ) {
+    return;
   }
 
   writeRuntimeSmokeEntry("bun-smoke.mjs");
@@ -144,8 +159,14 @@ function smokeBun() {
 }
 
 function smokeDeno() {
-  if (!commandExists("deno")) {
-    throw new Error("deno is required. Install Deno or run this in CI with denoland/setup-deno.");
+  if (
+    shouldSkipMissingCommand(
+      "Deno",
+      "deno",
+      "Install Deno or run this in CI with denoland/setup-deno.",
+    )
+  ) {
+    return;
   }
 
   writeRuntimeSmokeEntry("deno-smoke.mjs");
