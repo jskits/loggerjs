@@ -397,8 +397,14 @@ Initial internal budget:
 | Enabled record to queue, 3 middleware, no stack | <= 1 microsecond per record on mainstream desktop CPU |
 | JSON/NDJSON codec | million-records-per-second class for ordinary objects |
 | Node NDJSON full path | at least 80% of pino for equivalent output before v1 |
-| Core size | <= 4 KB min+gzip |
+| Core size | <= 4 KB min+gzip (aspirational target, not yet met — see note below) |
 | Record allocation | one record object; no data copy unless middleware explicitly clones |
+
+Status as of 2026-06: the `<= 4 KB` core-size row above is an unmet aspiration,
+not the current state. Measured today (and enforced by `pnpm size:check`): the
+full `@loggerjs/core` barrel is ~18 KB gzip, and a minimal tree-shaken import
+(`createLogger` + a `consoleTransport`) is ~6 KB min+gzip. Keep public size
+wording anchored to these measured numbers until the budget is actually met.
 
 Benchmarking must cover Node and real browsers, not only synthetic Node loops. The suite should compare pino, winston, LogTape, native console, native `JSON.stringify`, current LoggerJS, and target LoggerJS paths.
 
