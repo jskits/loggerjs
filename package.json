@@ -27,7 +27,6 @@
     "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm typecheck:core-platform && pnpm test:inventory:check && pnpm size:check && pnpm verify:entry-boundaries && pnpm verify:component-docs && pnpm verify:exports && pnpm typecheck:public && pnpm api:check && pnpm pack:check && pnpm compat:node",
     "clean": "turbo run clean && rm -rf .turbo",
     "clean:all": "pnpm clean && rm -rf node_modules",
-    "commit": "cz",
     "compat:node": "pnpm smoke:packages",
     "compat:runtimes": "node scripts/smoke-runtimes.mjs",
     "docs:build": "node scripts/generate-site-docs.mjs && vitepress build docs",
@@ -74,28 +73,26 @@
     "@changesets/cli": "^2.31.0",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
-    "@logtape/logtape": "^2.1.3",
-    "@playwright/test": "^1.60.0",
+    "@logtape/logtape": "^2.1.5",
+    "@playwright/test": "^1.61.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^22.19.20",
-    "@vitest/coverage-v8": "^4.1.8",
-    "commitizen": "^4.3.1",
-    "cz-git": "^1.13.1",
+    "@vitest/coverage-v8": "^4.1.9",
     "lint-staged": "^17.0.7",
-    "miniflare": "^4.20260611.0",
-    "oxfmt": "^0.54.0",
-    "oxlint": "^1.69.0",
+    "miniflare": "^4.20260616.0",
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.70.0",
     "pino": "^10.3.1",
-    "rolldown": "^1.1.0",
+    "rolldown": "^1.1.1",
     "simple-git-hooks": "^2.13.1",
     "tsx": "4.22.4",
-    "turbo": "^2.9.17",
+    "turbo": "^2.9.18",
     "typescript": "^6.0.3",
     "vitepress": "1.6.4",
-    "vitest": "^4.1.8",
+    "vitest": "^4.1.9",
     "winston": "^3.19.0",
-    "workerd": "^1.20260612.1"
+    "workerd": "^1.20260616.1"
   },
   "simple-git-hooks": {
     "commit-msg": "node_modules/.bin/commitlint --edit \"$1\"",
@@ -104,11 +101,6 @@
   "lint-staged": {
     "*": "oxfmt --no-error-on-unmatched-pattern",
     "*.{js,cjs,mjs,jsx,ts,tsx}": "oxlint --fix --no-error-on-unmatched-pattern"
-  },
-  "config": {
-    "commitizen": {
-      "path": "node_modules/cz-git"
-    }
   },
   "engines": {
     "node": ">=22.13.0",

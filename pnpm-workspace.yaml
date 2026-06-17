@@ -7,3 +7,11 @@ allowBuilds:
   sharp: true
   simple-git-hooks: false
   workerd: true
+overrides:
+  "@vitejs/plugin-vue>vite": 6.4.3
+  "miniflare>ws": 8.21.0
+  "read-yaml-file": 2.1.0
+  "tsx>esbuild": 0.28.1
+  "typed-rest-client>qs": 6.15.2
+  "vite@8.0.16>esbuild": 0.28.1
+  "vitepress>vite": 6.4.3
