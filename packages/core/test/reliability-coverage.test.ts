@@ -210,7 +210,6 @@ describe("retryDelay (exponential backoff, exact ms boundaries)", () => {
     // and sleep(0) resolves synchronously (no timer). With real timers and an
     // immediate microtask flush the retry happens with no advanceTimers call.
     resetLoggerMetaStats();
-    const onRetry = vi.fn<NonNullable<RetryTransportOptions["onRetry"]>>();
     const attempts: number[] = [];
     const inner: Transport = {
       name: "remote",
@@ -227,10 +226,10 @@ describe("retryDelay (exponential backoff, exact ms boundaries)", () => {
       random: () => 1, // even with random=1, cap is 0 so delay is 0
     }).log?.(event, createContext());
 
+    // The retry fires with no timer advance: sleep(0) resolved synchronously.
+    // (The delayMs===0 value itself is pinned by the next test, which wires
+    // onRetry; asserting it here without passing onRetry was a no-op.)
     expect(attempts).toHaveLength(2);
-    // delayMs is exactly 0 (proves the cap<=0 branch returned 0, not random()*cap).
-    expect(onRetry).not.toHaveBeenCalled(); // no onRetry handler passed; sanity
-    void onRetry;
     expect(getLoggerMetaStats()).toMatchObject({ "transport.retry": 1 });
   });
 
