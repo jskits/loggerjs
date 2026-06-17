@@ -41,7 +41,13 @@ function redactValue(
 ): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value !== "object") return value;
-  if (depth >= options.maxDepth) return value;
+  // Depth guard: past maxDepth we stop recursing, so we can no longer prove this
+  // subtree is free of secrets. Fail closed by replacing the whole subtree rather
+  // than emitting it verbatim. Returning `value` here leaks any configured key
+  // (password, token, ...) nested deeper than maxDepth (default 8) in plaintext.
+  // This matches privacyGuardProcessor / normalizeErrorProcessor, which already
+  // fail closed at their depth limits.
+  if (depth >= options.maxDepth) return options.replacement;
   if (seen.has(value)) return seen.get(value);
 
   if (Array.isArray(value)) {
