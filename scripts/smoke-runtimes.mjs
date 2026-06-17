@@ -17,9 +17,10 @@ const runtimes = new Set(
 );
 const selectedRuntimes = runtimes.size > 0 ? [...runtimes] : ["bun", "deno", "workers"];
 const packageNames = ["@loggerjs/browser", "@loggerjs/core", "@loggerjs/processors"];
-const ciValue = process.env.CI?.toLowerCase();
+const ciValue = process.env.CI?.trim().toLowerCase();
 const isCi =
-  process.env.GITHUB_ACTIONS === "true" || (ciValue !== undefined && ciValue !== "false");
+  process.env.GITHUB_ACTIONS === "true" ||
+  (ciValue !== undefined && ciValue !== "" && ciValue !== "false");
 
 function run(command, commandArgs, cwd, options = {}) {
   const result = spawnSync(command, commandArgs, {
