@@ -175,6 +175,20 @@ describe("LogRecord helpers", () => {
     expect(record.lazy).toBeNull();
   });
 
+  it("resolves missing messages to an empty string without creating errors", () => {
+    const record = createRecord({
+      time: 10,
+      level: 20,
+      seq: 2,
+    });
+
+    expect(resolveMessage(record)).toBe("");
+    expect(recordToEvent(record)).toMatchObject({
+      message: "",
+      error: undefined,
+    });
+  });
+
   it("turns lazy message resolver failures into stable record state", () => {
     const failure = new Error("message failed");
     const lazy = vi.fn<() => string>(() => {
@@ -243,6 +257,44 @@ describe("LogRecord helpers", () => {
       context: { requestId: "req-1" },
       trace: { traceId: "trace-1" },
       source: { integration: "integration:fetch" },
+    });
+  });
+
+  it("applies explicit projection overrides when converting records to events", () => {
+    const record = createRecord({
+      time: 10,
+      level: 30,
+      category: ["api"],
+      type: "order.created",
+      tags: { service: "checkout" },
+      trace: { traceId: "record-trace" },
+      msg: "created",
+      props: { orderId: "ord-1" },
+      err: new Error("record error"),
+      seq: 2,
+    });
+    const event = recordToEvent(record, {
+      id: (candidate, levelName) => `${candidate.seq}-${levelName}`,
+      levelName: "warn",
+      logger: "override",
+      type: "order.override",
+      tags: { service: "billing" },
+      data: { invoiceId: "inv-1" },
+      error: { name: "OverrideError", message: "override" },
+      trace: { traceId: "override-trace" },
+      source: { runtime: "edge" },
+    });
+
+    expect(event).toMatchObject({
+      id: "2-warn",
+      levelName: "warn",
+      logger: "override",
+      type: "order.override",
+      tags: { service: "billing" },
+      data: { invoiceId: "inv-1" },
+      error: { name: "OverrideError", message: "override" },
+      trace: { traceId: "override-trace" },
+      source: { runtime: "edge" },
     });
   });
 
@@ -348,6 +400,29 @@ describe("LogRecord helpers", () => {
     expect(undefinedData.props).toBeNull();
     expect(arrayData.category).toEqual(["api", "orders"]);
     expect(arrayData.props).toEqual({ value: ["a", "b"] });
+  });
+
+  it("preserves optional event fields when converting events to records", () => {
+    const error = { name: "TypeError", message: "bad input" };
+    const trace = { traceId: "trace-1" };
+    const record = eventToRecord({
+      id: "evt-1",
+      time: 10,
+      seq: 2,
+      level: 40,
+      levelName: "warn",
+      logger: "api.orders",
+      message: "invalid",
+      type: "order.invalid",
+      trace,
+      error,
+    });
+
+    expect(record).toMatchObject({
+      type: "order.invalid",
+      trace,
+      err: error,
+    });
   });
 
   it("recognizes records without treating partial event-like objects as records", () => {

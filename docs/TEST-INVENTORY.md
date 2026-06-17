@@ -20,8 +20,8 @@ pnpm test:inventory:check
 | Metric | Count |
 | --- | ---: |
 | Test files | 94 |
-| Test cases | 402 |
-| Passed | 402 |
+| Test cases | 405 |
+| Passed | 405 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -34,7 +34,7 @@ pnpm test:inventory:check
 | @loggerjs/browser | 24 | 82 |
 | @loggerjs/cloudwatch | 1 | 5 |
 | @loggerjs/codecs | 2 | 33 |
-| @loggerjs/core | 18 | 103 |
+| @loggerjs/core | 18 | 106 |
 | @loggerjs/database | 1 | 6 |
 | @loggerjs/datadog | 1 | 2 |
 | @loggerjs/elastic | 1 | 5 |
