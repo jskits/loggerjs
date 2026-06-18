@@ -92,6 +92,6 @@ larger, the size-budget diff should explain why the preset entry needs it.
 
 ## Guardrails
 
-Performance is gated in CI: `pnpm bench:gate` measures the suite and enforces machine-independent ratios against pino on the same hardware (see BENCHMARKS.md). If you contribute changes to the hot path, run it locally; structural regressions fail the pull request.
+Performance is gated in CI: `pnpm bench:gate` runs interleaved A/B suites and enforces paired ratios against the matching pino baseline (see BENCHMARKS.md). If you contribute changes to the hot path, run it locally; structural regressions fail the pull request.
 
 The deliberate end-state of optimization is documented in ARCHITECTURE.md: keep the shared `LogRecord` pipeline as the default architecture, but allow codec/transport-owned preparation for stable fragments. Fusion paths that bypass the record remain rejected as the default because they would create a separate semantic hot path.

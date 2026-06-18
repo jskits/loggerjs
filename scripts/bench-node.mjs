@@ -175,6 +175,7 @@ function runInterleavedAB(contenders, options = {}) {
     console.log(
       JSON.stringify({
         mode: "ab",
+        suite: options.suite ?? "default",
         rounds,
         batch,
         warmup,
@@ -402,20 +403,58 @@ async function main() {
     // The suite patches console for the console scenario; restore it so the
     // A/B report reaches stdout.
     Object.assign(console, originalConsole);
-    runInterleavedAB(
-      [
-        { name: "pino ndjson", run: (index) => pinoLogger.info({ index }, "order created") },
-        {
-          name: "loggerjs lean",
-          run: (index) => loggerjsLeanRecordLogger.info("order created", { index }),
-        },
-        {
-          name: "loggerjs prepared",
-          run: (index) => loggerjsPreparedLeanRecordLogger.info("order created", { index }),
-        },
-      ],
-      { baseline: "pino ndjson" },
-    );
+    const abSuites = {
+      fullpath: {
+        baseline: "pino ndjson",
+        contenders: [
+          { name: "pino ndjson", run: (index) => pinoLogger.info({ index }, "order created") },
+          {
+            name: "loggerjs lean",
+            run: (index) => loggerjsLeanRecordLogger.info("order created", { index }),
+          },
+          {
+            name: "loggerjs prepared",
+            run: (index) => loggerjsPreparedLeanRecordLogger.info("order created", { index }),
+          },
+          {
+            name: "loggerjs fast-event record",
+            run: (index) => loggerjsRecordNdjsonLogger.info("order created", { index }),
+          },
+        ],
+      },
+      disabled: {
+        baseline: "pino disabled",
+        contenders: [
+          { name: "pino disabled", run: (index) => pinoDisabledLogger.debug({ index }, "skip") },
+          {
+            name: "loggerjs disabled",
+            run: (index) => disabledLogger.debug(() => `skip ${index}`),
+          },
+        ],
+      },
+      enqueue: {
+        baseline: "pino ndjson",
+        contenders: [
+          { name: "pino ndjson", run: (index) => pinoLogger.info({ index }, "order created") },
+          {
+            name: "loggerjs record write",
+            run: (index) => recordPathLogger.info("order created", { index }),
+          },
+          {
+            name: "loggerjs batch enqueue",
+            run: (index) => batchLogger.info("order created", { index }),
+          },
+        ],
+      },
+    };
+    const suiteName = process.env.BENCH_AB_SUITE ?? "fullpath";
+    const suite = abSuites[suiteName];
+    if (!suite) {
+      throw new Error(
+        `Unknown BENCH_AB_SUITE "${suiteName}". Expected ${Object.keys(abSuites).join(", ")}.`,
+      );
+    }
+    runInterleavedAB(suite.contenders, { baseline: suite.baseline, suite: suiteName });
     await batchLogger.flush();
     return;
   }

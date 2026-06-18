@@ -14,11 +14,14 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 pnpm size:check
 ```
 
-`pnpm bench:gate` runs the Node suite and enforces regression limits as
-ratios against the pino scenarios measured on the same machine, so the gate
-is hardware-independent. Limits live in `scripts/check-bench-regression.mjs`
-and are generous on purpose: they catch structural regressions, not noise.
-CI runs the gate on every pull request.
+`pnpm bench:gate` runs interleaved A/B suites and enforces regression limits as
+paired per-round ratios against the matching pino baseline. It uses the same
+drift-canceling method as `BENCH_AB`, so CPU frequency, scheduler placement, and
+GC pauses affect each contender in the same round. Limits live in
+`scripts/check-bench-regression.mjs` and are generous on purpose: they catch
+structural regressions, not noise. CI runs the gate on every pull request. Tune
+the gate with `BENCH_GATE_AB_ROUNDS`, `BENCH_GATE_AB_BATCH`, and
+`BENCH_GATE_AB_WARMUP`.
 
 `pnpm bench` builds the workspace first, then runs Node and browser benchmarks. Browser benchmarks use a local headless Chrome binary. Set `CHROME_BIN` when Chrome is not installed in a standard location.
 
@@ -36,13 +39,16 @@ BENCH_AB=1 node scripts/bench-node.mjs
 BENCH_AB=1 BENCH_JSON=1 node scripts/bench-node.mjs   # machine-readable
 ```
 
-Each round times every contender (pino, lean, prepared) **back-to-back** and
+Each round times every contender in the selected suite **back-to-back** and
 rotates the start position, so drift hits them equally and cancels in the
-**paired per-round ratio**. The report prints per-contender ns/op plus the
-median ratio with its min/max spread, and warns when the baseline (pino) spread
-exceeds 25% — the signal that the machine is too noisy to trust the absolute ns
-(the ratios stay fair regardless). Quote a cross-logger ratio only from this
-mode with a stable baseline, never from a single sequential run.
+**paired per-round ratio**. The default suite compares pino, lean, prepared, and
+the full-envelope record sink; `BENCH_AB_SUITE=disabled` and
+`BENCH_AB_SUITE=enqueue` are used by the CI gate. The report prints
+per-contender ns/op plus the median ratio with its min/max spread, and warns
+when the baseline spread exceeds 25% — the signal that the machine is too noisy
+to trust the absolute ns (the ratios stay fair regardless). Quote a cross-logger
+ratio only from this mode with a stable baseline, never from a single sequential
+run.
 
 ### Cross-machine benchmark matrix
 
@@ -151,8 +157,10 @@ All loggerjs and pino full-path loggers carry the same base fields
 the prepared lean sink wraps it with `createPreparedRecordEncoder(codec)` to
 reuse codec-owned logger/tags fragments without moving serialization into the
 logger; the full-envelope sink additionally emits `id`, `seq`, and `levelName`.
-The CI-enforced figure is the **ratio** in `pnpm bench:gate` (100k baseline,
-gates both plain and prepared lean paths).
+The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate`
+(default 60 rounds x 5000 ops per contender). The gate covers disabled-level
+logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope
+record sinks.
 
 Honest read:
 

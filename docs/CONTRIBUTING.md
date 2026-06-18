@@ -49,7 +49,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
 
-**Benchmark gate** (`pnpm bench:gate`): hot-path scenarios are limited as ratios against pino measured on the same machine. Limits are generous — they catch structural regressions (an accidental allocation per log, a dropped fast path), not noise. If your change legitimately shifts a ratio, update the limits in `scripts/check-bench-regression.mjs` with justification.
+**Benchmark gate** (`pnpm bench:gate`): hot-path scenarios are limited as paired A/B ratios against the matching pino baseline. Limits are generous — they catch structural regressions (an accidental allocation per log, a dropped fast path), not noise. If your change legitimately shifts a ratio, update the limits in `scripts/check-bench-regression.mjs` with justification.
 
 **Changesets**: user-facing changes to published packages need a changeset (`pnpm changeset`); pure repo tooling does not.
 

@@ -213,7 +213,7 @@ const zhDocsCatalog = [
       "基准覆盖 disabled levels、lean NDJSON、prepared encoder、batch、browser delivery 和包体大小。",
       "`BENCH_AB=1 pnpm bench:node` 用 paired A/B 减少运行噪声。",
       "不要把单台机器数字扩展成普遍结论；不同 CPU/V8 版本可能改变排序。",
-      "`pnpm bench:gate` 是 CI 护栏，用于阻止明显退化。",
+      "`pnpm bench:gate` 使用 paired A/B ratio 作为 CI 护栏，用于阻止明显退化。",
       "公开文档中的性能表述应始终链接到方法和可复现命令。",
     ],
   },
