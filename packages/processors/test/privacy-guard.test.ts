@@ -70,6 +70,7 @@ describe("privacyGuardProcessor", () => {
             passwd: "p",
             secret: "s",
             token: "t",
+            authorization: "Basic opaque-value",
             cookie: "c",
             "set-cookie": "sc",
             apiKey: "ak",
@@ -85,6 +86,7 @@ describe("privacyGuardProcessor", () => {
       passwd: "[REDACTED]",
       secret: "[REDACTED]",
       token: "[REDACTED]",
+      authorization: "[REDACTED]",
       cookie: "[REDACTED]",
       "set-cookie": "[REDACTED]",
       apiKey: "[REDACTED]",
@@ -181,6 +183,16 @@ describe("privacyGuardProcessor", () => {
     });
   });
 
+  it("uses the default truncate suffix when no suffix is configured", () => {
+    const processor = privacyGuardProcessor({
+      targets: ["message"],
+      maxStringLength: 4,
+    });
+    const processed = requireEvent(processor({ ...event, message: "abcdef" }, context));
+
+    expect(processed.message).toBe("abcd...");
+  });
+
   it("applies max string length again after pattern replacement", () => {
     const processor = privacyGuardProcessor({
       targets: ["message"],
@@ -222,9 +234,23 @@ describe("privacyGuardProcessor", () => {
     );
 
     expect(processed).toMatchObject({
+      message: "user alice@example.com used Bearer abc.def",
+      tags: { email: "ops@example.com" },
       data: { secret: "[REDACTED]" },
+      context: { authorization: "Bearer secret.token" },
       error: { message: "send to buyer@example.com" },
     });
+  });
+
+  it("reports stable redact paths for context, tags, and error targets", () => {
+    const onRedact = vi.fn<(path: string, reason: string) => void>();
+    const processor = privacyGuardProcessor({ onRedact });
+
+    processor(event, context);
+
+    expect(onRedact).toHaveBeenCalledWith("context.authorization", "deny-key");
+    expect(onRedact).toHaveBeenCalledWith("tags.email", "email");
+    expect(onRedact).toHaveBeenCalledWith("error.message", "email");
   });
 
   it("bounds adversarial email-like input before pattern matching", () => {

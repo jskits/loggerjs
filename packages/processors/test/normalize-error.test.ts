@@ -39,6 +39,18 @@ describe("normalizeErrorProcessor", () => {
     });
   });
 
+  it("falls back when error name and message properties are not strings", () => {
+    const processed = normalizeErrorProcessor()(
+      event({ name: 123, message: 456 } as unknown as LogEvent["error"]),
+      context,
+    ) as LogEvent;
+
+    expect(processed.error).toMatchObject({
+      message: "[object Object]",
+    });
+    expect(processed.error).toHaveProperty("name", undefined);
+  });
+
   it("normalizes nested causes, aggregate errors, and stack limits", () => {
     const cause = new Error("database down");
     cause.stack = "Error: database down\n    at db1\n    at db2";
@@ -168,6 +180,63 @@ describe("normalizeErrorProcessor", () => {
     expect(processed.error).not.toHaveProperty("code");
   });
 
+  it("keeps string codes even when enumerable extras are disabled", () => {
+    const errorWithStringCode = Object.assign(new Error("failed"), {
+      code: "E_TEST",
+      retryable: true,
+    });
+
+    const processed = normalizeErrorProcessor({ includeEnumerableProperties: false })(
+      event(errorWithStringCode as unknown as LogEvent["error"]),
+      context,
+    ) as LogEvent;
+
+    expect(processed.error).toMatchObject({
+      name: "Error",
+      message: "failed",
+      code: "E_TEST",
+    });
+    expect(processed.error).not.toHaveProperty("retryable");
+  });
+
+  it("does not copy raw aggregate errors when aggregate expansion is disabled", () => {
+    const aggregate = Object.assign(new Error("failed"), {
+      errors: [new Error("nested")],
+      retryable: true,
+    });
+
+    const processed = normalizeErrorProcessor({ includeAggregateErrors: false })(
+      event(aggregate as unknown as LogEvent["error"]),
+      context,
+    ) as LogEvent;
+
+    expect(processed.error).toMatchObject({
+      name: "Error",
+      message: "failed",
+      retryable: true,
+    });
+    expect(processed.error).not.toHaveProperty("errors");
+  });
+
+  it("does not copy undefined enumerable causes into normalized output", () => {
+    const errorWithUndefinedCause = Object.assign(new Error("failed"), {
+      cause: undefined,
+      retryable: true,
+    });
+
+    const processed = normalizeErrorProcessor()(
+      event(errorWithUndefinedCause as unknown as LogEvent["error"]),
+      context,
+    ) as LogEvent;
+
+    expect(processed.error).toMatchObject({
+      name: "Error",
+      message: "failed",
+      retryable: true,
+    });
+    expect(processed.error).not.toHaveProperty("cause");
+  });
+
   it("normalizes configured data error keys", () => {
     const dataError = new RangeError("bad range");
     const processor = normalizeErrorProcessor({ dataErrorKeys: ["failure"] });
@@ -186,6 +255,9 @@ describe("normalizeErrorProcessor", () => {
     const processor = normalizeErrorProcessor({ dataErrorKeys: ["failure", "missing"] });
 
     expect((processor(event(undefined, data), context) as LogEvent).data).toBe(data);
+    expect((processor(event(undefined, null), context) as LogEvent).data).toBeNull();
+    const arrayData = [new Error("array error")];
+    expect((processor(event(undefined, arrayData), context) as LogEvent).data).toBe(arrayData);
     expect((processor(event(undefined, "not-record"), context) as LogEvent).data).toBe(
       "not-record",
     );
