@@ -364,7 +364,11 @@ describe("browserHttpTransport", () => {
   });
 
   it("falls back from a partial beacon send to fetch with only remaining events", async () => {
-    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => sendBeacon.mock.calls.length === 1);
+    let beaconCalls = 0;
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => {
+      beaconCalls += 1;
+      return beaconCalls === 1;
+    });
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
     vi.stubGlobal("navigator", { sendBeacon });
     const transport = browserHttpTransport({
