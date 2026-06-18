@@ -45,6 +45,19 @@ describe("pinoCompatCodec", () => {
     );
   });
 
+  it("encodes event batches as newline-delimited pino records", () => {
+    const codec = pinoCompatCodec({ mergeData: true });
+
+    expect(
+      codec.encode([
+        sampleEvent({ id: "evt-1", message: "created", data: { orderId: "ord-1" } }),
+        sampleEvent({ id: "evt-2", message: "updated", data: { orderId: "ord-2" } }),
+      ]),
+    ).toBe(
+      '{"level":30,"time":1,"orderId":"ord-1","msg":"created"}\n{"level":30,"time":1,"orderId":"ord-2","msg":"updated"}\n',
+    );
+  });
+
   it("keeps LoggerJS data nested unless root merging is explicit", () => {
     const decoded = JSON.parse(
       pinoCompatCodec({ base: { pid: 123, hostname: "host" } }).encode(

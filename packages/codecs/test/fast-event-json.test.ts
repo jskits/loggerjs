@@ -42,6 +42,46 @@ describe("fast event json hostile inputs", () => {
     ).toThrow("payload[1].levelName");
   });
 
+  it("rejects malformed decoded JSON event fields with stable paths", () => {
+    const codec = fastEventJsonCodec();
+    const event = sampleEvent();
+    const invalidCases: [string, string][] = [
+      [JSON.stringify(null), "payload: expected object"],
+      [JSON.stringify([{ ...event }, null]), "payload[1]: expected object"],
+      [JSON.stringify({ ...event, id: 42 }), "payload.id: expected string"],
+      [JSON.stringify({ ...event, time: null }), "payload.time: expected finite number"],
+      [JSON.stringify({ ...event, seq: "1" }), "payload.seq: expected finite number"],
+      [JSON.stringify({ ...event, level: "30" }), "payload.level: expected finite number"],
+      [JSON.stringify({ ...event, logger: 42 }), "payload.logger: expected string"],
+      [JSON.stringify({ ...event, message: null }), "payload.message: expected string"],
+      [JSON.stringify({ ...event, type: 42 }), "payload.type: expected string"],
+      [JSON.stringify({ ...event, tags: [] }), "payload.tags: expected object"],
+      [
+        JSON.stringify({ ...event, tags: { service: "checkout", nested: {} } }),
+        "payload.tags.nested: expected string, number, boolean, or null",
+      ],
+      [JSON.stringify({ ...event, error: "boom" }), "payload.error: expected object"],
+      [JSON.stringify({ ...event, error: { message: 42 } }), "payload.error.message"],
+      [JSON.stringify({ ...event, error: { message: "boom", name: 42 } }), "payload.error.name"],
+      [JSON.stringify({ ...event, error: { message: "boom", stack: 42 } }), "payload.error.stack"],
+      [JSON.stringify({ ...event, error: { message: "boom", code: true } }), "payload.error.code"],
+      [JSON.stringify({ ...event, context: [] }), "payload.context: expected object"],
+      [JSON.stringify({ ...event, trace: [] }), "payload.trace: expected object"],
+      [JSON.stringify({ ...event, source: [] }), "payload.source: expected object"],
+      [
+        JSON.stringify({ ...event, tags: { latency: 1 } }).replace(
+          '"latency":1',
+          '"latency":1e999',
+        ),
+        "payload.tags.latency: expected finite number",
+      ],
+    ];
+
+    for (const [payload, message] of invalidCases) {
+      expect(() => codec.decode?.(payload)).toThrow(message);
+    }
+  });
+
   it("rejects lean decoded envelopes instead of widening them to LogEvent", () => {
     const leanCodec = fastEventJsonCodec({
       includeId: false,
@@ -173,6 +213,36 @@ describe("fast event json hostile inputs", () => {
     });
   });
 
+  it("encodes lean event optional fields through the custom event path", () => {
+    const codec = fastEventJsonCodec({
+      includeId: false,
+      includeSeq: false,
+      includeLevelName: false,
+    });
+    const decoded = JSON.parse(
+      codec.encode(
+        sampleEvent({
+          context: { requestId: "req-1" },
+          trace: { traceId: "trace-1" },
+          source: { integration: "react" },
+        }),
+      ),
+    ) as Record<string, unknown>;
+
+    expect(decoded).toMatchObject({
+      time: 1,
+      level: 30,
+      logger: "api",
+      message: "created",
+      context: { requestId: "req-1" },
+      trace: { traceId: "trace-1" },
+      source: { integration: "react" },
+    });
+    expect(decoded).not.toHaveProperty("id");
+    expect(decoded).not.toHaveProperty("seq");
+    expect(decoded).not.toHaveProperty("levelName");
+  });
+
   it("writes flat record props directly and falls back for complex values", () => {
     const codec = fastEventJsonCodec();
     const flat = createRecord({
@@ -222,6 +292,22 @@ describe("fast event json hostile inputs", () => {
     const record = createRecord({ time: 1700000000000, level: 30, msg: "created", seq: 7 });
     const encoded = JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent;
     expect(encoded.id).toBe(recordToEvent(record).id);
+  });
+
+  it("serializes record errors on the record encoder path", () => {
+    const record = createRecord({
+      time: 1,
+      level: 50,
+      msg: "failed",
+      err: new Error("boom"),
+      seq: 1,
+    });
+
+    expect(JSON.parse(fastEventJsonCodec().encode(record)) as LogEvent).toMatchObject({
+      level: 50,
+      levelName: "error",
+      error: { name: "Error", message: "boom" },
+    });
   });
 
   it("prepares full record encoders without changing bytes", () => {
