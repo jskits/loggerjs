@@ -7,6 +7,7 @@ const packagesRoot = join(repoRoot, "packages");
 const policyPath = join(repoRoot, "docs", "api-stability.policy.json");
 const docsPath = join(repoRoot, "docs", "API-STABILITY.md");
 const statuses = ["stable", "compatible", "experimental"];
+const statusRank = new Map(statuses.map((status, index) => [status, index]));
 
 const policy = JSON.parse(readFileSync(policyPath, "utf8"));
 const docs = readFileSync(docsPath, "utf8");
@@ -70,6 +71,28 @@ for (const [key, item] of actualExports) {
     addFailure(
       `${item.specifier} from ${relative(repoRoot, item.packageJsonPath)} has no stability status`,
     );
+  }
+}
+
+for (const item of actualExports.values()) {
+  if (item.exportPath !== ".") continue;
+  const rootStatus = classifiedExports.get(`${item.packageName}:.`);
+  if (rootStatus !== "stable") continue;
+
+  for (const candidate of actualExports.values()) {
+    if (candidate.packageName !== item.packageName || candidate.exportPath === ".") continue;
+    const candidateStatus = classifiedExports.get(
+      `${candidate.packageName}:${candidate.exportPath}`,
+    );
+    if (
+      candidateStatus &&
+      (statusRank.get(candidateStatus) ?? 0) > (statusRank.get(rootStatus) ?? 0)
+    ) {
+      addFailure(
+        `${item.packageName} root export is stable but ${candidate.specifier} is ${candidateStatus}; classify the root no higher than the lowest re-exported public surface`,
+      );
+      break;
+    }
   }
 }
 

@@ -16,7 +16,6 @@
       "./payload-transforms"
     ],
     "@loggerjs/browser": [
-      ".",
       "./transport-http",
       "./payload-transforms",
       "./offline-indexeddb",
@@ -32,7 +31,6 @@
       "./integration-page-lifecycle"
     ],
     "@loggerjs/node": [
-      ".",
       "./transport-http",
       "./payload-transforms",
       "./transport-file",
@@ -53,6 +51,7 @@
   },
   "compatible": {
     "@loggerjs/browser": [
+      ".",
       "./transport-broadcast-channel",
       "./transport-service-worker",
       "./transport-websocket",
@@ -67,6 +66,7 @@
       "./integration-websocket"
     ],
     "@loggerjs/node": [
+      ".",
       "./integration-cli",
       "./integration-koa",
       "./integration-nest",

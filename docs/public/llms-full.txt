@@ -3212,8 +3212,8 @@ packages and entry families are:
 | Package | Stable surface |
 | --- | --- |
 | `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
-| `@loggerjs/browser` | Root package, HTTP delivery, IndexedDB/offline-first storage, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
-| `@loggerjs/node` | Root package, stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
+| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
+| `@loggerjs/node` | Documented stable subpaths for stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
 | `@loggerjs/processors` | Root package processor and middleware catalog. |
 | `@loggerjs/codecs` | Root package codec catalog. |
@@ -3242,6 +3242,10 @@ Stable semantics include:
 Compatible exports stay documented and tested, but they are not frozen enough to
 be stable v1 candidates yet. Current compatible areas include:
 
+- Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are
+  compatible convenience aggregators because they re-export both stable and
+  compatible components. Use the stable subpaths above when you need a v1
+  candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service
   worker, WebSocket, ZIP export, framework errors, framework routers, generic
   router capture, ReportingObserver, runtime host, service worker messages,
