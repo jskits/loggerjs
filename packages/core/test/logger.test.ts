@@ -369,6 +369,56 @@ describe("logger core skeleton", () => {
     });
   });
 
+  it("supports logger facade helpers and dynamic pipeline extension", () => {
+    const first = memoryTransport({ name: "first" });
+    const second = memoryTransport({ name: "second" });
+    const logger = createLogger({
+      level: "warn",
+      tags: { service: "checkout" },
+      transports: [first],
+    });
+
+    expect(logger.getLevel()).toBe("warn");
+    expect(logger.isEnabled("info")).toBe(false);
+    expect(logger.isLevelEnabled("error")).toBe(true);
+
+    logger.setLevel("trace");
+    logger.addProcessor((item) => ({
+      ...item,
+      tags: { ...item.tags, processed: true },
+    }));
+    logger.addTransport(second);
+    const audit = logger.withTags({ tenant: "a" }).withType("audit");
+
+    audit.trace("trace details");
+    logger.warn("warn details");
+    logger.fatal("fatal details");
+    logger.captureException(new Error("captured"), { requestId: "req-1" });
+
+    expect(logger.getLevel()).toBe("trace");
+    expect(first.events.map((item) => item.message)).toEqual([
+      "trace details",
+      "warn details",
+      "fatal details",
+      "captured",
+    ]);
+    expect(second.events.map((item) => item.levelName)).toEqual([
+      "trace",
+      "warn",
+      "fatal",
+      "error",
+    ]);
+    expect(first.events[0]).toMatchObject({
+      type: "audit",
+      tags: { service: "checkout", tenant: "a", processed: true },
+    });
+    expect(first.events[3]).toMatchObject({
+      data: { requestId: "req-1" },
+      error: { message: "captured" },
+      levelName: "error",
+    });
+  });
+
   it("reports async transport rejections without wrapping sync results", async () => {
     const internalErrors: Array<Record<string, unknown> | undefined> = [];
     const rejectingTransport: Transport = {

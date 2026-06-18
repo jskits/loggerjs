@@ -2,28 +2,28 @@ import { defineConfig } from "vitest/config";
 
 const packageCoverageThresholds = {
   "packages/browser/src/**/*.ts": {
-    branches: 70,
-    functions: 83,
-    lines: 87,
-    statements: 82,
+    branches: 71,
+    functions: 84,
+    lines: 88,
+    statements: 83,
   },
   "packages/cloudwatch/src/**/*.ts": {
-    branches: 63,
+    branches: 78,
     functions: 92,
-    lines: 94,
-    statements: 87,
+    lines: 96,
+    statements: 92,
   },
   "packages/codecs/src/**/*.ts": {
-    branches: 82,
+    branches: 88,
     functions: 95,
     lines: 95,
-    statements: 90,
+    statements: 92,
   },
   "packages/core/src/**/*.ts": {
-    branches: 68,
-    functions: 72,
-    lines: 78,
-    statements: 74,
+    branches: 80,
+    functions: 88,
+    lines: 90,
+    statements: 87,
   },
   "packages/database/src/**/*.ts": {
     branches: 71,
@@ -32,22 +32,22 @@ const packageCoverageThresholds = {
     statements: 82,
   },
   "packages/datadog/src/**/*.ts": {
-    branches: 72,
+    branches: 88,
     functions: 100,
-    lines: 97,
-    statements: 86,
+    lines: 100,
+    statements: 94,
   },
   "packages/elastic/src/**/*.ts": {
-    branches: 75,
+    branches: 88,
     functions: 91,
     lines: 100,
-    statements: 89,
+    statements: 97,
   },
   "packages/loki/src/**/*.ts": {
-    branches: 71,
-    functions: 92,
-    lines: 94,
-    statements: 88,
+    branches: 89,
+    functions: 100,
+    lines: 98,
+    statements: 98,
   },
   "packages/node/src/**/*.ts": {
     branches: 74,
@@ -68,16 +68,16 @@ const packageCoverageThresholds = {
     statements: 73,
   },
   "packages/processors/src/**/*.ts": {
-    branches: 78,
+    branches: 79,
     functions: 97,
-    lines: 90,
-    statements: 85,
+    lines: 92,
+    statements: 87,
   },
   "packages/sentry/src/**/*.ts": {
-    branches: 77,
+    branches: 82,
     functions: 100,
     lines: 96,
-    statements: 85,
+    statements: 87,
   },
 } as const;
 
@@ -90,10 +90,12 @@ export default defineConfig({
       reporter: ["text", "json-summary"],
       reportsDirectory: "coverage",
       thresholds: {
-        branches: 71,
-        functions: 84,
-        lines: 86,
-        statements: 81,
+        // Ratchet from the current measured coverage floor. Raise these after
+        // coverage improves; do not lower without an explicit quality review.
+        branches: 75,
+        functions: 88,
+        lines: 89,
+        statements: 85,
         ...packageCoverageThresholds,
       },
     },
