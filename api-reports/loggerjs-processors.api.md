@@ -321,7 +321,7 @@ export declare function normalizeErrorProcessor(options?: NormalizeErrorProcesso
 
 ```ts
 import type { Processor } from "@loggerjs/core";
-export type PrivacyGuardMatcher = string | RegExp | ((key: string, path: string, value: unknown) => boolean);
+export type PrivacyGuardMatcher = string | symbol | RegExp | ((key: string, path: string, value: unknown) => boolean);
 export type PrivacyGuardTarget = "message" | "data" | "context" | "tags" | "error";
 export interface PrivacyPattern {
     name: string;
@@ -370,7 +370,7 @@ export declare function rateLimitProcessor(options?: RateLimitOptions): RateLimi
 
 ```ts
 import type { Processor } from "@loggerjs/core";
-export type RedactMatcher = string | RegExp | ((key: string, path: string, value: unknown) => boolean);
+export type RedactMatcher = string | symbol | RegExp | ((key: string, path: string, value: unknown) => boolean);
 export interface RedactOptions {
     keys?: RedactMatcher[];
     paths?: string[];
