@@ -50,6 +50,24 @@ function createRecordContext(
   };
 }
 
+function createArrayOverflowEvent(length: number): { a: null[] } {
+  return { a: Array.from({ length }, () => null) };
+}
+
+function estimateArrayOverflowEventBytes(length: number): number {
+  return estimateLogEventBytes(createArrayOverflowEvent(length) as unknown as LogEvent);
+}
+
+function createObjectWithNullKeys(count: number): Record<string, unknown> {
+  const object: Record<string, unknown> = {};
+  for (let i = 0; i < count; i++) object[`x${i}`] = null;
+  return object;
+}
+
+function estimateObjectKeyOverflowEventBytes(count: number): number {
+  return estimateLogEventBytes(createObjectWithNullKeys(count) as unknown as LogEvent);
+}
+
 interface ReportedError {
   error: unknown;
   detail: Record<string, unknown> | undefined;
@@ -255,28 +273,22 @@ describe("estimateValueBytes structural branches", () => {
   });
 
   it("array overflow past MAX_ESTIMATE_KEYS (64) adds exactly 8 per extra item", () => {
-    const arr = (n: number) => ({ a: Array.from({ length: n }, () => null) });
-    const at = (n: number) => estimateLogEventBytes(arr(n) as unknown as LogEvent);
     // 64 nulls: a-array = 2 + (4+1)*64 = 322; no overflow.
     // entry = utf8("a")=1 + 3 + 322 = 326; total = 2 + 326 = 328.
-    expect(at(64)).toBe(328);
+    expect(estimateArrayOverflowEventBytes(64)).toBe(328);
     // Each item beyond 64 adds exactly 8 (the Math.max(0, len-limit)*8 term).
-    expect(at(65) - at(64)).toBe(8);
-    expect(at(66) - at(65)).toBe(8);
+    expect(estimateArrayOverflowEventBytes(65) - estimateArrayOverflowEventBytes(64)).toBe(8);
+    expect(estimateArrayOverflowEventBytes(66) - estimateArrayOverflowEventBytes(65)).toBe(8);
   });
 
   it("object key overflow past MAX_ESTIMATE_KEYS (64) adds a flat 64 then breaks", () => {
-    const obj = (n: number) => {
-      const o: Record<string, unknown> = {};
-      for (let i = 0; i < n; i++) o[`x${i}`] = null;
-      return o;
-    };
-    const at = (n: number) => estimateLogEventBytes(obj(n) as unknown as LogEvent);
     // Going from 64 -> 65 keys: the 65th iteration sees count >= 64, adds a flat
     // 64 and breaks. So the delta is exactly 64.
-    expect(at(65) - at(64)).toBe(64);
+    expect(estimateObjectKeyOverflowEventBytes(65) - estimateObjectKeyOverflowEventBytes(64)).toBe(
+      64,
+    );
     // 66 keys produces the SAME total as 65 because the loop breaks early.
-    expect(at(66)).toBe(at(65));
+    expect(estimateObjectKeyOverflowEventBytes(66)).toBe(estimateObjectKeyOverflowEventBytes(65));
   });
 });
 
