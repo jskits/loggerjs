@@ -23,6 +23,22 @@ function event(error?: LogEvent["error"], data?: unknown): LogEvent {
 }
 
 describe("normalizeErrorProcessor", () => {
+  it("normalizes primitive and nullish thrown values", () => {
+    const processor = normalizeErrorProcessor();
+
+    expect(
+      processor(event("plain failure" as unknown as LogEvent["error"]), context),
+    ).toMatchObject({
+      error: { message: "plain failure" },
+    });
+    expect(processor(event(42 as unknown as LogEvent["error"]), context)).toMatchObject({
+      error: { message: "42" },
+    });
+    expect(processor(event(null as unknown as LogEvent["error"]), context)).toMatchObject({
+      error: { message: "null" },
+    });
+  });
+
   it("normalizes nested causes, aggregate errors, and stack limits", () => {
     const cause = new Error("database down");
     cause.stack = "Error: database down\n    at db1\n    at db2";
@@ -57,6 +73,25 @@ describe("normalizeErrorProcessor", () => {
     });
   });
 
+  it("detects circular error causes before recursing forever", () => {
+    const circular = {
+      name: "CircularError",
+      message: "loop",
+      cause: undefined as unknown,
+    };
+    circular.cause = circular;
+
+    const processed = normalizeErrorProcessor()(event(circular as LogEvent["error"]), context);
+
+    expect(processed).toMatchObject({
+      error: {
+        name: "CircularError",
+        message: "loop",
+        cause: { message: "[Circular error]" },
+      },
+    });
+  });
+
   it("limits cause depth and handles cycles", () => {
     const first = { name: "First", message: "one", cause: undefined as unknown };
     const second = { name: "Second", message: "two", cause: first };
@@ -71,6 +106,68 @@ describe("normalizeErrorProcessor", () => {
     });
   });
 
+  it("can omit stacks, aggregate errors, and enumerable extras", () => {
+    const errorWithExtras = Object.assign(new Error("failed"), {
+      code: 503,
+      retryable: true,
+      errors: [new Error("nested")],
+    });
+    errorWithExtras.stack = "Error: failed\n    at first";
+
+    const processed = normalizeErrorProcessor({
+      maxStackLines: 0,
+      includeAggregateErrors: false,
+      includeEnumerableProperties: false,
+    })(event(errorWithExtras as unknown as LogEvent["error"]), context);
+
+    expect(processed).toMatchObject({
+      error: {
+        name: "Error",
+        message: "failed",
+        code: 503,
+      },
+    });
+    expect((processed as LogEvent).error?.stack).toBeUndefined();
+    expect((processed as LogEvent).error).not.toHaveProperty("errors");
+    expect((processed as LogEvent).error).not.toHaveProperty("retryable");
+  });
+
+  it("keeps enumerable extras by default", () => {
+    const errorWithExtras = Object.assign(new Error("failed"), {
+      code: { nested: true },
+      retryable: true,
+    });
+
+    const processed = normalizeErrorProcessor()(
+      event(errorWithExtras as unknown as LogEvent["error"]),
+      context,
+    ) as LogEvent;
+
+    expect(processed.error).toMatchObject({
+      name: "Error",
+      message: "failed",
+      code: { nested: true },
+      retryable: true,
+    });
+  });
+
+  it("omits non-string and non-number codes when enumerable extras are disabled", () => {
+    const errorWithObjectCode = Object.assign(new Error("failed"), {
+      code: { nested: true },
+    });
+
+    const processed = normalizeErrorProcessor({ includeEnumerableProperties: false })(
+      event(errorWithObjectCode as unknown as LogEvent["error"]),
+      context,
+    ) as LogEvent;
+
+    expect(processed.error).toMatchObject({
+      name: "Error",
+      message: "failed",
+    });
+    expect(processed.error).not.toHaveProperty("code");
+  });
+
   it("normalizes configured data error keys", () => {
     const dataError = new RangeError("bad range");
     const processor = normalizeErrorProcessor({ dataErrorKeys: ["failure"] });
@@ -82,5 +179,15 @@ describe("normalizeErrorProcessor", () => {
         untouched: true,
       },
     });
+  });
+
+  it("leaves data unchanged when configured error keys are absent or nullish", () => {
+    const data = { failure: null, untouched: true };
+    const processor = normalizeErrorProcessor({ dataErrorKeys: ["failure", "missing"] });
+
+    expect((processor(event(undefined, data), context) as LogEvent).data).toBe(data);
+    expect((processor(event(undefined, "not-record"), context) as LogEvent).data).toBe(
+      "not-record",
+    );
   });
 });
