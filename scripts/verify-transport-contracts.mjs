@@ -141,7 +141,11 @@ const rows = [
       "@loggerjs/database/sqlite",
       "@loggerjs/database/postgres",
     ],
-    sources: ["packages/database/src/index.ts"],
+    sources: [
+      "packages/database/src/transport.ts",
+      "packages/database/src/sqlite.ts",
+      "packages/database/src/postgres.ts",
+    ],
     tests: ["packages/database/test/database-transport.test.ts"],
   },
   {
@@ -259,6 +263,7 @@ function sourceFilesRequiringContract() {
   const candidates = [
     ...walk("packages/core/src/transports"),
     ...walk("packages/browser/src"),
+    ...walk("packages/database/src"),
     ...walk("packages/node/src"),
     ...walk("packages/pretty/src"),
     ...walk("packages/otel/src"),
@@ -266,7 +271,10 @@ function sourceFilesRequiringContract() {
 
   return candidates
     .filter((path) => path.endsWith(".ts"))
-    .filter((path) => /(^|\/)([^/]*transport[^/]*|indexeddb-offline-queue)\.ts$/.test(path))
+    .filter((path) => {
+      if (/^packages\/database\/src\/(transport|sqlite|postgres)\.ts$/.test(path)) return true;
+      return /(^|\/)([^/]*transport[^/]*|indexeddb-offline-queue)\.ts$/.test(path);
+    })
     .toSorted();
 }
 
