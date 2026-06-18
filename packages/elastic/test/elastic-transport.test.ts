@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  recordToEvent,
+  retryTransport,
+  type LogEvent,
+  type TransportContext,
+} from "@loggerjs/core";
 import {
   createElasticBulkPayload,
   elasticTransport,
@@ -39,6 +44,10 @@ function bulkLines(fetchFn: ReturnType<typeof vi.fn<typeof fetch>>): unknown[] {
 }
 
 describe("elasticTransport", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("creates Elasticsearch bulk NDJSON with action metadata and documents", () => {
     const payload = createElasticBulkPayload([event("created")], {
       id: (item) => item.id,
@@ -134,6 +143,86 @@ describe("elasticTransport", () => {
     await expect(transport.log?.(event("failed"), context)).rejects.toThrow(
       "bulk response contains item errors",
     );
+  });
+
+  it("does not send when minLevel filters a single event or an entire batch", async () => {
+    const fetchFn = vi.fn<typeof fetch>(
+      async () => new Response(JSON.stringify({ errors: false }), { status: 200 }),
+    );
+    const transport = elasticTransport({
+      url: "https://elastic.example.com",
+      minLevel: "error",
+      fetchFn,
+    });
+
+    await transport.log?.(event("debug", { level: 20, levelName: "debug" }), context);
+    await transport.logBatch?.(
+      [
+        event("info", { level: 30, levelName: "info" }),
+        event("warn", { level: 40, levelName: "warn" }),
+      ],
+      context,
+    );
+
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("throws a transport-specific error on non-2xx responses without dropping auth headers", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response("nope", { status: 502 }));
+    const transport = elasticTransport({
+      url: "https://elastic.example.com",
+      apiKey: "key",
+      headers: { "x-custom": "present" },
+      fetchFn,
+    });
+
+    await expect(transport.log?.(event("failed"), context)).rejects.toThrow(
+      "elasticTransport failed with status 502",
+    );
+    expect(fetchFn.mock.calls[0]?.[1]?.headers).toMatchObject({
+      authorization: "ApiKey key",
+      "content-type": "application/x-ndjson",
+      "x-custom": "present",
+    });
+  });
+
+  it("propagates fetch rejections", async () => {
+    const error = new TypeError("network down");
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      throw error;
+    });
+    const transport = elasticTransport({ url: "https://elastic.example.com", fetchFn });
+
+    await expect(transport.log?.(event("failed"), context)).rejects.toBe(error);
+  });
+
+  it("fails explicitly when fetch is unavailable", async () => {
+    vi.stubGlobal("fetch", undefined);
+    const transport = elasticTransport({ url: "https://elastic.example.com" });
+
+    await expect(transport.log?.(event("failed"), context)).rejects.toThrow(
+      "fetch is not available for elasticTransport",
+    );
+  });
+
+  it("can be wrapped with retryTransport for transient delivery failures", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      if (fetchFn.mock.calls.length === 1) return new Response("temporary", { status: 503 });
+      return new Response(JSON.stringify({ errors: false }), { status: 200 });
+    });
+    const transport = retryTransport(
+      elasticTransport({ url: "https://elastic.example.com", fetchFn }),
+      {
+        maxRetries: 1,
+        retryBaseDelayMs: 0,
+        retryMaxDelayMs: 0,
+      },
+    );
+
+    await transport.log?.(event("retried"), context);
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(bulkLines(fetchFn)[1]).toMatchObject({ message: "retried" });
   });
 
   it("keeps the default document compact", () => {

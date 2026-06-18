@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
+import {
+  recordToEvent,
+  retryTransport,
+  type LogEvent,
+  type TransportContext,
+} from "@loggerjs/core";
 import { sentryTransport, type SentryLike } from "../src";
 
 const event: LogEvent = {
@@ -110,5 +115,48 @@ describe("sentryTransport", () => {
     );
 
     expect(captureException).not.toHaveBeenCalled();
+  });
+
+  it("honors minLevel before invoking the Sentry SDK", () => {
+    const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>();
+    const addBreadcrumb = vi.fn<NonNullable<SentryLike["addBreadcrumb"]>>();
+    const captureMessage = vi.fn<NonNullable<SentryLike["captureMessage"]>>();
+    const transport = sentryTransport({
+      sentry: { logger: { info }, addBreadcrumb, captureMessage },
+      captureMessages: true,
+      eventLevel: "debug",
+      minLevel: "error",
+    });
+
+    transport.log?.(event, context);
+
+    expect(info).not.toHaveBeenCalled();
+    expect(addBreadcrumb).not.toHaveBeenCalled();
+    expect(captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("propagates Sentry SDK failures", () => {
+    const error = new Error("sdk unavailable");
+    const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>(() => {
+      throw error;
+    });
+    const transport = sentryTransport({ sentry: { logger: { info } } });
+
+    expect(() => transport.log?.(event, context)).toThrow(error);
+  });
+
+  it("can be wrapped with retryTransport for transient SDK failures", async () => {
+    const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>(() => {
+      if (info.mock.calls.length === 1) throw new Error("temporary sdk failure");
+    });
+    const transport = retryTransport(sentryTransport({ sentry: { logger: { info } } }), {
+      maxRetries: 1,
+      retryBaseDelayMs: 0,
+      retryMaxDelayMs: 0,
+    });
+
+    await transport.log?.(event, context);
+
+    expect(info).toHaveBeenCalledTimes(2);
   });
 });

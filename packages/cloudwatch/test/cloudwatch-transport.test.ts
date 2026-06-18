@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
-import { recordToEvent, type LogEvent, type TransportContext } from "@loggerjs/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  recordToEvent,
+  retryTransport,
+  type LogEvent,
+  type TransportContext,
+} from "@loggerjs/core";
 import {
   type AwsV4SignRequestOptions,
   cloudWatchLogsTransport,
@@ -36,6 +41,10 @@ function requestJson(fetchFn: ReturnType<typeof vi.fn<typeof fetch>>) {
 }
 
 describe("cloudWatchLogsTransport", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("creates sorted PutLogEvents requests by stream", () => {
     const requests = createCloudWatchPutLogEventsRequest(
       [
@@ -175,5 +184,119 @@ describe("cloudWatchLogsTransport", () => {
     expect(headers.authorization).toContain(
       "SignedHeaders=content-type;host;x-amz-date;x-amz-target",
     );
+  });
+
+  it("does not send when minLevel filters a single event or an entire batch", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    const signer = vi.fn<(request: AwsV4SignRequestOptions) => Record<string, string>>(
+      (request) => request.headers,
+    );
+    const transport = cloudWatchLogsTransport({
+      credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
+      fetchFn,
+      logGroupName: "group",
+      logStreamName: "stream",
+      minLevel: "error",
+      region: "us-east-1",
+      signer,
+    });
+
+    await transport.log?.(event("debug", { level: 20, levelName: "debug" }), context);
+    await transport.logBatch?.(
+      [
+        event("info", { level: 30, levelName: "info" }),
+        event("warn", { level: 40, levelName: "warn" }),
+      ],
+      context,
+    );
+
+    expect(signer).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("throws a transport-specific error on non-2xx responses without dropping signed headers", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response("nope", { status: 500 }));
+    const transport = cloudWatchLogsTransport({
+      credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
+      endpoint: "https://logs.example.test/",
+      fetchFn,
+      headers: { "x-custom": "present" },
+      logGroupName: "group",
+      logStreamName: "stream",
+      region: "us-east-1",
+      signer: async (request) => ({ ...request.headers, authorization: "signed" }),
+    });
+
+    await expect(transport.log?.(event("failed"), context)).rejects.toThrow(
+      "cloudWatchLogsTransport failed with status 500",
+    );
+    expect(fetchFn.mock.calls[0]?.[1]?.headers).toMatchObject({
+      authorization: "signed",
+      "content-type": "application/x-amz-json-1.1",
+      "x-amz-target": "Logs_20140328.PutLogEvents",
+      "x-custom": "present",
+    });
+  });
+
+  it("propagates fetch rejections", async () => {
+    const error = new TypeError("network down");
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      throw error;
+    });
+    const transport = cloudWatchLogsTransport({
+      credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
+      fetchFn,
+      logGroupName: "group",
+      logStreamName: "stream",
+      region: "us-east-1",
+      signer: async (request) => request.headers,
+    });
+
+    await expect(transport.log?.(event("failed"), context)).rejects.toBe(error);
+  });
+
+  it("fails explicitly when fetch is unavailable", async () => {
+    vi.stubGlobal("fetch", undefined);
+    const transport = cloudWatchLogsTransport({
+      credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
+      logGroupName: "group",
+      logStreamName: "stream",
+      region: "us-east-1",
+      signer: async (request) => request.headers,
+    });
+
+    await expect(transport.log?.(event("failed"), context)).rejects.toThrow(
+      "fetch is not available for cloudWatchLogsTransport",
+    );
+  });
+
+  it("can be wrapped with retryTransport for transient delivery failures", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      if (fetchFn.mock.calls.length === 1) return new Response("temporary", { status: 503 });
+      return new Response("{}", { status: 200 });
+    });
+    const transport = retryTransport(
+      cloudWatchLogsTransport({
+        credentials: { accessKeyId: "AKID", secretAccessKey: "SECRET" },
+        fetchFn,
+        logGroupName: "group",
+        logStreamName: "stream",
+        message: (item) => item.message,
+        region: "us-east-1",
+        signer: async (request) => request.headers,
+      }),
+      {
+        maxRetries: 1,
+        retryBaseDelayMs: 0,
+        retryMaxDelayMs: 0,
+      },
+    );
+
+    await transport.log?.(event("retried"), context);
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(requestJson(fetchFn)).toMatchObject({
+      logEvents: [{ message: "retried", timestamp: 2 }],
+    });
   });
 });
