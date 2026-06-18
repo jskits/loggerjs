@@ -84,7 +84,10 @@ export default {
   mutate: [...profile.mutate, "!packages/**/*.d.ts"],
   packageManager: "pnpm",
   plugins: ["@stryker-mutator/vitest-runner"],
-  reporters: ["clear-text", "progress"],
+  reporters: ["clear-text", "progress", "json"],
+  jsonReporter: {
+    fileName: `.tmp/mutation-reports/${profileName}.json`,
+  },
   tempDirName: `.tmp/stryker/${profileName}`,
   testRunner: "vitest",
   // Profile intent:
