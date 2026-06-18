@@ -141,6 +141,17 @@ export declare function enrichProcessor(input: EnrichInput): Processor;
 export declare function enrichMiddleware(input: EnrichMiddlewareInput): Middleware;
 ```
 
+## error-fields.d.ts
+
+```ts
+declare const NATIVE_ERROR_FIELDS: readonly ["cause", "errors"];
+type NativeErrorField = (typeof NATIVE_ERROR_FIELDS)[number];
+export declare function hiddenErrorFields(value: Error): NativeErrorField[];
+export declare function defineHidden(target: Record<string, unknown>, field: string, value: unknown): void;
+export declare function dotPath(path: string, field: string): string;
+export {};
+```
+
 ## filter-route.d.ts
 
 ```ts
