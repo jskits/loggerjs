@@ -6,6 +6,62 @@ Update with `pnpm build && pnpm api:report` after intentional public API changes
 ## index.d.ts
 
 ```ts
+export * from "./transport.js";
+export * from "./sqlite.js";
+export * from "./postgres.js";
+```
+
+## postgres.d.ts
+
+```ts
+import type { Transport } from "@loggerjs/core";
+import { type DatabaseTransportAdapter, type DatabaseTransportOptions } from "./transport.js";
+export type PostgresConflictMode = "error" | "ignore";
+export interface PostgresClientLike {
+    query: (sql: string, values?: readonly unknown[]) => unknown | Promise<unknown>;
+}
+export interface PostgresTransportOptions extends Omit<DatabaseTransportOptions, "adapter"> {
+    client: PostgresClientLike;
+    table?: string;
+    createTable?: boolean;
+    conflict?: PostgresConflictMode;
+    payloadColumnType?: string;
+}
+export declare function createPostgresDatabaseAdapter(options: Pick<PostgresTransportOptions, "client" | "conflict" | "createTable" | "payloadColumnType" | "table">): DatabaseTransportAdapter;
+export declare function postgresTransport(options: PostgresTransportOptions): Transport;
+```
+
+## sqlite.d.ts
+
+```ts
+import type { Transport } from "@loggerjs/core";
+import { type DatabaseLogRow, type DatabaseTransportAdapter, type DatabaseTransportOptions } from "./transport.js";
+export type SQLiteConflictMode = "error" | "ignore" | "replace";
+export type SQLiteDriverMode = "auto" | "prepared" | "callback" | "promise";
+export interface SQLiteStatementLike {
+    run: (...values: unknown[]) => unknown;
+}
+export interface SQLiteDatabaseLike {
+    exec?: (sql: string) => unknown;
+    prepare?: (sql: string) => SQLiteStatementLike;
+    run?: (sql: string, values?: readonly unknown[], callback?: (error: Error | null | undefined) => void) => unknown;
+    transaction?: (fn: (rows: readonly DatabaseLogRow[]) => void) => (rows: readonly DatabaseLogRow[]) => void;
+}
+export interface SQLiteTransportOptions extends Omit<DatabaseTransportOptions, "adapter"> {
+    database: SQLiteDatabaseLike;
+    table?: string;
+    createTable?: boolean;
+    conflict?: SQLiteConflictMode;
+    driverMode?: SQLiteDriverMode;
+    payloadColumnType?: string;
+}
+export declare function createSQLiteDatabaseAdapter(options: Pick<SQLiteTransportOptions, "conflict" | "createTable" | "database" | "driverMode" | "payloadColumnType" | "table">): DatabaseTransportAdapter;
+export declare function sqliteTransport(options: SQLiteTransportOptions): Transport;
+```
+
+## transport.d.ts
+
+```ts
 import { type BatchTransportOptions, type Codec, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
 export type DatabaseLogValue = string | number | Uint8Array | null;
 export interface DatabaseLogRow {
@@ -42,40 +98,6 @@ export interface DatabaseTransportOptions extends BatchTransportOptions, Databas
         operation: string;
     }) => void;
 }
-export type SQLiteConflictMode = "error" | "ignore" | "replace";
-export type SQLiteDriverMode = "auto" | "prepared" | "callback" | "promise";
-export interface SQLiteStatementLike {
-    run: (...values: unknown[]) => unknown;
-}
-export interface SQLiteDatabaseLike {
-    exec?: (sql: string) => unknown;
-    prepare?: (sql: string) => SQLiteStatementLike;
-    run?: (sql: string, values?: readonly unknown[], callback?: (error: Error | null | undefined) => void) => unknown;
-    transaction?: (fn: (rows: readonly DatabaseLogRow[]) => void) => (rows: readonly DatabaseLogRow[]) => void;
-}
-export interface SQLiteTransportOptions extends Omit<DatabaseTransportOptions, "adapter"> {
-    database: SQLiteDatabaseLike;
-    table?: string;
-    createTable?: boolean;
-    conflict?: SQLiteConflictMode;
-    driverMode?: SQLiteDriverMode;
-    payloadColumnType?: string;
-}
-export type PostgresConflictMode = "error" | "ignore";
-export interface PostgresClientLike {
-    query: (sql: string, values?: readonly unknown[]) => unknown | Promise<unknown>;
-}
-export interface PostgresTransportOptions extends Omit<DatabaseTransportOptions, "adapter"> {
-    client: PostgresClientLike;
-    table?: string;
-    createTable?: boolean;
-    conflict?: PostgresConflictMode;
-    payloadColumnType?: string;
-}
 export declare function createDatabaseLogRow(event: LogEvent, options?: DatabaseLogRowOptions): DatabaseLogRow;
 export declare function databaseTransport(options: DatabaseTransportOptions): Transport;
-export declare function createSQLiteDatabaseAdapter(options: Pick<SQLiteTransportOptions, "conflict" | "createTable" | "database" | "driverMode" | "payloadColumnType" | "table">): DatabaseTransportAdapter;
-export declare function sqliteTransport(options: SQLiteTransportOptions): Transport;
-export declare function createPostgresDatabaseAdapter(options: Pick<PostgresTransportOptions, "client" | "conflict" | "createTable" | "payloadColumnType" | "table">): DatabaseTransportAdapter;
-export declare function postgresTransport(options: PostgresTransportOptions): Transport;
 ```

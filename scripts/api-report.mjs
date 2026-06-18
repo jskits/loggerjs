@@ -28,7 +28,7 @@ function declarationFiles(dir, root = dir) {
     const absolutePath = join(dir, entry.name);
     if (entry.isDirectory()) {
       files.push(...declarationFiles(absolutePath, root));
-    } else if (entry.isFile() && entry.name.endsWith(".d.ts")) {
+    } else if (entry.isFile() && entry.name.endsWith(".d.ts") && entry.name !== "internal.d.ts") {
       files.push(relative(root, absolutePath));
     }
   }

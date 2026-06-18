@@ -29,64 +29,64 @@
       "require": "./dist/index.cjs"
     },
     "./middleware": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/middleware.d.ts",
+      "import": "./dist/middleware.js",
+      "require": "./dist/middleware.cjs"
     },
     "./codec-json": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/codecs/json.d.ts",
+      "import": "./dist/codec-json.js",
+      "require": "./dist/codec-json.cjs"
     },
     "./codec-metrics": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/codecs/metrics.d.ts",
+      "import": "./dist/codec-metrics.js",
+      "require": "./dist/codec-metrics.cjs"
     },
     "./transport-console": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/transports/console.d.ts",
+      "import": "./dist/transport-console.js",
+      "require": "./dist/transport-console.cjs"
     },
     "./transport-batch": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/transports/batch.d.ts",
+      "import": "./dist/transport-batch.js",
+      "require": "./dist/transport-batch.cjs"
     },
     "./transport-reliability": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/transports/reliability.d.ts",
+      "import": "./dist/transport-reliability.js",
+      "require": "./dist/transport-reliability.cjs"
     },
     "./transport-test": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/transports/test.d.ts",
+      "import": "./dist/transport-test.js",
+      "require": "./dist/transport-test.cjs"
     },
     "./context": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/context.d.ts",
+      "import": "./dist/context.js",
+      "require": "./dist/context.cjs"
     },
     "./trace-propagation": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/trace-propagation.d.ts",
+      "import": "./dist/trace-propagation.js",
+      "require": "./dist/trace-propagation.cjs"
     },
     "./events": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/events.d.ts",
+      "import": "./dist/events.js",
+      "require": "./dist/events.cjs"
     },
     "./semantic-events": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/semantic-events.d.ts",
+      "import": "./dist/semantic-events.js",
+      "require": "./dist/semantic-events.cjs"
     },
     "./payload-transforms": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/payload-transforms.d.ts",
+      "import": "./dist/payload-transforms.js",
+      "require": "./dist/payload-transforms.cjs"
     }
   },
   "publishConfig": {
@@ -101,5 +101,19 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
+  },
+  "loggerjsSubpathEntries": {
+    "middleware": "src/middleware.ts",
+    "codec-json": "src/codecs/json.ts",
+    "codec-metrics": "src/codecs/metrics.ts",
+    "transport-console": "src/transports/console.ts",
+    "transport-batch": "src/transports/batch.ts",
+    "transport-reliability": "src/transports/reliability.ts",
+    "transport-test": "src/transports/test.ts",
+    "context": "src/context.ts",
+    "trace-propagation": "src/trace-propagation.ts",
+    "events": "src/events.ts",
+    "semantic-events": "src/semantic-events.ts",
+    "payload-transforms": "src/payload-transforms.ts"
   }
 }

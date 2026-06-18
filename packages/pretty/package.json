@@ -29,19 +29,19 @@
       "require": "./dist/index.cjs"
     },
     "./formatter": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/formatter.d.ts",
+      "import": "./dist/formatter.js",
+      "require": "./dist/formatter.cjs"
     },
     "./transport-console": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/console-transport.d.ts",
+      "import": "./dist/transport-console.js",
+      "require": "./dist/transport-console.cjs"
     },
     "./transport-stream": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/stream-transport.d.ts",
+      "import": "./dist/transport-stream.js",
+      "require": "./dist/transport-stream.cjs"
     }
   },
   "publishConfig": {
@@ -58,5 +58,10 @@
   },
   "dependencies": {
     "@loggerjs/core": "workspace:*"
+  },
+  "loggerjsSubpathEntries": {
+    "formatter": "src/formatter.ts",
+    "transport-console": "src/console-transport.ts",
+    "transport-stream": "src/stream-transport.ts"
   }
 }

@@ -29,19 +29,19 @@
       "require": "./dist/index.cjs"
     },
     "./transport": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/transport.d.ts",
+      "import": "./dist/transport.js",
+      "require": "./dist/transport.cjs"
     },
     "./sqlite": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/sqlite.d.ts",
+      "import": "./dist/sqlite.js",
+      "require": "./dist/sqlite.cjs"
     },
     "./postgres": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/postgres.d.ts",
+      "import": "./dist/postgres.js",
+      "require": "./dist/postgres.cjs"
     }
   },
   "publishConfig": {
@@ -58,5 +58,10 @@
   },
   "dependencies": {
     "@loggerjs/core": "workspace:*"
+  },
+  "loggerjsSubpathEntries": {
+    "transport": "src/transport.ts",
+    "sqlite": "src/sqlite.ts",
+    "postgres": "src/postgres.ts"
   }
 }

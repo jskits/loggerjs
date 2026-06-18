@@ -29,24 +29,24 @@
       "require": "./dist/index.cjs"
     },
     "./transport-http": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/transport.d.ts",
+      "import": "./dist/transport-http.js",
+      "require": "./dist/transport-http.cjs"
     },
     "./codec-otlp-json": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/otlp-json.d.ts",
+      "import": "./dist/codec-otlp-json.js",
+      "require": "./dist/codec-otlp-json.cjs"
     },
     "./trace": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/trace.d.ts",
+      "import": "./dist/trace.js",
+      "require": "./dist/trace.cjs"
     },
     "./log-bridge": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/log-bridge.d.ts",
+      "import": "./dist/log-bridge.js",
+      "require": "./dist/log-bridge.cjs"
     }
   },
   "publishConfig": {
@@ -71,5 +71,11 @@
     "@opentelemetry/api": {
       "optional": true
     }
+  },
+  "loggerjsSubpathEntries": {
+    "transport-http": "src/transport.ts",
+    "codec-otlp-json": "src/otlp-json.ts",
+    "trace": "src/trace.ts",
+    "log-bridge": "src/log-bridge.ts"
   }
 }
