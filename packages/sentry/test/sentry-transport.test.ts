@@ -27,6 +27,11 @@ const context: TransportContext = {
 };
 
 describe("sentryTransport", () => {
+  it("exposes stable default and custom transport names", () => {
+    expect(sentryTransport({ sentry: {} }).name).toBe("sentry");
+    expect(sentryTransport({ sentry: {}, name: "errors" }).name).toBe("errors");
+  });
+
   it("emits structured logs and breadcrumbs", () => {
     const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>();
     const addBreadcrumb = vi.fn<NonNullable<SentryLike["addBreadcrumb"]>>();
@@ -56,6 +61,8 @@ describe("sentryTransport", () => {
         message: "created",
       }),
     );
+    expect(info.mock.calls[0]?.[1]).not.toHaveProperty("loggerjs.type");
+    expect(info.mock.calls[0]?.[1]).not.toHaveProperty("loggerjs.error");
   });
 
   it("captures serialized errors as Sentry exceptions", () => {
@@ -87,10 +94,26 @@ describe("sentryTransport", () => {
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).name).toBe("TypeError");
     expect((error as Error).message).toBe("boom");
+    expect((error as Error).stack).toBe("stacktrace");
     expect(sentryContext).toMatchObject({
       level: "error",
       tags: { route: "/users" },
     });
+  });
+
+  it("keeps structured logs and breadcrumbs disabled when requested", () => {
+    const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>();
+    const addBreadcrumb = vi.fn<NonNullable<SentryLike["addBreadcrumb"]>>();
+    const transport = sentryTransport({
+      sentry: { logger: { info }, addBreadcrumb },
+      structuredLogs: false,
+      breadcrumbs: false,
+    });
+
+    transport.log?.(event, context);
+
+    expect(info).not.toHaveBeenCalled();
+    expect(addBreadcrumb).not.toHaveBeenCalled();
   });
 
   it("can disable error event capture", () => {
@@ -187,6 +210,19 @@ describe("sentryTransport", () => {
     expect((captured as Error).stack).toBeTruthy();
   });
 
+  it("does not capture message events by default", () => {
+    const captureMessage = vi.fn<NonNullable<SentryLike["captureMessage"]>>();
+    const transport = sentryTransport({
+      sentry: { captureMessage },
+      structuredLogs: false,
+      breadcrumbs: false,
+    });
+
+    transport.log?.({ ...event, level: 50, levelName: "error", message: "message only" }, context);
+
+    expect(captureMessage).not.toHaveBeenCalled();
+  });
+
   it("honors minLevel before invoking the Sentry SDK", () => {
     const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>();
     const addBreadcrumb = vi.fn<NonNullable<SentryLike["addBreadcrumb"]>>();
@@ -203,6 +239,25 @@ describe("sentryTransport", () => {
     expect(info).not.toHaveBeenCalled();
     expect(addBreadcrumb).not.toHaveBeenCalled();
     expect(captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("allows events exactly at minLevel", () => {
+    const error = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["error"]>>();
+    const captureMessage = vi.fn<NonNullable<SentryLike["captureMessage"]>>();
+    const transport = sentryTransport({
+      sentry: { logger: { error }, captureMessage },
+      captureMessages: true,
+      eventLevel: "error",
+      minLevel: "error",
+    });
+
+    transport.log?.({ ...event, level: 50, levelName: "error", message: "equal" }, context);
+
+    expect(error).toHaveBeenCalledWith("equal", expect.any(Object));
+    expect(captureMessage).toHaveBeenCalledWith(
+      "equal",
+      expect.objectContaining({ level: "error" }),
+    );
   });
 
   it("propagates Sentry SDK failures", () => {

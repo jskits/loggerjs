@@ -76,6 +76,22 @@ describe("nodeHttpTransport", () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
+  it("exposes the default transport name and POST method", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => okResponse);
+    const transport = nodeHttpTransport({
+      url: "https://collector.example/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("created"), createTransportContext());
+    await transport.flush?.();
+
+    expect(transport.name).toBe("node-http");
+    expect(fetchFn.mock.calls[0]?.[1]?.method).toBe("POST");
+  });
+
   it("rejects non-2xx responses and keeps the batch retryable", async () => {
     let fail = true;
     const fetchFn = vi.fn<typeof fetch>(async () => {
@@ -145,6 +161,7 @@ describe("nodeHttpTransport", () => {
   it("transforms encoded payloads before fetch", async () => {
     const bodies: string[] = [];
     const headers: HeadersInit[] = [];
+    const transformTransports: string[] = [];
     const fetchFn = vi.fn<typeof fetch>(async (_url, init) => {
       if (typeof init?.body === "string") bodies.push(init.body);
       if (init?.headers) headers.push(init.headers);
@@ -155,11 +172,14 @@ describe("nodeHttpTransport", () => {
       codec: textCodec,
       flushIntervalMs: 0,
       fetchFn,
-      transformPayload: async (payload, context) => ({
-        payload: `${context.contentType}:${payload.toString().toUpperCase()}`,
-        contentType: "application/x-logger",
-        headers: { "content-encoding": "mock" },
-      }),
+      transformPayload: async (payload, context) => {
+        transformTransports.push(context.transport ?? "<missing>");
+        return {
+          payload: `${context.contentType}:${payload.toString().toUpperCase()}`,
+          contentType: "application/x-logger",
+          headers: { "content-encoding": "mock" },
+        };
+      },
     });
 
     transport.log?.(createEvent("compressed"), createTransportContext());
@@ -170,6 +190,7 @@ describe("nodeHttpTransport", () => {
       "content-type": "application/x-logger",
       "content-encoding": "mock",
     });
+    expect(transformTransports).toEqual(["node-http"]);
   });
 
   it("uses method, binary bodies, and explicit header precedence", async () => {

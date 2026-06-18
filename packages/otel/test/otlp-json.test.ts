@@ -29,6 +29,7 @@ describe("otlpJsonCodec", () => {
 
     expect(codec.name).toBe("otlp-json");
     expect(codec.contentType).toBe("application/json");
+    expect(codec.decode?.('{"ok":true}')).toEqual({ ok: true });
   });
 
   it("accepts LogRecord batches through the compatibility projection", () => {
@@ -43,9 +44,34 @@ describe("otlpJsonCodec", () => {
     const payload = JSON.parse(otlpJsonCodec().encode([record]));
 
     expect(payload.resourceLogs[0].scopeLogs[0].logRecords[0]).toMatchObject({
+      timeUnixNano: "1000000",
       severityNumber: 17,
       severityText: "ERROR",
       body: { stringValue: "failed" },
+    });
+  });
+
+  it("wraps a single event and falls back empty logger categories to app", () => {
+    const payload = JSON.parse(
+      otlpJsonCodec().encode({
+        id: "evt-1",
+        time: 2.5,
+        seq: 1,
+        level: 30,
+        levelName: "info",
+        logger: "",
+        message: "created",
+      }),
+    );
+    const scopeLog = payload.resourceLogs[0].scopeLogs[0];
+
+    expect(findAttribute(scopeLog.scope.attributes, "loggerjs.category")).toEqual({
+      stringValue: "app",
+    });
+    expect(scopeLog.logRecords).toHaveLength(1);
+    expect(scopeLog.logRecords[0]).toMatchObject({
+      timeUnixNano: "2500000",
+      body: { stringValue: "created" },
     });
   });
 
