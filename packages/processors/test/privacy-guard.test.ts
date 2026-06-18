@@ -38,6 +38,19 @@ function requireEvent(value: unknown): LogEvent {
   return value as LogEvent;
 }
 
+function cleanEvent(overrides: Partial<LogEvent> = {}): LogEvent {
+  return {
+    id: "evt-clean",
+    time: 1,
+    seq: 1,
+    level: 30,
+    levelName: "info",
+    logger: "app",
+    message: "safe",
+    ...overrides,
+  };
+}
+
 describe("privacyGuardProcessor", () => {
   it("redacts sensitive keys and built-in value patterns", () => {
     const onRedact = vi.fn<(path: string, reason: string) => void>();
@@ -137,6 +150,43 @@ describe("privacyGuardProcessor", () => {
     expect(onRedact).toHaveBeenCalledWith("message", "bearer-token");
   });
 
+  it("redacts only Luhn-valid credit card candidates within the supported length range", () => {
+    const onRedact = vi.fn<(path: string, reason: string) => void>();
+    const processor = privacyGuardProcessor({ targets: ["message"], onRedact });
+    const processed = requireEvent(
+      processor(
+        cleanEvent({
+          message:
+            "short 123456789012 min 4222222222222 bad 4242424242424241 max 4000000000000000006 long 12345678901234567890",
+        }),
+        context,
+      ),
+    );
+
+    expect(processed.message).toBe(
+      "short 123456789012 min [REDACTED] bad 4242424242424241 max [REDACTED] long 12345678901234567890",
+    );
+    expect(onRedact).toHaveBeenCalledTimes(2);
+    expect(onRedact).toHaveBeenCalledWith("message", "credit-card");
+  });
+
+  it("redacts email boundary cases and leaves invalid domains unchanged", () => {
+    const processor = privacyGuardProcessor({ targets: ["message"] });
+    const processed = requireEvent(
+      processor(
+        cleanEvent({
+          message:
+            "A@z.co z@a.c user@bad..com user@example.c0 foo@bar.x y@example.com_ Z@EXAMPLE.ZZ",
+        }),
+        context,
+      ),
+    );
+
+    expect(processed.message).toBe(
+      "[REDACTED] z@a.c user@bad..com user@example.c0 foo@bar.x y@example.com_ [REDACTED]",
+    );
+  });
+
   it("honors custom pattern validation and replacement", () => {
     const processor = privacyGuardProcessor({
       targets: ["message"],
@@ -183,6 +233,28 @@ describe("privacyGuardProcessor", () => {
     });
   });
 
+  it("reports max-depth and max-string-length redaction reasons", () => {
+    const onRedact = vi.fn<(path: string, reason: string) => void>();
+    const processor = privacyGuardProcessor({
+      targets: ["message", "data"],
+      maxDepth: 1,
+      maxStringLength: 4,
+      truncateSuffix: "~",
+      onRedact,
+    });
+
+    processor(
+      cleanEvent({
+        message: "abcdef",
+        data: { nested: { value: "safe" } },
+      }),
+      context,
+    );
+
+    expect(onRedact).toHaveBeenCalledWith("message", "max-string-length");
+    expect(onRedact).toHaveBeenCalledWith("data.nested", "max-depth");
+  });
+
   it("uses the default truncate suffix when no suffix is configured", () => {
     const processor = privacyGuardProcessor({
       targets: ["message"],
@@ -219,6 +291,53 @@ describe("privacyGuardProcessor", () => {
       message: "user [REDACTED] used [REDACTED]",
       data: { password: "secret" },
       context: { authorization: "Bearer secret.token" },
+    });
+  });
+
+  it("leaves primitive, nullish, and Date-only data unchanged by identity", () => {
+    const when = new Date("2026-06-19T00:00:00.000Z");
+    const data = {
+      count: 1,
+      flag: true,
+      nothing: null,
+      missing: undefined,
+      when,
+    };
+    const input = cleanEvent({ data });
+    const processed = privacyGuardProcessor({ targets: ["data"], patterns: [] })(input, context);
+
+    expect(processed).toBe(input);
+    expect((processed as LogEvent).data).toBe(data);
+    expect((data as { when: Date }).when).toBe(when);
+  });
+
+  it("preserves object cycles when cloning guarded data", () => {
+    const data: { email: string; self?: unknown } = { email: "buyer@example.com" };
+    data.self = data;
+    const processed = requireEvent(
+      privacyGuardProcessor({ targets: ["data"] })(cleanEvent({ data }), context),
+    );
+    const guarded = processed.data as typeof data;
+
+    expect(guarded).not.toBe(data);
+    expect(guarded.email).toBe("[REDACTED]");
+    expect(guarded.self).toBe(guarded);
+  });
+
+  it("matches regex deny keys against full nested paths", () => {
+    const processor = privacyGuardProcessor({
+      targets: ["data"],
+      denyKeys: [/^data\.credentials\.value$/],
+    });
+    const processed = requireEvent(
+      processor(
+        cleanEvent({ data: { credentials: { value: "secret", label: "public" } } }),
+        context,
+      ),
+    );
+
+    expect(processed.data).toEqual({
+      credentials: { value: "[REDACTED]", label: "public" },
     });
   });
 

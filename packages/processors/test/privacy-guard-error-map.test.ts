@@ -70,6 +70,27 @@ describe("privacyGuardProcessor — Error / Map / Set", () => {
     expect(String([...set][0])).not.toContain("buyer@example.com");
   });
 
+  it("reports stable paths for non-string Map keys and indexed Set members", () => {
+    const redactions: Array<[string, string]> = [];
+    const data = {
+      keyed: new Map<unknown, unknown>([[123, "contact buyer@example.com"]]),
+      set: new Set<unknown>(["first first@example.com", "second second@example.com"]),
+    };
+
+    const out = privacyGuardProcessor({
+      onRedact(path, reason) {
+        redactions.push([path, reason]);
+      },
+    })(eventWith(data), context) as LogEvent;
+
+    const guarded = out.data as typeof data;
+    expect(guarded.keyed.get(123)).toBe("contact [REDACTED]");
+    expect([...guarded.set]).toEqual(["first [REDACTED]", "second [REDACTED]"]);
+    expect(redactions).toContainEqual(["data.keyed", "email"]);
+    expect(redactions).toContainEqual(["data.set[0]", "email"]);
+    expect(redactions).toContainEqual(["data.set[1]", "email"]);
+  });
+
   it("scans PII inside raw Error message and stack strings", () => {
     const cause = new Error("contact buyer@example.com");
     cause.stack = "Error: contact buyer@example.com\n    at checkout";
@@ -115,6 +136,25 @@ describe("privacyGuardProcessor — Error / Map / Set", () => {
       eventWith({ cause }),
       context,
     ) as LogEvent;
+    expect((out.data as { cause: Error }).cause).toBe(cause);
+  });
+
+  it("leaves an Error with non-string message and stack unchanged by identity", () => {
+    const cause = new Error("plain") as Error & { message: unknown; stack: unknown };
+    Object.defineProperty(cause, "message", {
+      value: 123,
+      configurable: true,
+    });
+    Object.defineProperty(cause, "stack", {
+      value: undefined,
+      configurable: true,
+    });
+
+    const out = privacyGuardProcessor({ denyKeys: ["password"] })(
+      eventWith({ cause }),
+      context,
+    ) as LogEvent;
+
     expect((out.data as { cause: Error }).cause).toBe(cause);
   });
 
