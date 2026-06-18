@@ -111,6 +111,8 @@ diagnostics to Node `diagnostics_channel` channels such as `loggerjs.dispatch`,
 
 `captureProcessIntegration()` turns uncaught exceptions (fatal), unhandled rejections, warnings, and exit into log events; with `exitOnUncaught` it captures the fatal record, calls `flushSync()`, waits for bounded async `flush()`, then exits. Every integration is tagged `source: "integration:<name>"` and guarded against capture loops.
 
+Coverage notes: `prismaIntegration()` wraps `$queryRaw` / `$executeRaw` raw-query variants only; it does not subscribe to `$on("query")` or capture typed model calls. `bullMqIntegration()` wraps Queue-like `add`, `addBulk`, and legacy `process` methods; it does not hook `Worker` or `QueueEvents` completed/failed/stalled events. `nestMiddlewareIntegration()` is Express-compatible middleware, not a Nest exception-filter/interceptor integration.
+
 ### Context manager
 
 ```ts

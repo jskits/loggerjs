@@ -8,6 +8,11 @@ export interface BullMqIntegrationOptions extends Omit<
   QueueIntegrationOptions,
   "client" | "system" | "methods" | "getQueueName"
 > {
+  /**
+   * Queue-like BullMQ object. By default LoggerJS wraps `add`, `addBulk`, and a
+   * legacy `process` method when present; it does not hook `Worker` or
+   * `QueueEvents` lifecycle events such as `completed`, `failed`, or `stalled`.
+   */
   client: QueueClientLike & { name?: string };
   methods?: readonly string[];
 }

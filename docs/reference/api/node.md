@@ -14,6 +14,11 @@ Source report: [api-reports/loggerjs-node.api.md](https://github.com/jskits/logg
 ```ts
 import { type QueueClientLike, type QueueIntegrationOptions } from "./queue-integration.js";
 export interface BullMqIntegrationOptions extends Omit<QueueIntegrationOptions, "client" | "system" | "methods" | "getQueueName"> {
+    /**
+     * Queue-like BullMQ object. By default LoggerJS wraps `add`, `addBulk`, and a
+     * legacy `process` method when present; it does not hook `Worker` or
+     * `QueueEvents` lifecycle events such as `completed`, `failed`, or `stalled`.
+     */
     client: QueueClientLike & {
         name?: string;
     };
@@ -402,6 +407,11 @@ export declare function installLoggerDiagnosticsChannel(options?: InstallLoggerD
 import type { LoggerLike } from "@loggerjs/core";
 import { type ExpressIntegrationOptions, type ExpressRequestHandler } from "./express-integration.js";
 export type NestMiddleware = ExpressRequestHandler;
+/**
+ * Express-compatible Nest middleware adapter. It observes the same request and
+ * response completion surface as `expressIntegration`; it does not hook Nest
+ * exception filters, interceptors, guards, or the original thrown `Error`.
+ */
 export declare function nestMiddlewareIntegration(logger: LoggerLike, options?: ExpressIntegrationOptions): NestMiddleware;
 ```
 
@@ -551,6 +561,11 @@ export declare function nodeCompressionPayloadTransform(options?: NodeCompressio
 ```ts
 import { type DatabaseClientLike, type DatabaseIntegrationOptions } from "./database-integration.js";
 export interface PrismaIntegrationOptions extends Omit<DatabaseIntegrationOptions, "client" | "system" | "methods" | "getStatement"> {
+    /**
+     * Prisma-like client whose raw query methods should be wrapped. This adapter
+     * does not subscribe to `$on("query")` and does not capture typed model
+     * operations such as `prisma.user.findMany()`.
+     */
     client: DatabaseClientLike;
 }
 export declare function prismaIntegration(options: PrismaIntegrationOptions): import("@loggerjs/core").Integration;

@@ -8,6 +8,11 @@ export interface PrismaIntegrationOptions extends Omit<
   DatabaseIntegrationOptions,
   "client" | "system" | "methods" | "getStatement"
 > {
+  /**
+   * Prisma-like client whose raw query methods should be wrapped. This adapter
+   * does not subscribe to `$on("query")` and does not capture typed model
+   * operations such as `prisma.user.findMany()`.
+   */
   client: DatabaseClientLike;
 }
 
