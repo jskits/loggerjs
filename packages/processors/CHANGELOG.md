@@ -1,5 +1,12 @@
 # @loggerjs/processors
 
+## 0.5.2
+
+- Fixed `redactProcessor` to fail closed past `maxDepth`, replacing too-deep subtrees with the configured replacement instead of passing plaintext values through.
+- Hardened `redactProcessor` and `privacyGuardProcessor` for native `Error` values: own enumerable properties are now traversed, native `cause` and `AggregateError.errors` are preserved and recursively redacted or guarded, and `privacyGuardProcessor` scans raw `Error.message`/`Error.stack` text.
+- Preserved `Map` and `Set` values while recursively redacting or guarding their contents instead of dropping them during traversal.
+- Updated dependency `@loggerjs/core` to the matching release.
+
 This changelog has been corrected against the git tag history. Untagged generated entries that were later reset are folded into the tagged release where their commits shipped.
 
 ## 0.5.1

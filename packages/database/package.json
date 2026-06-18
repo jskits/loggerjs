@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/database",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "SQLite, PostgreSQL, and custom database transports for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/database#readme",
   "bugs": {

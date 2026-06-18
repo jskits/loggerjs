@@ -1,5 +1,10 @@
 # @loggerjs/core
 
+## 0.5.2
+
+- Version alignment for package release `0.5.2`.
+- No package runtime source changes landed between the `0.5.1` and `0.5.2` package releases.
+
 This changelog has been corrected against the git tag history. Untagged generated entries that were later reset are folded into the tagged release where their commits shipped.
 
 ## 0.5.1

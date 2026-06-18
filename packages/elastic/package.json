@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/elastic",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Elasticsearch bulk transport for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/elastic#readme",
   "bugs": {
