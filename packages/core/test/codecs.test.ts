@@ -7,8 +7,27 @@ import {
   ndjsonCodec,
   safeJsonCodec,
   type Codec,
+  type LogEvent,
   type LogRecord,
 } from "../src";
+
+function sampleEvent(patch: Partial<LogEvent> = {}): LogEvent {
+  return {
+    id: "evt-1",
+    time: 1,
+    seq: 1,
+    level: 30,
+    levelName: "info",
+    logger: "api",
+    message: "created",
+    ...patch,
+  };
+}
+
+function decode(codec: Codec<string>, payload: string): LogEvent | LogEvent[] {
+  if (!codec.decode) throw new Error(`${codec.name} codec must support decode`);
+  return codec.decode(payload);
+}
 
 describe("core codecs", () => {
   it("accepts LogRecord batches through the compatibility projection", () => {
@@ -32,6 +51,51 @@ describe("core codecs", () => {
     ]);
     expect(JSON.parse(safeJsonCodec().encode([record]))).toHaveLength(1);
     expect(ndjsonCodec().encode([record])).toContain('"message":"created"');
+  });
+
+  it("validates decoded JSON event envelopes before returning them", () => {
+    const event = sampleEvent({
+      type: "order.created",
+      tags: { service: "checkout", sampled: true },
+      error: { message: "boom", code: "E_TEST" },
+      context: { requestId: "req-1" },
+      trace: { traceId: "trace-1" },
+      source: { integration: "test" },
+    });
+
+    expect(decode(jsonCodec(), JSON.stringify(event))).toMatchObject({
+      id: "evt-1",
+      logger: "api",
+      error: { message: "boom" },
+    });
+    expect(decode(safeJsonCodec(), JSON.stringify([event]))).toMatchObject([
+      { id: "evt-1", message: "created" },
+    ]);
+  });
+
+  it("rejects malformed decoded JSON event envelopes", () => {
+    const malformed = { ...sampleEvent(), seq: "1" };
+    const invalidBatch = [sampleEvent(), { ...sampleEvent({ id: "bad" }), tags: { secret: {} } }];
+
+    expect(() => decode(jsonCodec(), JSON.stringify(malformed))).toThrow(
+      "payload.seq: expected finite number",
+    );
+    expect(() => decode(safeJsonCodec(), JSON.stringify(invalidBatch))).toThrow(
+      "payload[1].tags.secret",
+    );
+    expect(() =>
+      decode(jsonCodec(), JSON.stringify({ ...sampleEvent(), levelName: "verbose" })),
+    ).toThrow("payload.levelName: expected enabled log level name");
+  });
+
+  it("validates decoded NDJSON lines with line-aware errors", () => {
+    const valid = JSON.stringify(sampleEvent({ id: "evt-1" }));
+    const invalid = JSON.stringify({ ...sampleEvent({ id: "evt-2" }), error: {} });
+
+    expect(decode(ndjsonCodec(), `${valid}\n`)).toMatchObject([{ id: "evt-1" }]);
+    expect(() => decode(ndjsonCodec(), `${valid}\n${invalid}\n`)).toThrow(
+      "payload line 2.error.message",
+    );
   });
 
   it("re-encodes only the poisoned ndjson line through the safe fallback", () => {

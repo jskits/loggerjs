@@ -21,6 +21,38 @@ function sampleEvent(patch: Partial<LogEvent> = {}): LogEvent {
 }
 
 describe("fast event json hostile inputs", () => {
+  it("validates decoded JSON event envelopes before returning them", () => {
+    const codec = fastEventJsonCodec();
+    const event = sampleEvent({
+      tags: { service: "checkout" },
+      error: { message: "boom" },
+      context: { requestId: "req-1" },
+    });
+
+    expect(codec.decode?.(JSON.stringify([event]))).toMatchObject([
+      { id: "evt-1", logger: "api", error: { message: "boom" } },
+    ]);
+    expect(() => codec.decode?.(JSON.stringify({ ...event, id: 42 }))).toThrow(
+      "payload.id: expected string",
+    );
+    expect(() =>
+      codec.decode?.(
+        JSON.stringify([event, { ...sampleEvent({ id: "bad" }), levelName: "verbose" }]),
+      ),
+    ).toThrow("payload[1].levelName");
+  });
+
+  it("rejects lean decoded envelopes instead of widening them to LogEvent", () => {
+    const leanCodec = fastEventJsonCodec({
+      includeId: false,
+      includeSeq: false,
+      includeLevelName: false,
+    });
+    const payload = leanCodec.encode(sampleEvent());
+
+    expect(() => leanCodec.decode?.(payload)).toThrow("payload.id: expected string");
+  });
+
   it("falls back to safe encoding for circular data by default", () => {
     const data: Record<string, unknown> = { orderId: "ord-1" };
     data.self = data;

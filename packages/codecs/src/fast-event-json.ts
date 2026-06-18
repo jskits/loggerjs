@@ -1,5 +1,6 @@
 import {
   defaultRecordId,
+  enabledLevelNames,
   incrementLoggerMetaCounter,
   isLogRecord,
   normalizeError,
@@ -38,6 +39,87 @@ export interface FastEventJsonCodecOptions extends SafeStringifyOptions {
 }
 
 type JsonStringify = (value: unknown) => string | undefined;
+
+const levelNameSet = new Set<string>(enabledLevelNames);
+
+function invalidLogEvent(path: string, expected: string): never {
+  throw new TypeError(`Invalid LoggerJS log event payload at ${path}: expected ${expected}`);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireString(value: unknown, path: string): string {
+  if (typeof value !== "string") invalidLogEvent(path, "string");
+  return value;
+}
+
+function requireFiniteNumber(value: unknown, path: string): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) invalidLogEvent(path, "finite number");
+  return value;
+}
+
+function assertOptionalString(value: unknown, path: string): void {
+  if (value !== undefined && typeof value !== "string") invalidLogEvent(path, "string");
+}
+
+function assertOptionalObject(value: unknown, path: string): void {
+  if (value !== undefined && !isRecord(value)) invalidLogEvent(path, "object");
+}
+
+function assertTags(value: unknown, path: string): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) invalidLogEvent(path, "object");
+  for (const [key, item] of Object.entries(value)) {
+    const type = typeof item;
+    if (item !== null && type !== "string" && type !== "number" && type !== "boolean") {
+      invalidLogEvent(`${path}.${key}`, "string, number, boolean, or null");
+    }
+    if (type === "number" && !Number.isFinite(item)) {
+      invalidLogEvent(`${path}.${key}`, "finite number");
+    }
+  }
+}
+
+function assertSerializedError(value: unknown, path: string): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) invalidLogEvent(path, "object");
+  requireString(value.message, `${path}.message`);
+  assertOptionalString(value.name, `${path}.name`);
+  assertOptionalString(value.stack, `${path}.stack`);
+  if (
+    value.code !== undefined &&
+    typeof value.code !== "string" &&
+    typeof value.code !== "number"
+  ) {
+    invalidLogEvent(`${path}.code`, "string or number");
+  }
+}
+
+function validateLogEvent(value: unknown, path: string): LogEvent {
+  if (!isRecord(value)) invalidLogEvent(path, "object");
+  requireString(value.id, `${path}.id`);
+  requireFiniteNumber(value.time, `${path}.time`);
+  requireFiniteNumber(value.seq, `${path}.seq`);
+  requireFiniteNumber(value.level, `${path}.level`);
+  const levelName = requireString(value.levelName, `${path}.levelName`);
+  if (!levelNameSet.has(levelName)) invalidLogEvent(`${path}.levelName`, "enabled log level name");
+  requireString(value.logger, `${path}.logger`);
+  requireString(value.message, `${path}.message`);
+  assertOptionalString(value.type, `${path}.type`);
+  assertTags(value.tags, `${path}.tags`);
+  assertSerializedError(value.error, `${path}.error`);
+  assertOptionalObject(value.context, `${path}.context`);
+  assertOptionalObject(value.trace, `${path}.trace`);
+  assertOptionalObject(value.source, `${path}.source`);
+  return value as unknown as LogEvent;
+}
+
+function validateLogEventPayload(value: unknown): LogEvent | LogEvent[] {
+  if (!Array.isArray(value)) return validateLogEvent(value, "payload");
+  return value.map((item, index) => validateLogEvent(item, `payload[${index}]`));
+}
 
 function hasSafeOptions(options: SafeStringifyOptions): boolean {
   return (
@@ -441,7 +523,7 @@ export function fastEventJsonCodec(options: FastEventJsonCodecOptions = {}): Cod
       return encodeItem(input, flags, safeStringify, safeTagsFragment);
     },
     decode(payload) {
-      return JSON.parse(payload) as LogEvent | LogEvent[];
+      return validateLogEventPayload(JSON.parse(payload));
     },
     prepareRecordEncoder(hints: RecordEncoderHints): PreparedRecordEncoder<string> {
       const prepared: PreparedRecordFragments = {
