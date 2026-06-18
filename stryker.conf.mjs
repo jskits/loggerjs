@@ -44,18 +44,18 @@ const profiles = {
     description: "Nightly network/vendor transport delivery contract profile.",
     mutate: networkMutationTargets,
     thresholds: {
-      break: 59,
-      high: 70,
-      low: 65,
+      break: 70,
+      high: 75,
+      low: 70,
     },
   },
   privacy: {
     description: "Nightly privacy/redaction processor profile.",
     mutate: privacyMutationTargets,
     thresholds: {
-      break: 66,
-      high: 75,
-      low: 70,
+      break: 78,
+      high: 83,
+      low: 79,
     },
   },
   release: {
