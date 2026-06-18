@@ -1,42 +1,104 @@
+const coreMutationTargets = [
+  "packages/core/src/events.ts",
+  "packages/core/src/levels.ts",
+  "packages/core/src/record.ts",
+  "packages/core/src/event-route.ts",
+  // Reliability/batch are the hardest delivery code (retry, backoff, circuit
+  // breaker, bounded-concurrency flush, drop policies) and carry the
+  // "production-hardened" promise, so they belong under mutation testing, not
+  // just the simpler helpers above.
+  "packages/core/src/transports/reliability.ts",
+  "packages/core/src/transports/batch.ts",
+];
+
+const networkMutationTargets = [
+  "packages/browser/src/http-transport.ts",
+  "packages/cloudwatch/src/index.ts",
+  "packages/datadog/src/index.ts",
+  "packages/elastic/src/index.ts",
+  "packages/loki/src/index.ts",
+  "packages/node/src/http-transport.ts",
+  "packages/otel/src/otlp-json.ts",
+  "packages/sentry/src/index.ts",
+];
+
+const privacyMutationTargets = [
+  "packages/processors/src/privacy-guard.ts",
+  "packages/processors/src/redact.ts",
+  "packages/processors/src/normalize-error.ts",
+];
+
+const profileName = process.env.LOGGERJS_MUTATION_PROFILE ?? "pr";
+
+const profiles = {
+  pr: {
+    description: "PR gate for core record/event plus batch/reliability delivery.",
+    mutate: coreMutationTargets,
+    thresholds: {
+      break: 85,
+      high: 92,
+      low: 88,
+    },
+  },
+  network: {
+    description: "Nightly network/vendor transport delivery contract profile.",
+    mutate: networkMutationTargets,
+    thresholds: {
+      break: 59,
+      high: 70,
+      low: 65,
+    },
+  },
+  privacy: {
+    description: "Nightly privacy/redaction processor profile.",
+    mutate: privacyMutationTargets,
+    thresholds: {
+      break: 66,
+      high: 75,
+      low: 70,
+    },
+  },
+  release: {
+    description: "Release profile covering all high-risk mutation targets.",
+    mutate: [...coreMutationTargets, ...networkMutationTargets, ...privacyMutationTargets],
+    thresholds: {
+      break: 70,
+      high: 80,
+      low: 75,
+    },
+  },
+};
+
+const profile = profiles[profileName];
+if (!profile) {
+  throw new Error(
+    `Unknown LOGGERJS_MUTATION_PROFILE=${profileName}. Expected one of: ${Object.keys(
+      profiles,
+    ).join(", ")}`,
+  );
+}
+
 export default {
   cleanTempDir: true,
   coverageAnalysis: "perTest",
-  mutate: [
-    "packages/core/src/events.ts",
-    "packages/core/src/levels.ts",
-    "packages/core/src/record.ts",
-    "packages/core/src/event-route.ts",
-    // Reliability/batch are the hardest delivery code (retry, backoff, circuit
-    // breaker, bounded-concurrency flush, drop policies) and carry the
-    // "production-hardened" promise, so they belong under mutation testing, not
-    // just the simpler helpers above.
-    "packages/core/src/transports/reliability.ts",
-    "packages/core/src/transports/batch.ts",
-    "!packages/**/*.d.ts",
-  ],
+  mutate: [...profile.mutate, "!packages/**/*.d.ts"],
   packageManager: "pnpm",
   plugins: ["@stryker-mutator/vitest-runner"],
   reporters: ["clear-text", "progress"],
-  tempDirName: ".tmp/stryker",
+  tempDirName: `.tmp/stryker/${profileName}`,
   testRunner: "vitest",
-  // reliability.ts and batch.ts (retry, backoff, circuit breaker, bounded-
-  // concurrency flush, drop policies, UTF-8 byte estimation) are the hardest
-  // delivery code and now carry dedicated mutation tests
-  // (reliability-coverage.test.ts, batch-coverage.test.ts). Bringing them into
-  // scope first exposed how untested they were (batch ~36%, reliability ~52%,
-  // aggregate ~57%); the dedicated tests raised the aggregate to ~89%
-  // (reliability ~99%, batch ~81%). The break floor sits below the measured
-  // score with margin for run-to-run noise. This is a RATCHET: raise
-  // break/low/high as the remaining batch.ts survivors (mostly equivalent
-  // mutants) get killed; do not lower them.
-  thresholds: {
-    break: 85,
-    high: 92,
-    low: 88,
-  },
-  tsconfigFile: "packages/core/tsconfig.json",
+  // Profile intent:
+  // - pr: fast mutation gate with the established core reliability ratchet.
+  // - network/privacy: broader nightly profiles for production delivery and
+  //   privacy promises that should not slow every PR.
+  // - release: high-risk aggregate profile before publishing.
+  //
+  // Thresholds are ratchets. Raise them after surviving mutants are killed or
+  // classified; do not lower without an explicit quality review.
+  thresholds: profile.thresholds,
+  tsconfigFile: "tsconfig.mutation.json",
   vitest: {
     configFile: "vitest.coverage.config.ts",
-    related: true,
+    related: profileName !== "release",
   },
 };

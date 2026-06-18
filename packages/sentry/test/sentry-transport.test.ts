@@ -117,6 +117,76 @@ describe("sentryTransport", () => {
     expect(captureException).not.toHaveBeenCalled();
   });
 
+  it("maps Sentry severities and logger methods for warn, trace, and fatal events", () => {
+    const trace = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["trace"]>>();
+    const warn = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["warn"]>>();
+    const error = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["error"]>>();
+    const addBreadcrumb = vi.fn<NonNullable<SentryLike["addBreadcrumb"]>>();
+    const captureMessage = vi.fn<NonNullable<SentryLike["captureMessage"]>>();
+    const transport = sentryTransport({
+      sentry: { logger: { trace, warn, error }, addBreadcrumb, captureMessage },
+      captureMessages: true,
+      eventLevel: "fatal",
+    });
+
+    transport.log?.({ ...event, level: 40, levelName: "warn", message: "warned" }, context);
+    transport.log?.({ ...event, level: 10, levelName: "trace", message: "traced" }, context);
+    transport.log?.({ ...event, level: 60, levelName: "fatal", message: "fataled" }, context);
+
+    expect(warn).toHaveBeenCalledWith("warned", expect.any(Object));
+    expect(trace).toHaveBeenCalledWith("traced", expect.any(Object));
+    expect(error).toHaveBeenCalledWith("fataled", expect.any(Object));
+    expect(addBreadcrumb.mock.calls.map(([crumb]) => crumb.level)).toEqual([
+      "warning",
+      "debug",
+      "fatal",
+    ]);
+    expect(captureMessage).toHaveBeenCalledWith(
+      "fataled",
+      expect.objectContaining({ level: "fatal" }),
+    );
+  });
+
+  it("captures messages only when enabled and preserves default error names", () => {
+    const captureMessage = vi.fn<NonNullable<SentryLike["captureMessage"]>>();
+    const captureException = vi.fn<NonNullable<SentryLike["captureException"]>>();
+    const transport = sentryTransport({
+      sentry: { captureMessage, captureException },
+      captureMessages: true,
+      structuredLogs: false,
+      breadcrumbs: false,
+    });
+
+    transport.log?.({ ...event, level: 50, levelName: "error", message: "message only" }, context);
+    transport.log?.(
+      {
+        ...event,
+        level: 50,
+        levelName: "error",
+        message: "error only",
+        error: { message: "missing name" },
+      },
+      context,
+    );
+
+    expect(captureMessage).toHaveBeenCalledWith(
+      "message only",
+      expect.objectContaining({
+        contexts: {
+          loggerjs: expect.objectContaining({
+            event_id: "evt-1",
+            logger: "api.http",
+          }),
+        },
+      }),
+    );
+    expect(captureException).toHaveBeenCalledTimes(1);
+    const [captured] = captureException.mock.calls[0] ?? [];
+    expect(captured).toBeInstanceOf(Error);
+    expect((captured as Error).name).toBe("Error");
+    expect((captured as Error).stack).toBeTruthy();
+  });
+
   it("honors minLevel before invoking the Sentry SDK", () => {
     const info = vi.fn<NonNullable<NonNullable<SentryLike["logger"]>["info"]>>();
     const addBreadcrumb = vi.fn<NonNullable<SentryLike["addBreadcrumb"]>>();
