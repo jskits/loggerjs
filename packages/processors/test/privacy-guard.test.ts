@@ -31,6 +31,13 @@ const event: LogEvent = {
   },
 };
 
+function requireEvent(value: unknown): LogEvent {
+  if (!value || typeof value !== "object") {
+    throw new Error("privacy guard unexpectedly dropped the event");
+  }
+  return value as LogEvent;
+}
+
 describe("privacyGuardProcessor", () => {
   it("redacts sensitive keys and built-in value patterns", () => {
     const onRedact = vi.fn<(path: string, reason: string) => void>();
@@ -51,6 +58,106 @@ describe("privacyGuardProcessor", () => {
     });
     expect(onRedact).toHaveBeenCalledWith("data.password", "deny-key");
     expect(onRedact).toHaveBeenCalledWith("data.card", "credit-card");
+  });
+
+  it("covers every default deny-key alias", () => {
+    const processor = privacyGuardProcessor();
+    const processed = requireEvent(
+      processor(
+        {
+          ...event,
+          data: {
+            passwd: "p",
+            secret: "s",
+            token: "t",
+            cookie: "c",
+            "set-cookie": "sc",
+            apiKey: "ak",
+            api_key: "snake",
+            sessionId: "sid",
+          },
+        },
+        context,
+      ),
+    );
+
+    expect(processed.data).toEqual({
+      passwd: "[REDACTED]",
+      secret: "[REDACTED]",
+      token: "[REDACTED]",
+      cookie: "[REDACTED]",
+      "set-cookie": "[REDACTED]",
+      apiKey: "[REDACTED]",
+      api_key: "[REDACTED]",
+      sessionId: "[REDACTED]",
+    });
+  });
+
+  it("lets allow-keys override deny-keys for matching keys", () => {
+    const processor = privacyGuardProcessor({
+      allowKeys: ["password", (_key, path) => path === "data.token"],
+    });
+    const processed = requireEvent(
+      processor(
+        {
+          ...event,
+          data: {
+            password: "explicitly allowed",
+            token: "allowed by path",
+            secret: "blocked",
+          },
+        },
+        context,
+      ),
+    );
+
+    expect(processed.data).toEqual({
+      password: "explicitly allowed",
+      token: "allowed by path",
+      secret: "[REDACTED]",
+    });
+  });
+
+  it("redacts bearer tokens with repeated whitespace and reports the built-in reason", () => {
+    const onRedact = vi.fn<(path: string, reason: string) => void>();
+    const processor = privacyGuardProcessor({ targets: ["message"], onRedact });
+    const processed = requireEvent(
+      processor(
+        {
+          ...event,
+          message: "Authorization: Bearer   abc.def",
+        },
+        context,
+      ),
+    );
+
+    expect(processed.message).toBe("Authorization: [REDACTED]");
+    expect(onRedact).toHaveBeenCalledWith("message", "bearer-token");
+  });
+
+  it("honors custom pattern validation and replacement", () => {
+    const processor = privacyGuardProcessor({
+      targets: ["message"],
+      patterns: [
+        {
+          name: "ticket",
+          pattern: /\bTICKET-\d+\b/g,
+          replacement: "[TICKET]",
+          validate: (match) => match.endsWith("42"),
+        },
+      ],
+    });
+    const processed = requireEvent(
+      processor(
+        {
+          ...event,
+          message: "keep TICKET-1 redact TICKET-42 and leave alice@example.com",
+        },
+        context,
+      ),
+    );
+
+    expect(processed.message).toBe("keep TICKET-1 redact [TICKET] and leave alice@example.com");
   });
 
   it("limits depth and string length", () => {
@@ -74,6 +181,24 @@ describe("privacyGuardProcessor", () => {
     });
   });
 
+  it("applies max string length again after pattern replacement", () => {
+    const processor = privacyGuardProcessor({
+      targets: ["message"],
+      maxStringLength: 8,
+      truncateSuffix: "~",
+      patterns: [
+        {
+          name: "expand",
+          pattern: /token/g,
+          replacement: "very-long-replacement",
+        },
+      ],
+    });
+    const processed = requireEvent(processor({ ...event, message: "token" }, context));
+
+    expect(processed.message).toBe("very-lon~");
+  });
+
   it("can limit processing to selected targets", () => {
     const processor = privacyGuardProcessor({ targets: ["message"] });
     const processed = processor(event, context);
@@ -82,6 +207,23 @@ describe("privacyGuardProcessor", () => {
       message: "user [REDACTED] used [REDACTED]",
       data: { password: "secret" },
       context: { authorization: "Bearer secret.token" },
+    });
+  });
+
+  it("does not guard error fields when the error target is disabled", () => {
+    const processor = privacyGuardProcessor({ targets: ["data"] });
+    const processed = processor(
+      {
+        ...event,
+        data: { secret: "hidden" },
+        error: { message: "send to buyer@example.com" },
+      },
+      context,
+    );
+
+    expect(processed).toMatchObject({
+      data: { secret: "[REDACTED]" },
+      error: { message: "send to buyer@example.com" },
     });
   });
 
