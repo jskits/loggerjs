@@ -85,6 +85,15 @@ describe("redactProcessor depth handling (fail closed)", () => {
     expect(serialized).not.toContain("deep-but-not-a-secret");
   });
 
+  it("uses replacement for maxDepth truncation even when remove=true", () => {
+    const out = redactProcessor({ maxDepth: 2, remove: true, replacement: "[CUT]" })(
+      event(nestObject(4, { secret: SECRET })),
+      context,
+    ) as LogEvent;
+    expect(out.data).toEqual({ level: { level: "[CUT]" } });
+    expect(JSON.stringify(out.data)).not.toContain(SECRET);
+  });
+
   it("still redacts shallow secrets exactly as before (sanity)", () => {
     const out = redactProcessor()(
       event({ user: "alice", password: "secret", nested: { token: "abc" } }),

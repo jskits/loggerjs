@@ -51,8 +51,8 @@ Options:
 - `paths`: exact dot paths relative to each redacted event field, such as `user.password` or `request.headers.authorization`; these are not glob patterns.
 - `replacement`: value written for matches; default `"[REDACTED]"`.
 - `censor`: Pino-compatible alias for `replacement`; ignored when `replacement` is set.
-- `remove`: omit matched object properties instead of replacing them.
-- `maxDepth`: maximum traversal depth; default `8`.
+- `remove`: omit matched object properties instead of replacing them. Depth-limit truncation is not a key/path match; when `maxDepth` is reached, the too-deep subtree is still collapsed to `replacement`.
+- `maxDepth`: maximum traversal depth; default `8`. Reached depth fails closed by replacing the whole subtree instead of emitting unknown nested values.
 
 Cost is proportional to traversed object size times matcher count. Prefer exact
 keys and paths for hot loggers; reserve broad regexes and deep traversal for
