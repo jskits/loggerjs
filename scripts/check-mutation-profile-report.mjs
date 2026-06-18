@@ -21,8 +21,9 @@ const profileThresholds = {
   },
 };
 
-const detectedStatuses = new Set(["Killed", "TimedOut"]);
+const detectedStatuses = new Set(["Killed", "Timeout"]);
 const undetectedStatuses = new Set(["Survived", "NoCoverage"]);
+const excludedStatuses = new Set(["CompileError", "Ignored", "Pending", "RuntimeError"]);
 
 function usage() {
   const profiles = Object.keys(profileThresholds).join(", ");
@@ -32,17 +33,29 @@ function usage() {
 function mutationScore(mutants) {
   let detected = 0;
   let undetected = 0;
+  let excluded = 0;
+  const unknownStatuses = new Set();
 
   for (const mutant of mutants) {
     if (detectedStatuses.has(mutant.status)) {
       detected += 1;
     } else if (undetectedStatuses.has(mutant.status)) {
       undetected += 1;
+    } else if (excludedStatuses.has(mutant.status)) {
+      excluded += 1;
+    } else {
+      unknownStatuses.add(String(mutant.status));
     }
   }
 
   const total = detected + undetected;
-  return total === 0 ? 100 : (detected / total) * 100;
+  return {
+    detected,
+    excluded,
+    score: total === 0 ? 100 : (detected / total) * 100,
+    total,
+    unknownStatuses,
+  };
 }
 
 if (!profileName || !profileThresholds[profileName]) usage();
@@ -58,13 +71,21 @@ for (const [filePath, minimumScore] of Object.entries(profileThresholds[profileN
     continue;
   }
 
-  const score = mutationScore(file.mutants ?? []);
-  const renderedScore = score.toFixed(2);
+  const result = mutationScore(file.mutants ?? []);
+  if (result.unknownStatuses.size > 0) {
+    failures.push(
+      `${filePath}: unknown mutation status ${[...result.unknownStatuses].toSorted().join(", ")}`,
+    );
+    continue;
+  }
+
+  const renderedScore = result.score.toFixed(2);
   const renderedMinimum = minimumScore.toFixed(2);
-  if (score < minimumScore) {
+  if (result.score < minimumScore) {
     failures.push(`${filePath}: ${renderedScore} < ${renderedMinimum}`);
   } else {
-    console.log(`${filePath}: ${renderedScore} >= ${renderedMinimum}`);
+    const excluded = result.excluded === 0 ? "" : ` (${result.excluded} invalid/ignored excluded)`;
+    console.log(`${filePath}: ${renderedScore} >= ${renderedMinimum}${excluded}`);
   }
 }
 
