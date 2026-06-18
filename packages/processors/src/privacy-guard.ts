@@ -1,4 +1,5 @@
 import type { LogEvent, Processor } from "@loggerjs/core";
+import { defineHidden, dotPath, hiddenErrorFields } from "./error-fields";
 
 export type PrivacyGuardMatcher =
   | string
@@ -253,6 +254,16 @@ function guardString(input: string, path: string, options: NormalizedPrivacyOpti
   return { value, changed: changed || value !== input };
 }
 
+function guardErrorString(
+  input: unknown,
+  path: string,
+  options: NormalizedPrivacyOptions,
+): GuardResult {
+  return typeof input === "string"
+    ? guardString(input, path, options)
+    : { value: input, changed: false };
+}
+
 function guardValue(
   value: unknown,
   path: string,
@@ -282,37 +293,22 @@ function guardValue(
     // Guard serialized Error strings as values: safe codecs expand name/message/
     // stack, so message/stack can carry PII even when they are non-enumerable.
     // Own-enumerable properties are still recursed so deny-keys are guarded too.
-    const errorFields = ["message", "stack"] as const;
-    const guardedFields = errorFields.map((field) => {
-      const fieldValue = (value as Error)[field];
-      if (typeof fieldValue !== "string") return { field, value: fieldValue, changed: false };
-      const fieldPath = path ? `${path}.${field}` : field;
-      const guarded = guardString(fieldValue, fieldPath, options);
-      return { field, value: guarded.value, changed: guarded.changed };
-    });
-    const fieldChanged = guardedFields.some((field) => field.changed);
+    const message = guardErrorString((value as Error).message, dotPath(path, "message"), options);
+    const stack = guardErrorString((value as Error).stack, dotPath(path, "stack"), options);
+    const fieldChanged = message.changed || stack.changed;
     const entries = Object.entries(value);
-    const enumerableKeys = new Set(entries.map(([entryKey]) => entryKey));
-    const nativeErrorFields = (["cause", "errors"] as const).filter(
-      (field) => Object.prototype.hasOwnProperty.call(value, field) && !enumerableKeys.has(field),
-    );
-    if (entries.length === 0 && nativeErrorFields.length === 0 && !fieldChanged) {
+    const hiddenFields = hiddenErrorFields(value);
+    if (entries.length === 0 && hiddenFields.length === 0 && !fieldChanged) {
       return { value, changed: false };
     }
 
     const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
     seen.set(value, errorOut);
-    for (const { field, value: fieldValue } of guardedFields) {
-      Object.defineProperty(errorOut, field, {
-        value: fieldValue,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
-    }
+    defineHidden(errorOut, "message", message.value);
+    defineHidden(errorOut, "stack", stack.value);
     let changed = fieldChanged;
-    for (const field of nativeErrorFields) {
-      const childPath = path ? `${path}.${field}` : field;
+    for (const field of hiddenFields) {
+      const childPath = dotPath(path, field);
       const child = guardValue(
         (value as Error & { cause?: unknown; errors?: unknown })[field],
         childPath,
@@ -321,16 +317,11 @@ function guardValue(
         options,
         seen,
       );
-      Object.defineProperty(errorOut, field, {
-        value: child.value,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
+      defineHidden(errorOut, field, child.value);
       changed ||= child.changed;
     }
     for (const [childKey, childValue] of entries) {
-      const childPath = path ? `${path}.${childKey}` : childKey;
+      const childPath = dotPath(path, childKey);
       const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);
       errorOut[childKey] = child.value;
       changed ||= child.changed;
@@ -346,7 +337,7 @@ function guardValue(
     let changed = false;
     for (const [mapKey, mapValue] of value) {
       const isStringKey = typeof mapKey === "string";
-      const childPath = isStringKey ? (path ? `${path}.${mapKey}` : (mapKey as string)) : path;
+      const childPath = isStringKey ? dotPath(path, mapKey) : path;
       const child = guardValue(
         mapValue,
         childPath,
@@ -399,7 +390,7 @@ function guardValue(
   seen.set(value, out);
   let changed = false;
   for (const [childKey, childValue] of Object.entries(input)) {
-    const childPath = path ? `${path}.${childKey}` : childKey;
+    const childPath = dotPath(path, childKey);
     const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);
     out[childKey] = child.value;
     changed ||= child.changed;

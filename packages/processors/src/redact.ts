@@ -1,4 +1,5 @@
 import type { LogEvent, Processor } from "@loggerjs/core";
+import { defineHidden, dotPath, hiddenErrorFields } from "./error-fields";
 
 export type RedactMatcher =
   | string
@@ -31,10 +32,21 @@ function pathMatches(path: string, paths: string[]): boolean {
   return paths.includes(path);
 }
 
+function shouldRedact(
+  key: string,
+  path: string,
+  value: unknown,
+  options: RedactRuntimeOptions,
+): boolean {
+  return matchesKey(key, path, value, options.keys ?? []) || pathMatches(path, options.paths ?? []);
+}
+
+type RedactRuntimeOptions = Required<Pick<RedactOptions, "replacement" | "remove" | "maxDepth">> &
+  Pick<RedactOptions, "keys" | "paths">;
+
 function redactValue(
   value: unknown,
-  options: Required<Pick<RedactOptions, "replacement" | "remove" | "maxDepth">> &
-    Pick<RedactOptions, "keys" | "paths">,
+  options: RedactRuntimeOptions,
   path = "",
   depth = 0,
   seen = new WeakMap<object, unknown>(),
@@ -70,54 +82,29 @@ function redactValue(
     // Native `cause` and `AggregateError.errors` are also non-enumerable, but
     // codecs may expand them, so preserve and recurse into those fields too.
     const entries = Object.entries(value);
-    const enumerableKeys = new Set(entries.map(([key]) => key));
-    const nativeErrorFields = (["cause", "errors"] as const).filter(
-      (field) => Object.prototype.hasOwnProperty.call(value, field) && !enumerableKeys.has(field),
-    );
-    if (entries.length === 0 && nativeErrorFields.length === 0) return value;
+    const hiddenFields = hiddenErrorFields(value);
+    if (entries.length === 0 && hiddenFields.length === 0) return value;
 
     const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
     seen.set(value, errorOut);
     // Preserve message/stack as non-enumerable own data properties, read via the
     // getter (robust to V8's lazy `stack` accessor), so default output is
     // unchanged and only the extra enumerable props are redacted.
-    for (const field of ["message", "stack"] as const) {
-      Object.defineProperty(errorOut, field, {
-        value: value[field],
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
-    }
-    for (const field of nativeErrorFields) {
+    defineHidden(errorOut, "message", value.message);
+    defineHidden(errorOut, "stack", value.stack);
+    for (const field of hiddenFields) {
       const child = (value as Error & { cause?: unknown; errors?: unknown })[field];
-      const childPath = path ? `${path}.${field}` : field;
-      if (
-        matchesKey(field, childPath, child, options.keys ?? []) ||
-        pathMatches(childPath, options.paths ?? [])
-      ) {
+      const childPath = dotPath(path, field);
+      if (shouldRedact(field, childPath, child, options)) {
         if (options.remove) continue;
-        Object.defineProperty(errorOut, field, {
-          value: options.replacement,
-          writable: true,
-          enumerable: false,
-          configurable: true,
-        });
+        defineHidden(errorOut, field, options.replacement);
         continue;
       }
-      Object.defineProperty(errorOut, field, {
-        value: redactValue(child, options, childPath, depth + 1, seen),
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
+      defineHidden(errorOut, field, redactValue(child, options, childPath, depth + 1, seen));
     }
     for (const [key, child] of entries) {
-      const childPath = path ? `${path}.${key}` : key;
-      if (
-        matchesKey(key, childPath, child, options.keys ?? []) ||
-        pathMatches(childPath, options.paths ?? [])
-      ) {
+      const childPath = dotPath(path, key);
+      if (shouldRedact(key, childPath, child, options)) {
         if (options.remove) continue;
         errorOut[key] = options.replacement;
       } else {
@@ -135,11 +122,8 @@ function redactValue(
     seen.set(value, mapOut);
     for (const [key, child] of value) {
       if (typeof key === "string") {
-        const childPath = path ? `${path}.${key}` : key;
-        if (
-          matchesKey(key, childPath, child, options.keys ?? []) ||
-          pathMatches(childPath, options.paths ?? [])
-        ) {
+        const childPath = dotPath(path, key);
+        if (shouldRedact(key, childPath, child, options)) {
           if (options.remove) continue;
           mapOut.set(key, options.replacement);
           continue;
@@ -167,11 +151,8 @@ function redactValue(
   const out: Record<string, unknown> = {};
   seen.set(value, out);
   for (const [key, child] of Object.entries(input)) {
-    const childPath = path ? `${path}.${key}` : key;
-    if (
-      matchesKey(key, childPath, child, options.keys ?? []) ||
-      pathMatches(childPath, options.paths ?? [])
-    ) {
+    const childPath = dotPath(path, key);
+    if (shouldRedact(key, childPath, child, options)) {
       if (options.remove) continue;
       out[key] = options.replacement;
     } else {
