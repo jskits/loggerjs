@@ -129,6 +129,27 @@ describe("redactProcessor — Error own-property leak (fail closed)", () => {
     expect("password" in redacted).toBe(false);
     expect(redacted.keep).toBe(1);
   });
+
+  it("redacts symbol-keyed Error properties by description and exact symbol matcher", () => {
+    const token = Symbol("token");
+    const exactSecret = Symbol("exact-secret");
+    const cause = new Error("boom") as Error & Record<PropertyKey, unknown>;
+    cause[token] = SECRET;
+    cause[exactSecret] = SECRET;
+    cause.keep = "ok";
+
+    const out = redactProcessor({ keys: ["token", exactSecret] })(
+      eventWith({ data: { cause } }),
+      context,
+    ) as LogEvent;
+
+    const redacted = (out.data as { cause: Error & Record<PropertyKey, unknown> }).cause;
+    expect(redacted[token]).toBe("[REDACTED]");
+    expect(redacted[exactSecret]).toBe("[REDACTED]");
+    expect(redacted.keep).toBe("ok");
+    expect(cause[token]).toBe(SECRET);
+    expect(cause[exactSecret]).toBe(SECRET);
+  });
 });
 
 describe("redactProcessor — Map / Set (preserve + redact, not drop)", () => {
@@ -164,5 +185,29 @@ describe("redactProcessor — Map / Set (preserve + redact, not drop)", () => {
     const creds = new Map([["password", SECRET]]);
     redactProcessor({ keys: ["password"] })(eventWith({ data: { creds } }), context) as LogEvent;
     expect(creds.get("password")).toBe(SECRET);
+  });
+
+  it("redacts symbol-keyed object and Map entries", () => {
+    const objectSecret = Symbol("password");
+    const exactMapSecret = Symbol("map-secret");
+    const data = {
+      [objectSecret]: SECRET,
+      nested: new Map<unknown, unknown>([
+        [exactMapSecret, SECRET],
+        ["user", "alice"],
+      ]),
+    };
+
+    const out = redactProcessor({ keys: ["password", exactMapSecret] })(
+      eventWith({ data }),
+      context,
+    ) as LogEvent;
+
+    const redacted = out.data as typeof data;
+    expect(redacted[objectSecret]).toBe("[REDACTED]");
+    expect(redacted.nested.get(exactMapSecret)).toBe("[REDACTED]");
+    expect(redacted.nested.get("user")).toBe("alice");
+    expect(data[objectSecret]).toBe(SECRET);
+    expect(data.nested.get(exactMapSecret)).toBe(SECRET);
   });
 });

@@ -123,4 +123,49 @@ describe("privacyGuardProcessor — Error / Map / Set", () => {
     privacyGuardProcessor({ denyKeys: ["password"] })(eventWith({ cause }), context) as LogEvent;
     expect(cause.password).toBe(SECRET);
   });
+
+  it("guards symbol-keyed Error properties by description and exact symbol matcher", () => {
+    const token = Symbol("token");
+    const exactSecret = Symbol("exact-secret");
+    const cause = new Error("boom") as Error & Record<PropertyKey, unknown>;
+    cause[token] = SECRET;
+    cause[exactSecret] = SECRET;
+    cause.keep = "ok";
+
+    const out = privacyGuardProcessor({ denyKeys: ["token", exactSecret] })(
+      eventWith({ cause }),
+      context,
+    ) as LogEvent;
+
+    const guarded = (out.data as { cause: Error & Record<PropertyKey, unknown> }).cause;
+    expect(guarded[token]).toBe("[REDACTED]");
+    expect(guarded[exactSecret]).toBe("[REDACTED]");
+    expect(guarded.keep).toBe("ok");
+    expect(cause[token]).toBe(SECRET);
+    expect(cause[exactSecret]).toBe(SECRET);
+  });
+
+  it("guards symbol-keyed object and Map entries", () => {
+    const objectSecret = Symbol("password");
+    const exactMapSecret = Symbol("map-secret");
+    const data = {
+      [objectSecret]: SECRET,
+      nested: new Map<unknown, unknown>([
+        [exactMapSecret, SECRET],
+        ["note", "ping buyer@example.com"],
+      ]),
+    };
+
+    const out = privacyGuardProcessor({ denyKeys: ["password", exactMapSecret] })(
+      eventWith(data),
+      context,
+    ) as LogEvent;
+
+    const guarded = out.data as typeof data;
+    expect(guarded[objectSecret]).toBe("[REDACTED]");
+    expect(guarded.nested.get(exactMapSecret)).toBe("[REDACTED]");
+    expect(String(guarded.nested.get("note"))).not.toContain("buyer@example.com");
+    expect(data[objectSecret]).toBe(SECRET);
+    expect(data.nested.get(exactMapSecret)).toBe(SECRET);
+  });
 });

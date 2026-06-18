@@ -3,6 +3,7 @@ import { defineHidden, dotPath, hiddenErrorFields } from "./error-fields";
 
 export type PrivacyGuardMatcher =
   | string
+  | symbol
   | RegExp
   | ((key: string, path: string, value: unknown) => boolean);
 
@@ -104,6 +105,17 @@ function hasChar(code: number, chars: string): boolean {
   return chars.includes(String.fromCharCode(code));
 }
 
+function keyName(key: PropertyKey): string {
+  if (typeof key === "symbol") return key.description ?? key.toString();
+  return String(key);
+}
+
+function ownEnumerableEntries(value: object): [PropertyKey, unknown][] {
+  return Reflect.ownKeys(value)
+    .filter((key) => Object.prototype.propertyIsEnumerable.call(value, key))
+    .map((key) => [key, (value as Record<PropertyKey, unknown>)[key]]);
+}
+
 function isEmailLocalChar(code: number): boolean {
   return isAsciiAlphaNumeric(code) || hasChar(code, "._%+-");
 }
@@ -193,21 +205,23 @@ function redactEmailAddresses(
 
 function matcherMatches(
   matcher: PrivacyGuardMatcher,
-  key: string,
+  key: PropertyKey,
   path: string,
   value: unknown,
 ): boolean {
-  if (typeof matcher === "string") return matcher.toLowerCase() === key.toLowerCase();
+  const name = keyName(key);
+  if (typeof matcher === "symbol") return matcher === key;
+  if (typeof matcher === "string") return matcher.toLowerCase() === name.toLowerCase();
   if (matcher instanceof RegExp) {
     matcher.lastIndex = 0;
-    return matcher.test(key) || matcher.test(path);
+    return matcher.test(name) || matcher.test(path);
   }
-  return matcher(key, path, value);
+  return matcher(name, path, value);
 }
 
 function matchesAny(
   matchers: readonly PrivacyGuardMatcher[],
-  key: string,
+  key: PropertyKey,
   path: string,
   value: unknown,
 ): boolean {
@@ -267,7 +281,7 @@ function guardErrorString(
 function guardValue(
   value: unknown,
   path: string,
-  key: string,
+  key: PropertyKey,
   depth: number,
   options: NormalizedPrivacyOptions,
   seen: WeakMap<object, unknown>,
@@ -296,13 +310,13 @@ function guardValue(
     const message = guardErrorString((value as Error).message, dotPath(path, "message"), options);
     const stack = guardErrorString((value as Error).stack, dotPath(path, "stack"), options);
     const fieldChanged = message.changed || stack.changed;
-    const entries = Object.entries(value);
+    const entries = ownEnumerableEntries(value);
     const hiddenFields = hiddenErrorFields(value);
     if (entries.length === 0 && hiddenFields.length === 0 && !fieldChanged) {
       return { value, changed: false };
     }
 
-    const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
+    const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<PropertyKey, unknown>;
     seen.set(value, errorOut);
     defineHidden(errorOut, "message", message.value);
     defineHidden(errorOut, "stack", stack.value);
@@ -321,7 +335,7 @@ function guardValue(
       changed ||= child.changed;
     }
     for (const [childKey, childValue] of entries) {
-      const childPath = dotPath(path, childKey);
+      const childPath = dotPath(path, keyName(childKey));
       const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);
       errorOut[childKey] = child.value;
       changed ||= child.changed;
@@ -336,12 +350,12 @@ function guardValue(
     seen.set(value, mapOut);
     let changed = false;
     for (const [mapKey, mapValue] of value) {
-      const isStringKey = typeof mapKey === "string";
-      const childPath = isStringKey ? dotPath(path, mapKey) : path;
+      const isNamedKey = typeof mapKey === "string" || typeof mapKey === "symbol";
+      const childPath = isNamedKey ? dotPath(path, keyName(mapKey)) : path;
       const child = guardValue(
         mapValue,
         childPath,
-        isStringKey ? (mapKey as string) : key,
+        isNamedKey ? mapKey : key,
         depth + 1,
         options,
         seen,
@@ -385,12 +399,11 @@ function guardValue(
     return { value: changed ? out : value, changed };
   }
 
-  const input = value as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
+  const out: Record<PropertyKey, unknown> = {};
   seen.set(value, out);
   let changed = false;
-  for (const [childKey, childValue] of Object.entries(input)) {
-    const childPath = dotPath(path, childKey);
+  for (const [childKey, childValue] of ownEnumerableEntries(value)) {
+    const childPath = dotPath(path, keyName(childKey));
     const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);
     out[childKey] = child.value;
     changed ||= child.changed;

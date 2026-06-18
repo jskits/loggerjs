@@ -3,6 +3,7 @@ import { defineHidden, dotPath, hiddenErrorFields } from "./error-fields";
 
 export type RedactMatcher =
   | string
+  | symbol
   | RegExp
   | ((key: string, path: string, value: unknown) => boolean);
 
@@ -15,16 +16,34 @@ export interface RedactOptions {
   maxDepth?: number;
 }
 
-function matchesKey(key: string, path: string, value: unknown, matchers: RedactMatcher[]): boolean {
+function keyName(key: PropertyKey): string {
+  if (typeof key === "symbol") return key.description ?? key.toString();
+  return String(key);
+}
+
+function ownEnumerableEntries(value: object): [PropertyKey, unknown][] {
+  return Reflect.ownKeys(value)
+    .filter((key) => Object.prototype.propertyIsEnumerable.call(value, key))
+    .map((key) => [key, (value as Record<PropertyKey, unknown>)[key]]);
+}
+
+function matchesKey(
+  key: PropertyKey,
+  path: string,
+  value: unknown,
+  matchers: RedactMatcher[],
+): boolean {
+  const name = keyName(key);
   return matchers.some((matcher) => {
-    if (typeof matcher === "string") return matcher.toLowerCase() === key.toLowerCase();
+    if (typeof matcher === "symbol") return matcher === key;
+    if (typeof matcher === "string") return matcher.toLowerCase() === name.toLowerCase();
     if (matcher instanceof RegExp) {
       matcher.lastIndex = 0;
-      const keyMatches = matcher.test(key);
+      const keyMatches = matcher.test(name);
       matcher.lastIndex = 0;
       return keyMatches || matcher.test(path);
     }
-    return matcher(key, path, value);
+    return matcher(name, path, value);
   });
 }
 
@@ -33,7 +52,7 @@ function pathMatches(path: string, paths: string[]): boolean {
 }
 
 function shouldRedact(
-  key: string,
+  key: PropertyKey,
   path: string,
   value: unknown,
   options: RedactRuntimeOptions,
@@ -81,11 +100,11 @@ function redactValue(
     // `name`/`message`/`stack` are non-enumerable and copied through unchanged.
     // Native `cause` and `AggregateError.errors` are also non-enumerable, but
     // codecs may expand them, so preserve and recurse into those fields too.
-    const entries = Object.entries(value);
+    const entries = ownEnumerableEntries(value);
     const hiddenFields = hiddenErrorFields(value);
     if (entries.length === 0 && hiddenFields.length === 0) return value;
 
-    const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
+    const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<PropertyKey, unknown>;
     seen.set(value, errorOut);
     // Preserve message/stack as non-enumerable own data properties, read via the
     // getter (robust to V8's lazy `stack` accessor), so default output is
@@ -103,7 +122,7 @@ function redactValue(
       defineHidden(errorOut, field, redactValue(child, options, childPath, depth + 1, seen));
     }
     for (const [key, child] of entries) {
-      const childPath = dotPath(path, key);
+      const childPath = dotPath(path, keyName(key));
       if (shouldRedact(key, childPath, child, options)) {
         if (options.remove) continue;
         errorOut[key] = options.replacement;
@@ -121,8 +140,8 @@ function redactValue(
     const mapOut = new Map<unknown, unknown>();
     seen.set(value, mapOut);
     for (const [key, child] of value) {
-      if (typeof key === "string") {
-        const childPath = dotPath(path, key);
+      if (typeof key === "string" || typeof key === "symbol") {
+        const childPath = dotPath(path, keyName(key));
         if (shouldRedact(key, childPath, child, options)) {
           if (options.remove) continue;
           mapOut.set(key, options.replacement);
@@ -147,11 +166,10 @@ function redactValue(
     return setOut;
   }
 
-  const input = value as Record<string, unknown>;
-  const out: Record<string, unknown> = {};
+  const out: Record<PropertyKey, unknown> = {};
   seen.set(value, out);
-  for (const [key, child] of Object.entries(input)) {
-    const childPath = dotPath(path, key);
+  for (const [key, child] of ownEnumerableEntries(value)) {
+    const childPath = dotPath(path, keyName(key));
     if (shouldRedact(key, childPath, child, options)) {
       if (options.remove) continue;
       out[key] = options.replacement;
