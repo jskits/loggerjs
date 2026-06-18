@@ -425,7 +425,7 @@ Codecs fall back to a safe representation on circular references instead of thro
 
 ## How It Compares
 
-LoggerJS shines when the logging problem spans **browser and server** collection from one mental model. A fair, repo-sourced snapshot (full matrix and sources in [docs/COMPARISON.md](docs/COMPARISON.md)):
+LoggerJS shines when the logging problem spans **browser and server** collection from one mental model — and when you want logs delivered to **your own** destinations (HTTP, files, your DB, Loki/Elasticsearch, OTLP) rather than a single vendor's SaaS, from a zero-dependency core that runs under strict CSP, on edge/Workers, and offline. A fair, repo-sourced snapshot (full matrix and sources in [docs/COMPARISON.md](docs/COMPARISON.md)):
 
 | Capability                             |        LoggerJS         | Pino | Winston | LogTape |
 | -------------------------------------- | :---------------------: | :--: | :-----: | :-----: |
@@ -1617,8 +1617,8 @@ Options:
 - `paths`: exact dot paths relative to each redacted event field, such as `user.password` or `request.headers.authorization`; these are not glob patterns.
 - `replacement`: value written for matches; default `"[REDACTED]"`.
 - `censor`: Pino-compatible alias for `replacement`; ignored when `replacement` is set.
-- `remove`: omit matched object properties instead of replacing them.
-- `maxDepth`: maximum traversal depth; default `8`.
+- `remove`: omit matched object properties instead of replacing them. Depth-limit truncation is not a key/path match; when `maxDepth` is reached, the too-deep subtree is still collapsed to `replacement`.
+- `maxDepth`: maximum traversal depth; default `8`. Reached depth fails closed by replacing the whole subtree instead of emitting unknown nested values.
 
 Cost is proportional to traversed object size times matcher count. Prefer exact
 keys and paths for hot loggers; reserve broad regexes and deep traversal for
@@ -2575,22 +2575,29 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/BENCHMARK-MATRIX.md
 
 # LoggerJS Benchmark Matrix
 
-Generated: 2026-06-14T05:36:18.303Z
+Last updated: 2026-06-18 (two machine rows hand-merged; per-machine JSON
+artifacts live in the gitignored `benchmarks/matrix/`, so the aggregate command
+cannot regenerate a row whose artifact is not present locally).
 
 This table is the checked-in evidence matrix for loggerjs-vs-pino Node hot-path
 claims. Ratios are paired per-round latency medians from the interleaved A/B
 harness, not one-off sequential-run ratios. A ratio below `1.00x` means the
-LoggerJS path had lower latency than pino on that machine.
+LoggerJS path had lower latency than pino on that machine. **The two rows below
+deliberately disagree — that is the point:** the ranking is CPU/V8-dependent
+(LoggerJS faster on M1 Max, pino faster on M4 Pro), so no universal "faster than
+pino" claim is supportable.
 
 | Label             | Platform     | CPU          | Node     | Git          | Runs | Pino ns | Lean ns | Prepared ns |     Lean / pino | Prepared / pino | Result                          |
 | ----------------- | ------------ | ------------ | -------- | ------------ | ---: | ------: | ------: | ----------: | --------------: | --------------: | ------------------------------- |
 | macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 5d7e4e3bf423 |    5 |     286 |     244 |         223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
+| m4pro-node22      | darwin/arm64 | Apple M4 Pro | v22.22.2 | 1d3d51c21f86 |    6 |     197 |     223 |         211 | 1.137x (87.9%)  | 1.054x (94.9%)  | pino faster (lean + prepared)   |
 
 ## Row Details
 
 | Label             | Memory | Dependencies                               | Sampling                                     | Baseline spread | Prepared / lean |
 | ----------------- | -----: | ------------------------------------------ | -------------------------------------------- | --------------: | --------------: |
 | macbookpro-node22 |  64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup |           21.2% | 0.919x (108.8%) |
+| m4pro-node22      |  24 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 6 runs, 120 rounds x 5000 ops, 100000 warmup |           41.9% | 0.942x (106.1%) |
 
 ## Evidence Coverage
 
@@ -2599,9 +2606,13 @@ LoggerJS path had lower latency than pino on that machine.
 | At least one non-Apple-Silicon runtime | Missing | darwin/arm64 |
 | At least two Node major versions | Missing | 22 |
 
-Until those rows are committed, performance wording must stay scoped to the M1
-Max / Node 22 reference row above. Do not turn it into a universal "LoggerJS is
-always faster than pino" claim.
+Both gates remain **Missing**: the M4 Pro row is a second Apple-Silicon CPU on
+Node 22, so it does not satisfy the non-Apple or second-Node-major requirements.
+It does, however, already make the universal-claim guard concrete — within the
+same OS/arch/Node-major, swapping only the CPU (M1 Max → M4 Pro) flips the
+result from "LoggerJS faster" to "pino faster". Until a non-Apple and a second
+Node-major row are added, keep performance wording CPU-scoped and never frame it
+as "LoggerJS is always faster than pino".
 
 ## Reproduce
 
@@ -2676,7 +2687,11 @@ all sinks, runtimes, payload shapes, or third-party transports.
 LoggerJS is best when the logging problem spans browser and server collection:
 automatic integrations, structured middleware, reliable transport delivery,
 offline browser persistence, codec choice per destination, and vendor/DB/OTLP
-delivery from one mental model.
+delivery from one mental model. Its most defensible niche is **vendor-neutral,
+self-hosted delivery** — logs go to destinations you own (HTTP, files, your DB,
+Loki/Elasticsearch, OTLP), from a zero-dependency core that runs under strict
+CSP, on edge/Workers, and offline — where a Node-only logger or a managed APM
+SaaS is a poorer fit.
 
 Pino is still the mature default when the main requirement is a minimal,
 Node-first JSON logger with a large ecosystem. On the current M1 Max reference
@@ -3793,8 +3808,14 @@ Initial internal budget:
 | Enabled record to queue, 3 middleware, no stack | <= 1 microsecond per record on mainstream desktop CPU |
 | JSON/NDJSON codec | million-records-per-second class for ordinary objects |
 | Node NDJSON full path | at least 80% of pino for equivalent output before v1 |
-| Core size | <= 4 KB min+gzip |
+| Core size | <= 4 KB min+gzip (aspirational target, not yet met — see note below) |
 | Record allocation | one record object; no data copy unless middleware explicitly clones |
+
+Status as of 2026-06: the `<= 4 KB` core-size row above is an unmet aspiration,
+not the current state. Measured today (and enforced by `pnpm size:check`): the
+full `@loggerjs/core` barrel is ~18 KB gzip, and a minimal tree-shaken import
+(`createLogger` + a `consoleTransport`) is ~6 KB min+gzip. Keep public size
+wording anchored to these measured numbers until the budget is actually met.
 
 Benchmarking must cover Node and real browsers, not only synthetic Node loops. The suite should compare pino, winston, LogTape, native console, native `JSON.stringify`, current LoggerJS, and target LoggerJS paths.
 

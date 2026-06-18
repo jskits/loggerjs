@@ -28,7 +28,7 @@ LoggerJS is published as small packages around a dependency-free core. Platform 
 
 Tiny isomorphic structured logger core for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/core](https://github.com/jskits/loggerjs/tree/main/packages/core)
 - README: [packages/core/README.md](https://github.com/jskits/loggerjs/blob/main/packages/core/README.md)
 - API report: [@loggerjs/core](/reference/api/core)
@@ -39,7 +39,7 @@ Tiny isomorphic structured logger core for loggerjs.
 
 Browser transports and integrations for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/browser](https://github.com/jskits/loggerjs/tree/main/packages/browser)
 - README: [packages/browser/README.md](https://github.com/jskits/loggerjs/blob/main/packages/browser/README.md)
 - API report: [@loggerjs/browser](/reference/api/browser)
@@ -50,7 +50,7 @@ Browser transports and integrations for loggerjs.
 
 Node.js transports and integrations for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/node](https://github.com/jskits/loggerjs/tree/main/packages/node)
 - README: [packages/node/README.md](https://github.com/jskits/loggerjs/blob/main/packages/node/README.md)
 - API report: [@loggerjs/node](/reference/api/node)
@@ -61,7 +61,7 @@ Node.js transports and integrations for loggerjs.
 
 Pretty console and terminal output helpers for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/pretty](https://github.com/jskits/loggerjs/tree/main/packages/pretty)
 - README: [packages/pretty/README.md](https://github.com/jskits/loggerjs/blob/main/packages/pretty/README.md)
 - API report: [@loggerjs/pretty](/reference/api/pretty)
@@ -72,7 +72,7 @@ Pretty console and terminal output helpers for loggerjs.
 
 Reusable loggerjs event processors.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/processors](https://github.com/jskits/loggerjs/tree/main/packages/processors)
 - README: [packages/processors/README.md](https://github.com/jskits/loggerjs/blob/main/packages/processors/README.md)
 - API report: [@loggerjs/processors](/reference/api/processors)
@@ -83,7 +83,7 @@ Reusable loggerjs event processors.
 
 Serialization codecs for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/codecs](https://github.com/jskits/loggerjs/tree/main/packages/codecs)
 - README: [packages/codecs/README.md](https://github.com/jskits/loggerjs/blob/main/packages/codecs/README.md)
 - API report: [@loggerjs/codecs](/reference/api/codecs)
@@ -94,7 +94,7 @@ Serialization codecs for loggerjs.
 
 OpenTelemetry mapping and OTLP JSON transport for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/otel](https://github.com/jskits/loggerjs/tree/main/packages/otel)
 - README: [packages/otel/README.md](https://github.com/jskits/loggerjs/blob/main/packages/otel/README.md)
 - API report: [@loggerjs/otel](/reference/api/otel)
@@ -105,7 +105,7 @@ OpenTelemetry mapping and OTLP JSON transport for loggerjs.
 
 Sentry adapter transport for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/sentry](https://github.com/jskits/loggerjs/tree/main/packages/sentry)
 - README: [packages/sentry/README.md](https://github.com/jskits/loggerjs/blob/main/packages/sentry/README.md)
 - API report: [@loggerjs/sentry](/reference/api/sentry)
@@ -116,7 +116,7 @@ Sentry adapter transport for loggerjs.
 
 Datadog Logs transport for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/datadog](https://github.com/jskits/loggerjs/tree/main/packages/datadog)
 - README: [packages/datadog/README.md](https://github.com/jskits/loggerjs/blob/main/packages/datadog/README.md)
 - API report: [@loggerjs/datadog](/reference/api/datadog)
@@ -127,7 +127,7 @@ Datadog Logs transport for loggerjs.
 
 Elasticsearch bulk transport for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/elastic](https://github.com/jskits/loggerjs/tree/main/packages/elastic)
 - README: [packages/elastic/README.md](https://github.com/jskits/loggerjs/blob/main/packages/elastic/README.md)
 - API report: [@loggerjs/elastic](/reference/api/elastic)
@@ -138,7 +138,7 @@ Elasticsearch bulk transport for loggerjs.
 
 Grafana Loki transport for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/loki](https://github.com/jskits/loggerjs/tree/main/packages/loki)
 - README: [packages/loki/README.md](https://github.com/jskits/loggerjs/blob/main/packages/loki/README.md)
 - API report: [@loggerjs/loki](/reference/api/loki)
@@ -149,7 +149,7 @@ Grafana Loki transport for loggerjs.
 
 Amazon CloudWatch Logs transport for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/cloudwatch](https://github.com/jskits/loggerjs/tree/main/packages/cloudwatch)
 - README: [packages/cloudwatch/README.md](https://github.com/jskits/loggerjs/blob/main/packages/cloudwatch/README.md)
 - API report: [@loggerjs/cloudwatch](/reference/api/cloudwatch)
@@ -160,7 +160,7 @@ Amazon CloudWatch Logs transport for loggerjs.
 
 SQLite, PostgreSQL, and custom database transports for loggerjs.
 
-- Version: `0.5.0`
+- Version: `0.5.1`
 - Source: [packages/database](https://github.com/jskits/loggerjs/tree/main/packages/database)
 - README: [packages/database/README.md](https://github.com/jskits/loggerjs/blob/main/packages/database/README.md)
 - API report: [@loggerjs/database](/reference/api/database)
