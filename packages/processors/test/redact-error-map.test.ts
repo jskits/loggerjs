@@ -23,6 +23,15 @@ function eventWith(fields: Partial<LogEvent>): LogEvent {
 
 const SECRET = "TOP-SECRET-VALUE";
 
+type ErrorWithCause = Error & { cause?: unknown };
+type ErrorWithErrors = Error & { errors: unknown[] };
+
+const AggregateErrorCtor = (
+  globalThis as unknown as {
+    AggregateError: new (errors: unknown[], message?: string) => ErrorWithErrors;
+  }
+).AggregateError;
+
 describe("redactProcessor — Error own-property leak (fail closed)", () => {
   it("redacts a configured key carried as an own property on a nested Error", () => {
     const cause = Object.assign(new Error("boom"), { password: SECRET, requestId: "r1" });
@@ -49,6 +58,40 @@ describe("redactProcessor — Error own-property leak (fail closed)", () => {
     expect(redacted.name).toBe("TypeError");
     expect(redacted.message).toBe("bad type");
     expect(redacted.stack).toBe(originalStack);
+  });
+
+  it("preserves and redacts native Error cause", () => {
+    const nested = Object.assign(new Error("inner"), { password: SECRET });
+    const cause = Object.assign(new Error("outer") as ErrorWithCause, { requestId: "r1" });
+    Object.defineProperty(cause, "cause", {
+      value: nested,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+    const out = redactProcessor({ keys: ["password"] })(
+      eventWith({ data: { cause } }),
+      context,
+    ) as LogEvent;
+    const redacted = (out.data as { cause: ErrorWithCause }).cause;
+    expect(redacted).toBeInstanceOf(Error);
+    expect(redacted.cause).toBeInstanceOf(Error);
+    expect((redacted.cause as Error & { password: string }).password).toBe("[REDACTED]");
+    expect(nested.password).toBe(SECRET);
+  });
+
+  it("preserves and redacts AggregateError errors", () => {
+    const nested = Object.assign(new Error("nested"), { password: SECRET });
+    const aggregate = new AggregateErrorCtor([nested], "many");
+    const out = redactProcessor({ keys: ["password"] })(
+      eventWith({ data: { aggregate } }),
+      context,
+    ) as LogEvent;
+    const redacted = (out.data as { aggregate: ErrorWithErrors }).aggregate;
+    expect(redacted).toBeInstanceOf(AggregateErrorCtor);
+    expect(redacted.errors).toHaveLength(1);
+    expect((redacted.errors[0] as Error & { password: string }).password).toBe("[REDACTED]");
+    expect(nested.password).toBe(SECRET);
   });
 
   it("keeps message/stack non-enumerable so default JSON output is only redacted", () => {

@@ -66,9 +66,16 @@ function redactValue(
     // (e.g. `err.password`). Returning the Error verbatim leaked them: errors
     // arrive raw when nested in data/context (before normalization), and both
     // JSON.stringify and safeJsonStringify emit an Error's own-enumerable props.
-    // `name`/`message`/`stack` are non-enumerable and copied through unchanged,
-    // so default output is unaffected; only the extra props are redacted.
-    if (Object.keys(value).length === 0) return value;
+    // `name`/`message`/`stack` are non-enumerable and copied through unchanged.
+    // Native `cause` and `AggregateError.errors` are also non-enumerable, but
+    // codecs may expand them, so preserve and recurse into those fields too.
+    const entries = Object.entries(value);
+    const enumerableKeys = new Set(entries.map(([key]) => key));
+    const nativeErrorFields = (["cause", "errors"] as const).filter(
+      (field) => Object.prototype.hasOwnProperty.call(value, field) && !enumerableKeys.has(field),
+    );
+    if (entries.length === 0 && nativeErrorFields.length === 0) return value;
+
     const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
     seen.set(value, errorOut);
     // Preserve message/stack as non-enumerable own data properties, read via the
@@ -82,7 +89,30 @@ function redactValue(
         configurable: true,
       });
     }
-    for (const [key, child] of Object.entries(value)) {
+    for (const field of nativeErrorFields) {
+      const child = (value as Error & { cause?: unknown; errors?: unknown })[field];
+      const childPath = path ? `${path}.${field}` : field;
+      if (
+        matchesKey(field, childPath, child, options.keys ?? []) ||
+        pathMatches(childPath, options.paths ?? [])
+      ) {
+        if (options.remove) continue;
+        Object.defineProperty(errorOut, field, {
+          value: options.replacement,
+          writable: true,
+          enumerable: false,
+          configurable: true,
+        });
+        continue;
+      }
+      Object.defineProperty(errorOut, field, {
+        value: redactValue(child, options, childPath, depth + 1, seen),
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    }
+    for (const [key, child] of entries) {
       const childPath = path ? `${path}.${key}` : key;
       if (
         matchesKey(key, childPath, child, options.keys ?? []) ||

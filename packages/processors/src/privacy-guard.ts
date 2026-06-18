@@ -292,7 +292,13 @@ function guardValue(
     });
     const fieldChanged = guardedFields.some((field) => field.changed);
     const entries = Object.entries(value);
-    if (entries.length === 0 && !fieldChanged) return { value, changed: false };
+    const enumerableKeys = new Set(entries.map(([entryKey]) => entryKey));
+    const nativeErrorFields = (["cause", "errors"] as const).filter(
+      (field) => Object.prototype.hasOwnProperty.call(value, field) && !enumerableKeys.has(field),
+    );
+    if (entries.length === 0 && nativeErrorFields.length === 0 && !fieldChanged) {
+      return { value, changed: false };
+    }
 
     const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
     seen.set(value, errorOut);
@@ -305,6 +311,24 @@ function guardValue(
       });
     }
     let changed = fieldChanged;
+    for (const field of nativeErrorFields) {
+      const childPath = path ? `${path}.${field}` : field;
+      const child = guardValue(
+        (value as Error & { cause?: unknown; errors?: unknown })[field],
+        childPath,
+        field,
+        depth + 1,
+        options,
+        seen,
+      );
+      Object.defineProperty(errorOut, field, {
+        value: child.value,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+      changed ||= child.changed;
+    }
     for (const [childKey, childValue] of entries) {
       const childPath = path ? `${path}.${childKey}` : childKey;
       const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);

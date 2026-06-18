@@ -23,6 +23,15 @@ function eventWith(data: unknown): LogEvent {
 
 const SECRET = "TOP-SECRET-VALUE";
 
+type ErrorWithCause = Error & { cause?: unknown };
+type ErrorWithErrors = Error & { errors: unknown[] };
+
+const AggregateErrorCtor = (
+  globalThis as unknown as {
+    AggregateError: new (errors: unknown[], message?: string) => ErrorWithErrors;
+  }
+).AggregateError;
+
 describe("privacyGuardProcessor — Error / Map / Set", () => {
   it("guards a deny-key carried on a nested Error, preserving the Error and message", () => {
     const cause = Object.assign(new Error("boom"), { password: SECRET, ok: "v" });
@@ -70,6 +79,34 @@ describe("privacyGuardProcessor — Error / Map / Set", () => {
     expect(guarded.message).not.toContain("buyer@example.com");
     expect(guarded.stack).not.toContain("buyer@example.com");
     expect(cause.message).toContain("buyer@example.com");
+  });
+
+  it("preserves and guards native Error cause", () => {
+    const nested = new Error("contact buyer@example.com");
+    const cause = new Error("outer") as ErrorWithCause;
+    Object.defineProperty(cause, "cause", {
+      value: nested,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
+    const out = privacyGuardProcessor()(eventWith({ cause }), context) as LogEvent;
+    const guarded = (out.data as { cause: ErrorWithCause }).cause;
+    expect(guarded).toBeInstanceOf(Error);
+    expect(guarded.cause).toBeInstanceOf(Error);
+    expect((guarded.cause as Error).message).not.toContain("buyer@example.com");
+    expect(nested.message).toContain("buyer@example.com");
+  });
+
+  it("preserves and guards AggregateError errors", () => {
+    const nested = new Error("contact buyer@example.com");
+    const aggregate = new AggregateErrorCtor([nested], "many");
+    const out = privacyGuardProcessor()(eventWith({ aggregate }), context) as LogEvent;
+    const guarded = (out.data as { aggregate: ErrorWithErrors }).aggregate;
+    expect(guarded).toBeInstanceOf(AggregateErrorCtor);
+    expect(guarded.errors).toHaveLength(1);
+    expect((guarded.errors[0] as Error).message).not.toContain("buyer@example.com");
+    expect(nested.message).toContain("buyer@example.com");
   });
 
   it("leaves a plain Error unchanged by identity", () => {
