@@ -6,6 +6,9 @@ description: "middleware / processor 目录、顺序和使用场景。"
 
 # 处理器
 
+> [!IMPORTANT]
+> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+
 middleware / processor 目录、顺序和使用场景。
 
 ## 要点

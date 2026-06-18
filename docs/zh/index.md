@@ -34,6 +34,9 @@ features:
     details: library logger 在宿主应用配置前保持静默，依赖可以记录日志但不强制输出。
 ---
 
+> [!IMPORTANT]
+> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+
 ## LoggerJS 管线
 
 <div class="loggerjs-pipeline">

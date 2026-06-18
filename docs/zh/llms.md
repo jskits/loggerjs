@@ -6,6 +6,9 @@ description: "LoggerJS 面向 LLM 的中文文档入口。"
 
 # LLMs
 
+> [!IMPORTANT]
+> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+
 LoggerJS 在站点构建时发布面向 LLM 的文档入口。
 
 - [llms.txt](/zh/llms.txt) 是中文站点的高价值文档地图。
