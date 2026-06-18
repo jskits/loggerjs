@@ -16,7 +16,12 @@ const runtimes = new Set(
     .map((arg) => arg.slice("--runtime=".length)),
 );
 const selectedRuntimes = runtimes.size > 0 ? [...runtimes] : ["bun", "deno", "workers"];
-const packageNames = ["@loggerjs/browser", "@loggerjs/core", "@loggerjs/processors"];
+const packageNames = [
+  "@loggerjs/browser",
+  "@loggerjs/core",
+  "@loggerjs/datadog",
+  "@loggerjs/processors",
+];
 const ciValue = process.env.CI?.trim().toLowerCase();
 const isCi =
   process.env.GITHUB_ACTIONS === "true" ||
@@ -83,13 +88,109 @@ function writeRuntimeSmokeEntry(filename, modulePrefix = "") {
     join(consumerRoot, filename),
     `
 import { createLogger, defineEvent, safeJsonCodec } from "${modulePrefix}@loggerjs/core";
+import { retryTransport } from "${modulePrefix}@loggerjs/core/transport-reliability";
 import { browserHttpTransport } from "${modulePrefix}@loggerjs/browser/transport-http";
+import { datadogLogsTransport } from "${modulePrefix}@loggerjs/datadog/transport";
 import { redactProcessor, tagsProcessor } from "${modulePrefix}@loggerjs/processors";
 
 function toText(body) {
   if (typeof body === "string") return body;
   if (body instanceof Uint8Array) return new TextDecoder().decode(body);
   return String(body ?? "");
+}
+
+function datadogEvent(runtime, message) {
+  return {
+    id: \`\${runtime}-\${message}\`,
+    time: 1,
+    seq: 1,
+    level: 30,
+    levelName: "info",
+    logger: "runtime-smoke",
+    type: "runtime.datadog",
+    message,
+    tags: { runtime },
+  };
+}
+
+function transportContext(runtime) {
+  return {
+    loggerName: "runtime-smoke",
+    now: () => 1,
+    toEvent() {
+      throw new Error(\`unexpected record projection during \${runtime} runtime smoke\`);
+    },
+    reportInternalError(error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(\`unexpected internal transport error during \${runtime}: \${message}\`);
+    },
+  };
+}
+
+async function expectRejects(promise, expectedMessage, runtime) {
+  try {
+    await promise;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes(expectedMessage)) {
+      throw new Error(
+        \`unexpected packaged transport failure for \${runtime}: \${message}\`,
+      );
+    }
+    return;
+  }
+
+  throw new Error(\`packaged transport did not fail for \${runtime}\`);
+}
+
+async function runPackagedTransportFailureSmoke(runtime) {
+  const rawBodies = [];
+  const context = transportContext(runtime);
+  const rawTransport = datadogLogsTransport({
+    apiKey: "runtime-key",
+    fetchFn: async (_input, init) => {
+      rawBodies.push(toText(init?.body));
+      return new Response("temporary", { status: 503 });
+    },
+  });
+
+  await expectRejects(
+    rawTransport.log?.(datadogEvent(runtime, "raw-failure"), context),
+    "status 503",
+    runtime,
+  );
+
+  if (rawBodies.length !== 1 || !rawBodies[0]?.includes("raw-failure")) {
+    throw new Error(\`packaged raw Datadog transport did not send expected payload for \${runtime}\`);
+  }
+
+  const retryBodies = [];
+  const retriedTransport = retryTransport(
+    datadogLogsTransport({
+      apiKey: "runtime-key",
+      fetchFn: async (_input, init) => {
+        retryBodies.push(toText(init?.body));
+        if (retryBodies.length === 1) return new Response("temporary", { status: 503 });
+        return new Response(null, { status: 202 });
+      },
+    }),
+    {
+      maxRetries: 1,
+      retryBaseDelayMs: 0,
+      retryMaxDelayMs: 0,
+      random: () => 0,
+    },
+  );
+
+  await retriedTransport.log?.(datadogEvent(runtime, "retry-success"), context);
+
+  const retried = retryBodies.join("\\n");
+  if (retryBodies.length !== 2) {
+    throw new Error(\`packaged retry transport made \${retryBodies.length} attempts for \${runtime}\`);
+  }
+  if (!retried.includes("runtime.datadog") || !retried.includes("retry-success")) {
+    throw new Error(\`packaged retry transport did not preserve Datadog payload for \${runtime}\`);
+  }
 }
 
 export async function runLoggerRuntimeSmoke(runtime) {
@@ -136,6 +237,8 @@ export async function runLoggerRuntimeSmoke(runtime) {
   if (!posted.includes("[REDACTED]")) {
     throw new Error(\`missing redacted marker for \${runtime}\`);
   }
+
+  await runPackagedTransportFailureSmoke(runtime);
 }
 
 if (typeof globalThis.__LOGGERJS_RUNTIME_SMOKE__ === "string") {
