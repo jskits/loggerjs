@@ -37,6 +37,7 @@ const sidebar = [
     text: "Pipeline",
     items: [
       { text: "Transports", link: "/TRANSPORTS" },
+      { text: "Transport Contracts", link: "/TRANSPORT-CONTRACTS" },
       { text: "Pretty Output", link: "/PRETTY" },
       { text: "Integrations", link: "/INTEGRATIONS" },
       { text: "Processors", link: "/PROCESSORS" },
@@ -91,6 +92,7 @@ const zhSidebar = [
     text: "管线",
     items: [
       { text: "传输", link: "/zh/TRANSPORTS" },
+      { text: "传输契约", link: "/zh/TRANSPORT-CONTRACTS" },
       { text: "友好输出", link: "/zh/PRETTY" },
       { text: "集成", link: "/zh/INTEGRATIONS" },
       { text: "处理器", link: "/zh/PROCESSORS" },

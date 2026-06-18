@@ -2,6 +2,8 @@
 
 A transport delivers log records or events to a destination. This page catalogs every built-in transport and shows how to write your own. Exact option types live in each package's TypeScript declarations and `api-reports/`.
 
+For an auditable map from each transport to source files, public entries, and contract tests, see [TRANSPORT-CONTRACTS.md](TRANSPORT-CONTRACTS.md).
+
 ## Runtime Support
 
 | Runtime | Transport support | Notes |

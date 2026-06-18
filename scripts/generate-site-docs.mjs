@@ -32,6 +32,11 @@ const docsCatalog = [
     "TRANSPORTS",
     "All built-in transports, reliability options, and custom transport guidance.",
   ],
+  [
+    "Transport Contracts",
+    "TRANSPORT-CONTRACTS",
+    "Auditable matrix linking each transport to source files, public entries, and tests.",
+  ],
   ["Pretty Output", "PRETTY", "Browser DevTools and Node terminal pretty output."],
   [
     "Integrations",
@@ -99,6 +104,17 @@ const zhDocsCatalog = [
       "生产路径通常需要显式队列上限、retry/backoff、circuit breaker 和 drop counters。",
       "浏览器 pagehide beacon 是最后机会投递，不应作为唯一持久化保证。",
       "自定义 transport 可以实现 record 或 event 接口，并通过 `flush()` / `close()` 明确定义生命周期。",
+    ],
+  },
+  {
+    title: "传输契约矩阵",
+    slug: "TRANSPORT-CONTRACTS",
+    description: "每个内置 transport 对应的源码、公开入口、失败语义和测试证据。",
+    bullets: [
+      "矩阵把每个 transport 固定到源码文件、public subpath 和契约测试。",
+      "raw HTTP/vendor transport 必须暴露非 2xx、fetch reject 和缺失 fetch 等失败模式。",
+      "生产可靠性需要明确使用 batch、retry、fallback 或 transport 自带的队列/重放机制。",
+      "`pnpm verify:transport-contracts` 会检查矩阵、源码路径、测试路径和公开 transport export 是否同步。",
     ],
   },
   {

@@ -14,6 +14,7 @@
 - [快速开始](https://jskits.github.io/loggerjs/zh/GETTING-STARTED): 安装 LoggerJS，并创建第一个 Node.js 或浏览器 logger。
 - [核心概念](https://jskits.github.io/loggerjs/zh/CONCEPTS): 理解 record、event、middleware、processor、transport、codec 与 integration。
 - [传输](https://jskits.github.io/loggerjs/zh/TRANSPORTS): 内置 transport、可靠性边界、批量/重试/降级以及自定义 transport。
+- [传输契约矩阵](https://jskits.github.io/loggerjs/zh/TRANSPORT-CONTRACTS): 每个内置 transport 对应的源码、公开入口、失败语义和测试证据。
 - [友好输出](https://jskits.github.io/loggerjs/zh/PRETTY): 浏览器 DevTools 和 Node 终端的人类可读输出。
 - [集成](https://jskits.github.io/loggerjs/zh/INTEGRATIONS): 浏览器和 Node.js 自动采集，以及 integration API。
 - [处理器](https://jskits.github.io/loggerjs/zh/PROCESSORS): middleware / processor 目录、顺序和使用场景。
