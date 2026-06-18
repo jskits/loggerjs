@@ -172,6 +172,96 @@ describe("browserHttpTransport", () => {
     });
   });
 
+  it("stores encoded payloads when fetch returns a non-2xx response", async () => {
+    const entries: BrowserHttpOfflineEntry[] = [];
+    const offlineQueue: BrowserHttpOfflineQueue = {
+      enqueue(entry) {
+        entries.push(entry);
+      },
+      replay() {},
+    };
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      method: "PUT",
+      credentials: "include",
+      keepalive: false,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("server-down"), createTransportContext());
+    await transport.flush?.();
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      url: "/logs",
+      method: "PUT",
+      credentials: "include",
+      keepalive: false,
+      body: "server-down",
+    });
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.offline.queued": 1,
+    });
+  });
+
+  it("queues without fetch when the browser is already offline", async () => {
+    const entries: BrowserHttpOfflineEntry[] = [];
+    const offlineQueue: BrowserHttpOfflineQueue = {
+      enqueue(entry) {
+        entries.push(entry);
+      },
+      replay() {},
+    };
+    const fetchFn = vi.fn<typeof fetch>();
+    vi.stubGlobal("navigator", { onLine: false });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("offline"), createTransportContext());
+    await transport.flush?.();
+
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.body).toBe("offline");
+  });
+
+  it("retains the batch when fetch fails and no offline queue is configured", async () => {
+    let fail = true;
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      if (fail) return new Response(null, { status: 500 });
+      return new Response(null, { status: 204 });
+    });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("retained"), createTransportContext());
+    await expect(transport.flush?.()).rejects.toThrow(
+      "browserHttpTransport failed with status 500",
+    );
+    fail = false;
+    await transport.flush?.();
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(fetchFn.mock.calls[1]?.[1]?.body).toBe("retained");
+  });
+
   it("transforms encoded payloads before fetch and offline storage", async () => {
     const entries: BrowserHttpOfflineEntry[] = [];
     const offlineQueue: BrowserHttpOfflineQueue = {
@@ -230,6 +320,97 @@ describe("browserHttpTransport", () => {
 
     expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(fetchFn.mock.calls[0]?.[1]?.body).toBe("retained");
+  });
+
+  it("uses transformed headers and lets explicit transport headers win", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      method: "PUT",
+      headers: {
+        "content-type": "application/x-explicit",
+        "x-user": "configured",
+      },
+      credentials: "omit",
+      keepalive: false,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      transformPayload: () => ({
+        payload: new Uint8Array([1, 2, 3]),
+        contentType: "application/x-transformed",
+        headers: { "x-user": "transform", "content-encoding": "mock" },
+      }),
+    });
+
+    transport.log?.(createEvent("binary"), createTransportContext());
+    await transport.flush?.();
+
+    const request = fetchFn.mock.calls[0]?.[1];
+    expect(fetchFn.mock.calls[0]?.[0]).toBe("/logs");
+    expect(request).toMatchObject({
+      method: "PUT",
+      credentials: "omit",
+      keepalive: false,
+    });
+    expect(request?.headers).toMatchObject({
+      "content-type": "application/x-explicit",
+      "content-encoding": "mock",
+      "x-user": "configured",
+    });
+    expect(request?.body).toBeInstanceOf(Uint8Array);
+    expect(Array.from(request?.body as Uint8Array)).toEqual([1, 2, 3]);
+  });
+
+  it("falls back from a partial beacon send to fetch with only remaining events", async () => {
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => sendBeacon.mock.calls.length === 1);
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("navigator", { sendBeacon });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      beaconMaxBytes: 5,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("aa"), createTransportContext());
+    transport.log?.(createEvent("bb"), createTransportContext());
+    transport.log?.(createEvent("cc"), createTransportContext());
+    await transport.close?.();
+
+    expect(sendBeacon).toHaveBeenCalledTimes(2);
+    expect(await blobText(beaconBodyAt(sendBeacon, 0))).toBe("aa|bb");
+    expect(await blobText(beaconBodyAt(sendBeacon, 1))).toBe("cc");
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn.mock.calls[0]?.[1]?.body).toBe("cc");
+  });
+
+  it("drops oversized beacon events instead of sending an empty payload", async () => {
+    const dropped: Array<[string, string]> = [];
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
+    const fetchFn = vi.fn<typeof fetch>();
+    vi.stubGlobal("navigator", { sendBeacon });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      beaconMaxBytes: 2,
+      fetchFn,
+      onDrop(event, reason) {
+        dropped.push([event.message, reason]);
+      },
+    });
+
+    transport.log?.(createEvent("large"), createTransportContext());
+    await transport.close?.();
+
+    expect(sendBeacon).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(dropped).toEqual([["large", "beacon-too-large"]]);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.dropped": 1,
+      "transport.dropped.beacon-too-large": 1,
+    });
   });
 
   it("replays offline payloads on online with retry", async () => {
