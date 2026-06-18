@@ -279,25 +279,33 @@ function guardValue(
   if (value instanceof Date) return { value, changed: false };
 
   if (value instanceof Error) {
-    // Recurse into an Error's own-enumerable properties so deny-keys and PII in
-    // them are guarded; returning it verbatim leaked any configured key carried
-    // on the error (matches the redactProcessor fix). name/message/stack are
-    // non-enumerable and preserved unchanged.
-    if (Object.keys(value).length === 0) return { value, changed: false };
+    // Guard serialized Error strings as values: safe codecs expand name/message/
+    // stack, so message/stack can carry PII even when they are non-enumerable.
+    // Own-enumerable properties are still recursed so deny-keys are guarded too.
+    const errorFields = ["message", "stack"] as const;
+    const guardedFields = errorFields.map((field) => {
+      const fieldValue = (value as Error)[field];
+      if (typeof fieldValue !== "string") return { field, value: fieldValue, changed: false };
+      const fieldPath = path ? `${path}.${field}` : field;
+      const guarded = guardString(fieldValue, fieldPath, options);
+      return { field, value: guarded.value, changed: guarded.changed };
+    });
+    const fieldChanged = guardedFields.some((field) => field.changed);
+    const entries = Object.entries(value);
+    if (entries.length === 0 && !fieldChanged) return { value, changed: false };
+
     const errorOut = Object.create(Object.getPrototypeOf(value)) as Record<string, unknown>;
     seen.set(value, errorOut);
-    // Non-enumerable message/stack read via the getter (robust to V8's lazy
-    // `stack` accessor); only the extra enumerable props are guarded.
-    for (const field of ["message", "stack"] as const) {
+    for (const { field, value: fieldValue } of guardedFields) {
       Object.defineProperty(errorOut, field, {
-        value: (value as Error)[field],
+        value: fieldValue,
         writable: true,
         enumerable: false,
         configurable: true,
       });
     }
-    let changed = false;
-    for (const [childKey, childValue] of Object.entries(value)) {
+    let changed = fieldChanged;
+    for (const [childKey, childValue] of entries) {
       const childPath = path ? `${path}.${childKey}` : childKey;
       const child = guardValue(childValue, childPath, childKey, depth + 1, options, seen);
       errorOut[childKey] = child.value;

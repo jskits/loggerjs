@@ -61,6 +61,17 @@ describe("privacyGuardProcessor — Error / Map / Set", () => {
     expect(String([...set][0])).not.toContain("buyer@example.com");
   });
 
+  it("scans PII inside raw Error message and stack strings", () => {
+    const cause = new Error("contact buyer@example.com");
+    cause.stack = "Error: contact buyer@example.com\n    at checkout";
+    const out = privacyGuardProcessor()(eventWith({ cause }), context) as LogEvent;
+    const guarded = (out.data as { cause: Error }).cause;
+    expect(guarded).toBeInstanceOf(Error);
+    expect(guarded.message).not.toContain("buyer@example.com");
+    expect(guarded.stack).not.toContain("buyer@example.com");
+    expect(cause.message).toContain("buyer@example.com");
+  });
+
   it("leaves a plain Error unchanged by identity", () => {
     const cause = new Error("plain");
     const out = privacyGuardProcessor({ denyKeys: ["password"] })(

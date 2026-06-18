@@ -52,6 +52,7 @@ The two redaction processors cover different threats, and most apps want both:
 
 By design, `redactProcessor` preserves `Error` `message`/`stack` strings verbatim
 (they are not keys). If those may contain secrets or PII — e.g. an error message
-that embeds a token, or a stack with a query string — pair it with
-`privacyGuardProcessor`. Neither processor scans values inside opaque/binary
-payloads or already-stringified blobs; redact before serialization, not after.
+that embeds a token, or a stack with an email address — pair it with
+`privacyGuardProcessor`, which scans raw Error `message`/`stack` strings before
+serialization. Neither processor scans values inside opaque/binary payloads or
+already-stringified blobs; redact before serialization, not after.
