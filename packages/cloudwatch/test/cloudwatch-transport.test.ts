@@ -186,6 +186,33 @@ describe("cloudWatchLogsTransport", () => {
     );
   });
 
+  it("matches the AWS SigV4 known-answer signature", async () => {
+    const headers = await signAwsV4Request({
+      body: "",
+      credentials: {
+        accessKeyId: "AKIDEXAMPLE",
+        secretAccessKey: "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+      },
+      headers: {
+        "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      },
+      method: "GET",
+      now: new Date("2015-08-30T12:36:00Z"),
+      region: "us-east-1",
+      service: "iam",
+      url: "https://iam.amazonaws.com/?Action=ListUsers&Version=2010-05-08",
+    });
+
+    expect(headers).toMatchObject({
+      host: "iam.amazonaws.com",
+      "content-type": "application/x-www-form-urlencoded; charset=utf-8",
+      "x-amz-date": "20150830T123600Z",
+    });
+    expect(headers.authorization).toBe(
+      "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20150830/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-amz-date, Signature=5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7",
+    );
+  });
+
   it("does not send when minLevel filters a single event or an entire batch", async () => {
     const fetchFn = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
     const signer = vi.fn<(request: AwsV4SignRequestOptions) => Record<string, string>>(
