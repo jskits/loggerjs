@@ -9,7 +9,28 @@ function findAttribute(
   return attributes?.find((attribute) => attribute.key === key)?.value;
 }
 
+function kvValues(value: unknown): Map<string, unknown> {
+  const values = (value as { kvlistValue?: { values?: Array<{ key: string; value: unknown }> } })
+    .kvlistValue?.values;
+  return new Map((values ?? []).map((item) => [item.key, item.value]));
+}
+
+function logAttributeKeys(attributes: Array<{ key: string; value: unknown }> | undefined) {
+  return new Set((attributes ?? []).map((attribute) => attribute.key));
+}
+
+function stringValue(value: unknown): string | undefined {
+  return (value as { stringValue?: string } | undefined)?.stringValue;
+}
+
 describe("otlpJsonCodec", () => {
+  it("exposes stable codec metadata", () => {
+    const codec = otlpJsonCodec();
+
+    expect(codec.name).toBe("otlp-json");
+    expect(codec.contentType).toBe("application/json");
+  });
+
   it("accepts LogRecord batches through the compatibility projection", () => {
     const record = createRecord({
       time: 1,
@@ -78,6 +99,115 @@ describe("otlpJsonCodec", () => {
     expect(findAttribute(logRecord.attributes, "exception.code")).toEqual({
       stringValue: "ERR_TEST",
     });
+  });
+
+  it("encodes resource attributes, scope grouping, and supported AnyValue shapes", () => {
+    const codec = otlpJsonCodec({
+      resource: {
+        "service.name": "checkout",
+        active: true,
+        omitted: undefined,
+      },
+      scopeName: "loggerjs-tests",
+      scopeVersion: "2.0.0",
+    });
+    const events: LogEvent[] = [
+      {
+        id: "evt-api-1",
+        time: 1,
+        seq: 1,
+        level: 30,
+        levelName: "info",
+        logger: "api",
+        message: "created",
+        data: {
+          text: "cart",
+          ok: true,
+          count: 2,
+          ratio: 1.5,
+          nil: null,
+          list: ["x", 2],
+          child: { nested: false },
+        },
+      },
+      {
+        id: "evt-worker",
+        time: 2,
+        seq: 2,
+        level: 40,
+        levelName: "warn",
+        logger: "worker",
+        message: "delayed",
+      },
+      {
+        id: "evt-api-2",
+        time: 3,
+        seq: 3,
+        level: 30,
+        levelName: "info",
+        logger: "api",
+        message: "updated",
+      },
+    ];
+
+    const payload = JSON.parse(codec.encode(events));
+    const resource = payload.resourceLogs[0].resource;
+    const scopeLogs = payload.resourceLogs[0].scopeLogs;
+    const apiScope = scopeLogs.find(
+      (scopeLog: { scope: { attributes: Array<{ key: string; value: unknown }> } }) =>
+        stringValue(findAttribute(scopeLog.scope.attributes, "loggerjs.category")) === "api",
+    );
+    const workerScope = scopeLogs.find(
+      (scopeLog: { scope: { attributes: Array<{ key: string; value: unknown }> } }) =>
+        stringValue(findAttribute(scopeLog.scope.attributes, "loggerjs.category")) === "worker",
+    );
+    const apiRecord = apiScope.logRecords[0];
+    const data = kvValues(findAttribute(apiRecord.attributes, "log.data"));
+
+    expect(findAttribute(resource.attributes, "service.name")).toEqual({
+      stringValue: "checkout",
+    });
+    expect(findAttribute(resource.attributes, "active")).toEqual({ boolValue: true });
+    expect(logAttributeKeys(resource.attributes)).not.toContain("omitted");
+    expect(scopeLogs).toHaveLength(2);
+    expect(apiScope.scope).toMatchObject({ name: "loggerjs-tests", version: "2.0.0" });
+    expect(apiScope.logRecords).toHaveLength(2);
+    expect(workerScope.logRecords).toHaveLength(1);
+    expect(data.get("text")).toEqual({ stringValue: "cart" });
+    expect(data.get("ok")).toEqual({ boolValue: true });
+    expect(data.get("count")).toEqual({ intValue: 2 });
+    expect(data.get("ratio")).toEqual({ doubleValue: 1.5 });
+    expect(data.get("nil")).toEqual({});
+    expect(data.get("list")).toEqual({
+      arrayValue: { values: [{ stringValue: "x" }, { intValue: 2 }] },
+    });
+    expect(kvValues(data.get("child")).get("nested")).toEqual({ boolValue: false });
+    expect(logAttributeKeys(apiRecord.attributes)).not.toContain("log.type");
+    expect(logAttributeKeys(apiRecord.attributes)).not.toContain("log.source");
+  });
+
+  it("falls back from invalid traceFlags to sampled trace flags", () => {
+    const payload = JSON.parse(
+      otlpJsonCodec().encode([
+        {
+          id: "evt-1",
+          time: 1,
+          seq: 1,
+          level: 30,
+          levelName: "info",
+          logger: "api",
+          message: "created",
+          trace: {
+            traceId: "0af7651916cd43dd8448eb211c80319c",
+            spanId: "b7ad6b7169203331",
+            traceFlags: "not-hex",
+            sampled: true,
+          },
+        },
+      ]),
+    );
+
+    expect(payload.resourceLogs[0].scopeLogs[0].logRecords[0].flags).toBe(1);
   });
 });
 
