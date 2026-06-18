@@ -13,11 +13,11 @@ v1 稳定 API 子集和 pre-1.0 兼容策略。
 
 ## 要点
 
-- 稳定 API 以 package export、TypeScript declaration 和 API report 为准。
-- pre-1.0 阶段仍会尽量保守处理用户可见破坏性变更。
-- 新增 public API 后需要更新构建产物和 API report。
-- 内部 helper、未导出类型和测试工具不承诺稳定。
-- 文档中的 API 示例应优先使用稳定入口，而不是深层内部路径。
+- API report 记录所有已导出 TypeScript 声明，但不等于所有符号都已冻结为 v1 稳定 API。
+- `docs/api-stability.policy.json` 把每个 package export 分类为 stable、compatible 或 experimental。
+- 稳定候选面刻意收窄到 core logger、pipeline contracts、主要 browser/node delivery、pretty、processors 和 codecs。
+- vendor、observability 和 database packages 在 v1 前仍是 experimental，需要更多真实端点和 design-partner 验证。
+- 新增 public export 必须更新 policy、文档、测试和 API report。
 
 ## 相关链接
 

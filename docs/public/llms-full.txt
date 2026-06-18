@@ -903,6 +903,7 @@ backends can still fail; the reliability table below is the delivery contract.
 | --- | --- |
 | Stable | Intended for v1-compatible application use. Option names and high-level semantics are protected by API reports, tests, and docs. |
 | Compatible | Public and tested, but exact runtime behavior or message shape may still be tuned before v1. Use when the documented caveats fit your deployment. |
+| Experimental | Public and tested, but not part of the v1 compatibility promise yet. Names, options, payload mapping, or batching guidance may change before v1. |
 | Runtime-dependent | Public API is stable, but practical reliability depends heavily on browser, worker, storage, network, SDK, or database behavior outside LoggerJS. Validate in your target environment. |
 | Test-only | Built for assertions and fixtures, not production delivery. |
 
@@ -915,7 +916,8 @@ backends can still fail; the reliability table below is the delivery contract.
 | Pretty transports | Stable | Developer display API is stable; exact colors/layout remain presentation details. |
 | `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | Production local sinks with drain and crash-path behavior. |
 | `rotatingFileTransport()` | Stable | Local size rotation; use one writer process per file. |
-| `nodeHttpTransport()` / `otlpHttpTransport()` | Stable | Self-wrapped batched HTTP delivery with shared reliability options. |
+| `nodeHttpTransport()` | Stable | Self-wrapped batched HTTP delivery with shared reliability options. |
+| `otlpHttpTransport()` | Experimental | OTLP mapping is public and tested, but observability adapter packages are not frozen before v1. |
 | `nodeSyslogTransport()` | Stable | Wire formatting is stable; UDP/TCP reliability follows syslog transport semantics. |
 | `workerTransport()` | Compatible | Message protocol is public, but ready/ack/fallback lifecycle tuning may evolve. |
 | `browserHttpTransport()` | Stable | Primary browser remote transport; pagehide beacon remains best effort. |
@@ -924,9 +926,9 @@ backends can still fail; the reliability table below is the delivery contract.
 | `browserWebSocketTransport()` | Compatible | Useful for live/debug channels; reconnection and final durability are caller-owned. |
 | `browserServiceWorkerTransport()` | Runtime-dependent | API is public, but delivery depends on service worker registration, activation, and lifetime. |
 | `browserBroadcastChannelTransport()` | Compatible | Same-origin tab fan-out is intentionally lossy and receiver-dependent. |
-| Datadog / Elastic / Loki / CloudWatch transports | Stable | Wire payload APIs are stable; production durability requires batching/retry around raw transports. |
-| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Stable | Adapter contract is stable; delivery follows the SDK/provider object supplied by the app. |
-| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Stable | LoggerJS adapter API is stable; transaction and connection semantics are driver-owned. |
+| Datadog / Elastic / Loki / CloudWatch transports | Experimental | Wire payloads are tested, but vendor packages are not frozen before v1; production durability requires batching/retry around raw transports. |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | Adapter contracts are public and tested, but SDK/provider mapping may still change before v1. |
+| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | Adapter APIs are public and tested, but driver transaction and schema expectations need more design-partner validation before v1. |
 
 ## Import Boundaries
 
@@ -3161,310 +3163,151 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/API-STABILITY.md
 
 # API Stability
 
-LoggerJS is currently pre-1.0, but the project already has a v1-oriented public
-surface. This page defines the **stable API subset** that applications can build
-on with low migration risk, and the areas that may still change before v1.
+LoggerJS is still pre-1.0. The checked-in `api-reports/` files describe every
+exported TypeScript declaration, but they are not a promise that every exported
+symbol is already frozen for v1.
 
-The checked-in `api-reports/` files are the mechanical source of truth for the
-published TypeScript surface. This document is the human stability contract.
+This page is the human contract. The machine-readable classification lives in
+[`docs/api-stability.policy.json`](api-stability.policy.json), and
+`pnpm verify:api-stability` fails when a package export is missing from that
+policy.
 
-## Current Stabilization Phase
+## Current Policy
 
-Before v1, the project is prioritizing confidence in the existing public surface
-over adding more built-in transports or integrations. New public component
-subpaths are allowed only when the change also defines their stability level,
-documents runtime and delivery caveats, updates import-boundary docs, keeps size
-budgets honest, and adds validation at the closest practical environment level
-(unit, browser E2E, runtime smoke, Docker-backed live service, or external
-provider smoke).
+Before v1, the project is narrowing the compatibility promise instead of
+freezing the whole repository. The stable set is intentionally limited to the
+core logger model, core pipeline contracts, primary browser and Node delivery
+paths, pretty output, processors, and codecs.
 
-If a use case can be solved by composing existing transports, processors,
-codecs, or wrappers, prefer documentation and examples over a new core/built-in
-component.
+Everything else may still be public, tested, and useful, but it is not all part
+of the v1 compatibility promise yet. In particular, vendor, observability, and
+database packages remain experimental until they have more real-world usage and
+failure-mode validation.
+
+## Status Levels
+
+| Status | Meaning |
+| --- | --- |
+| Stable v1 Candidate | Intended to carry into v1 without removals, renames, or signature breaks except for security, data-loss, or wire-protocol correctness fixes. Additive changes are allowed. |
+| Compatible Public Surface | Public and tested, but minor releases before v1 may refine option names, captured fields, or runtime edge behavior with release notes. |
+| Experimental Before v1 | Public packages or subpaths that may change before v1. Use them when the current behavior fits, but do not treat them as frozen compatibility contracts. |
+
+Internal source paths, `dist` file paths, generated bundle layout, private class
+fields, and behavior inferred only from tests are not public API in any status.
+
+## Stable v1 Candidate
+
+Stable exports are tracked in `api-stability.policy.json`. The current stable
+packages and entry families are:
+
+| Package | Stable surface |
+| --- | --- |
+| `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
+| `@loggerjs/browser` | Root package, HTTP delivery, IndexedDB/offline-first storage, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
+| `@loggerjs/node` | Root package, stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
+| `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
+| `@loggerjs/processors` | Root package processor and middleware catalog. |
+| `@loggerjs/codecs` | Root package codec catalog. |
+
+Stable semantics include:
+
+- `createLogger(options)`, `getLogger(category)`, and `configure(...)` for
+  application and library-safe logging.
+- Logger instance methods: `trace`, `debug`, `info`, `warn`, `error`, `fatal`,
+  `log`, `capture`, `event`, `child`, `withTags`, `withType`, `setLevel`,
+  `getLevel`, `isEnabled`, `isLevelEnabled`, `addTransport`, `addProcessor`,
+  `addIntegration`, `ready`, `flush`, `flushSync`, and `close`.
+- Level names and numeric values: `trace=10`, `debug=20`, `info=30`,
+  `warn=40`, `error=50`, `fatal=60`, and `silent`.
+- The pipeline interfaces for `Middleware`, `Processor`, `Transport`,
+  `Integration`, and `Codec`, including `TransportContext.toEvent(record)`
+  memoized projection.
+- Disabled levels return before record allocation and lazy message evaluation.
+- Middleware, processors, codecs, integrations, and transports are
+  error-isolated from application code.
+- Serialization remains transport-owned; middleware and processors keep values
+  structured.
+
+## Compatible Public Surface
+
+Compatible exports stay documented and tested, but they are not frozen enough to
+be stable v1 candidates yet. Current compatible areas include:
+
+- Browser secondary transports and collectors: BroadcastChannel, service
+  worker, WebSocket, ZIP export, framework errors, framework routers, generic
+  router capture, ReportingObserver, runtime host, service worker messages,
+  user actions, and WebSocket capture.
+- Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi,
+  Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method
+  wrapping, and CLI capture.
+
+The public import paths should remain available during pre-v1, but exact
+captured fields, hook coverage, and edge behavior may be refined. These are the
+right places to tighten names or reduce claims before v1 if real usage shows the
+current API is too broad.
+
+## Experimental Before v1
+
+These packages are public because they are useful for integration testing and
+early adopters, but they are not v1 compatibility commitments yet:
+
+| Package family | Experimental exports |
+| --- | --- |
+| Observability adapters | `@loggerjs/otel/*`, `@loggerjs/sentry/*` |
+| Vendor wire transports | `@loggerjs/datadog/*`, `@loggerjs/elastic/*`, `@loggerjs/loki/*`, `@loggerjs/cloudwatch/*` |
+| Database transports | `@loggerjs/database/*` |
+
+Experimental does not mean untested. It means minor releases before v1 may
+change option names, payload mapping, retry expectations, batching guidance, or
+subpath layout if design partners or live endpoints expose a better shape.
+
+Raw vendor transports are not durable by themselves. For production delivery,
+wrap them with `batchTransport()` and `retryTransport()` or use a collector
+endpoint that owns queueing, retry, authentication, and backoff.
 
 ## Change Policy
 
-For the stable subset below:
+For Stable v1 Candidate APIs:
 
 - No intentional removals, renames, or signature breaks before v1 without a
   deprecation note and migration path.
-- Additive changes are allowed: new options, new fields, new overloads, new
-  transports, and new integrations.
+- Additive changes are allowed: new options, fields, overloads, processors,
+  transports, integrations, and subpaths.
 - Defaults that affect delivery, privacy, or performance require documentation
   and release notes.
 - Security fixes, data-loss fixes, and vendor wire-protocol correctness fixes
-  may change edge-case behavior. The release notes must call those out.
+  may change edge-case behavior. Release notes must call those out.
 
-For everything outside the stable subset, the TypeScript declarations are still
-tested and API-reported, but minor releases may adjust names, options, or exact
-payload mapping before v1.
+For Compatible and Experimental APIs:
 
-## Stable for v1
+- Public exports stay typechecked, tested, API-reported, and documented.
+- Minor releases may adjust names, options, field shape, or exact behavior
+  before v1.
+- Breaking changes should still include release notes and migration guidance,
+  because public does not mean disposable.
 
-### Package Entry Points
+## Adding Public API
 
-These package names and documented root imports are part of the v1 contract:
+New package exports must:
 
-- `@loggerjs/core`
-- `@loggerjs/browser`
-- `@loggerjs/node`
-- `@loggerjs/pretty`
-- `@loggerjs/processors`
-- `@loggerjs/codecs`
-- `@loggerjs/otel`
-- `@loggerjs/sentry`
-- `@loggerjs/datadog`
-- `@loggerjs/elastic`
-- `@loggerjs/loki`
-- `@loggerjs/cloudwatch`
-- `@loggerjs/database`
+1. Add or update tests at the closest practical runtime level.
+2. Update docs and examples for import boundaries and caveats.
+3. Add the export to `docs/api-stability.policy.json`.
+4. Run `pnpm verify:api-stability` and `pnpm api:check`.
 
-Documented subpath exports are intended to remain valid, but users should prefer
-root package imports unless they need a precise tree-shaking boundary. Internal
-source paths and `dist` file paths are not public API.
-
-### Core Logger Model
-
-Stable:
-
-- `createLogger(options)` and the `Logger` instance methods:
-  `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `log`, `capture`,
-  `event`, `child`, `withTags`, `withType`, `setLevel`, `getLevel`,
-  `isEnabled`, `isLevelEnabled`, `addTransport`, `addProcessor`,
-  `addIntegration`, `ready`, `flush`, `flushSync`, and `close`.
-- `getLogger(category)` and `configure(...)` for library-safe logging that stays
-  silent until the host application configures output.
-- Level names and numeric values: `trace=10`, `debug=20`, `info=30`,
-  `warn=40`, `error=50`, `fatal=60`, and `silent`.
-- Category arrays, child bindings, tags, `withContext()`, context providers,
-  and the Node AsyncLocalStorage bridge.
-- `defineEvent()` typed events and the `(message, data)`,
-  `(error, message, data)`, and lazy-message call forms.
-
-Stable semantics:
-
-- Disabled levels return before record allocation and message evaluation.
-- Logger internals never throw into application code; middleware, processors,
-  codecs, integrations, and transports are error-isolated.
-- Objects passed as `data` / `props` are not deep-snapshotted by default. Clone
-  before logging when later mutation must not affect deferred transports.
-
-### Pipeline Contracts
-
-Stable:
-
-- `Middleware`: synchronous `LogRecord -> LogRecord | null`.
-- `Processor`: synchronous `LogEvent -> LogEvent | false | void`.
-- `Transport`: `ready`, `write`, `writeBatch`, `log`, `logBatch`, `flush`,
-  `flushSync`, `close`, `name`, and `minLevel`.
-- `TransportContext.toEvent(record)` memoizes projection so several transports
-  share one event id.
-- `Integration`: opt-in `setup(api)` plus teardown.
-- Integration setup helpers: `api.capture`, direct log methods, `api.guard`,
-  `api.unpatched`, `api.flush`, `api.flushSync`, and `api.close`.
-- `Codec`: `encode`, optional `decode`, and optional
-  `prepareRecordEncoder`.
-
-Stable boundary rule:
-
-- Serialization belongs to the transport codec. Middleware and processors should
-  keep values structured and must not pre-stringify for a destination.
-
-### Core Transports and Codecs
-
-Stable:
-
-- `consoleTransport`
-- `memoryTransport`
-- `testTransport`
-- `batchTransport`
-- `retryTransport`
-- `fallbackTransport`
-- `jsonCodec`
-- `safeJsonCodec`
-- `ndjsonCodec`
-- `metricsCodec`
-- `createPreparedRecordEncoder`
-
-The exact performance of these helpers is not API, but their high-level
-semantics, error isolation, and option names are part of the v1 contract.
-
-### Browser Production Surface
-
-Stable:
-
-- `browserHttpTransport`
-- `memoryBrowserHttpOfflineQueue`
-- `indexedDbBrowserHttpOfflineQueue`
-- `indexedDbTransport`
-- `offlineFirstTransport`
-- `pageLifecycleIntegration`
-- `captureConsoleIntegration`
-- `captureBrowserErrorsIntegration`
-- `captureFetchIntegration`
-- `captureXHRIntegration`
-- `captureWebVitalsIntegration`
-- `capturePerformanceIntegration`
-
-Stable semantics:
-
-- Browser integrations are opt-in and teardown-capable.
-- Browser HTTP delivery is best effort unless the remote endpoint acknowledges
-  the payload.
-- IndexedDB persistence survives reloads only while browser storage remains
-  available, permitted, and not evicted.
-
-### Node Production Surface
-
-Stable:
-
-- `stdoutTransport`
-- `stderrTransport`
-- `fileTransport`
-- `rotatingFileTransport`
-- `nodeHttpTransport`
-- `nodeSyslogTransport`
-- `workerTransport`
-- `captureProcessIntegration`
-- `installAsyncLocalStorageContext`
-- `createAsyncLocalStorageContextManager`
-- `installLoggerDiagnosticsChannel`
-
-Stable semantics:
-
-- `stdoutTransport` / `stderrTransport` are drain-aware and ignore `EPIPE` by
-  default.
-- `fileTransport().flushSync()` is a crash-path primitive.
-- `captureProcessIntegration({ exitOnUncaught })` captures fatal errors,
-  performs sync-capable flushes, waits for bounded async flush, then exits.
-- `workerTransport()` remains an object-message worker API with optional ready
-  and ack lifecycles.
-
-### Pretty Developer UX Surface
-
-Stable:
-
-- `formatPrettyEvent`
-- `prettyConsoleTransport`
-- `prettyStreamTransport`
-- `prettyStdoutTransport`
-- `prettyStderrTransport`
-
-Stable semantics:
-
-- Pretty output is transport-owned display behavior. It does not mutate the
-  record/event pipeline and does not replace structured production transports.
-- `prettyConsoleTransport()` writes through the unpatched console registry and
-  filters console-capture loop events by default.
-- `prettyStdoutTransport()` / `prettyStderrTransport()` honor `NO_COLOR`,
-  `FORCE_COLOR`, `minLevel`, and stream `drain` for async `flush()`.
-
-Compatible but tunable:
-
-- Exact colors, spacing, label width, and compact/expanded layout may be refined
-  before v1 as long as option names and high-level behavior remain.
-
-### Processors and Middleware
-
-Stable:
-
-- `redactProcessor`
-- `privacyGuardProcessor`
-- `normalizeErrorProcessor`
-- `stackParserProcessor`
-- `tagsProcessor` / `tagsMiddleware`
-- `typeProcessor` / `typeMiddleware`
-- `contextProcessor` / `contextMiddleware`
-- `enrichProcessor` / `enrichMiddleware`
-- `traceContextProcessor` / `traceContextMiddleware`
-- `sampleProcessor`
-- `rateLimitProcessor`
-- `dedupeProcessor`
-- `filterProcessor`
-- `routeProcessor`
-- `levelOverrideProcessor`
-- `fingerprintProcessor`
-- `fingersCrossedProcessor`
-- `breadcrumbBufferProcessor`
-
-Stable semantics:
-
-- Processors are synchronous and error-isolated.
-- Privacy processors may add new built-in patterns or safer defaults in minor
-  releases, but existing option names remain.
-- Sampling/rate-limit internals may be tuned, but configured rates, caps, and
-  drop hooks keep their meaning.
-
-### Codecs and Observability Packages
-
-Stable:
-
-- `fastEventJsonCodec`
-- `msgpackrCodec`
-- `pinoCompatCodec` / `pinoNdjsonProjector`
-- `projectorCodec`
-- `otlpHttpTransport`
-- `otlpJsonCodec`
-- `openTelemetryTraceProcessor`
-- `openTelemetryLogBridgeTransport`
-- `sentryTransport`
-- `datadogLogsTransport`
-- `elasticTransport`
-- `lokiTransport`
-- `cloudWatchLogsTransport`
-- `databaseTransport`
-- `sqliteTransport`
-- `postgresTransport`
-
-Stable semantics:
-
-- Vendor transports speak the documented wire protocol directly or use the
-  application-provided SDK/provider object.
-- Raw Datadog, Elastic, Loki, and CloudWatch transports are not durable by
-  themselves; use `batchTransport()` / `retryTransport()` when production
-  delivery needs queueing and backoff.
-- Pino compatibility is scoped to common NDJSON shape, not every Pino
-  serializer or formatter edge case.
-
-## Compatible but Tunable
-
-These are public, tested, and documented, but exact output details may evolve in
-minor releases:
-
-- Browser framework/router adapters, service worker integration, runtime host
-  integration, WebSocket integration, user-action integration, and
-  BroadcastChannel transport.
-- Node framework/data integrations for Express, Fastify, Koa, Nest, Hapi,
-  fetch/http clients, diagnostics channel, CLI, serverless, queues, BullMQ,
-  generic database clients, Prisma, and Redis.
-- Vendor-specific document fields that are not required by the target wire
-  protocol.
-- Meta counter and diagnostic event names outside the documented common names in
-  `TRANSPORTS.md`.
-- Benchmark snapshots and benchmark ratios.
-
-## Not Stable Before v1
-
-Avoid depending on these as compatibility contracts:
-
-- Exact `dist` file layout, generated bundle structure, source file paths, and
-  private class fields.
-- The exact order of object keys in serialized output, except where a codec
-  explicitly documents a wire format.
-- Internal hidden-class/field-order optimizations on `LogRecord`.
-- Undocumented helper behavior inferred from tests but not described in docs or
-  API reports.
-- Experimental runtime-specific behavior gated by feature detection, such as
-  Storage Buckets availability or browser lifecycle timing.
+Prefer examples and composition over new exports when an existing stable API can
+solve the use case.
 
 ## How to Evaluate a Future Upgrade
 
 1. Read the package changelog and release notes.
-2. Run `pnpm check` in this repository if you are contributing, or your
+2. Check this page and `api-stability.policy.json` for the export status you
+   depend on.
+3. Run `pnpm check` in this repository if you are contributing, or your
    application test suite if you are consuming LoggerJS.
-3. For hot paths, reproduce your relevant benchmark with `pnpm bench:node` or
+4. For hot paths, reproduce your relevant benchmark with `pnpm bench:node` or
    `pnpm bench:browser`.
-4. For remote delivery, test your actual collector/vendor endpoint and monitor
+5. For remote delivery, test your actual collector/vendor endpoint and monitor
    `transport.dropped.*`, `transport.retry.*`, and queue-depth metrics.
 
 ---

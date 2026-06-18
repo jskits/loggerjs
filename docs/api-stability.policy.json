@@ -1,0 +1,93 @@
+{
+  "stable": {
+    "@loggerjs/core": [
+      ".",
+      "./middleware",
+      "./codec-json",
+      "./codec-metrics",
+      "./transport-console",
+      "./transport-batch",
+      "./transport-reliability",
+      "./transport-test",
+      "./context",
+      "./trace-propagation",
+      "./events",
+      "./semantic-events",
+      "./payload-transforms"
+    ],
+    "@loggerjs/browser": [
+      ".",
+      "./transport-http",
+      "./payload-transforms",
+      "./offline-indexeddb",
+      "./transport-indexeddb",
+      "./offline-first-transport",
+      "./integration-console",
+      "./integration-context",
+      "./integration-errors",
+      "./integration-fetch",
+      "./integration-xhr",
+      "./integration-web-vitals",
+      "./integration-performance",
+      "./integration-page-lifecycle"
+    ],
+    "@loggerjs/node": [
+      ".",
+      "./transport-http",
+      "./payload-transforms",
+      "./transport-file",
+      "./transport-rotating-file",
+      "./transport-stdout",
+      "./transport-syslog",
+      "./transport-worker",
+      "./integration-process",
+      "./integration-fetch",
+      "./integration-http-client",
+      "./integration-diagnostics",
+      "./logger-diagnostics",
+      "./context"
+    ],
+    "@loggerjs/pretty": [".", "./formatter", "./transport-console", "./transport-stream"],
+    "@loggerjs/processors": ["."],
+    "@loggerjs/codecs": ["."]
+  },
+  "compatible": {
+    "@loggerjs/browser": [
+      "./transport-broadcast-channel",
+      "./transport-service-worker",
+      "./transport-websocket",
+      "./export-zip",
+      "./integration-framework-errors",
+      "./integration-framework-routers",
+      "./integration-reporting",
+      "./integration-router",
+      "./integration-runtime-host",
+      "./integration-service-worker",
+      "./integration-user-actions",
+      "./integration-websocket"
+    ],
+    "@loggerjs/node": [
+      "./integration-cli",
+      "./integration-koa",
+      "./integration-nest",
+      "./integration-hapi",
+      "./integration-prisma",
+      "./integration-redis",
+      "./integration-queue",
+      "./integration-bullmq",
+      "./integration-serverless",
+      "./integration-database",
+      "./integration-express",
+      "./integration-fastify"
+    ]
+  },
+  "experimental": {
+    "@loggerjs/otel": [".", "./transport-http", "./codec-otlp-json", "./trace", "./log-bridge"],
+    "@loggerjs/sentry": [".", "./transport"],
+    "@loggerjs/datadog": [".", "./transport"],
+    "@loggerjs/elastic": [".", "./transport"],
+    "@loggerjs/loki": [".", "./transport"],
+    "@loggerjs/cloudwatch": [".", "./transport"],
+    "@loggerjs/database": [".", "./transport", "./sqlite", "./postgres"]
+  }
+}
