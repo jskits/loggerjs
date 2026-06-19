@@ -7,7 +7,11 @@ import {
   type Transport,
   type TransportContext,
 } from "@loggerjs/core";
-import { offlineFirstTransport, type OfflineFirstQueue } from "../src";
+import {
+  offlineFirstTransport,
+  type IndexedDbTransportOptions,
+  type OfflineFirstQueue,
+} from "../src";
 
 const context: TransportContext = {
   loggerName: "test",
@@ -163,5 +167,44 @@ describe("offlineFirstTransport", () => {
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.offline.replay.failed": 1,
     });
+  });
+
+  it("keeps the default persistent replay queue from adding page sessions", async () => {
+    vi.resetModules();
+    const queue = memoryQueue();
+    const queueOptions: IndexedDbTransportOptions[] = [];
+
+    vi.doMock("../src/indexeddb-transport", () => ({
+      indexedDbTransport(options: IndexedDbTransportOptions) {
+        queueOptions.push(options);
+        return queue;
+      },
+    }));
+
+    try {
+      const { offlineFirstTransport: createOfflineFirstTransport } =
+        await import("../src/offline-first-transport");
+      const transport = createOfflineFirstTransport(
+        {
+          name: "remote",
+          log() {
+            throw new Error("offline");
+          },
+        },
+        {
+          replayOnOnline: false,
+          retry: { maxRetries: 0 },
+        },
+      );
+
+      await transport.log?.(event("queued"), context);
+
+      expect(queueOptions).toHaveLength(1);
+      expect(queueOptions[0]).toMatchObject({ session: false });
+      expect(queue.events[0]?.context).toBeUndefined();
+    } finally {
+      vi.doUnmock("../src/indexeddb-transport");
+      vi.resetModules();
+    }
   });
 });

@@ -79,6 +79,7 @@ export function offlineFirstTransport(
       dbName: "loggerjs-offline",
       flushIntervalMs: 0,
       name: `${name}:queue`,
+      session: false,
       storeName: "offline-events",
       ...options.queueOptions,
     }) as OfflineFirstQueue);
