@@ -1041,11 +1041,14 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   };
 
   const stringifySpillPayload = (events: readonly LogEvent[]): string =>
-    safeJsonStringify({
-      createdAt: Date.now(),
-      entries: events,
-      schema: SPILL_SCHEMA,
-    } satisfies LocalStorageSpillPayload);
+    safeJsonStringify(
+      {
+        createdAt: Date.now(),
+        entries: events,
+        schema: SPILL_SCHEMA,
+      } satisfies LocalStorageSpillPayload,
+      { maxArrayLength: spillOptions?.maxEntries ?? DEFAULT_SPILL_MAX_ENTRIES },
+    );
 
   const spillStorageBudget = (currentValue: string | null): number => {
     if (!spillOptions) return 0;

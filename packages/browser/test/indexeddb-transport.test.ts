@@ -813,4 +813,30 @@ describe("indexedDbTransport", () => {
     await transport.clear();
     expect(storage.getItem(`loggerjs:spill:v1:${namespace}`)).toBeNull();
   });
+
+  it("honors localStorage spill maxEntries above the safe stringify default", () => {
+    const lifecycle = installPageLifecycleTarget();
+    const storage = new FakeStorage();
+    const namespace = "large-spill";
+    const transport = indexedDbTransport({
+      batchSize: 300,
+      flushIntervalMs: 10_000,
+      indexedDB: new FakeIndexedDB() as unknown as IDBFactory,
+      localStorageSpill: {
+        maxEntries: 250,
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+    });
+
+    for (let index = 0; index < 250; index += 1) {
+      transport.log?.(event(`event-${index}`, index), context);
+    }
+    lifecycle.dispatch("pagehide");
+
+    const entries = spillEntries(storage, namespace);
+    expect(entries).toHaveLength(250);
+    expect(entries[0]?.id).toBe("event-0");
+    expect(entries[entries.length - 1]?.id).toBe("event-249");
+  });
 });
