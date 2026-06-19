@@ -27,6 +27,7 @@
     "check": "pnpm format:check && pnpm lint && turbo run typecheck test build && pnpm typecheck:core-platform && pnpm test:inventory:check && pnpm size:check && pnpm verify:entry-boundaries && pnpm verify:component-docs && pnpm verify:transport-contracts && pnpm verify:integration-limits && pnpm verify:api-stability && pnpm verify:zh-docs && pnpm verify:exports && pnpm typecheck:public && pnpm api:check && pnpm pack:check && pnpm compat:node",
     "clean": "turbo run clean && rm -rf .turbo",
     "clean:all": "pnpm clean && rm -rf node_modules",
+    "commit": "cz",
     "compat:node": "pnpm smoke:packages",
     "compat:runtimes": "node scripts/smoke-runtimes.mjs",
     "docs:build": "node scripts/generate-site-docs.mjs && vitepress build docs",
@@ -86,6 +87,8 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^22.19.20",
     "@vitest/coverage-v8": "^4.1.9",
+    "commitizen": "^4.3.2",
+    "cz-git": "^1.13.1",
     "lint-staged": "^17.0.7",
     "miniflare": "^4.20260616.0",
     "oxfmt": "^0.55.0",
@@ -108,6 +111,11 @@
   "lint-staged": {
     "*": "oxfmt --no-error-on-unmatched-pattern",
     "*.{js,cjs,mjs,jsx,ts,tsx}": "oxlint --fix --no-error-on-unmatched-pattern"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-git"
+    }
   },
   "engines": {
     "node": ">=22.13.0",
