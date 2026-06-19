@@ -1076,6 +1076,22 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     return deduped;
   };
 
+  const mergeCurrentSpillEvents = (
+    currentValue: string | null,
+    pendingEvents: readonly LogEvent[],
+  ): LogEvent[] => {
+    const merged = new Map<string, LogEvent>();
+    if (currentValue) {
+      try {
+        for (const event of parseSpillPayload(currentValue) ?? []) merged.set(event.id, event);
+      } catch (error) {
+        reportSpillError(error, "merge");
+      }
+    }
+    for (const event of pendingEvents) merged.set(event.id, event);
+    return [...merged.values()];
+  };
+
   const trimSpillEventsToBudget = (events: LogEvent[], budget: number): string | undefined => {
     if (!spillOptions) return undefined;
     while (events.length > spillOptions.maxEntries) {
@@ -1093,11 +1109,12 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
 
   const writeLocalStorageSpill = () => {
     if (!spillOptions) return;
-    const events = pendingEventsForSpill();
-    if (events.length === 0) return;
+    const pendingEvents = pendingEventsForSpill();
+    if (pendingEvents.length === 0) return;
 
     try {
       const currentValue = spillOptions.storage.getItem(spillOptions.key);
+      const events = mergeCurrentSpillEvents(currentValue, pendingEvents);
       const budget = spillStorageBudget(currentValue);
       const value = trimSpillEventsToBudget(events, budget);
       if (!value) return;

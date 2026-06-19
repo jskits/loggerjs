@@ -749,7 +749,7 @@ describe("indexedDbTransport", () => {
     expect(storage.getItem(`loggerjs:spill:v1:${namespace}`)).toBeNull();
   });
 
-  it("does not clear a newer spill written while startup drain is in flight", async () => {
+  it("merges a newer spill with startup drain entries that are still in flight", async () => {
     const lifecycle = installPageLifecycleTarget();
     const storage = new FakeStorage();
     const namespace = "drain-race";
@@ -774,13 +774,20 @@ describe("indexedDbTransport", () => {
     transport.log?.(event("current-page", 2), context);
     lifecycle.dispatch("pagehide");
 
-    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["current-page"]);
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual([
+      "previous-page",
+      "current-page",
+    ]);
 
     await vi.waitFor(() => expect(idb.db.entries.has("previous-page")).toBe(true));
 
-    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["current-page"]);
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual([
+      "previous-page",
+      "current-page",
+    ]);
 
     await transport.close?.();
+    expect(storage.getItem(`loggerjs:spill:v1:${namespace}`)).toBeNull();
   });
 
   it("bounds localStorage spill entries and clears spill state with clear", async () => {
