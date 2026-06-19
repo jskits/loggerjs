@@ -651,6 +651,76 @@ describe("indexedDbTransport", () => {
     expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["one"]);
   });
 
+  it("keeps spilled buffered logs until every spilled id is persisted", async () => {
+    const lifecycle = installPageLifecycleTarget();
+    const storage = new FakeStorage();
+    const namespace = "spill-unpersisted-buffer";
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      batchSize: 1,
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+      localStorageSpill: {
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+    });
+
+    transport.log?.(event("persisting", 1), context);
+    transport.log?.(event("buffered", 2), context);
+    lifecycle.dispatch("pagehide");
+
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual([
+      "persisting",
+      "buffered",
+    ]);
+
+    await vi.waitFor(() => expect(idb.db.entries.has("persisting")).toBe(true));
+
+    expect(idb.db.entries.has("buffered")).toBe(false);
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual([
+      "persisting",
+      "buffered",
+    ]);
+
+    await transport.close?.();
+    expect(storage.getItem(`loggerjs:spill:v1:${namespace}`)).toBeNull();
+  });
+
+  it("does not clear a newer spill written while startup drain is in flight", async () => {
+    const lifecycle = installPageLifecycleTarget();
+    const storage = new FakeStorage();
+    const namespace = "drain-race";
+    const oldSpill = JSON.stringify({
+      createdAt: 1,
+      entries: [event("previous-page", 1)],
+      schema: "loggerjs.indexeddb-spill.v1",
+    });
+    storage.setItem(`loggerjs:spill:v1:${namespace}`, oldSpill);
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      batchSize: 100,
+      flushIntervalMs: 10_000,
+      flushOnPageHide: false,
+      indexedDB: idb as unknown as IDBFactory,
+      localStorageSpill: {
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+    });
+
+    transport.log?.(event("current-page", 2), context);
+    lifecycle.dispatch("pagehide");
+
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["current-page"]);
+
+    await vi.waitFor(() => expect(idb.db.entries.has("previous-page")).toBe(true));
+
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["current-page"]);
+
+    await transport.close?.();
+  });
+
   it("bounds localStorage spill entries and clears spill state with clear", async () => {
     const lifecycle = installPageLifecycleTarget();
     const storage = new FakeStorage();

@@ -177,6 +177,11 @@ interface LocalStorageSpillPayload {
   entries: readonly LogEvent[];
 }
 
+interface LocalStorageSpillClearCandidate {
+  value: string;
+  pendingIds: Set<string>;
+}
+
 interface StorageBucketLike {
   indexedDB?: IDBFactory;
 }
@@ -519,7 +524,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   let flushPromise: Promise<void> | undefined;
   let pendingFlushBatch: LogEvent[] | undefined;
   let spillDrainPromise: Promise<void> | undefined;
-  let localStorageSpillPendingClear = false;
+  let localStorageSpillClearCandidate: LocalStorageSpillClearCandidate | undefined;
   let lastContext: TransportContext | undefined;
   let closed = false;
   const statsState: IndexedDbTransportStats = {
@@ -977,6 +982,40 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     };
   };
 
+  const clearLocalStorageSpill = (expectedValue?: string): boolean => {
+    if (!spillOptions) return false;
+    try {
+      if (
+        expectedValue !== undefined &&
+        spillOptions.storage.getItem(spillOptions.key) !== expectedValue
+      ) {
+        return false;
+      }
+      spillOptions.storage.removeItem(spillOptions.key);
+      if (expectedValue === undefined || localStorageSpillClearCandidate?.value === expectedValue) {
+        localStorageSpillClearCandidate = undefined;
+      }
+      return true;
+    } catch (error) {
+      reportSpillError(error, "clear");
+      return false;
+    }
+  };
+
+  const rememberLocalStorageSpill = (value: string, events: readonly LogEvent[]) => {
+    localStorageSpillClearCandidate = {
+      pendingIds: new Set(events.map((event) => event.id)),
+      value,
+    };
+  };
+
+  const markLocalStorageSpillPersisted = (events: readonly LogEvent[]) => {
+    const candidate = localStorageSpillClearCandidate;
+    if (!candidate || events.length === 0) return;
+    for (const event of events) candidate.pendingIds.delete(event.id);
+    if (candidate.pendingIds.size === 0) clearLocalStorageSpill(candidate.value);
+  };
+
   const writeBatch = async (events: readonly LogEvent[]) => {
     if (events.length === 0) return;
     const startedAt = nowMs();
@@ -990,6 +1029,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       });
       statsState.persisted += entries.length;
       incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);
+      markLocalStorageSpillPersisted(events);
       await prune();
       statsState.flushes += 1;
     } catch (error) {
@@ -997,15 +1037,6 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       throw error;
     } finally {
       statsState.lastFlushDurationMs = nowMs() - startedAt;
-    }
-  };
-
-  const clearLocalStorageSpill = () => {
-    if (!spillOptions) return;
-    try {
-      spillOptions.storage.removeItem(spillOptions.key);
-    } catch (error) {
-      reportSpillError(error, "clear");
     }
   };
 
@@ -1078,7 +1109,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           if (!retryValue) return;
           try {
             spillOptions.storage.setItem(spillOptions.key, retryValue);
-            localStorageSpillPendingClear = true;
+            rememberLocalStorageSpill(retryValue, events);
             statsState.localStorageSpillWrites += 1;
             statsState.localStorageSpillEntries += events.length;
             return;
@@ -1088,7 +1119,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
         }
         return;
       }
-      localStorageSpillPendingClear = true;
+      rememberLocalStorageSpill(value, events);
       statsState.localStorageSpillWrites += 1;
       statsState.localStorageSpillEntries += events.length;
     } catch (error) {
@@ -1121,7 +1152,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     }
 
     await writeBatch(events);
-    clearLocalStorageSpill();
+    clearLocalStorageSpill(raw);
     statsState.localStorageSpillDrains += 1;
     statsState.localStorageSpillDrainedEntries += events.length;
   };
@@ -1153,10 +1184,6 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     flushPromise = (async () => {
       await ensureSpillDrained();
       await writeBatch(batch);
-      if (localStorageSpillPendingClear) {
-        clearLocalStorageSpill();
-        localStorageSpillPendingClear = false;
-      }
     })().finally(() => {
       if (pendingFlushBatch === batch) pendingFlushBatch = undefined;
       flushPromise = undefined;
