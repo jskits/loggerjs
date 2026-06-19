@@ -1,5 +1,14 @@
 # @loggerjs/pretty
 
+## 0.5.3
+
+### Patch Changes
+
+- Pointed `formatter`, `transport-console`, and `transport-stream` subpath exports at physical bundles and declaration files.
+- No pretty formatter or transport runtime source changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

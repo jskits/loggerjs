@@ -1,5 +1,15 @@
 # @loggerjs/otel
 
+## 0.5.3
+
+### Patch Changes
+
+- Pointed OTLP HTTP transport, OTLP JSON codec, trace, and log-bridge subpath exports at physical bundles and declaration files.
+- Pinned OTLP JSON wire mapping for resource attributes, scope grouping, supported AnyValue shapes, trace flag fallback, and empty-category scope fallback.
+- No OTEL runtime API changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

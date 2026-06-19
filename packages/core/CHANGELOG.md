@@ -1,5 +1,13 @@
 # @loggerjs/core
 
+## 0.5.3
+
+### Patch Changes
+
+- `jsonCodec()`, `safeJsonCodec()`, and `ndjsonCodec()` now validate decoded log-event payloads before returning typed values, rejecting malformed objects, invalid levels, non-finite numbers, invalid tags, and invalid serialized errors.
+- Pointed core subpath exports at physical bundles for codecs, transports, context, events, semantic events, trace propagation, middleware, and payload transforms.
+- Raised coverage floors and expanded edge coverage around integration APIs, memory/test transports, logger dispatch, and semantic events.
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

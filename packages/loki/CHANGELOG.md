@@ -1,5 +1,14 @@
 # @loggerjs/loki
 
+## 0.5.3
+
+### Patch Changes
+
+- Hardened Loki push delivery-contract coverage for min-level no-send behavior, missing `fetch`, rejected `fetch`, non-2xx responses, tenant/header preservation, and `retryTransport()` wrapping.
+- No Loki runtime API changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

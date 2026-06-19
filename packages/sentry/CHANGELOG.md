@@ -1,5 +1,14 @@
 # @loggerjs/sentry
 
+## 0.5.3
+
+### Patch Changes
+
+- Hardened Sentry transport coverage for structured-log and breadcrumb toggles, severity/logger-method mapping, message capture, `minLevel`, SDK failure propagation, and `retryTransport()` wrapping.
+- No Sentry runtime API changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

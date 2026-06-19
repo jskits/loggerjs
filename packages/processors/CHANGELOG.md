@@ -1,5 +1,15 @@
 # @loggerjs/processors
 
+## 0.5.3
+
+### Patch Changes
+
+- `redactProcessor()` and `privacyGuardProcessor()` now support symbol matchers and traverse own enumerable symbol keys on plain objects, errors, and symbol-keyed map entries.
+- Expanded `normalizeErrorProcessor()` edge coverage for primitive thrown values, circular causes, aggregate-error options, stack/code handling, and enumerable extras.
+- Added per-file privacy mutation thresholds for `redact`, `privacy-guard`, and `normalize-error`.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Fixed `redactProcessor` to fail closed past `maxDepth`, replacing too-deep subtrees with the configured replacement instead of passing plaintext values through.

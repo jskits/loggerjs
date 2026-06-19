@@ -1,5 +1,15 @@
 # @loggerjs/database
 
+## 0.5.3
+
+### Patch Changes
+
+- Split the database package into physical `transport`, `sqlite`, and `postgres` entry modules while keeping the root export compatible.
+- Pointed `@loggerjs/database/transport`, `@loggerjs/database/sqlite`, and `@loggerjs/database/postgres` subpath exports at their dedicated bundles and declaration files.
+- Added source-bound transport contract verification for the database transport matrix.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

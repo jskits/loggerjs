@@ -1,5 +1,14 @@
 # @loggerjs/elastic
 
+## 0.5.3
+
+### Patch Changes
+
+- Hardened Elasticsearch bulk delivery-contract coverage for min-level no-send behavior, missing `fetch`, rejected `fetch`, non-2xx responses, auth/header preservation, partial bulk failures, and `retryTransport()` wrapping.
+- No Elastic runtime API changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

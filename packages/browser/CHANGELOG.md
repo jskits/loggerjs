@@ -1,5 +1,18 @@
 # @loggerjs/browser
 
+## 0.5.3
+
+### Patch Changes
+
+- Added session-aware `indexedDbTransport()` persistence: entries can carry `sessionId`, page sessions are assigned by default, `query({ sessionId })` filters by session, and `sessions()` summarizes persisted sessions for support tooling.
+- Added bounded `localStorageSpill` for the still-unconfirmed IndexedDB write tail, including pagehide/hidden-visibility spill, startup drain, spill counters, and budget/drop accounting.
+- Extended `exportLogsToZip()` with per-session files, manifest session metadata, and optional `recent.ndjson` / `recent.json` exports.
+- Kept `offlineFirstTransport()` replay payloads stable by disabling the new IndexedDB page-session tagging for its internal queue unless queue options explicitly opt in.
+- Hardened browser HTTP/offline contracts for missing `fetch`, non-2xx responses, transform failures, offline replay backoff, beacon fallback/oversize handling, and retained retry batches.
+- Pointed browser transport/integration subpath exports at physical bundles and added package export verification.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

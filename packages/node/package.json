@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/node",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Node.js transports and integrations for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/node#readme",
   "bugs": {

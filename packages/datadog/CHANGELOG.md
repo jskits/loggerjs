@@ -1,5 +1,15 @@
 # @loggerjs/datadog
 
+## 0.5.3
+
+### Patch Changes
+
+- Hardened Datadog Logs delivery-contract coverage for min-level no-send behavior, missing `fetch`, rejected `fetch`, non-2xx responses, auth/header preservation, and `retryTransport()` wrapping.
+- Added packaged runtime smoke coverage for raw Datadog transport failure and retry-wrapper success.
+- No Datadog runtime API changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

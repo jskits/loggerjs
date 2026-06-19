@@ -1,5 +1,14 @@
 # @loggerjs/codecs
 
+## 0.5.3
+
+### Patch Changes
+
+- `fastEventJsonCodec().decode()` now validates decoded log-event payloads before returning typed values, rejecting malformed objects, invalid levels, non-finite numbers, invalid tags, and invalid serialized errors.
+- Expanded codec tests for validation branches, array payloads, fast-path fallback behavior, and Pino-compatible projection edge cases.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

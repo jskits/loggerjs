@@ -1,5 +1,15 @@
 # @loggerjs/node
 
+## 0.5.3
+
+### Patch Changes
+
+- Pointed Node transport, integration, diagnostics, and context subpath exports at physical bundles and declaration files.
+- Hardened `nodeHttpTransport()` contract coverage for missing `fetch`, non-2xx retryable batches, transform failures, binary bodies, HTTP method selection, and header precedence.
+- Clarified the public scope of `prismaIntegration()`, `bullMqIntegration()`, and `nestMiddlewareIntegration()` in emitted declarations and docs: raw Prisma methods only, Queue-like BullMQ methods only, and Express-compatible Nest middleware only.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.

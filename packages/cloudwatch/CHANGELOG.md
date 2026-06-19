@@ -1,5 +1,15 @@
 # @loggerjs/cloudwatch
 
+## 0.5.3
+
+### Patch Changes
+
+- Added CloudWatch Logs delivery-contract coverage for min-level no-send behavior, missing `fetch`, rejected `fetch`, non-2xx responses, header preservation, and `retryTransport()` wrapping.
+- Pinned AWS SigV4 signing with a known-answer signature test so canonicalization regressions are caught before release.
+- No CloudWatch runtime API changes landed in this release.
+- Updated dependencies:
+  - @loggerjs/core@0.5.3
+
 ## 0.5.2
 
 - Version alignment for package release `0.5.2`.
