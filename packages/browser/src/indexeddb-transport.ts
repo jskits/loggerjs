@@ -1,6 +1,7 @@
 import {
   incrementLoggerMetaCounter,
   safeJsonCodec,
+  safeJsonStringify,
   toLevelValue,
   type Codec,
   type LogEvent,
@@ -59,6 +60,18 @@ export interface IndexedDbTransportSessionQueryOptions {
   order?: "asc" | "desc";
 }
 
+export interface IndexedDbLocalStorageSpillOptions {
+  namespace?: string;
+  maxEntries?: number;
+  maxBytes?: number;
+  maxOriginBytes?: number;
+  minLevel?: LoggerLevel;
+  drainOnCreate?: boolean;
+  spillOnPageHide?: boolean;
+  storage?: Storage;
+  onDrop?: (event: LogEvent, reason: string) => void;
+}
+
 export interface IndexedDbTransportStats {
   bufferDepth: number;
   maxBufferDepth: number;
@@ -84,6 +97,14 @@ export interface IndexedDbTransportStats {
   transactionOptionFallbacks: number;
   errors: number;
   errorsByOperation: Record<string, number>;
+  localStorageSpillWrites: number;
+  localStorageSpillEntries: number;
+  localStorageSpillDrains: number;
+  localStorageSpillDrainedEntries: number;
+  localStorageSpillDropped: number;
+  localStorageSpillDroppedByReason: Record<string, number>;
+  localStorageSpillErrors: number;
+  localStorageSpillErrorsByOperation: Record<string, number>;
 }
 
 export interface IndexedDbTransportOptions {
@@ -105,6 +126,7 @@ export interface IndexedDbTransportOptions {
   storageBucketPersisted?: boolean;
   storageBucketDurability?: IndexedDbStorageBucketDurability;
   session?: IndexedDbTransportSession;
+  localStorageSpill?: false | IndexedDbLocalStorageSpillOptions;
   indexedDB?: IDBFactory;
   onDrop?: (event: LogEvent, reason: string) => void;
   onPersistedDrop?: (entry: IndexedDbLogEntry, reason: string) => void;
@@ -122,15 +144,37 @@ export interface IndexedDbTransport extends Transport {
 const DEFAULT_DB_NAME = "loggerjs";
 const DEFAULT_STORE_NAME = "logs";
 const DEFAULT_SESSION_CONTEXT_KEY = "sessionId";
+const DEFAULT_SPILL_MAX_ENTRIES = 200;
+const DEFAULT_SPILL_MAX_BYTES = 512 * 1024;
+const DEFAULT_SPILL_MAX_ORIGIN_BYTES = 5 * 1024 * 1024;
 const DB_VERSION = 3;
 const ORDER_INDEX_NAME = "createdAtSeq";
 const SESSION_INDEX_NAME = "sessionId";
 const SESSION_ORDER_INDEX_NAME = "sessionIdCreatedAtSeq";
+const SPILL_SCHEMA = "loggerjs.indexeddb-spill.v1";
 
 interface NormalizedSessionOptions {
   id?: string;
   getId?: (event: LogEvent) => string | undefined;
   contextKey: string;
+}
+
+interface NormalizedLocalStorageSpillOptions {
+  key: string;
+  maxEntries: number;
+  maxBytes: number;
+  maxOriginBytes: number;
+  minLevelValue?: number;
+  drainOnCreate: boolean;
+  spillOnPageHide: boolean;
+  storage: Storage;
+  onDrop?: (event: LogEvent, reason: string) => void;
+}
+
+interface LocalStorageSpillPayload {
+  schema: typeof SPILL_SCHEMA;
+  createdAt: number;
+  entries: readonly LogEvent[];
 }
 
 interface StorageBucketLike {
@@ -181,6 +225,83 @@ function normalizeSessionOptions(
     getId: session?.getId,
     id: normalizeSessionId(session?.id) ?? defaultPageSessionId(),
   };
+}
+
+function resolveLocalStorage(storage: Storage | undefined): Storage | undefined {
+  if (storage) return storage;
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeLocalStorageSpillOptions(
+  spill: false | IndexedDbLocalStorageSpillOptions | undefined,
+  dbName: string,
+  storeName: string,
+): NormalizedLocalStorageSpillOptions | undefined {
+  if (!spill) return undefined;
+  const storage = resolveLocalStorage(spill.storage);
+  if (!storage) return undefined;
+  const namespace = spill.namespace ?? `${dbName}:${storeName}`;
+  return {
+    drainOnCreate: spill.drainOnCreate ?? true,
+    key: `loggerjs:spill:v1:${namespace}`,
+    maxBytes: normalizePositiveInteger(spill.maxBytes, DEFAULT_SPILL_MAX_BYTES),
+    maxEntries: normalizePositiveInteger(spill.maxEntries, DEFAULT_SPILL_MAX_ENTRIES),
+    maxOriginBytes: normalizePositiveInteger(spill.maxOriginBytes, DEFAULT_SPILL_MAX_ORIGIN_BYTES),
+    minLevelValue: spill.minLevel === undefined ? undefined : toLevelValue(spill.minLevel),
+    onDrop: spill.onDrop,
+    spillOnPageHide: spill.spillOnPageHide ?? true,
+    storage,
+  };
+}
+
+function storageByteLength(key: string, value: string): number {
+  return 2 * (key.length + value.length);
+}
+
+function estimateLocalStorageBytes(storage: Storage): number | undefined {
+  try {
+    let total = 0;
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key === null) continue;
+      total += storageByteLength(key, storage.getItem(key) ?? "");
+    }
+    return total;
+  } catch {
+    return undefined;
+  }
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  return (
+    typeof DOMException !== "undefined" &&
+    error instanceof DOMException &&
+    (error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED")
+  );
+}
+
+function isSpillLogEvent(value: unknown): value is LogEvent {
+  if (!value || typeof value !== "object") return false;
+  const event = value as Partial<LogEvent>;
+  return (
+    typeof event.id === "string" &&
+    typeof event.time === "number" &&
+    typeof event.seq === "number" &&
+    typeof event.level === "number" &&
+    typeof event.levelName === "string" &&
+    typeof event.logger === "string" &&
+    typeof event.message === "string"
+  );
+}
+
+function parseSpillPayload(raw: string): LogEvent[] | undefined {
+  const parsed = JSON.parse(raw) as Partial<LocalStorageSpillPayload>;
+  if (parsed.schema !== SPILL_SCHEMA || !Array.isArray(parsed.entries)) return undefined;
+  return parsed.entries.filter(isSpillLogEvent);
 }
 
 function nowMs(): number {
@@ -379,6 +500,11 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   const durability = options.durability ?? "default";
   const rootIndexedDB = options.indexedDB ?? globalThis.indexedDB;
   const sessionOptions = normalizeSessionOptions(options.session);
+  const spillOptions = normalizeLocalStorageSpillOptions(
+    options.localStorageSpill,
+    dbName,
+    storeName,
+  );
   const transactionOptions =
     durability === "default"
       ? undefined
@@ -391,6 +517,9 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   let indexedDBFactoryPromise: Promise<IDBFactory | undefined> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let flushPromise: Promise<void> | undefined;
+  let pendingFlushBatch: LogEvent[] | undefined;
+  let spillDrainPromise: Promise<void> | undefined;
+  let localStorageSpillPendingClear = false;
   let lastContext: TransportContext | undefined;
   let closed = false;
   const statsState: IndexedDbTransportStats = {
@@ -418,6 +547,14 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     transactionOptionFallbacks: 0,
     errors: 0,
     errorsByOperation: {},
+    localStorageSpillWrites: 0,
+    localStorageSpillEntries: 0,
+    localStorageSpillDrains: 0,
+    localStorageSpillDrainedEntries: 0,
+    localStorageSpillDropped: 0,
+    localStorageSpillDroppedByReason: {},
+    localStorageSpillErrors: 0,
+    localStorageSpillErrorsByOperation: {},
   };
 
   const snapshotStats = (): IndexedDbTransportStats => ({
@@ -425,6 +562,8 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     bufferDepth: buffer.length,
     droppedByReason: { ...statsState.droppedByReason },
     errorsByOperation: { ...statsState.errorsByOperation },
+    localStorageSpillDroppedByReason: { ...statsState.localStorageSpillDroppedByReason },
+    localStorageSpillErrorsByOperation: { ...statsState.localStorageSpillErrorsByOperation },
     pendingFlush: flushPromise !== undefined,
     persistedDroppedByReason: { ...statsState.persistedDroppedByReason },
   });
@@ -453,6 +592,20 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     incrementLoggerMetaCounter("transport.indexeddb.persisted.dropped");
     incrementLoggerMetaCounter(`transport.indexeddb.persisted.dropped.${reason}`);
     options.onPersistedDrop?.(entry, reason);
+  };
+
+  const reportSpillError = (error: unknown, operation: string) => {
+    statsState.localStorageSpillErrors += 1;
+    incrementRecord(statsState.localStorageSpillErrorsByOperation, operation);
+    reportInternalError(error, `localstorage-spill-${operation}`);
+  };
+
+  const dropSpillEvent = (event: LogEvent, reason: string) => {
+    statsState.localStorageSpillDropped += 1;
+    incrementRecord(statsState.localStorageSpillDroppedByReason, reason);
+    incrementLoggerMetaCounter("transport.indexeddb.localstorage_spill.dropped");
+    incrementLoggerMetaCounter(`transport.indexeddb.localstorage_spill.dropped.${reason}`);
+    spillOptions?.onDrop?.(event, reason);
   };
 
   const resolveIndexedDBFactory = async () => {
@@ -672,7 +825,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     });
 
   const listSessions = async (
-    sessionOptions: IndexedDbTransportSessionQueryOptions = {},
+    sessionQueryOptions: IndexedDbTransportSessionQueryOptions = {},
   ): Promise<IndexedDbLogSession[]> => {
     const sessions = new Map<string, IndexedDbLogSession>();
     for (const entry of await getEntries()) {
@@ -699,8 +852,8 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       if (left.lastSeen !== right.lastSeen) return left.lastSeen - right.lastSeen;
       return left.sessionId < right.sessionId ? -1 : left.sessionId > right.sessionId ? 1 : 0;
     });
-    if (sessionOptions.order !== "asc") ordered.reverse();
-    return ordered.slice(0, sessionOptions.limit);
+    if (sessionQueryOptions.order !== "asc") ordered.reverse();
+    return ordered.slice(0, sessionQueryOptions.limit);
   };
 
   const pruneWithEntries = async () => {
@@ -794,13 +947,25 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     };
   };
 
-  const eventToEntry = (event: LogEvent): IndexedDbLogEntry => {
+  const eventWithResolvedSession = (
+    event: LogEvent,
+  ): {
+    event: LogEvent;
+    sessionId?: string;
+  } => {
     const sessionId = sessionIdForEvent(event);
-    const eventForPayload = eventWithSessionContext(event, sessionId);
-    const payload = codec.encode(eventForPayload);
+    return {
+      event: eventWithSessionContext(event, sessionId),
+      sessionId,
+    };
+  };
+
+  const eventToEntry = (event: LogEvent): IndexedDbLogEntry => {
+    const resolved = eventWithResolvedSession(event);
+    const payload = codec.encode(resolved.event);
     return {
       id: event.id,
-      sessionId,
+      sessionId: resolved.sessionId,
       seq: event.seq,
       createdAt: event.time,
       level: event.level,
@@ -835,6 +1000,146 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     }
   };
 
+  const clearLocalStorageSpill = () => {
+    if (!spillOptions) return;
+    try {
+      spillOptions.storage.removeItem(spillOptions.key);
+    } catch (error) {
+      reportSpillError(error, "clear");
+    }
+  };
+
+  const stringifySpillPayload = (events: readonly LogEvent[]): string =>
+    safeJsonStringify({
+      createdAt: Date.now(),
+      entries: events,
+      schema: SPILL_SCHEMA,
+    } satisfies LocalStorageSpillPayload);
+
+  const spillStorageBudget = (currentValue: string | null): number => {
+    if (!spillOptions) return 0;
+    const ownBytes = currentValue ? storageByteLength(spillOptions.key, currentValue) : 0;
+    const originBytes = estimateLocalStorageBytes(spillOptions.storage);
+    if (originBytes === undefined) return spillOptions.maxBytes;
+    return Math.max(
+      0,
+      Math.min(spillOptions.maxBytes, spillOptions.maxOriginBytes - originBytes + ownBytes),
+    );
+  };
+
+  const pendingEventsForSpill = (): LogEvent[] => {
+    const events = [...(pendingFlushBatch ?? []), ...buffer];
+    const seen = new Set<string>();
+    const deduped: LogEvent[] = [];
+    for (const event of events) {
+      if (seen.has(event.id)) continue;
+      seen.add(event.id);
+      if (spillOptions?.minLevelValue !== undefined && event.level < spillOptions.minLevelValue) {
+        continue;
+      }
+      deduped.push(eventWithResolvedSession(event).event);
+    }
+    return deduped;
+  };
+
+  const trimSpillEventsToBudget = (events: LogEvent[], budget: number): string | undefined => {
+    if (!spillOptions) return undefined;
+    while (events.length > spillOptions.maxEntries) {
+      const dropped = events.shift();
+      if (dropped) dropSpillEvent(dropped, "max-entries");
+    }
+    while (events.length > 0) {
+      const value = stringifySpillPayload(events);
+      if (storageByteLength(spillOptions.key, value) <= budget) return value;
+      const dropped = events.shift();
+      if (dropped) dropSpillEvent(dropped, "max-bytes");
+    }
+    return undefined;
+  };
+
+  const writeLocalStorageSpill = () => {
+    if (!spillOptions) return;
+    const events = pendingEventsForSpill();
+    if (events.length === 0) return;
+
+    try {
+      const currentValue = spillOptions.storage.getItem(spillOptions.key);
+      const budget = spillStorageBudget(currentValue);
+      const value = trimSpillEventsToBudget(events, budget);
+      if (!value) return;
+      try {
+        spillOptions.storage.setItem(spillOptions.key, value);
+      } catch (error) {
+        if (!isQuotaExceededError(error)) throw error;
+        while (events.length > 0) {
+          const dropped = events.shift();
+          if (dropped) dropSpillEvent(dropped, "quota");
+          const retryValue = trimSpillEventsToBudget(events, budget);
+          if (!retryValue) return;
+          try {
+            spillOptions.storage.setItem(spillOptions.key, retryValue);
+            localStorageSpillPendingClear = true;
+            statsState.localStorageSpillWrites += 1;
+            statsState.localStorageSpillEntries += events.length;
+            return;
+          } catch (retryError) {
+            if (!isQuotaExceededError(retryError)) throw retryError;
+          }
+        }
+        return;
+      }
+      localStorageSpillPendingClear = true;
+      statsState.localStorageSpillWrites += 1;
+      statsState.localStorageSpillEntries += events.length;
+    } catch (error) {
+      reportSpillError(error, "write");
+    }
+  };
+
+  const drainLocalStorageSpill = async () => {
+    if (!spillOptions) return;
+    let raw: string | null;
+    try {
+      raw = spillOptions.storage.getItem(spillOptions.key);
+    } catch (error) {
+      reportSpillError(error, "read");
+      return;
+    }
+    if (!raw) return;
+
+    let events: LogEvent[] | undefined;
+    try {
+      events = parseSpillPayload(raw);
+    } catch (error) {
+      reportSpillError(error, "parse");
+      clearLocalStorageSpill();
+      return;
+    }
+    if (!events || events.length === 0) {
+      clearLocalStorageSpill();
+      return;
+    }
+
+    await writeBatch(events);
+    clearLocalStorageSpill();
+    statsState.localStorageSpillDrains += 1;
+    statsState.localStorageSpillDrainedEntries += events.length;
+  };
+
+  const ensureSpillDrained = async () => {
+    const promise = spillDrainPromise;
+    if (!promise) return;
+    await promise;
+  };
+
+  if (spillOptions?.drainOnCreate) {
+    spillDrainPromise = drainLocalStorageSpill()
+      .catch((error: unknown) => reportSpillError(error, "drain"))
+      .finally(() => {
+        spillDrainPromise = undefined;
+      });
+  }
+
   const clearTimer = () => {
     if (timer) clearTimeout(timer);
     timer = undefined;
@@ -844,7 +1149,16 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     if (flushPromise) return flushPromise;
     clearTimer();
     const batch = buffer.splice(0, buffer.length);
-    flushPromise = writeBatch(batch).finally(() => {
+    pendingFlushBatch = batch;
+    flushPromise = (async () => {
+      await ensureSpillDrained();
+      await writeBatch(batch);
+      if (localStorageSpillPendingClear) {
+        clearLocalStorageSpill();
+        localStorageSpillPendingClear = false;
+      }
+    })().finally(() => {
+      if (pendingFlushBatch === batch) pendingFlushBatch = undefined;
       flushPromise = undefined;
       if (buffer.length > 0 && !closed) schedule();
     });
@@ -859,16 +1173,24 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   };
 
   const onPageHide = () => {
-    void flushPending().catch((error: unknown) => reportInternalError(error, "pagehide-flush"));
+    if (spillOptions?.spillOnPageHide) writeLocalStorageSpill();
+    if (flushOnPageHide) {
+      void flushPending().catch((error: unknown) => reportInternalError(error, "pagehide-flush"));
+    }
   };
 
   const onVisibilityChange = () => {
     if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-      void flushPending().catch((error: unknown) => reportInternalError(error, "visibility-flush"));
+      if (spillOptions?.spillOnPageHide) writeLocalStorageSpill();
+      if (flushOnPageHide) {
+        void flushPending().catch((error: unknown) =>
+          reportInternalError(error, "visibility-flush"),
+        );
+      }
     }
   };
 
-  if (flushOnPageHide) {
+  if (flushOnPageHide || spillOptions?.spillOnPageHide) {
     globalThis.addEventListener?.("pagehide", onPageHide);
     globalThis.addEventListener?.("visibilitychange", onVisibilityChange);
   }
@@ -907,6 +1229,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     async clear() {
       buffer.length = 0;
       clearTimer();
+      clearLocalStorageSpill();
       await withStore("readwrite", (store) => requestToPromise(store.clear()));
     },
     async remove(ids) {
@@ -950,10 +1273,10 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       globalThis.removeEventListener?.("pagehide", onPageHide);
       globalThis.removeEventListener?.("visibilitychange", onVisibilityChange);
       const flushed = flushPending();
-      const promise = dbPromise;
-      dbPromise = undefined;
       return flushed.finally(() => {
-        void promise?.then((db) => db.close());
+        const promise = dbPromise;
+        dbPromise = undefined;
+        return promise?.then((db) => db.close());
       });
     },
   };

@@ -288,6 +288,55 @@ class FakeIndexedDB {
   }
 }
 
+class FakeStorage {
+  private readonly items = new Map<string, string>();
+
+  get length() {
+    return this.items.size;
+  }
+
+  clear() {
+    this.items.clear();
+  }
+
+  getItem(key: string) {
+    return this.items.get(key) ?? null;
+  }
+
+  key(index: number) {
+    return [...this.items.keys()][index] ?? null;
+  }
+
+  removeItem(key: string) {
+    this.items.delete(key);
+  }
+
+  setItem(key: string, value: string) {
+    this.items.set(key, value);
+  }
+}
+
+function installPageLifecycleTarget() {
+  const listeners = new Map<string, EventListener[]>();
+  vi.stubGlobal("addEventListener", (type: string, listener: EventListener) => {
+    const items = listeners.get(type) ?? [];
+    items.push(listener);
+    listeners.set(type, items);
+  });
+  vi.stubGlobal("removeEventListener", (type: string, listener: EventListener) => {
+    const items = listeners.get(type) ?? [];
+    listeners.set(
+      type,
+      items.filter((item) => item !== listener),
+    );
+  });
+  return {
+    dispatch(type: string) {
+      for (const listener of listeners.get(type) ?? []) listener({ type } as Event);
+    },
+  };
+}
+
 const context: TransportContext = {
   loggerName: "test",
   now: () => 1,
@@ -312,6 +361,12 @@ async function collect(source: AsyncIterable<LogEvent>) {
   const events: LogEvent[] = [];
   for await (const item of source) events.push(item);
   return events;
+}
+
+function spillEntries(storage: FakeStorage, namespace: string): LogEvent[] {
+  const raw = storage.getItem(`loggerjs:spill:v1:${namespace}`);
+  if (!raw) return [];
+  return JSON.parse(raw).entries as LogEvent[];
 }
 
 describe("indexedDbTransport", () => {
@@ -532,5 +587,98 @@ describe("indexedDbTransport", () => {
 
     expect(idb.db.entries.size).toBe(1);
     expect(idb.db.closed).toBe(true);
+  });
+
+  it("spills pending buffered logs and drains them on the next load", async () => {
+    const lifecycle = installPageLifecycleTarget();
+    const storage = new FakeStorage();
+    const namespace = "support";
+    const firstIdb = new FakeIndexedDB();
+    const first = indexedDbTransport({
+      batchSize: 100,
+      flushIntervalMs: 10_000,
+      indexedDB: firstIdb as unknown as IDBFactory,
+      localStorageSpill: {
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+      session: { id: "page-session" },
+    });
+
+    first.log?.(event("one", 1), context);
+    lifecycle.dispatch("pagehide");
+
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["one"]);
+    expect(spillEntries(storage, namespace)[0]?.context).toEqual({ sessionId: "page-session" });
+
+    const secondIdb = new FakeIndexedDB();
+    const second = indexedDbTransport({
+      indexedDB: secondIdb as unknown as IDBFactory,
+      localStorageSpill: {
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+      session: { id: "next-session" },
+    });
+
+    await second.flush?.();
+
+    expect(secondIdb.db.entries.has("one")).toBe(true);
+    expect(storage.getItem(`loggerjs:spill:v1:${namespace}`)).toBeNull();
+    expect(second.stats()).toMatchObject({
+      localStorageSpillDrainedEntries: 1,
+      localStorageSpillDrains: 1,
+    });
+  });
+
+  it("spills in-flight flush batches on pagehide", () => {
+    const lifecycle = installPageLifecycleTarget();
+    const storage = new FakeStorage();
+    const namespace = "in-flight";
+    const transport = indexedDbTransport({
+      batchSize: 1,
+      indexedDB: new FakeIndexedDB() as unknown as IDBFactory,
+      localStorageSpill: {
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+      session: { id: "page-session" },
+    });
+
+    transport.log?.(event("one", 1), context);
+    lifecycle.dispatch("pagehide");
+
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["one"]);
+  });
+
+  it("bounds localStorage spill entries and clears spill state with clear", async () => {
+    const lifecycle = installPageLifecycleTarget();
+    const storage = new FakeStorage();
+    const dropped: string[] = [];
+    const namespace = "bounded";
+    const transport = indexedDbTransport({
+      batchSize: 100,
+      flushIntervalMs: 10_000,
+      indexedDB: new FakeIndexedDB() as unknown as IDBFactory,
+      localStorageSpill: {
+        maxEntries: 1,
+        minLevel: "warn",
+        namespace,
+        onDrop: (item, reason) => dropped.push(`${item.id}:${reason}`),
+        storage: storage as unknown as Storage,
+      },
+      session: { id: "page-session" },
+    });
+
+    transport.log?.(event("info", 1), context);
+    transport.log?.(event("warn", 2, { level: 40, levelName: "warn" }), context);
+    transport.log?.(event("error", 3, { level: 50, levelName: "error" }), context);
+    lifecycle.dispatch("pagehide");
+
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["error"]);
+    expect(dropped).toEqual(["warn:max-entries"]);
+
+    await transport.clear();
+    expect(storage.getItem(`loggerjs:spill:v1:${namespace}`)).toBeNull();
   });
 });
