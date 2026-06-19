@@ -73,15 +73,16 @@ export function offlineFirstTransport(
 ): OfflineFirstTransport {
   const name = options.name ?? `offline-first(${remote.name ?? "transport"})`;
   const replayBatchSize = normalizeBatchSize(options.replayBatchSize);
+  const queueOptions = options.queueOptions;
   const queue: OfflineFirstQueue =
     options.queue ??
     (indexedDbTransport({
       dbName: "loggerjs-offline",
       flushIntervalMs: 0,
       name: `${name}:queue`,
-      session: false,
       storeName: "offline-events",
-      ...options.queueOptions,
+      ...queueOptions,
+      session: queueOptions?.session === undefined ? false : queueOptions.session,
     }) as OfflineFirstQueue);
   const reliableRemote = retryTransport(remote, {
     maxRetries: 2,

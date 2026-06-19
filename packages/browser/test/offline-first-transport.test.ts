@@ -207,4 +207,45 @@ describe("offlineFirstTransport", () => {
       vi.resetModules();
     }
   });
+
+  it("normalizes undefined default queue sessions without blocking explicit overrides", async () => {
+    vi.resetModules();
+    const queue = memoryQueue();
+    const queueOptions: IndexedDbTransportOptions[] = [];
+
+    vi.doMock("../src/indexeddb-transport", () => ({
+      indexedDbTransport(options: IndexedDbTransportOptions) {
+        queueOptions.push(options);
+        return queue;
+      },
+    }));
+
+    try {
+      const { offlineFirstTransport: createOfflineFirstTransport } =
+        await import("../src/offline-first-transport");
+      createOfflineFirstTransport(
+        {
+          name: "remote",
+        },
+        {
+          queueOptions: { session: undefined },
+          replayOnOnline: false,
+        },
+      );
+      createOfflineFirstTransport(
+        {
+          name: "remote",
+        },
+        {
+          queueOptions: { session: "custom-session" },
+          replayOnOnline: false,
+        },
+      );
+
+      expect(queueOptions.map((item) => item.session)).toEqual([false, "custom-session"]);
+    } finally {
+      vi.doUnmock("../src/indexeddb-transport");
+      vi.resetModules();
+    }
+  });
 });
