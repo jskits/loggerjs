@@ -400,7 +400,8 @@ function readManualChineseDoc(slug) {
   } catch (error) {
     if (error?.code === "ENOENT") {
       throw new Error(
-        `Missing manual Chinese documentation source: ${relative(repoRoot, manualPath)}`, { cause: error },
+        `Missing manual Chinese documentation source: ${relative(repoRoot, manualPath)}`,
+        { cause: error },
       );
     }
     throw error;
