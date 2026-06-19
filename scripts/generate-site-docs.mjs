@@ -394,10 +394,16 @@ function writeFileIfChanged(path, contents) {
 }
 
 function readManualChineseDoc(slug) {
+  const manualPath = join(zhManualRoot, `${slug}.md`);
   try {
-    return readFileSync(join(zhManualRoot, `${slug}.md`), "utf8").trim();
-  } catch {
-    return undefined;
+    return readFileSync(manualPath, "utf8").trim();
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      throw new Error(
+        `Missing manual Chinese documentation source: ${relative(repoRoot, manualPath)}`, { cause: error },
+      );
+    }
+    throw error;
   }
 }
 
@@ -784,20 +790,10 @@ function generateChineseGuidePages() {
   mkdirSync(zhDocsRoot, { recursive: true });
 
   for (const doc of zhDocsCatalog) {
-    const manual = readManualChineseDoc(doc.slug);
+    const body = readManualChineseDoc(doc.slug);
     const related = docsCatalog.some(([, slug]) => slug === doc.slug)
       ? `\n## 相关链接\n\n- [英文原文](/${doc.slug})\n- [中文首页](/zh/)\n`
       : `\n## 相关链接\n\n- [英文原文](/${doc.slug})\n- [中文首页](/zh/)\n`;
-    const fallbackBullets = doc.bullets.map((bullet) => `- ${bullet}`).join("\n");
-    const body =
-      manual ??
-      `# ${doc.title}
-
-${doc.description}
-
-## 要点
-
-${fallbackBullets}`;
 
     writeFileIfChanged(
       join(zhDocsRoot, `${doc.slug}.md`),
