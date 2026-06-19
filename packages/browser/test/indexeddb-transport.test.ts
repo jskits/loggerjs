@@ -337,6 +337,37 @@ function installPageLifecycleTarget() {
   };
 }
 
+function installDocumentVisibilityTarget() {
+  const listeners = new Map<string, EventListener[]>();
+  const documentRef = {
+    visibilityState: "visible",
+    addEventListener: vi.fn<(type: string, listener: EventListener) => void>((type, listener) => {
+      const items = listeners.get(type) ?? [];
+      items.push(listener);
+      listeners.set(type, items);
+    }),
+    removeEventListener: vi.fn<(type: string, listener: EventListener) => void>(
+      (type, listener) => {
+        const items = listeners.get(type) ?? [];
+        listeners.set(
+          type,
+          items.filter((item) => item !== listener),
+        );
+      },
+    ),
+  };
+  vi.stubGlobal("document", documentRef);
+  return {
+    dispatchHidden() {
+      documentRef.visibilityState = "hidden";
+      for (const listener of listeners.get("visibilitychange") ?? []) {
+        listener({ type: "visibilitychange" } as Event);
+      }
+    },
+    documentRef,
+  };
+}
+
 const context: TransportContext = {
   loggerName: "test",
   now: () => 1,
@@ -649,6 +680,37 @@ describe("indexedDbTransport", () => {
     lifecycle.dispatch("pagehide");
 
     expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["one"]);
+  });
+
+  it("spills pending logs on document visibilitychange hidden", async () => {
+    const lifecycle = installDocumentVisibilityTarget();
+    const storage = new FakeStorage();
+    const namespace = "document-hidden";
+    const transport = indexedDbTransport({
+      batchSize: 100,
+      flushIntervalMs: 10_000,
+      flushOnPageHide: false,
+      indexedDB: new FakeIndexedDB() as unknown as IDBFactory,
+      localStorageSpill: {
+        namespace,
+        storage: storage as unknown as Storage,
+      },
+    });
+
+    transport.log?.(event("one", 1), context);
+    lifecycle.dispatchHidden();
+
+    expect(lifecycle.documentRef.addEventListener).toHaveBeenCalledWith(
+      "visibilitychange",
+      expect.any(Function),
+    );
+    expect(spillEntries(storage, namespace).map((item) => item.id)).toEqual(["one"]);
+
+    await transport.close?.();
+    expect(lifecycle.documentRef.removeEventListener).toHaveBeenCalledWith(
+      "visibilitychange",
+      expect.any(Function),
+    );
   });
 
   it("keeps spilled buffered logs until every spilled id is persisted", async () => {

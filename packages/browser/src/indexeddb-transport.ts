@@ -1217,9 +1217,20 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     }
   };
 
+  const addVisibilityChangeListener = (): (() => void) | undefined => {
+    if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    }
+    if (typeof globalThis.addEventListener !== "function") return undefined;
+    globalThis.addEventListener("visibilitychange", onVisibilityChange);
+    return () => globalThis.removeEventListener?.("visibilitychange", onVisibilityChange);
+  };
+
+  let removeVisibilityChangeListener: (() => void) | undefined;
   if (flushOnPageHide || spillOptions?.spillOnPageHide) {
     globalThis.addEventListener?.("pagehide", onPageHide);
-    globalThis.addEventListener?.("visibilitychange", onVisibilityChange);
+    removeVisibilityChangeListener = addVisibilityChangeListener();
   }
 
   return {
@@ -1298,7 +1309,8 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       closed = true;
       clearTimer();
       globalThis.removeEventListener?.("pagehide", onPageHide);
-      globalThis.removeEventListener?.("visibilitychange", onVisibilityChange);
+      removeVisibilityChangeListener?.();
+      removeVisibilityChangeListener = undefined;
       const flushed = flushPending();
       return flushed.finally(() => {
         const promise = dbPromise;
