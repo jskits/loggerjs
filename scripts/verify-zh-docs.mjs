@@ -6,6 +6,7 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const docsRoot = join(repoRoot, "docs");
 const zhDocsRoot = join(docsRoot, "zh");
 const zhManualRoot = join(docsRoot, ".zh", "manual");
+const siteDocsGeneratorPath = join(repoRoot, "scripts", "generate-site-docs.mjs");
 const themeIndexPath = join(docsRoot, ".vitepress", "theme", "index.ts");
 const localeRedirectPath = join(docsRoot, ".vitepress", "theme", "localeRedirect.ts");
 const stalePartialNotice = "中文站目前是维护性摘要和生成参考";
@@ -28,8 +29,39 @@ function markdownFiles(dir) {
   return files;
 }
 
+function zhCatalogMarkdownFiles() {
+  const source = readFileSync(siteDocsGeneratorPath, "utf8");
+  const match = /const zhDocsCatalog = \[([\s\S]*?)\];\n\nconst packageOrder/.exec(source);
+  if (!match?.[1]) {
+    failures.push("scripts/generate-site-docs.mjs must expose a parseable zhDocsCatalog");
+    return [];
+  }
+
+  const files = [...match[1].matchAll(/slug:\s*"([^"]+)"/g)].map((item) => `${item[1]}.md`);
+  if (files.length === 0) {
+    failures.push("scripts/generate-site-docs.mjs zhDocsCatalog must contain guide slugs");
+  }
+  return files;
+}
+
 const manualFiles = markdownFiles(zhManualRoot);
 const zhFiles = markdownFiles(zhDocsRoot);
+const catalogFiles = zhCatalogMarkdownFiles();
+
+for (const relativePath of catalogFiles) {
+  const manualPath = join(zhManualRoot, relativePath);
+  const generatedPath = join(zhDocsRoot, relativePath);
+  if (!existsSync(manualPath)) {
+    failures.push(
+      `zhDocsCatalog entry ${relativePath} is missing manual source at ${relative(repoRoot, manualPath)}`,
+    );
+  }
+  if (!existsSync(generatedPath)) {
+    failures.push(
+      `zhDocsCatalog entry ${relativePath} is missing generated page at ${relative(repoRoot, generatedPath)}`,
+    );
+  }
+}
 
 for (const file of manualFiles) {
   const relativePath = relative(zhManualRoot, file);
