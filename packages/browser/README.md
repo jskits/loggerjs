@@ -71,6 +71,35 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 - `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson` or `logs.json`, `manifest.json`, optional per-session files, and optional `recent.ndjson` or `recent.json`.
 - Call the `indexedDbTransport()` instance's `stats()` to read flush, prune, query, drop, and buffer-depth counters.
 
+For a support-log store that survives reloads and exports per page session, the
+short setup is:
+
+```ts
+import { createLogger, downloadBlob, exportLogsToZip, indexedDbTransport } from "@loggerjs/browser";
+import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
+
+const supportStore = indexedDbTransport({
+  dbName: "my-app-support-logs",
+  localStorageSpill: { namespace: "my-app-support-logs" },
+});
+
+export const logger = createLogger({
+  category: ["web"],
+  processors: [redactProcessor(), privacyGuardProcessor()],
+  transports: [supportStore],
+});
+
+export async function downloadSupportLogs() {
+  await logger.flush();
+  const zip = await exportLogsToZip(supportStore, {
+    groupBySession: true,
+    includeRecent: true,
+    query: { order: "asc" },
+  });
+  downloadBlob(zip, "support-logs.zip");
+}
+```
+
 `indexedDbTransport()` assigns a page-session id by default for browser support
 stores. Use `query({ sessionId })`, `sessions()`, and
 `exportLogsToZip(..., { groupBySession: true, includeRecent: true })` to build

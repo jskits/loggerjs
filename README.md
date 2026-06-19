@@ -357,6 +357,38 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 **Browser / frontend** (`@loggerjs/browser`) — `browserHttpTransport` · `indexedDbTransport` · `browserWebSocketTransport` · `browserServiceWorkerTransport` · `browserBroadcastChannelTransport` · `offlineFirstTransport`
 
+For frontend support bundles, `indexedDbTransport()` is session-aware by
+default and can add a bounded `localStorage` spill for the async IndexedDB write
+tail:
+
+```ts
+import { createLogger, downloadBlob, exportLogsToZip, indexedDbTransport } from "@loggerjs/browser";
+import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
+
+const supportStore = indexedDbTransport({
+  dbName: "my-app-support-logs",
+  localStorageSpill: { namespace: "my-app-support-logs" },
+});
+
+const logger = createLogger({
+  category: ["web"],
+  processors: [redactProcessor(), privacyGuardProcessor()],
+  transports: [supportStore],
+});
+
+export async function downloadSupportLogs() {
+  await logger.flush();
+  downloadBlob(
+    await exportLogsToZip(supportStore, {
+      groupBySession: true,
+      includeRecent: true,
+      query: { order: "asc" },
+    }),
+    "support-logs.zip",
+  );
+}
+```
+
 **Observability & vendors** — `otlpHttpTransport` · `openTelemetryLogBridgeTransport` · `sentryTransport` · `datadogLogsTransport` · `elasticTransport` · `lokiTransport` · `cloudWatchLogsTransport`. HTTP wire transports depend on `fetch`/crypto and credential placement; SDK/provider adapters use the SDK object or provider your app already owns.
 
 **Databases / local app / backend** — `databaseTransport` · `postgresTransport` · `sqliteTransport`. These require application-provided database drivers and are intended for Node.js, Electron, CLIs, or backend workers.
