@@ -12,6 +12,7 @@ import type { BrowserHttpDropPolicy } from "./http-transport";
 
 export interface IndexedDbLogEntry {
   id: string;
+  sessionId?: string;
   seq: number;
   createdAt: number;
   level: number;
@@ -25,6 +26,7 @@ export interface IndexedDbLogEntry {
 export interface IndexedDbTransportQueryOptions {
   from?: number;
   to?: number;
+  sessionId?: string;
   minLevel?: LoggerLevel;
   logger?: string;
   type?: string;
@@ -35,6 +37,27 @@ export interface IndexedDbTransportQueryOptions {
 export type IndexedDbTransportDurability = "default" | "strict" | "relaxed";
 
 export type IndexedDbStorageBucketDurability = "strict" | "relaxed";
+
+export interface IndexedDbTransportSessionOptions {
+  id?: string;
+  getId?: (event: LogEvent) => string | undefined;
+  contextKey?: string;
+}
+
+export type IndexedDbTransportSession = string | false | IndexedDbTransportSessionOptions;
+
+export interface IndexedDbLogSession {
+  sessionId: string;
+  firstSeen: number;
+  lastSeen: number;
+  count: number;
+  byteLength: number;
+}
+
+export interface IndexedDbTransportSessionQueryOptions {
+  limit?: number;
+  order?: "asc" | "desc";
+}
 
 export interface IndexedDbTransportStats {
   bufferDepth: number;
@@ -81,6 +104,7 @@ export interface IndexedDbTransportOptions {
   storageBucketName?: string;
   storageBucketPersisted?: boolean;
   storageBucketDurability?: IndexedDbStorageBucketDurability;
+  session?: IndexedDbTransportSession;
   indexedDB?: IDBFactory;
   onDrop?: (event: LogEvent, reason: string) => void;
   onPersistedDrop?: (entry: IndexedDbLogEntry, reason: string) => void;
@@ -91,13 +115,23 @@ export interface IndexedDbTransport extends Transport {
   clear: () => Promise<void>;
   remove: (ids: string | readonly string[]) => Promise<void>;
   query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+  sessions: (options?: IndexedDbTransportSessionQueryOptions) => Promise<IndexedDbLogSession[]>;
   stats: () => IndexedDbTransportStats;
 }
 
 const DEFAULT_DB_NAME = "loggerjs";
 const DEFAULT_STORE_NAME = "logs";
-const DB_VERSION = 2;
+const DEFAULT_SESSION_CONTEXT_KEY = "sessionId";
+const DB_VERSION = 3;
 const ORDER_INDEX_NAME = "createdAtSeq";
+const SESSION_INDEX_NAME = "sessionId";
+const SESSION_ORDER_INDEX_NAME = "sessionIdCreatedAtSeq";
+
+interface NormalizedSessionOptions {
+  id?: string;
+  getId?: (event: LogEvent) => string | undefined;
+  contextKey: string;
+}
 
 interface StorageBucketLike {
   indexedDB?: IDBFactory;
@@ -116,6 +150,37 @@ interface StorageBucketManagerLike {
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {
   if (value === undefined || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.floor(value));
+}
+
+let fallbackSessionSeq = 0;
+
+function defaultPageSessionId(): string {
+  const randomUUID = globalThis.crypto?.randomUUID;
+  if (randomUUID) return randomUUID.call(globalThis.crypto);
+  return `${Date.now().toString(36)}-${(fallbackSessionSeq++).toString(36)}`;
+}
+
+function normalizeSessionId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeSessionOptions(
+  session: IndexedDbTransportSession | undefined,
+): NormalizedSessionOptions | undefined {
+  if (session === false) return undefined;
+  if (typeof session === "string") {
+    return {
+      contextKey: DEFAULT_SESSION_CONTEXT_KEY,
+      id: normalizeSessionId(session) ?? defaultPageSessionId(),
+    };
+  }
+  return {
+    contextKey: session?.contextKey ?? DEFAULT_SESSION_CONTEXT_KEY,
+    getId: session?.getId,
+    id: normalizeSessionId(session?.id) ?? defaultPageSessionId(),
+  };
 }
 
 function nowMs(): number {
@@ -232,6 +297,7 @@ function decodeEntry(
 function shouldKeepEntry(entry: IndexedDbLogEntry, options: IndexedDbTransportQueryOptions) {
   if (options.from !== undefined && entry.createdAt < options.from) return false;
   if (options.to !== undefined && entry.createdAt > options.to) return false;
+  if (options.sessionId !== undefined && entry.sessionId !== options.sessionId) return false;
   if (options.minLevel !== undefined && entry.level < toLevelValue(options.minLevel)) return false;
   if (options.logger !== undefined && entry.logger !== options.logger) return false;
   if (options.type !== undefined && entry.type !== options.type) return false;
@@ -240,6 +306,21 @@ function shouldKeepEntry(entry: IndexedDbLogEntry, options: IndexedDbTransportQu
 
 function orderRangeForQuery(options: IndexedDbTransportQueryOptions): IDBKeyRange | undefined {
   if (typeof IDBKeyRange === "undefined") return undefined;
+  if (options.sessionId !== undefined) {
+    const lower = [
+      options.sessionId,
+      options.from ?? Number.MIN_SAFE_INTEGER,
+      Number.MIN_SAFE_INTEGER,
+      "",
+    ];
+    const upper = [
+      options.sessionId,
+      options.to ?? Number.MAX_SAFE_INTEGER,
+      Number.MAX_SAFE_INTEGER,
+      "\uffff",
+    ];
+    return IDBKeyRange.bound(lower, upper);
+  }
   const lower =
     options.from === undefined ? undefined : [options.from, Number.MIN_SAFE_INTEGER, ""];
   const upper =
@@ -297,6 +378,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   const flushOnPageHide = options.flushOnPageHide ?? true;
   const durability = options.durability ?? "default";
   const rootIndexedDB = options.indexedDB ?? globalThis.indexedDB;
+  const sessionOptions = normalizeSessionOptions(options.session);
   const transactionOptions =
     durability === "default"
       ? undefined
@@ -414,6 +496,8 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           ensureIndex(store, "logger", "logger");
           ensureIndex(store, "type", "type");
           ensureIndex(store, ORDER_INDEX_NAME, ["createdAt", "seq", "id"]);
+          ensureIndex(store, SESSION_INDEX_NAME, "sessionId");
+          ensureIndex(store, SESSION_ORDER_INDEX_NAME, ["sessionId", "createdAt", "seq", "id"]);
         });
         request.addEventListener(
           "success",
@@ -564,7 +648,10 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     queryOptions: IndexedDbTransportQueryOptions,
   ): Promise<IndexedDbLogEntry[] | undefined> =>
     withStore("readonly", async (store) => {
-      const index = getStoreIndex(store, ORDER_INDEX_NAME);
+      const index = getStoreIndex(
+        store,
+        queryOptions.sessionId === undefined ? ORDER_INDEX_NAME : SESSION_ORDER_INDEX_NAME,
+      );
       if (!index) return undefined;
       const entries: IndexedDbLogEntry[] = [];
       const limit = queryOptions.limit;
@@ -583,6 +670,38 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       );
       return entries;
     });
+
+  const listSessions = async (
+    sessionOptions: IndexedDbTransportSessionQueryOptions = {},
+  ): Promise<IndexedDbLogSession[]> => {
+    const sessions = new Map<string, IndexedDbLogSession>();
+    for (const entry of await getEntries()) {
+      if (!entry.sessionId) continue;
+      const current = sessions.get(entry.sessionId);
+      if (current) {
+        current.firstSeen = Math.min(current.firstSeen, entry.createdAt);
+        current.lastSeen = Math.max(current.lastSeen, entry.createdAt);
+        current.count += 1;
+        current.byteLength += entry.byteLength;
+      } else {
+        sessions.set(entry.sessionId, {
+          byteLength: entry.byteLength,
+          count: 1,
+          firstSeen: entry.createdAt,
+          lastSeen: entry.createdAt,
+          sessionId: entry.sessionId,
+        });
+      }
+    }
+
+    // oxlint-disable-next-line no-array-sort -- Sort a copy for deterministic session lists.
+    const ordered = [...sessions.values()].sort((left, right) => {
+      if (left.lastSeen !== right.lastSeen) return left.lastSeen - right.lastSeen;
+      return left.sessionId < right.sessionId ? -1 : left.sessionId > right.sessionId ? 1 : 0;
+    });
+    if (sessionOptions.order !== "asc") ordered.reverse();
+    return ordered.slice(0, sessionOptions.limit);
+  };
 
   const pruneWithEntries = async () => {
     const now = Date.now();
@@ -654,10 +773,34 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     }
   };
 
+  const sessionIdForEvent = (event: LogEvent): string | undefined => {
+    if (!sessionOptions) return undefined;
+    return (
+      normalizeSessionId(sessionOptions.getId?.(event)) ??
+      normalizeSessionId(event.context?.[sessionOptions.contextKey]) ??
+      sessionOptions.id
+    );
+  };
+
+  const eventWithSessionContext = (event: LogEvent, sessionId: string | undefined): LogEvent => {
+    if (!sessionId || !sessionOptions?.contextKey) return event;
+    if (event.context?.[sessionOptions.contextKey] === sessionId) return event;
+    return {
+      ...event,
+      context: {
+        ...event.context,
+        [sessionOptions.contextKey]: sessionId,
+      },
+    };
+  };
+
   const eventToEntry = (event: LogEvent): IndexedDbLogEntry => {
-    const payload = codec.encode(event);
+    const sessionId = sessionIdForEvent(event);
+    const eventForPayload = eventWithSessionContext(event, sessionId);
+    const payload = codec.encode(eventForPayload);
     return {
       id: event.id,
+      sessionId,
       seq: event.seq,
       createdAt: event.time,
       level: event.level,
@@ -793,6 +936,10 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
         const event = decodeEntry(entry, codec);
         if (event) yield event;
       }
+    },
+    async sessions(sessionQueryOptions: IndexedDbTransportSessionQueryOptions = {}) {
+      await flushPending();
+      return listSessions(sessionQueryOptions);
     },
     stats() {
       return snapshotStats();

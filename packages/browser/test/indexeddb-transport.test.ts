@@ -360,6 +360,64 @@ describe("indexedDbTransport", () => {
     });
   });
 
+  it("persists page sessions and queries logs by session", async () => {
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      indexedDB: idb as unknown as IDBFactory,
+      session: { id: "page-session" },
+    });
+
+    transport.log?.(event("first", 1, { context: { sessionId: "checkout-session" } }), context);
+    transport.log?.(event("second", 2), context);
+    transport.log?.(event("third", 3, { context: { sessionId: "checkout-session" } }), context);
+    await transport.flush?.();
+
+    expect(idb.db.entries.get("first")?.sessionId).toBe("checkout-session");
+    expect(idb.db.entries.get("second")?.sessionId).toBe("page-session");
+    expect(
+      (await collect(transport.query({ sessionId: "checkout-session" }))).map((item) => item.id),
+    ).toEqual(["first", "third"]);
+    expect(
+      (await collect(transport.query({ sessionId: "page-session" }))).map((item) => item.id),
+    ).toEqual(["second"]);
+    expect((await collect(transport.query({ sessionId: "page-session" })))[0]?.context).toEqual({
+      sessionId: "page-session",
+    });
+  });
+
+  it("summarizes persisted sessions by recency", async () => {
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      indexedDB: idb as unknown as IDBFactory,
+      session: { id: "fallback-session" },
+    });
+
+    transport.log?.(event("a1", 1, { context: { sessionId: "session-a" } }), context);
+    transport.log?.(event("b1", 2, { context: { sessionId: "session-b" } }), context);
+    transport.log?.(event("a2", 3, { context: { sessionId: "session-a" } }), context);
+    await transport.flush?.();
+
+    expect(await transport.sessions()).toMatchObject([
+      {
+        count: 2,
+        firstSeen: 1,
+        lastSeen: 3,
+        sessionId: "session-a",
+      },
+      {
+        count: 1,
+        firstSeen: 2,
+        lastSeen: 2,
+        sessionId: "session-b",
+      },
+    ]);
+    expect(await transport.sessions({ limit: 1, order: "asc" })).toMatchObject([
+      {
+        sessionId: "session-b",
+      },
+    ]);
+  });
+
   it("drops old persisted entries by maxEntries and ttl", async () => {
     const now = vi.spyOn(Date, "now");
     now.mockReturnValue(10);

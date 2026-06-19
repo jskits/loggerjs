@@ -112,6 +112,64 @@ describe("zip export", () => {
     });
   });
 
+  it("exports session files and a recent file", async () => {
+    const zip = await exportLogsToZip(
+      events([
+        event("first", 1, { context: { sessionId: "session-a" } }),
+        event("second", 2, { context: { sessionId: "session-b" } }),
+        event("third", 3, { context: { sessionId: "session-a" } }),
+      ]),
+      {
+        createdAt: 1_700_000_000_000,
+        groupBySession: true,
+        includeRecent: { maxEvents: 2 },
+        source: "indexeddb",
+      },
+    );
+
+    const files = await readZip(zip);
+    const sessionA = files
+      .get("sessions/session-a/logs.ndjson")
+      ?.trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as LogEvent);
+    const sessionB = files
+      .get("sessions/session-b/logs.ndjson")
+      ?.trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as LogEvent);
+    const recent = files
+      .get("recent.ndjson")
+      ?.trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as LogEvent);
+    const manifest = JSON.parse(files.get("manifest.json") ?? "{}") as {
+      recentLogFileName: string;
+      sessionCount: number;
+      sessions: Array<{ sessionId: string; logCount: number; logFileName: string }>;
+    };
+
+    expect(sessionA?.map((item) => item.id)).toEqual(["first", "third"]);
+    expect(sessionB?.map((item) => item.id)).toEqual(["second"]);
+    expect(recent?.map((item) => item.id)).toEqual(["second", "third"]);
+    expect(manifest).toMatchObject({
+      recentLogFileName: "recent.ndjson",
+      sessionCount: 2,
+      sessions: [
+        {
+          logCount: 2,
+          logFileName: "sessions/session-a/logs.ndjson",
+          sessionId: "session-a",
+        },
+        {
+          logCount: 1,
+          logFileName: "sessions/session-b/logs.ndjson",
+          sessionId: "session-b",
+        },
+      ],
+    });
+  });
+
   it("exports raw async iterables as json without a manifest", async () => {
     const zip = await exportLogsToZip(events([event("first", 1), event("second", 2)]), {
       format: "json",

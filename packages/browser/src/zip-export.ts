@@ -33,6 +33,31 @@ export interface LogZipExportManifest {
     from: number;
     to: number;
   };
+  recentLogFileName?: string;
+  sessionCount?: number;
+  sessions?: LogZipExportSessionManifest[];
+}
+
+export interface LogZipExportSessionManifest {
+  sessionId: string;
+  logFileName: string;
+  logCount: number;
+  timeRange?: {
+    from: number;
+    to: number;
+  };
+}
+
+export interface LogZipExportSessionOptions {
+  contextKey?: string;
+  directory?: string;
+  fallbackSessionId?: string;
+  logFileName?: string;
+}
+
+export interface LogZipExportRecentOptions {
+  logFileName?: string;
+  maxEvents?: number;
 }
 
 export interface LogZipExportOptions {
@@ -47,6 +72,8 @@ export interface LogZipExportOptions {
   stringify?: SafeStringifyOptions;
   serializeEvent?: (event: LogEvent) => string;
   mapEvent?: (event: LogEvent) => LogEvent | false | null | undefined;
+  groupBySession?: boolean | LogZipExportSessionOptions;
+  includeRecent?: boolean | LogZipExportRecentOptions;
 }
 
 export interface DownloadBlobOptions {
@@ -66,6 +93,23 @@ interface NormalizedZipFile {
   localHeaderOffset: number;
 }
 
+interface ExportedLogLine {
+  event: LogEvent;
+  line: string;
+}
+
+interface NormalizedSessionExportOptions {
+  contextKey: string;
+  directory: string;
+  fallbackSessionId: string;
+  logFileName: string;
+}
+
+interface NormalizedRecentExportOptions {
+  logFileName: string;
+  maxEvents: number;
+}
+
 const ZIP_UTF8_FLAG = 0x0800;
 const ZIP_STORE_METHOD = 0;
 const ZIP_VERSION = 20;
@@ -74,6 +118,7 @@ const ZIP_MAX_UINT32 = 0xffffffff;
 const LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
 const CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50;
 const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const DEFAULT_SESSION_CONTEXT_KEY = "sessionId";
 
 let crc32Table: Uint32Array | undefined;
 
@@ -255,6 +300,71 @@ function normalizeMaxEvents(value: number | undefined): number | undefined {
   return Math.max(0, Math.floor(value));
 }
 
+function normalizeSessionExportOptions(
+  value: boolean | LogZipExportSessionOptions | undefined,
+  logFileName: string,
+): NormalizedSessionExportOptions | undefined {
+  if (!value) return undefined;
+  const options = value === true ? {} : value;
+  return {
+    contextKey: options.contextKey ?? DEFAULT_SESSION_CONTEXT_KEY,
+    directory: options.directory ?? "sessions",
+    fallbackSessionId: options.fallbackSessionId ?? "unknown",
+    logFileName: options.logFileName ?? logFileName,
+  };
+}
+
+function normalizeRecentExportOptions(
+  value: boolean | LogZipExportRecentOptions | undefined,
+): NormalizedRecentExportOptions | undefined {
+  if (!value) return undefined;
+  const options = value === true ? {} : value;
+  return {
+    logFileName: options.logFileName ?? "recent.ndjson",
+    maxEvents: normalizeMaxEvents(options.maxEvents) ?? 100,
+  };
+}
+
+function logContentForLines(lines: readonly string[], format: LogZipExportFormat): string {
+  if (format === "json") return `[${lines.join(",")}]`;
+  return lines.length > 0 ? `${lines.join("\n")}\n` : "";
+}
+
+function eventTimeRange(items: readonly ExportedLogLine[]):
+  | {
+      from: number;
+      to: number;
+    }
+  | undefined {
+  let from: number | undefined;
+  let to: number | undefined;
+  for (const item of items) {
+    from = from === undefined ? item.event.time : Math.min(from, item.event.time);
+    to = to === undefined ? item.event.time : Math.max(to, item.event.time);
+  }
+  return from === undefined || to === undefined ? undefined : { from, to };
+}
+
+function sessionIdForEvent(event: LogEvent, options: NormalizedSessionExportOptions): string {
+  const value = event.context?.[options.contextKey];
+  return typeof value === "string" && value.length > 0 ? value : options.fallbackSessionId;
+}
+
+function safeZipPathSegment(value: string): string {
+  const encoded = encodeURIComponent(value).replace(/%/g, "_");
+  if (!encoded || encoded === "." || encoded === "..") return "_";
+  return encoded;
+}
+
+function sortByEventTime(items: readonly ExportedLogLine[]): ExportedLogLine[] {
+  // oxlint-disable-next-line no-array-sort -- Sort a copy for stable export ordering.
+  return [...items].sort((left, right) => {
+    if (left.event.time !== right.event.time) return left.event.time - right.event.time;
+    if (left.event.seq !== right.event.seq) return left.event.seq - right.event.seq;
+    return left.event.id < right.event.id ? -1 : left.event.id > right.event.id ? 1 : 0;
+  });
+}
+
 export function createLogZipBlob(
   files: readonly ZipExportFile[],
   options: LogZipBlobOptions = {},
@@ -292,36 +402,96 @@ export async function exportLogsToZip(
   const createdAt = options.createdAt ?? Date.now();
   const logFileName = options.logFileName ?? (format === "json" ? "logs.json" : "logs.ndjson");
   const maxEvents = normalizeMaxEvents(options.maxEvents);
+  const sessionExportOptions = normalizeSessionExportOptions(options.groupBySession, logFileName);
+  const recentExportOptions = normalizeRecentExportOptions(options.includeRecent);
   const serialize =
     options.serializeEvent ??
     ((event: LogEvent) => safeJsonStringify(event, options.stringify ?? {}));
-  const lines: string[] = [];
+  const exported: ExportedLogLine[] = [];
   let skippedCount = 0;
-  let from: number | undefined;
-  let to: number | undefined;
 
   for await (const event of resolveSource(source, options.query)) {
-    if (maxEvents !== undefined && lines.length >= maxEvents) break;
+    if (maxEvents !== undefined && exported.length >= maxEvents) break;
     const mapped = options.mapEvent ? options.mapEvent(event) : event;
     if (!mapped) {
       skippedCount += 1;
       continue;
     }
-    lines.push(serialize(mapped));
-    from = from === undefined ? mapped.time : Math.min(from, mapped.time);
-    to = to === undefined ? mapped.time : Math.max(to, mapped.time);
+    exported.push({ event: mapped, line: serialize(mapped) });
   }
-
-  const logContent =
-    format === "json" ? `[${lines.join(",")}]` : lines.length > 0 ? `${lines.join("\n")}\n` : "";
 
   const files: ZipExportFile[] = [
     {
       name: logFileName,
-      content: logContent,
+      content: logContentForLines(
+        exported.map((item) => item.line),
+        format,
+      ),
       lastModified: createdAt,
     },
   ];
+  const sessionManifests: LogZipExportSessionManifest[] = [];
+
+  if (sessionExportOptions) {
+    const groups = new Map<string, ExportedLogLine[]>();
+    for (const item of exported) {
+      const sessionId = sessionIdForEvent(item.event, sessionExportOptions);
+      const group = groups.get(sessionId) ?? [];
+      group.push(item);
+      groups.set(sessionId, group);
+    }
+    const usedFileNames = new Set(files.map((file) => normalizeZipFileName(file.name)));
+    const sortedGroups = [...groups.entries()];
+    sortedGroups.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+    for (const [sessionId, group] of sortedGroups) {
+      const sessionPath = `${sessionExportOptions.directory}/${safeZipPathSegment(sessionId)}/${
+        sessionExportOptions.logFileName
+      }`;
+      let fileName = normalizeZipFileName(sessionPath);
+      let suffix = 1;
+      while (usedFileNames.has(fileName)) {
+        fileName = normalizeZipFileName(
+          `${sessionExportOptions.directory}/${safeZipPathSegment(sessionId)}-${suffix}/${
+            sessionExportOptions.logFileName
+          }`,
+        );
+        suffix += 1;
+      }
+      usedFileNames.add(fileName);
+      const orderedGroup = sortByEventTime(group);
+      files.push({
+        name: fileName,
+        content: logContentForLines(
+          orderedGroup.map((item) => item.line),
+          format,
+        ),
+        lastModified: createdAt,
+      });
+      sessionManifests.push({
+        logCount: orderedGroup.length,
+        logFileName: fileName,
+        sessionId,
+        timeRange: eventTimeRange(orderedGroup),
+      });
+    }
+  }
+
+  let recentLogFileName: string | undefined;
+  if (recentExportOptions) {
+    const recentItems =
+      recentExportOptions.maxEvents <= 0
+        ? []
+        : sortByEventTime(exported).slice(-recentExportOptions.maxEvents);
+    recentLogFileName = normalizeZipFileName(recentExportOptions.logFileName);
+    files.push({
+      name: recentLogFileName,
+      content: logContentForLines(
+        recentItems.map((item) => item.line),
+        format,
+      ),
+      lastModified: createdAt,
+    });
+  }
 
   if (options.includeManifest ?? true) {
     const manifest: LogZipExportManifest = {
@@ -330,10 +500,13 @@ export async function exportLogsToZip(
       source: options.source,
       format,
       logFileName: normalizeZipFileName(logFileName),
-      logCount: lines.length,
+      logCount: exported.length,
       skippedCount,
       query: options.query,
-      timeRange: from === undefined || to === undefined ? undefined : { from, to },
+      recentLogFileName,
+      sessionCount: sessionExportOptions ? sessionManifests.length : undefined,
+      sessions: sessionExportOptions ? sessionManifests : undefined,
+      timeRange: eventTimeRange(exported),
     };
     files.push({
       name: options.manifestFileName ?? "manifest.json",
