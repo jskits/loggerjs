@@ -82,7 +82,7 @@ export function offlineFirstTransport(
       name: `${name}:queue`,
       storeName: "offline-events",
       ...queueOptions,
-      session: queueOptions?.session === undefined ? false : queueOptions.session,
+      session: queueOptions?.session ?? false,
     }) as OfflineFirstQueue);
   const reliableRemote = retryTransport(remote, {
     maxRetries: 2,
