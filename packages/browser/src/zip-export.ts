@@ -316,11 +316,12 @@ function normalizeSessionExportOptions(
 
 function normalizeRecentExportOptions(
   value: boolean | LogZipExportRecentOptions | undefined,
+  format: LogZipExportFormat,
 ): NormalizedRecentExportOptions | undefined {
   if (!value) return undefined;
   const options = value === true ? {} : value;
   return {
-    logFileName: options.logFileName ?? "recent.ndjson",
+    logFileName: options.logFileName ?? (format === "json" ? "recent.json" : "recent.ndjson"),
     maxEvents: normalizeMaxEvents(options.maxEvents) ?? 100,
   };
 }
@@ -403,7 +404,7 @@ export async function exportLogsToZip(
   const logFileName = options.logFileName ?? (format === "json" ? "logs.json" : "logs.ndjson");
   const maxEvents = normalizeMaxEvents(options.maxEvents);
   const sessionExportOptions = normalizeSessionExportOptions(options.groupBySession, logFileName);
-  const recentExportOptions = normalizeRecentExportOptions(options.includeRecent);
+  const recentExportOptions = normalizeRecentExportOptions(options.includeRecent, format);
   const serialize =
     options.serializeEvent ??
     ((event: LogEvent) => safeJsonStringify(event, options.stringify ?? {}));

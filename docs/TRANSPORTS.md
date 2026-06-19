@@ -222,7 +222,7 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
 | `browserWebSocketTransport({ socket })` | Codec-encoded batches over a WebSocket; queues while the socket is closed (reconnection is the caller's responsibility). |
 | `browserServiceWorkerTransport()` | Posts events to a service worker, queueing until one is active; with `target: "ready"`, explicit `ready()` waits for `serviceWorker.ready`. |
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
-| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`, and CRC for support workflows. |
+| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
 `browserHttpTransport()` also accepts `transformPayload`. Use
 `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:

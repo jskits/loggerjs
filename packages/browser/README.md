@@ -68,7 +68,7 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 
 - `memoryBrowserHttpOfflineQueue()` — short-lived in-memory retry buffer.
 - `indexedDbBrowserHttpOfflineQueue()` — survives page reloads.
-- `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson`, `manifest.json`, optional per-session files, and optional `recent.ndjson`.
+- `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson` or `logs.json`, `manifest.json`, optional per-session files, and optional `recent.ndjson` or `recent.json`.
 - Call the `indexedDbTransport()` instance's `stats()` to read flush, prune, query, drop, and buffer-depth counters.
 
 `indexedDbTransport()` assigns a page-session id by default for browser support

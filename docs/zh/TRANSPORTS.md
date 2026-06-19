@@ -199,7 +199,7 @@ Node runtime diagnostics 可以从 `@loggerjs/node` 调用 `installLoggerDiagnos
 | `browserWebSocketTransport({ socket })` | 通过 WebSocket 发送 codec-encoded batches；socket closed 时 queue（reconnection 由调用方负责）。 |
 | `browserServiceWorkerTransport()` | 把 events post 给 service worker，在 active worker 可用前 queue；`target: "ready"` 时显式 `ready()` 等待 `serviceWorker.ready`。 |
 | `browserBroadcastChannelTransport({ channel })` | 把 logs fan out 到其他 tabs（天然 lossy；receivers 必须正在监听）。 |
-| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把 logs（例如来自 `indexedDbTransport().query()`）打包成带 manifest、可选 per-session files、可选 `recent.ndjson` 和 CRC 的 ZIP，用于 support workflows。 |
+| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把 logs（例如来自 `indexedDbTransport().query()`）打包成带 manifest、可选 per-session files、可选 `recent.ndjson`/`recent.json` 和 CRC 的 ZIP，用于 support workflows。 |
 
 `browserHttpTransport()` 同样接收 `transformPayload`。支持 `CompressionStream` 的浏览器使用 `browserCompressionPayloadTransform()`：
 

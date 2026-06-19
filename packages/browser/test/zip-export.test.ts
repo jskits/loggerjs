@@ -183,6 +183,25 @@ describe("zip export", () => {
     expect(JSON.parse(files.get("export.json") ?? "[]")).toMatchObject([{ id: "first" }]);
   });
 
+  it("uses a json extension for recent files when exporting json", async () => {
+    const zip = await exportLogsToZip(events([event("first", 1), event("second", 2)]), {
+      format: "json",
+      includeRecent: true,
+    });
+
+    const files = await readZip(zip);
+    expect(files.has("recent.ndjson")).toBe(false);
+    expect(JSON.parse(files.get("recent.json") ?? "[]")).toMatchObject([
+      { id: "first" },
+      { id: "second" },
+    ]);
+
+    const manifest = JSON.parse(files.get("manifest.json") ?? "{}") as {
+      recentLogFileName: string;
+    };
+    expect(manifest.recentLogFileName).toBe("recent.json");
+  });
+
   it("downloads a blob through a temporary object URL", () => {
     const anchor = {
       href: "",
