@@ -5,9 +5,6 @@ description: "安装并使用 LoggerJS AI skill，让 coding agent 直接完成 
 
 # AI Skill
 
-> [!IMPORTANT]
-> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
-
 LoggerJS 提供可安装的 AI skill，供 coding agent 使用。这个 skill 会指导 agent 选择 LoggerJS 包、按运行时新增 logger 模块、配置生产日志、从现有 logger 迁移，并在目标项目里完成验证。
 
 当你希望 agent 直接把 LoggerJS 接入应用，而不是只阅读文档时，使用这个 skill。

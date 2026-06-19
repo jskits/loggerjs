@@ -7,7 +7,8 @@ const docsRoot = join(repoRoot, "docs");
 const zhDocsRoot = join(docsRoot, "zh");
 const themeIndexPath = join(docsRoot, ".vitepress", "theme", "index.ts");
 const localeRedirectPath = join(docsRoot, ".vitepress", "theme", "localeRedirect.ts");
-const partialNotice = "中文站目前是维护性摘要和生成参考";
+const stalePartialNotice = "中文站目前是维护性摘要和生成参考";
+const generatedReferenceNotice = "本页由仓库元数据、API reports 或示例目录生成";
 
 const failures = [];
 
@@ -26,8 +27,16 @@ function markdownFiles(dir) {
 
 for (const file of markdownFiles(zhDocsRoot)) {
   const contents = readFileSync(file, "utf8");
-  if (!contents.includes(partialNotice)) {
-    failures.push(`${relative(repoRoot, file)} is missing the zh partial-docs notice`);
+  const relativePath = relative(zhDocsRoot, file);
+  const isGeneratedReference =
+    relativePath === "examples.md" ||
+    relativePath === "llms.md" ||
+    relativePath.startsWith("reference/");
+  if (contents.includes(stalePartialNotice)) {
+    failures.push(`${relative(repoRoot, file)} still describes Chinese docs as partial summaries`);
+  }
+  if (isGeneratedReference && !contents.includes(generatedReferenceNotice)) {
+    failures.push(`${relative(repoRoot, file)} is missing the generated-reference notice`);
   }
 }
 
@@ -47,5 +56,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Verified Chinese docs are marked as partial summaries and no auto-redirect is active.",
+  "Verified Chinese docs are full-guide pages or marked generated references, with no auto-redirect active.",
 );

@@ -1,0 +1,320 @@
+# 生产配方
+
+这些配方是生产部署起点。它们有意展示 queue bounds、privacy processors、shutdown behavior，以及 credentials 应放在哪里。请按应用调整 names、tags 和 endpoint URLs。
+
+## 浏览器到 HTTP，并用 IndexedDB 离线重放
+
+当浏览器日志需要跨网络中断和普通 reload 存活时使用。浏览器仍然无法保证在 process kill、storage eviction、private browsing restrictions 或 quota exhaustion 下投递成功。
+
+```ts
+import {
+  browserHttpTransport,
+  captureBrowserErrorsIntegration,
+  captureConsoleIntegration,
+  captureFetchIntegration,
+  captureWebVitalsIntegration,
+  createLogger,
+  indexedDbBrowserHttpOfflineQueue,
+  pageLifecycleIntegration,
+} from "@loggerjs/browser";
+import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
+
+const offlineQueue = indexedDbBrowserHttpOfflineQueue({
+  dbName: "checkout-web-logs",
+  storeName: "http-offline",
+  maxEntries: 5000,
+  dropPolicy: "drop-oldest",
+});
+
+export const logger = createLogger({
+  category: ["web"],
+  level: "info",
+  tags: {
+    service: "checkout-web",
+    env: "production",
+    runtime: "browser",
+  },
+  processors: [
+    redactProcessor({
+      keys: ["password", "token", "authorization", "cookie", /secret/i],
+    }),
+    privacyGuardProcessor({
+      maxStringLength: 8192,
+    }),
+  ],
+  transports: [
+    browserHttpTransport({
+      name: "browser-http",
+      url: "/api/logs",
+      maxBatchSize: 50,
+      flushIntervalMs: 2000,
+      maxQueueSize: 2000,
+      dropPolicy: "drop-oldest",
+      offlineQueue,
+      offlineReplayMaxRetries: 3,
+      offlineReplayBaseDelayMs: 250,
+      offlineReplayMaxDelayMs: 5000,
+      useBeaconOnPageHide: true,
+      beaconMaxBytes: 60 * 1024,
+    }),
+  ],
+  integrations: [
+    captureConsoleIntegration({
+      levels: ["warn", "error"],
+      captureArguments: false,
+      maxCapturesPerSecond: 50,
+    }),
+    captureBrowserErrorsIntegration({
+      captureSecurityPolicyViolation: true,
+    }),
+    captureFetchIntegration({
+      minStatus: 400,
+      captureRequestHeaders: ["content-type", "x-request-id"],
+      captureResponseHeaders: ["content-type", "x-request-id"],
+      sanitizeUrl: (url) => {
+        const parsed = new URL(url, location.origin);
+        parsed.search = "";
+        return parsed.toString();
+      },
+    }),
+    captureWebVitalsIntegration({ flushOnHidden: true }),
+    pageLifecycleIntegration(),
+  ],
+});
+```
+
+生产说明：
+
+- `/api/logs` 应该是你自己的 collector endpoint。不要把 vendor API keys 放进浏览器 bundle。
+- fetch/XHR header capture 保持 allowlist。默认不要捕获 cookies、authorization headers、request bodies 或 form values。
+- 当应用能暴露 logger meta counters 和 offline queue depth 时，对 `transport.dropped.*` 等指标告警。
+
+## 浏览器 Support Export，并使用 Session-Aware IndexedDB
+
+当 support 或 QA 需要一份可本地保留、可按页面 session 导出的日志包时使用。这个本地 store 和 HTTP delivery queue 分开：IndexedDB 是可查询的事实来源，`localStorageSpill` 只保护用户刷新或关闭页面时尚未完成 async IndexedDB write 的小尾巴。
+
+```ts
+import {
+  createLogger,
+  downloadBlob,
+  exportLogsToZip,
+  indexedDbTransport,
+} from "@loggerjs/browser";
+import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
+
+const supportStore = indexedDbTransport({
+  name: "support-indexeddb",
+  dbName: "checkout-web-logs",
+  storeName: "support-logs",
+  maxEntries: 20_000,
+  maxBytes: 25 * 1024 * 1024,
+  ttlMs: 7 * 24 * 60 * 60 * 1000,
+  batchSize: 50,
+  flushIntervalMs: 1000,
+  durability: "relaxed",
+  localStorageSpill: {
+    namespace: "checkout-support-logs",
+    maxEntries: 200,
+    maxBytes: 512 * 1024,
+    minLevel: "info",
+  },
+});
+
+export const supportLogger = createLogger({
+  category: ["web"],
+  level: "info",
+  processors: [
+    redactProcessor({
+      keys: ["password", "token", "authorization", "cookie", /secret/i],
+    }),
+    privacyGuardProcessor({ maxStringLength: 8192 }),
+  ],
+  transports: [supportStore],
+});
+
+export async function downloadSupportLogZip() {
+  await supportLogger.flush();
+  const zip = await exportLogsToZip(supportStore, {
+    groupBySession: true,
+    includeRecent: { maxEvents: 500 },
+    query: {
+      from: Date.now() - 7 * 24 * 60 * 60 * 1000,
+      order: "asc",
+    },
+    source: "indexeddb",
+  });
+  downloadBlob(zip, `checkout-logs-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`);
+}
+```
+
+生产说明：
+
+- 隐私 processor 必须在 IndexedDB transport 前执行。任何本地持久化内容都可能被用户或 support flow 导出。
+- `indexedDbTransport()` 默认创建 page-session id，并在缺失时写入 IndexedDB entry metadata 和 `event.context.sessionId`。如果应用已有 session id，传 `session: { id, getId, contextKey }`。
+- `localStorageSpill` 是有界、best-effort 的最后机会保护。它改善普通 reload 和 close 行为，但不能防 process kill、crash、storage disabled、quota exhaustion 或 storage eviction。
+
+## Node 到 Stdout 加 OTLP
+
+把 stdout 作为本地、平台原生 sink，把 OTLP 作为远程 observability path。即使 OTLP endpoint 降级，stdout 对 container runtimes 和 fatal events 仍有价值。
+
+```ts
+import * as otelApi from "@opentelemetry/api";
+import {
+  captureProcessIntegration,
+  createLogger,
+  installAsyncLocalStorageContext,
+  stdoutTransport,
+} from "@loggerjs/node";
+import { openTelemetryTraceProcessor, otlpHttpTransport } from "@loggerjs/otel";
+import { redactProcessor } from "@loggerjs/processors";
+
+installAsyncLocalStorageContext();
+
+export const logger = createLogger({
+  category: ["api"],
+  level: "info",
+  tags: {
+    service: "checkout-api",
+    env: process.env.NODE_ENV ?? "production",
+    runtime: "node",
+  },
+  processors: [
+    openTelemetryTraceProcessor({ api: otelApi }),
+    redactProcessor({
+      keys: ["password", "token", "authorization", "cookie", /secret/i],
+    }),
+  ],
+  transports: [
+    stdoutTransport({
+      name: "stdout",
+      minLength: 4096,
+    }),
+    otlpHttpTransport({
+      name: "otlp",
+      url: process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ?? "http://localhost:4318/v1/logs",
+      headers: process.env.OTEL_EXPORTER_OTLP_AUTHORIZATION
+        ? { authorization: process.env.OTEL_EXPORTER_OTLP_AUTHORIZATION }
+        : undefined,
+      resource: {
+        "service.name": "checkout-api",
+        "deployment.environment": process.env.NODE_ENV ?? "production",
+      },
+      maxRecords: 100,
+      maxWaitMs: 2000,
+      maxQueueSize: 5000,
+      maxRetries: 3,
+      circuitBreakerFailureThreshold: 5,
+      circuitBreakerResetMs: 30000,
+    }),
+  ],
+  integrations: [
+    captureProcessIntegration({
+      exitOnUncaught: true,
+      flushTimeoutMs: 500,
+    }),
+  ],
+});
+
+export async function closeLogger() {
+  await logger.close();
+}
+```
+
+生产说明：
+
+- fatal process paths 至少保留一个本地 sink（`stdoutTransport()` 或 `fileTransport()`）。Remote OTLP 不应是唯一 crash-path sink。
+- 需要 active span correlation 时，在构造 logger 前安装 `@opentelemetry/api` 并初始化 tracing。
+- 使用部署平台的 graceful shutdown hook 调用 `logger.close()`。
+
+## 全栈投递到 Loki 和 Datadog
+
+当浏览器和服务端日志需要进入同一 vendor backends 时使用。浏览器把日志发送到你自己的 collector；服务器持有 Loki 和 Datadog credentials，并转发 server-side events 和已接受的 browser batches。
+
+```ts
+import {
+  batchTransport,
+  createLogger,
+  recordToEvent,
+  type LogEvent,
+  type Transport,
+  type TransportContext,
+} from "@loggerjs/core";
+import { datadogLogsTransport } from "@loggerjs/datadog";
+import { lokiTransport } from "@loggerjs/loki";
+import { redactProcessor } from "@loggerjs/processors";
+
+const service = "checkout";
+const env = process.env.NODE_ENV ?? "production";
+
+function reliableVendorTransport(transport: Transport): Transport {
+  return batchTransport(transport, {
+    maxRecords: 100,
+    maxWaitMs: 2000,
+    maxQueueSize: 10000,
+    dropPolicy: "drop-oldest",
+    maxRetries: 3,
+    retryBaseDelayMs: 250,
+    retryMaxDelayMs: 5000,
+    circuitBreakerFailureThreshold: 5,
+    circuitBreakerResetMs: 30000,
+  });
+}
+
+const vendorTransports = [
+  reliableVendorTransport(
+    lokiTransport({
+      url: process.env.LOKI_URL ?? "http://localhost:3100/loki/api/v1/push",
+      tenantId: process.env.LOKI_TENANT_ID,
+      labels: { service, env },
+      labelTags: ["runtime"],
+      structuredMetadata: true,
+    }),
+  ),
+  reliableVendorTransport(
+    datadogLogsTransport({
+      apiKey: process.env.DD_API_KEY,
+      site: process.env.DD_SITE ?? "datadoghq.com",
+      service,
+      source: "loggerjs",
+      tags: { env },
+      eventTagKeys: ["runtime"],
+    }),
+  ),
+];
+
+export const serverLogger = createLogger({
+  category: ["api"],
+  level: "info",
+  tags: { service, env, runtime: "node" },
+  processors: [
+    redactProcessor({
+      keys: ["password", "token", "authorization", "cookie", /secret/i],
+    }),
+  ],
+  transports: vendorTransports,
+});
+
+const collectorContext: TransportContext = {
+  loggerName: "browser-log-collector",
+  now: () => Date.now(),
+  toEvent: recordToEvent,
+  reportInternalError(error, detail) {
+    serverLogger.warn("browser log collector failed", { error, detail });
+  },
+};
+
+export async function forwardBrowserLogs(events: LogEvent[]) {
+  for (const transport of vendorTransports) {
+    if (transport.logBatch) await transport.logBatch(events, collectorContext);
+    else {
+      for (const event of events) await transport.log?.(event, collectorContext);
+    }
+  }
+}
+```
+
+生产说明：
+
+- 调用 `forwardBrowserLogs()` 前验证并限制 `/api/logs` request body。过大的 batches 应尽早拒绝。
+- 只有低基数字段应该提升为 Loki labels 和 Datadog tags。User ids、request ids、order ids 和 URLs 放在 structured metadata/data 中。
+- 浏览器和服务端 collector 使用同一套 redaction policy。把 browser-submitted logs 视为不可信输入。

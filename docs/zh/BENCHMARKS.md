@@ -6,18 +6,140 @@ description: "基准方法、命令和当前机器快照。"
 
 # 基准
 
-> [!IMPORTANT]
-> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+LoggerJS 基准有意保持简单且可复现。它们测量来自 `dist` 的 public package builds，而不是 TypeScript 源码。
 
-基准方法、命令和当前机器快照。
+## 命令
 
-## 要点
+```bash
+pnpm bench
+pnpm bench:node
+pnpm bench:browser
+pnpm bench:gate
+pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
+pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
+pnpm size:check
+```
 
-- 基准覆盖 disabled levels、lean NDJSON、prepared encoder、batch、browser delivery 和包体大小。
-- `BENCH_AB=1 pnpm bench:node` 用 paired A/B 减少运行噪声。
-- 不要把单台机器数字扩展成普遍结论；不同 CPU/V8 版本可能改变排序。
-- `pnpm bench:gate` 使用 paired A/B ratio 作为 CI 护栏，用于阻止明显退化。
-- 公开文档中的性能表述应始终链接到方法和可复现命令。
+`pnpm bench:gate` 运行 interleaved A/B suites，并用与匹配 pino baseline 的 paired per-round ratios 强制 regression limits。它使用与 `BENCH_AB` 相同的 drift-canceling 方法，因此 CPU frequency、scheduler placement 和 GC pauses 会在同一 round 中影响两个 contender。Limits 在 `scripts/check-bench-regression.mjs` 中，且故意宽松：抓结构性回归，而不是噪声。CI 在每个 pull request 上运行这个 gate。可用 `BENCH_GATE_AB_ROUNDS`、`BENCH_GATE_AB_BATCH` 和 `BENCH_GATE_AB_WARMUP` 调节。
+
+`pnpm bench` 会先构建 workspace，再运行 Node 和 browser benchmarks。Browser benchmarks 使用本地 headless Chrome binary。Chrome 不在标准位置时设置 `CHROME_BIN`。
+
+### Apples-to-apples cross-logger ratios（`BENCH_AB`）
+
+普通套件会在一次运行中于不同时间点分别测每个 logger，因此 loggerjs-vs-pino ratio 会随 CPU frequency scaling 和 P/E-core scheduling 漂移；单次顺序运行可能只因为“被测时间点”而让任一 logger 看起来更好。公平比较两个 logger 时，使用 interleaved A/B mode：
+
+```bash
+BENCH_AB=1 node scripts/bench-node.mjs
+# tune: BENCH_AB_ROUNDS (default 60), BENCH_AB_BATCH (5000), BENCH_AB_WARMUP (100000)
+BENCH_AB=1 BENCH_JSON=1 node scripts/bench-node.mjs   # machine-readable
+```
+
+每个 round 都让 selected suite 中的 contenders **背靠背**计时，并轮换起始位置，让 drift 平等影响双方并在 **paired per-round ratio** 中抵消。默认 suite 比较 pino、lean、prepared 和 full-envelope record sink；`BENCH_AB_SUITE=disabled` 和 `BENCH_AB_SUITE=enqueue` 由 CI gate 使用。报告输出每个 contender 的 ns/op，以及 median ratio 和 min/max spread；当 baseline spread 超过 25% 时发出 warning，表示机器太吵，absolute ns 不可靠（ratio 仍保持公平）。跨 logger ratio 只引用此模式并配稳定 baseline，不要引用单次顺序运行。
+
+### 跨机器基准矩阵
+
+当你需要支撑更强的表述，例如“LoggerJS 在我们测试过的每台机器上都快于 pino”，收集多个本地 A/B artifacts 并聚合：
+
+```bash
+pnpm build
+pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
+
+# after copying artifacts from other machines into benchmarks/matrix/
+pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
+```
+
+`pnpm bench:matrix` 包装 `BENCH_AB=1 BENCH_JSON=1` harness，运行多次，记录 CPU/OS/Node/dependency/Git metadata，并默认在 `benchmarks/matrix/` 下写入 JSON 和 Markdown artifacts。该目录被忽略，因为它是本地证据。只提交经过有意整理的 aggregate，例如 [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md)。做跨机器性能表述时，应引用签入的 matrix evidence file。
+
+非 Apple-Silicon 和多 Node 证据可运行手动 GitHub Actions workflow `Benchmark Matrix`。它会为 Node 20.19.0、22 和 24 采集 Linux x64 rows，并上传 aggregate Markdown artifact 供 review。只有在核对 JSON artifacts 和 runner metadata 后才提交 aggregate。
+
+谨慎使用矩阵措辞：它只能证明列出的 machine/runtime/dependency combinations，不能证明未来所有 CPU、Node/V8 版本或 pino releases 的普遍结果。
+
+## Node 场景
+
+- 带 lazy message 的 disabled debug log。
+- 没有 transports 的 enabled logger。
+- 使用 no-op transport 的 enabled logger。
+- 使用 record-aware no-op write transport 的 enabled logger（record fast path，无 event projection）。
+- 使用 no-op patched console 的 console transport。
+- Batch transport enqueue path。
+- 与 pino、winston、LogTape 和 Node console 的 full-path NDJSON 比较。
+- JSON、safe JSON、fast event JSON 和 msgpackr encode/decode。
+- Fast event JSON 编码 raw LogRecord batches（record transport boundary）。
+
+## 竞争者比较
+
+Full-path 场景每次迭代记录一条 structured info call，并把序列化行交给 discarding sink，因此比较的是 pipeline + serialization，不含 terminal 或 filesystem I/O 噪声。pino、winston 和 LogTape 是 root lockfile 中固定的 dev dependencies。Node console 场景使用一个真实 `Console` 实例，背后是 discarding stream。
+
+参考机器：**Apple M1 Max（64 GB），Node v22.21.1**，pino 10.3.1、winston 3.19.0、LogTape 2.1.3。loggerjs-vs-pino 行来自 drift-canceling paired A/B harness（`BENCH_AB`，22 runs x 120 rounds）；更广泛 landscape 来自单次 `BENCH_ITERATIONS=1000000` 顺序运行。
+
+### Cross-logger comparison（paired A/B，可信方法）
+
+每个 round 都背靠背测 pino、lean 和 prepared，因此 CPU frequency 与 core scheduling 平等影响它们并在 ratio 中抵消。22 runs 的 medians：
+
+| Path | ns/op | vs pino |
+| --- | ---: | --- |
+| pino ndjson noop sink | 287 | 1.00x baseline |
+| loggerjs lean record sink | 242 | **1.19x pino**（paired ratio 0.84，range 0.82-0.87） |
+| loggerjs prepared lean record sink | 224 | **1.28x pino**（paired ratio 0.78） |
+
+在这台机器上，loggerjs lean 和 prepared 在等价输出下 **快于 pino**，且可复现：22 次运行里 lean/pino paired ratio 都保持在 0.84 +/- 0.02，即使某些 round 的 GC pause 把 absolute spread 推到 80% 以上也成立。Prepared encoder 比 plain lean 快约 8%。
+
+**这个排序依赖环境。** pino 和 loggerjs 都使用手调 JSON hot paths，CPU、scheduler、Node/V8 的细微差异都可能改变胜者。上表是所列参考机器的经验结果，不是机制声明或普遍排名。请始终在自己的硬件上复现：`BENCH_AB=1 pnpm bench:node`，再用 `pnpm bench:matrix` 增加持久证据行。
+
+### 顺序套件（同机单次 1,000,000 次迭代）
+
+每个场景的绝对吞吐。这里的跨 logger ratios **不可靠**（各 logger 在运行中的不同时间点被测）；loggerjs-vs-pino 使用上方 A/B 表。本表用于数量级 landscape 和 codec paths。
+
+| Scenario | ns/op |
+| --- | ---: |
+| loggerjs disabled debug（lazy message） | 3 |
+| pino disabled debug | 9 |
+| loggerjs batch transport enqueue | 172 |
+| loggerjs prepared lean record sink | 252 |
+| loggerjs lean record sink | 273 |
+| loggerjs full-envelope record sink（`+id/seq/levelName`） | 307 |
+| loggerjs ndjson event sink | 812 |
+| loggerjs fast-event-json event sink | 897 |
+| node console info noop stream | 769 |
+| winston json noop sink | 2,726 |
+| logtape json lines noop sink | 6,584 |
+
+所有 loggerjs 和 pino full-path loggers 都带相同 base fields（`service`、`env`）。Lean sink 使用 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`；prepared lean sink 用 `createPreparedRecordEncoder(codec)` 包装它，复用 codec-owned logger/tags fragments，而不把 serialization 移入 logger；full-envelope sink 额外输出 `id`、`seq` 和 `levelName`。CI 强制的是 `pnpm bench:gate` 中的 **paired A/B ratios**（默认每个 contender 60 rounds x 5000 ops），覆盖 disabled-level logging、record-write enqueue、batch enqueue、lean、prepared 和 full-envelope record sinks。
+
+诚实解读：
+
+- Disabled-level logging 与 pino 同级（都是个位数 ns）。
+- 对等 lean output 下，loggerjs 在 M1 Max 参考机器上 **快于 pino**（paired A/B，lean 1.19x / prepared 1.28x），但排序依赖 CPU/V8；应表述为“pino 同级，机器相关胜者”，不是普遍声明。Prepared encoder 额外约 8%。
+- Full-envelope path 比 lean 多约 13% 成本，以携带 `id`、`seq` 和 `levelName`；下游不需要这些字段时选择 lean envelope。
+- loggerjs 大约比 winston 快一个数量级（约 10x）、比 LogTape 快约 24x、比 Node console 快约 3x；这些倍数会随系统负载摆动，作为近似理解。
+- 早期快照中 pino 在 mixed suite 里是 442ns，那是 JIT warmup artifact（10k warmup iterations），后来通过让每个场景 warmup 为 measured iterations 的四分之一修复。除非 warmup 与迭代数成比例，否则跨 logger 比较无效。
+
+热路径变更后重新运行 `pnpm bench:node`，数字有实质变化时更新快照。
+
+调节迭代次数：
+
+```bash
+BENCH_ITERATIONS=200000 pnpm bench:node
+BENCH_BROWSER_ITERATIONS=100000 pnpm bench:browser
+BENCH_BROWSER_IDB_ITERATIONS=5000 pnpm bench:browser
+```
+
+## 浏览器场景
+
+`pnpm bench:browser` 在本地 headless Chrome 中运行，并测量来自构建后 `dist` packages 的 browser-facing paths：
+
+- 没有 transports 的 enabled browser logger。
+- 使用 no-op `fetchFn` 的 Browser HTTP transport enqueue。
+- IndexedDB transport enqueue 到 in-memory transport buffer。
+- 浏览器 batches 的 JSON 和 fast event JSON encoding。
+- IndexedDB transport flush 一个 persisted batch。
+- IndexedDB HTTP offline queue enqueue。
+
+IndexedDB 场景使用单独迭代数，因为它们会执行真实浏览器 storage I/O。通过 `BENCH_BROWSER_IDB_ITERATIONS` 调整；默认值故意小于 `BENCH_BROWSER_ITERATIONS`，保证日常 browser benchmark 运行够快。Browser storage 数字对 Chrome 版本、profile state、设备存储、private browsing policy、quota 和 Storage Buckets 支持敏感，引用时必须带测量浏览器和硬件上下文。
+
+## Size Budgets
+
+`pnpm size:check` 在 build 后运行，并对每个 package entry bundle 强制 raw + gzip budgets。Budgets 存在 `scripts/check-size-budgets.mjs` 中，只应随有意 public surface 或 implementation-size 变更一起更新。
 
 ## 相关链接
 

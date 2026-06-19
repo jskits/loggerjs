@@ -1,0 +1,135 @@
+# 运维
+
+本指南覆盖最影响 LoggerJS 生产行为的部分：隐私、浏览器缓冲、崩溃路径和远程投递可靠性。
+
+## 隐私
+
+自动 integrations 都是 opt-in。只启用产品实际需要的捕获表面。
+
+推荐默认值：
+
+- 在任何 remote transport 之前使用 `redactProcessor()`。
+- 在 fetch/XHR integrations 中使用 HTTP header allowlist。默认不要发送 cookies、authorization headers 或完整 request bodies。
+- 当 query string 可能包含 token 或用户数据时，清洗 URLs。
+- 除非明确需要 debug collection，否则 console capture 只采集 `warn` 和 `error`。
+- 使用稳定 tags，例如 `service`、`env`、`runtime`；把高基数字段放进 event data，而不是 tags。
+
+示例：
+
+```ts
+import { captureFetchIntegration } from "@loggerjs/browser";
+import { redactProcessor } from "@loggerjs/processors";
+
+const processors = [redactProcessor({ keys: ["password", "token", /secret/i] })];
+const integrations = [
+  captureFetchIntegration({
+    captureRequestHeaders: ["content-type", "x-request-id"],
+    captureResponseHeaders: ["content-type", "x-request-id"],
+    sanitizeUrl: (url) => new URL(url, location.origin).origin,
+  }),
+];
+```
+
+`redactProcessor()` 可按 key、精确 dot path、regex 或自定义 matcher mask。Paths 相对于每个被脱敏的 event field（`user.password`，不是 `data.user.password`）。用 `replacement`（或兼容 Pino 的 `censor` 别名）mask 值；字段应从 event 中省略时使用 `remove: true`。LoggerJS 不用 `eval` 或 `new Function` 编译 redaction paths；类似 wildcard 的 regex 和深度遍历比生成代码更安全，但成本高于精确 keys 和 paths。
+
+`privacyGuardProcessor()` 更宽泛：它扫描选定字段中的内置和自定义字符串 patterns，例如 emails、bearer tokens 和类似银行卡号的值。把它当成安全网，而不是 capture allowlists 的替代品。
+
+## 浏览器队列和离线重放
+
+`browserHttpTransport()` 会在内存中批量 records，并能把失败 payload 持久化到 offline queue adapter。内置 memory queue 有意保持小而零依赖；需要 reload survival 的应用应提供遵循相同接口的 IndexedDB-backed adapter。
+
+```ts
+import { browserHttpTransport, memoryBrowserHttpOfflineQueue } from "@loggerjs/browser";
+
+const transport = browserHttpTransport({
+  url: "/api/logs",
+  maxBatchSize: 50,
+  maxQueueSize: 1000,
+  offlineQueue: memoryBrowserHttpOfflineQueue({ maxEntries: 500 }),
+  useBeaconOnPageHide: true,
+  beaconMaxBytes: 60 * 1024,
+});
+```
+
+浏览器触发 `online` 时，transport 会带 retry 和 backoff 重放已存 payload。关闭 tab 或导航时日志很重要，就启用 page lifecycle integration：
+
+```ts
+import { pageLifecycleIntegration } from "@loggerjs/browser";
+
+const integrations = [pageLifecycleIntegration()];
+```
+
+浏览器存储和关闭行为仍是 best effort。`sendBeacon` 可能受大小限制或在 shutdown 中被跳过；内存队列会在 reload 后消失；IndexedDB 可能不可用、满、被驱逐，或被 upgrade 阻塞。生产浏览器投递建议组合：
+
+- `browserHttpTransport()`：常规远程投递。
+- `indexedDbBrowserHttpOfflineQueue()` 或 `offlineFirstTransport()`：reload-surviving replay。
+- `pageLifecycleIntegration()` 和 `useBeaconOnPageHide`：最后机会 flush。
+- logger meta 中的 drop/queue metrics：让 quota 或 backpressure 可见。
+
+## Node 崩溃路径
+
+进程级失败建议组合 `captureProcessIntegration()` 和至少一个能在需要时同步 flush 的 transport。
+
+```ts
+import { captureProcessIntegration, fileTransport, stdoutTransport } from "@loggerjs/node";
+
+const transports = [
+  stdoutTransport(),
+  fileTransport({ path: "./logs/app.ndjson" }),
+];
+const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
+```
+
+崩溃路径建议：
+
+- fatal process events 至少保留一个本地 transport。
+- transport 支持时，最终同步 shutdown 优先用 `flushSync()`；普通 drain-and-continue shutdown 使用 `await flush()`。
+- 每次写入都必须在日志调用返回前到达文件系统时，使用 `fileTransport({ sync: true })`。
+- HTTP/OTLP remote transports 用于常规投递，不要作为唯一 fatal-path sink。
+- processor 工作保持同步且有界；crash handlers 不应执行慢 enrichment。
+
+对带 `exitOnUncaught: true` 的 `uncaughtException`，流程是：
+
+1. 捕获一条带 `process.kind: "uncaughtException"` 的 `fatal` record。
+2. 对支持同步的 transports 调用 `flushSync()`。
+3. 运行一次由 `flushTimeoutMs` 控制的有界 async `flush()` race（默认 `250` ms）。
+4. 以 code `1` 退出。
+
+对带 `exitOnSignal: true` 的 signals，LoggerJS 捕获 fatal signal record，使用相同的 sync-plus-bounded-async flush 流程，然后按已知 signal exit code 退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
+
+## 远程 Transport 可靠性
+
+基于 batch 的 transports 支持同一套 core reliability 选项：
+
+```ts
+{
+  maxRecords: 100,
+  maxBytes: 64 * 1024,
+  maxWaitMs: 2000,
+  concurrency: 2,
+  maxRetries: 3,
+  retryBaseDelayMs: 250,
+  retryMaxDelayMs: 5000,
+  circuitBreakerFailureThreshold: 5,
+  circuitBreakerResetMs: 30000,
+}
+```
+
+当 payload size 比 event count 更重要时使用 byte limits。使用 `onDrop` 把 queue drops 暴露到你自己的 metrics pipeline。
+
+## Context 和 Trace 关联
+
+构造时已知的值用显式 child context；request 级值用 ambient context：
+
+```ts
+import { installAsyncLocalStorageContext } from "@loggerjs/node";
+import { withContext } from "@loggerjs/core";
+
+installAsyncLocalStorageContext();
+
+await withContext({ requestId: "req_123" }, async () => {
+  logger.info("request started");
+});
+```
+
+当 OpenTelemetry API object 可用时，用 `openTelemetryTraceProcessor()` 附加当前 active span context。

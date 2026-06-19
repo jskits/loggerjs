@@ -218,11 +218,11 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
 | `memoryBrowserHttpOfflineQueue()` | In-memory offline queue adapter (lost on reload). |
 | `indexedDbBrowserHttpOfflineQueue()` | Durable offline queue in IndexedDB; survives reloads. |
 | `offlineFirstTransport(remote)` | Standard remote + persistent queue wrapper; queues while offline or when remote delivery fails, then replays later. |
-| `indexedDbTransport()` | Persist logs locally in IndexedDB with TTL/count/byte pruning, durability hints, optional Storage Bucket isolation, an async `query()` API, and `stats()` observability. |
+| `indexedDbTransport()` | Persist logs locally in IndexedDB with session-aware indexes, TTL/count/byte pruning, durability hints, optional Storage Bucket isolation, an async `query()` API, `sessions()`, and `stats()` observability. |
 | `browserWebSocketTransport({ socket })` | Codec-encoded batches over a WebSocket; queues while the socket is closed (reconnection is the caller's responsibility). |
 | `browserServiceWorkerTransport()` | Posts events to a service worker, queueing until one is active; with `target: "ready"`, explicit `ready()` waits for `serviceWorker.ready`. |
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
-| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest and CRC for support workflows. |
+| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`, and CRC for support workflows. |
 
 `browserHttpTransport()` also accepts `transformPayload`. Use
 `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
@@ -242,6 +242,11 @@ IndexedDB log store with relaxed durability:
 ```ts
 indexedDbTransport({
   durability: "relaxed",
+  localStorageSpill: {
+    maxBytes: 512 * 1024,
+    maxEntries: 200,
+    namespace: "loggerjs-support",
+  },
   storageBucketName: "loggerjs-logs",
   storageBucketDurability: "relaxed",
 });
@@ -249,6 +254,22 @@ indexedDbTransport({
 
 Browsers without Storage Buckets support fall back to the regular IndexedDB
 instance while keeping the same transport API.
+
+`indexedDbTransport()` assigns a page-session id by default, stores it as a
+top-level IndexedDB entry field, and mirrors it into `event.context.sessionId`
+when the event did not already provide one. Pass `session: false` to disable
+that materialized session field, or pass `session: { id, getId, contextKey }`
+to align the persisted session with your own browser context provider.
+
+`localStorageSpill` is a last-chance reload/close safety net, not a replacement
+for IndexedDB. Normal logging still batches in memory and flushes to
+IndexedDB asynchronously. On `pagehide` or `visibilitychange: hidden`, the
+transport synchronously writes the still-unconfirmed tail (`pendingFlushBatch`
+plus the current memory buffer) to a small `localStorage` temp entry. The next
+transport instance drains that temp entry into IndexedDB before its first flush
+and clears it only after the write succeeds. This lowers loss during ordinary
+reloads and tab closes, but it cannot protect against process kill, browser
+crash, disabled storage, quota exhaustion, or storage eviction.
 
 ### Browser failure boundaries
 
@@ -262,7 +283,7 @@ the destination you care about. These are the important loss windows:
 | `memoryBrowserHttpOfflineQueue()` | Survives temporary offline periods only while the page process stays alive. | Use for lightweight apps or tests; switch to IndexedDB for support/debug logs that must survive reload. |
 | `indexedDbBrowserHttpOfflineQueue()` | Stores replay payloads across reloads, but quota, private browsing mode, storage eviction, blocked upgrades, or unavailable IndexedDB can still prevent persistence. | Monitor queue/drop counters and keep payloads bounded; pair with HTTP replay and page lifecycle flush. |
 | `offlineFirstTransport(remote)` | Queues when remote delivery fails, then replays later. Replay is not a guarantee if local storage fails or is evicted. | Prefer a persistent queue adapter and call `flush()` during controlled shutdown/navigation when possible. |
-| `indexedDbTransport()` | Local persistence depends on IndexedDB availability, quota, eviction policy, durability hints, and browser support for Storage Buckets. | Use `durability: "relaxed"` for throughput when acceptable; use TTL/count/byte pruning to stay below quota. |
+| `indexedDbTransport()` | Local persistence depends on IndexedDB availability, quota, eviction policy, durability hints, and browser support for Storage Buckets. Logs still in the memory buffer can be lost before the async IndexedDB write finishes. | Use `durability: "relaxed"` for throughput when acceptable; use TTL/count/byte pruning to stay below quota. Enable bounded `localStorageSpill` when support logs should survive ordinary reloads more reliably. |
 | `browserWebSocketTransport()` | Queued events can be lost when the page exits, the queue bound is exceeded, or the caller never reconnects the socket. | Own reconnection outside the transport and use queue bounds/drop counters to detect backpressure. |
 | `browserServiceWorkerTransport()` | Delivery depends on service worker registration, activation, message delivery, and worker lifetime. A terminating worker can drop in-flight work unless it persists its own queue. | Treat it as centralization, not durability, unless the service worker also writes to durable storage. |
 | `browserBroadcastChannelTransport()` | BroadcastChannel only reaches currently open, same-origin listeners. Messages are not durable and receivers can miss them during startup. | Use for multi-tab aggregation and debugging, not as a primary remote delivery guarantee. |

@@ -6,8 +6,8 @@ description: "LoggerJS 可运行示例索引。"
 
 # 示例
 
-> [!IMPORTANT]
-> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+> [!NOTE]
+> 本页由仓库元数据、API reports 或示例目录生成；包名、export subpaths、TypeScript 声明和源码链接保留原文，便于与发布产物逐项核对。
 
 可运行示例位于仓库 `examples/` 目录。示例直接引用本地 `dist` 输出时，需要先构建 packages。
 

@@ -317,6 +317,7 @@ import { type Codec, type LogEvent, type LoggerLevel, type Transport } from "@lo
 import type { BrowserHttpDropPolicy } from "./http-transport.js";
 export interface IndexedDbLogEntry {
     id: string;
+    sessionId?: string;
     seq: number;
     createdAt: number;
     level: number;
@@ -329,6 +330,7 @@ export interface IndexedDbLogEntry {
 export interface IndexedDbTransportQueryOptions {
     from?: number;
     to?: number;
+    sessionId?: string;
     minLevel?: LoggerLevel;
     logger?: string;
     type?: string;
@@ -337,6 +339,34 @@ export interface IndexedDbTransportQueryOptions {
 }
 export type IndexedDbTransportDurability = "default" | "strict" | "relaxed";
 export type IndexedDbStorageBucketDurability = "strict" | "relaxed";
+export interface IndexedDbTransportSessionOptions {
+    id?: string;
+    getId?: (event: LogEvent) => string | undefined;
+    contextKey?: string;
+}
+export type IndexedDbTransportSession = string | false | IndexedDbTransportSessionOptions;
+export interface IndexedDbLogSession {
+    sessionId: string;
+    firstSeen: number;
+    lastSeen: number;
+    count: number;
+    byteLength: number;
+}
+export interface IndexedDbTransportSessionQueryOptions {
+    limit?: number;
+    order?: "asc" | "desc";
+}
+export interface IndexedDbLocalStorageSpillOptions {
+    namespace?: string;
+    maxEntries?: number;
+    maxBytes?: number;
+    maxOriginBytes?: number;
+    minLevel?: LoggerLevel;
+    drainOnCreate?: boolean;
+    spillOnPageHide?: boolean;
+    storage?: Storage;
+    onDrop?: (event: LogEvent, reason: string) => void;
+}
 export interface IndexedDbTransportStats {
     bufferDepth: number;
     maxBufferDepth: number;
@@ -362,6 +392,14 @@ export interface IndexedDbTransportStats {
     transactionOptionFallbacks: number;
     errors: number;
     errorsByOperation: Record<string, number>;
+    localStorageSpillWrites: number;
+    localStorageSpillEntries: number;
+    localStorageSpillDrains: number;
+    localStorageSpillDrainedEntries: number;
+    localStorageSpillDropped: number;
+    localStorageSpillDroppedByReason: Record<string, number>;
+    localStorageSpillErrors: number;
+    localStorageSpillErrorsByOperation: Record<string, number>;
 }
 export interface IndexedDbTransportOptions {
     name?: string;
@@ -381,6 +419,8 @@ export interface IndexedDbTransportOptions {
     storageBucketName?: string;
     storageBucketPersisted?: boolean;
     storageBucketDurability?: IndexedDbStorageBucketDurability;
+    session?: IndexedDbTransportSession;
+    localStorageSpill?: false | IndexedDbLocalStorageSpillOptions;
     indexedDB?: IDBFactory;
     onDrop?: (event: LogEvent, reason: string) => void;
     onPersistedDrop?: (entry: IndexedDbLogEntry, reason: string) => void;
@@ -390,6 +430,7 @@ export interface IndexedDbTransport extends Transport {
     clear: () => Promise<void>;
     remove: (ids: string | readonly string[]) => Promise<void>;
     query: (options?: IndexedDbTransportQueryOptions) => AsyncIterable<LogEvent>;
+    sessions: (options?: IndexedDbTransportSessionQueryOptions) => Promise<IndexedDbLogSession[]>;
     stats: () => IndexedDbTransportStats;
 }
 export declare function indexedDbTransport(options?: IndexedDbTransportOptions): IndexedDbTransport;
@@ -936,6 +977,28 @@ export interface LogZipExportManifest {
         from: number;
         to: number;
     };
+    recentLogFileName?: string;
+    sessionCount?: number;
+    sessions?: LogZipExportSessionManifest[];
+}
+export interface LogZipExportSessionManifest {
+    sessionId: string;
+    logFileName: string;
+    logCount: number;
+    timeRange?: {
+        from: number;
+        to: number;
+    };
+}
+export interface LogZipExportSessionOptions {
+    contextKey?: string;
+    directory?: string;
+    fallbackSessionId?: string;
+    logFileName?: string;
+}
+export interface LogZipExportRecentOptions {
+    logFileName?: string;
+    maxEvents?: number;
 }
 export interface LogZipExportOptions {
     query?: IndexedDbTransportQueryOptions;
@@ -949,6 +1012,8 @@ export interface LogZipExportOptions {
     stringify?: SafeStringifyOptions;
     serializeEvent?: (event: LogEvent) => string;
     mapEvent?: (event: LogEvent) => LogEvent | false | null | undefined;
+    groupBySession?: boolean | LogZipExportSessionOptions;
+    includeRecent?: boolean | LogZipExportRecentOptions;
 }
 export interface DownloadBlobOptions {
     filename?: string;

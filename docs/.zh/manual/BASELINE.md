@@ -1,0 +1,23 @@
+# LoggerJS 基线
+
+> 记录于 2026-06-11，用于 `plan.md` 的 Phase 0。
+
+## 命令
+
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+## 结果
+
+- `pnpm install --frozen-lockfile`：通过。lockfile 已经是最新。
+- `pnpm typecheck`：通过 Turbo 覆盖 8 个 workspace packages。
+- `pnpm test`：通过 Turbo，但当时 package test commands 使用 `vitest run --passWithNoTests`；这个基线时还没有真实 test files。
+- `pnpm build`：packages 和 browser example 通过 Turbo 构建。
+
+## 基线风险
+
+仓库能 build 和 typecheck，但此时测试信号有意保持很弱。Phase 0 必须先补有意义的测试，再开始 core hot-path rewrite。

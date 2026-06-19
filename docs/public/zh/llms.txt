@@ -2,7 +2,7 @@
 
 > 更快、更强的同构日志库：采集、处理、投递，一条高速管线，围绕 records、middleware、processors、transports、integrations 和 transport-owned codecs 构建。
 
-> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译；涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+> 中文站包含主要指南的完整中文译文；生成参考页中的包名、export subpaths、TypeScript 声明和源码链接保留原文，便于与发布产物逐项核对。
 
 这个文件是中文站点的 LLM 入口。优先阅读快速开始和核心概念，再在需要精确 export、subpath 或类型声明时查看包和 API 参考。性能声明依赖 benchmark 环境，请结合基准文档的方法和复现命令理解。
 

@@ -96,6 +96,79 @@ Production notes:
 - Alert on logger meta counters such as `transport.dropped.*` and offline queue
   depth when your app exposes them.
 
+## Browser Support Export With Session-Aware IndexedDB
+
+Use this when support or QA needs a local log bundle that survives reloads and
+can be exported by session. The local store is separate from the HTTP delivery
+queue: IndexedDB is the queryable source of truth, while `localStorageSpill`
+only protects the small tail that has not finished its async IndexedDB write
+when the user refreshes or closes the page.
+
+```ts
+import {
+  createLogger,
+  downloadBlob,
+  exportLogsToZip,
+  indexedDbTransport,
+} from "@loggerjs/browser";
+import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
+
+const supportStore = indexedDbTransport({
+  name: "support-indexeddb",
+  dbName: "checkout-web-logs",
+  storeName: "support-logs",
+  maxEntries: 20_000,
+  maxBytes: 25 * 1024 * 1024,
+  ttlMs: 7 * 24 * 60 * 60 * 1000,
+  batchSize: 50,
+  flushIntervalMs: 1000,
+  durability: "relaxed",
+  localStorageSpill: {
+    namespace: "checkout-support-logs",
+    maxEntries: 200,
+    maxBytes: 512 * 1024,
+    minLevel: "info",
+  },
+});
+
+export const supportLogger = createLogger({
+  category: ["web"],
+  level: "info",
+  processors: [
+    redactProcessor({
+      keys: ["password", "token", "authorization", "cookie", /secret/i],
+    }),
+    privacyGuardProcessor({ maxStringLength: 8192 }),
+  ],
+  transports: [supportStore],
+});
+
+export async function downloadSupportLogZip() {
+  await supportLogger.flush();
+  const zip = await exportLogsToZip(supportStore, {
+    groupBySession: true,
+    includeRecent: { maxEvents: 500 },
+    query: {
+      from: Date.now() - 7 * 24 * 60 * 60 * 1000,
+      order: "asc",
+    },
+    source: "indexeddb",
+  });
+  downloadBlob(zip, `checkout-logs-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`);
+}
+```
+
+Production notes:
+
+- Keep privacy processors before the IndexedDB transport. Anything persisted
+  locally can be exported by a user or support flow.
+- `indexedDbTransport()` creates a page-session id by default and stores it in
+  both the IndexedDB entry metadata and `event.context.sessionId` when absent.
+  If your app already owns session ids, pass `session: { id, getId, contextKey }`.
+- `localStorageSpill` is bounded and best effort. It improves normal reload and
+  close behavior but cannot protect against process kill, crash, disabled
+  storage, quota exhaustion, or storage eviction.
+
 ## Node to Stdout Plus OTLP
 
 Use stdout as the local, platform-native sink and OTLP as the remote

@@ -6,17 +6,49 @@ description: "测试覆盖清单和验证入口。"
 
 # 测试清单
 
-> [!IMPORTANT]
-> 中文站目前是维护性摘要和生成参考，不是英文文档的完整逐段翻译。涉及 API 行为、稳定性、性能数据或生产承诺时，以英文原文、API reports 和仓库源码为准。
+本文件由 Vitest JSON reporter 生成，让仓库文档引用一个统一的测试计数来源，而不是手工维护数字。
 
-测试覆盖清单和验证入口。
+新增、删除或重命名测试后重新生成：
 
-## 要点
+```bash
+pnpm test:inventory
+```
 
-- 单元测试覆盖 core、codecs、transports、processors 和平台包行为。
-- 浏览器 E2E、runtime smoke、package pack check 和 public type check 覆盖发布面。
-- live integration 测试依赖外部服务配置，缺少 secret 时应明确跳过或标记阻塞。
-- `pnpm test:inventory:check` 用于保持测试清单与仓库一致。
+CI 漂移检查：
+
+```bash
+pnpm test:inventory:check
+```
+
+## 当前快照
+
+| 指标 | 数量 |
+| --- | ---: |
+| Test files | 99 |
+| Test cases | 654 |
+| Passed | 654 |
+| Failed | 0 |
+| Pending | 0 |
+| Todo | 0 |
+| Status | passed |
+
+## 包拆分
+
+| Package | Test files | Test cases |
+| --- | ---: | ---: |
+| @loggerjs/browser | 24 | 101 |
+| @loggerjs/cloudwatch | 1 | 11 |
+| @loggerjs/codecs | 2 | 39 |
+| @loggerjs/core | 20 | 232 |
+| @loggerjs/database | 1 | 6 |
+| @loggerjs/datadog | 1 | 7 |
+| @loggerjs/elastic | 1 | 10 |
+| @loggerjs/loki | 1 | 7 |
+| @loggerjs/node | 21 | 83 |
+| @loggerjs/otel | 3 | 13 |
+| @loggerjs/pretty | 3 | 16 |
+| @loggerjs/processors | 20 | 117 |
+| @loggerjs/sentry | 1 | 12 |
 
 ## 相关链接
 

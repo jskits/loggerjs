@@ -58,7 +58,7 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 | Transport | Delivers to |
 | --- | --- |
 | `browserHttpTransport` | your collector — batching, offline queue, online replay with backoff, `sendBeacon` on page hide |
-| `indexedDbTransport` | a local, queryable IndexedDB store (TTL, pruning, optional Storage Buckets and durability hints) |
+| `indexedDbTransport` | a local, queryable IndexedDB store (session indexes, TTL, pruning, optional Storage Buckets, durability hints, and optional localStorage spill) |
 | `browserWebSocketTransport` | a WebSocket (codec-encoded batches, queues while closed) |
 | `browserServiceWorkerTransport` | a service worker for centralized delivery; `ready()` waits for `serviceWorker.ready` with `target: "ready"` |
 | `browserBroadcastChannelTransport` | other tabs via `BroadcastChannel` |
@@ -68,8 +68,15 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 
 - `memoryBrowserHttpOfflineQueue()` — short-lived in-memory retry buffer.
 - `indexedDbBrowserHttpOfflineQueue()` — survives page reloads.
-- `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson` and `manifest.json`.
+- `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson`, `manifest.json`, optional per-session files, and optional `recent.ndjson`.
 - Call the `indexedDbTransport()` instance's `stats()` to read flush, prune, query, drop, and buffer-depth counters.
+
+`indexedDbTransport()` assigns a page-session id by default for browser support
+stores. Use `query({ sessionId })`, `sessions()`, and
+`exportLogsToZip(..., { groupBySession: true, includeRecent: true })` to build
+support bundles around reload-sized sessions. Enable `localStorageSpill` only
+as a bounded last-chance buffer for the still-unconfirmed memory tail during
+ordinary reloads or tab closes; IndexedDB remains the queryable source of truth.
 
 Browser delivery has runtime loss windows: tab close can cut off async work,
 `sendBeacon` is size- and user-agent-limited, service worker delivery depends on

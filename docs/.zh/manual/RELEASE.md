@@ -1,0 +1,65 @@
+# 发布
+
+LoggerJS 使用 Changesets 做版本管理，并通过 GitHub Actions release workflow 发布到 npm。
+
+## 本地验证
+
+切 release 前运行完整 release dry-run：
+
+```bash
+pnpm release:dry-run
+```
+
+它会运行常规质量门禁、验证 public exports 和 API reports、用 `npm pack --dry-run --json` 检查每个包、把 publish 风格的 tarballs 安装进临时 consumer smoke project、打印 Changesets status，并运行 `pnpm publish -r --dry-run --access public --no-git-checks --json`。
+
+不发布的 canary 验证：
+
+```bash
+pnpm release:canary:dry-run
+```
+
+真正的 `canary` dist-tag 只应从 versioned prerelease branch 或 workflow 使用：
+
+```bash
+pnpm check
+changeset publish --tag canary
+```
+
+## 新组件发布准备
+
+发布新增 public transport 或 integration subpath 前，确认变更包含：
+
+- `docs/TRANSPORTS.md` 或 `docs/INTEGRATIONS.md` 中的稳定性分类；
+- `pnpm verify:component-docs` 检查的 import-boundary coverage；
+- 与组件匹配的 runtime 验证：浏览器 lifecycle/storage 行为用 browser E2E，edge/runtime 声明用 runtime smoke，本地服务用 Docker-backed live tests，hosted vendors 用 external-provider smoke；
+- `pnpm size:check` 的 size-budget evidence，任何预算增加都要在变更中说明理由；
+- 生产文档明确 delivery、retry、privacy 和 credential placement caveats。
+
+## NPM 发布
+
+Release workflow 是 `.github/workflows/release.yml`。每个可发布的 `@loggerjs/*` 包都应在 npmjs.com 上配置 Trusted Publisher：
+
+- Organization or user: `jskits`
+- Repository: `loggerjs`
+- Workflow filename: `release.yml`
+- Allowed action: `npm publish`
+
+workflow 使用 npm Trusted Publisher/OIDC 发布到 npm；不读取 `NPM_AUTH_TOKEN`、`NPM_TOKEN` 或 `NODE_AUTH_TOKEN`。
+
+- `permissions.id-token: write` 允许 GitHub Actions 生成 OIDC token，npm 在 `npm publish` 期间交换它。
+- `actions/setup-node` 为 publish 命令设置 npm registry，不配置长生命周期 token。
+- release job 运行在 GitHub-hosted Ubuntu runner 上，使用 Node 24 并升级到 npm 11，确保 Trusted Publisher 支持是新的。
+- 发布前，release job 运行 `pnpm release:publish:preflight`，为每个未发布包交换 GitHub OIDC token。这能在发布任何新包版本前发现缺失或不匹配的 npm Trusted Publisher 设置。
+- 每个可发布包设置 `publishConfig.provenance=true`，publish step 设置 `NPM_CONFIG_PROVENANCE=true`，publish script 显式给 `pnpm publish` 传 `--provenance`。
+- `npm whoami` 对 Trusted Publisher preflight 没有帮助，因为 OIDC authentication 只在 publish 操作期间存在。
+
+npm 要求 package provenance 来自公开源码仓库，并且 package `repository` metadata 必须匹配该 source repo。
+
+Commits 不会触发发布。发布流程是：先用 `pnpm version-packages` 消费 pending changesets，提交版本化后的 package metadata，并让该 commit 通过正常 CI。版本 commit 到 `main` 后，创建并推送 release tag，例如 `v0.0.3`；`.github/workflows/release.yml` 只监听 `v*` tag pushes，并拒绝提交不在 `origin/main` 可达范围内的 tags。Release job 会在还有 pending changesets 时阻塞，为每个 unpublished package 验证 npm OIDC access，运行 `pnpm release:publish`，用 `pnpm publish --provenance` 发布每个尚未发布的 workspace package，然后用幂等的 `changeset tag` 命令创建 package release tags，再推送 `@loggerjs/*` package tags。
+
+如果 npm 在 publish 或 `pnpm release:publish:preflight` 期间返回认证错误，检查每个 package 的 Trusted Publisher 设置是否精确匹配 repository owner、repository name、workflow filename、可选 environment name 和 allowed action。npm 只在交换 OIDC access 或尝试 publish 时检查这些字段。Publish script 对重跑是幂等的：已发布的 package versions 会被跳过，再继续发布剩余包。
+
+参考：
+
+- https://docs.npmjs.com/trusted-publishers/
+- https://docs.npmjs.com/generating-provenance-statements/
