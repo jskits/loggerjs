@@ -3641,8 +3641,8 @@ description: "生产可靠性、观测和交付强化计划。"
 
 # 生产强化：来自 Pino 的经验
 
-**状态：** 实现记录和剩余路线图  
-**日期：** 2026-06-13  
+**状态：** 实现记录和剩余路线图
+**日期：** 2026-06-13
 **范围：** `@loggerjs/core`、`@loggerjs/node`、`@loggerjs/browser`、`@loggerjs/codecs`、vendor transports 和 docs
 
 本文不再是实现前提案。它记录了已经接受的 Pino 经验、已经落地的 hardening 工作，以及仍然剩下的较小工作集。权威 API surface 位于 package TypeScript declarations 和 `api-reports/`；面向用户的运维行为记录在 `docs/CONCEPTS.md`、`docs/TRANSPORTS.md`、`docs/OPERATIONS.md` 和 package READMEs。
