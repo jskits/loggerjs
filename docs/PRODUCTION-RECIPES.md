@@ -24,7 +24,7 @@ import {
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const offlineQueue = indexedDbBrowserHttpOfflineQueue({
-  dbName: "checkout-web-logs",
+  dbName: "checkout-web-http-offline",
   storeName: "http-offline",
   maxEntries: 5000,
   dropPolicy: "drop-oldest",
@@ -95,6 +95,8 @@ Production notes:
   authorization headers, request bodies, or form values by default.
 - Alert on logger meta counters such as `transport.dropped.*` and offline queue
   depth when your app exposes them.
+- Keep the HTTP offline queue `dbName` separate from any queryable support-log
+  store. The two helpers use independent IndexedDB schemas and version lifecycles.
 
 ## Browser Support Export With Session-Aware IndexedDB
 
@@ -115,7 +117,7 @@ import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const supportStore = indexedDbTransport({
   name: "support-indexeddb",
-  dbName: "checkout-web-logs",
+  dbName: "checkout-web-support-logs",
   storeName: "support-logs",
   maxEntries: 20_000,
   maxBytes: 25 * 1024 * 1024,

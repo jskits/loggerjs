@@ -1542,7 +1542,7 @@ import {
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const offlineQueue = indexedDbBrowserHttpOfflineQueue({
-  dbName: "checkout-web-logs",
+  dbName: "checkout-web-http-offline",
   storeName: "http-offline",
   maxEntries: 5000,
   dropPolicy: "drop-oldest",
@@ -1610,6 +1610,7 @@ export const logger = createLogger({
 - `/api/logs` 应该是你自己的 collector endpoint。不要把 vendor API keys 放进浏览器 bundle。
 - fetch/XHR header capture 保持 allowlist。默认不要捕获 cookies、authorization headers、request bodies 或 form values。
 - 当应用能暴露 logger meta counters 和 offline queue depth 时，对 `transport.dropped.*` 等指标告警。
+- HTTP offline queue 的 `dbName` 应与可查询的 support-log store 分开。两个 helper 使用独立的 IndexedDB schema 和版本生命周期。
 
 ## 浏览器 Support Export，并使用 Session-Aware IndexedDB
 
@@ -1626,7 +1627,7 @@ import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const supportStore = indexedDbTransport({
   name: "support-indexeddb",
-  dbName: "checkout-web-logs",
+  dbName: "checkout-web-support-logs",
   storeName: "support-logs",
   maxEntries: 20_000,
   maxBytes: 25 * 1024 * 1024,
