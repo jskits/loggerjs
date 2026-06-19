@@ -75,11 +75,12 @@
 - [@loggerjs/cloudwatch API](https://jskits.github.io/loggerjs/zh/reference/api/cloudwatch): 公共声明报告。
 - [@loggerjs/database API](https://jskits.github.io/loggerjs/zh/reference/api/database): 公共声明报告。
 
-- [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic): Browser HTTP transport, offline queue, lifecycle capture, and browser integrations.
-- [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic): Node stdout transport, process capture, typed events, and redaction.
-- [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic): OTLP JSON transport and OpenTelemetry trace context mapping.
-- [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output): Browser and terminal pretty output demos for local developer experience.
-- [Sentry Basic](https://github.com/jskits/loggerjs/tree/main/examples/sentry-basic): Sentry adapter transport with structured logs, breadcrumbs, and errors.
+- [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic): 浏览器 HTTP transport、离线队列、生命周期采集和浏览器 integrations。
+- [Browser Support Export](https://github.com/jskits/loggerjs/tree/main/examples/browser-support-export): 浏览器 IndexedDB 支持日志存储、按 session 导出 ZIP 和 localStorage spill。
+- [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic): Node stdout transport、进程采集、typed events 和脱敏。
+- [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic): OTLP JSON transport 和 OpenTelemetry trace context 映射。
+- [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output): 浏览器和终端 pretty output 示例，用于本地开发体验。
+- [Sentry Basic](https://github.com/jskits/loggerjs/tree/main/examples/sentry-basic): Sentry adapter transport，包含结构化日志、breadcrumbs 和错误。
 
 - [Repository README](https://github.com/jskits/loggerjs/blob/main/README.md): GitHub README source.
 - [英文 llms.txt](https://jskits.github.io/loggerjs/llms.txt): 英文文档地图。

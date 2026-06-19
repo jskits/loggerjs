@@ -106,6 +106,22 @@ importers:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@22.19.20)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.22.4)(yaml@2.9.0)
 
+  examples/browser-support-export:
+    dependencies:
+      '@loggerjs/browser':
+        specifier: workspace:*
+        version: link:../../packages/browser
+      '@loggerjs/processors':
+        specifier: workspace:*
+        version: link:../../packages/processors
+    devDependencies:
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@22.19.20)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.22.4)(yaml@2.9.0)
+
   examples/node-basic:
     dependencies:
       '@loggerjs/node':

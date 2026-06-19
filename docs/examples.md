@@ -11,6 +11,7 @@ Runnable examples live in the repository under `examples/`. Build the packages f
 | Example | What it shows | Dependencies | Scripts |
 | --- | --- | --- | --- |
 | [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic) | Browser HTTP transport, offline queue, lifecycle capture, and browser integrations. | `@loggerjs/browser`, `@loggerjs/processors` | `build`, `clean`, `dev`, `typecheck` |
+| [Browser Support Export](https://github.com/jskits/loggerjs/tree/main/examples/browser-support-export) | Browser IndexedDB support log store with session ZIP export and localStorage spill. | `@loggerjs/browser`, `@loggerjs/processors` | `build`, `clean`, `dev`, `typecheck` |
 | [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic) | Node stdout transport, process capture, typed events, and redaction. | `@loggerjs/node`, `@loggerjs/processors` | `start`, `typecheck` |
 | [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic) | OTLP JSON transport and OpenTelemetry trace context mapping. | `@loggerjs/node`, `@loggerjs/otel` | `start`, `typecheck` |
 | [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output) | Browser and terminal pretty output demos for local developer experience. | None | None |
@@ -23,5 +24,6 @@ pnpm install
 pnpm build
 pnpm --filter loggerjs-node-basic-example start
 pnpm --filter loggerjs-browser-basic-example dev
+pnpm --filter loggerjs-browser-support-export-example dev
 node examples/pretty-output/node.mjs
 ```

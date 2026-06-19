@@ -71,6 +71,7 @@ Use this file as the concise entry point for LoggerJS documentation. Prefer the 
 - [@loggerjs/database API](https://jskits.github.io/loggerjs/reference/api/database): Public declaration report.
 
 - [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic): Browser HTTP transport, offline queue, lifecycle capture, and browser integrations.
+- [Browser Support Export](https://github.com/jskits/loggerjs/tree/main/examples/browser-support-export): Browser IndexedDB support log store with session ZIP export and localStorage spill.
 - [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic): Node stdout transport, process capture, typed events, and redaction.
 - [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic): OTLP JSON transport and OpenTelemetry trace context mapping.
 - [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output): Browser and terminal pretty output demos for local developer experience.

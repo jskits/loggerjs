@@ -357,10 +357,26 @@ const exampleDescriptions = new Map([
     "browser-basic",
     "Browser HTTP transport, offline queue, lifecycle capture, and browser integrations.",
   ],
+  [
+    "browser-support-export",
+    "Browser IndexedDB support log store with session ZIP export and localStorage spill.",
+  ],
   ["node-basic", "Node stdout transport, process capture, typed events, and redaction."],
   ["otel-basic", "OTLP JSON transport and OpenTelemetry trace context mapping."],
   ["sentry-basic", "Sentry adapter transport with structured logs, breadcrumbs, and errors."],
   ["pretty-output", "Browser and terminal pretty output demos for local developer experience."],
+]);
+
+const zhExampleDescriptions = new Map([
+  ["browser-basic", "浏览器 HTTP transport、离线队列、生命周期采集和浏览器 integrations。"],
+  [
+    "browser-support-export",
+    "浏览器 IndexedDB 支持日志存储、按 session 导出 ZIP 和 localStorage spill。",
+  ],
+  ["node-basic", "Node stdout transport、进程采集、typed events 和脱敏。"],
+  ["otel-basic", "OTLP JSON transport 和 OpenTelemetry trace context 映射。"],
+  ["sentry-basic", "Sentry adapter transport，包含结构化日志、breadcrumbs 和错误。"],
+  ["pretty-output", "浏览器和终端 pretty output 示例，用于本地开发体验。"],
 ]);
 
 function readJson(path) {
@@ -469,6 +485,7 @@ function examples() {
         title: titleFromSlug(entry.name),
         dir,
         description: exampleDescriptions.get(entry.name) ?? "Runnable LoggerJS example.",
+        zhDescription: zhExampleDescriptions.get(entry.name) ?? "可运行 LoggerJS 示例。",
         scripts,
         dependencies,
       };
@@ -641,6 +658,7 @@ pnpm install
 pnpm build
 pnpm --filter loggerjs-node-basic-example start
 pnpm --filter loggerjs-browser-basic-example dev
+pnpm --filter loggerjs-browser-support-export-example dev
 node examples/pretty-output/node.mjs
 \`\`\`
 `,
@@ -937,7 +955,7 @@ function generateChineseExamplesPage(exampleItems) {
   const rows = exampleItems
     .map(
       (example) =>
-        `| [${example.title}](${sourceDirectoryLink(example.dir)}) | ${example.description} | ${formatList(example.dependencies)} | ${formatList(example.scripts)} |`,
+        `| [${example.title}](${sourceDirectoryLink(example.dir)}) | ${example.zhDescription} | ${formatList(example.dependencies)} | ${formatList(example.scripts)} |`,
     )
     .join("\n");
 
@@ -966,6 +984,7 @@ pnpm install
 pnpm build
 pnpm --filter loggerjs-node-basic-example start
 pnpm --filter loggerjs-browser-basic-example dev
+pnpm --filter loggerjs-browser-support-export-example dev
 node examples/pretty-output/node.mjs
 \`\`\`
 `,
@@ -1013,7 +1032,7 @@ function generateChineseLlmsFiles(packages, reports, exampleItems) {
   const exampleList = exampleItems
     .map(
       (example) =>
-        `- [${example.title}](${sourceDirectoryLink(example.dir)}): ${example.description}`,
+        `- [${example.title}](${sourceDirectoryLink(example.dir)}): ${example.zhDescription}`,
     )
     .join("\n");
 

@@ -13,11 +13,12 @@ description: "LoggerJS 可运行示例索引。"
 
 | 示例 | 展示内容 | 依赖 | Scripts |
 | --- | --- | --- | --- |
-| [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic) | Browser HTTP transport, offline queue, lifecycle capture, and browser integrations. | `@loggerjs/browser`, `@loggerjs/processors` | `build`, `clean`, `dev`, `typecheck` |
-| [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic) | Node stdout transport, process capture, typed events, and redaction. | `@loggerjs/node`, `@loggerjs/processors` | `start`, `typecheck` |
-| [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic) | OTLP JSON transport and OpenTelemetry trace context mapping. | `@loggerjs/node`, `@loggerjs/otel` | `start`, `typecheck` |
-| [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output) | Browser and terminal pretty output demos for local developer experience. | None | None |
-| [Sentry Basic](https://github.com/jskits/loggerjs/tree/main/examples/sentry-basic) | Sentry adapter transport with structured logs, breadcrumbs, and errors. | `@loggerjs/core`, `@loggerjs/sentry` | `start`, `typecheck` |
+| [Browser Basic](https://github.com/jskits/loggerjs/tree/main/examples/browser-basic) | 浏览器 HTTP transport、离线队列、生命周期采集和浏览器 integrations。 | `@loggerjs/browser`, `@loggerjs/processors` | `build`, `clean`, `dev`, `typecheck` |
+| [Browser Support Export](https://github.com/jskits/loggerjs/tree/main/examples/browser-support-export) | 浏览器 IndexedDB 支持日志存储、按 session 导出 ZIP 和 localStorage spill。 | `@loggerjs/browser`, `@loggerjs/processors` | `build`, `clean`, `dev`, `typecheck` |
+| [Node Basic](https://github.com/jskits/loggerjs/tree/main/examples/node-basic) | Node stdout transport、进程采集、typed events 和脱敏。 | `@loggerjs/node`, `@loggerjs/processors` | `start`, `typecheck` |
+| [Otel Basic](https://github.com/jskits/loggerjs/tree/main/examples/otel-basic) | OTLP JSON transport 和 OpenTelemetry trace context 映射。 | `@loggerjs/node`, `@loggerjs/otel` | `start`, `typecheck` |
+| [Pretty Output](https://github.com/jskits/loggerjs/tree/main/examples/pretty-output) | 浏览器和终端 pretty output 示例，用于本地开发体验。 | None | None |
+| [Sentry Basic](https://github.com/jskits/loggerjs/tree/main/examples/sentry-basic) | Sentry adapter transport，包含结构化日志、breadcrumbs 和错误。 | `@loggerjs/core`, `@loggerjs/sentry` | `start`, `typecheck` |
 
 ## 本地运行
 
@@ -26,5 +27,6 @@ pnpm install
 pnpm build
 pnpm --filter loggerjs-node-basic-example start
 pnpm --filter loggerjs-browser-basic-example dev
+pnpm --filter loggerjs-browser-support-export-example dev
 node examples/pretty-output/node.mjs
 ```
