@@ -834,24 +834,32 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     sessionQueryOptions: IndexedDbTransportSessionQueryOptions = {},
   ): Promise<IndexedDbLogSession[]> => {
     const sessions = new Map<string, IndexedDbLogSession>();
-    for (const entry of await getEntries()) {
-      if (!entry.sessionId) continue;
+    const add = (entry: IndexedDbLogEntry) => {
+      if (!entry.sessionId) return;
       const current = sessions.get(entry.sessionId);
       if (current) {
         current.firstSeen = Math.min(current.firstSeen, entry.createdAt);
         current.lastSeen = Math.max(current.lastSeen, entry.createdAt);
         current.count += 1;
         current.byteLength += entry.byteLength;
-      } else {
-        sessions.set(entry.sessionId, {
-          byteLength: entry.byteLength,
-          count: 1,
-          firstSeen: entry.createdAt,
-          lastSeen: entry.createdAt,
-          sessionId: entry.sessionId,
-        });
+        return;
       }
-    }
+      sessions.set(entry.sessionId, {
+        byteLength: entry.byteLength,
+        count: 1,
+        firstSeen: entry.createdAt,
+        lastSeen: entry.createdAt,
+        sessionId: entry.sessionId,
+      });
+    };
+
+    const usedCursor = await withStore("readonly", async (store) => {
+      const index = getStoreIndex(store, ORDER_INDEX_NAME);
+      if (!index) return false;
+      await iterateCursor(index.openCursor(), (cursor) => add(cursor.value as IndexedDbLogEntry));
+      return true;
+    });
+    if (!usedCursor) for (const entry of await getEntries()) add(entry);
 
     // oxlint-disable-next-line no-array-sort -- Sort a copy for deterministic session lists.
     const ordered = [...sessions.values()].sort((left, right) => {

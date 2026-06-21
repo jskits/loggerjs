@@ -509,6 +509,7 @@ describe("indexedDbTransport", () => {
         sessionId: "session-b",
       },
     ]);
+    expect(idb.db.getAllCalls).toBe(0);
   });
 
   it("drops old persisted entries by maxEntries and ttl", async () => {
