@@ -39,6 +39,7 @@ interface FakeState {
   entries: Map<string, IndexedDbLogEntry>;
   getAllCalls: number;
   indexes: Map<string, FakeKeyPath>;
+  putGate?: Promise<void>;
 }
 
 function valueForKeyPath(entry: IndexedDbLogEntry, keyPath: FakeKeyPath): IDBValidKey {
@@ -146,9 +147,16 @@ class FakeObjectStore {
 
   put(item: IndexedDbLogEntry) {
     const request = new FakeRequest<IDBValidKey>();
-    this.state.entries.set(item.id, item);
-    request.succeed(item.id);
-    this.transaction?.completeSoon();
+    const write = () => {
+      this.state.entries.set(item.id, item);
+      request.succeed(item.id);
+      this.transaction?.completeSoon();
+    };
+    if (this.state.putGate) {
+      void this.state.putGate.then(write);
+    } else {
+      write();
+    }
     return request as unknown as IDBRequest<IDBValidKey>;
   }
 
@@ -225,7 +233,6 @@ class FakeTransaction {
 
   objectStore() {
     const store = new FakeObjectStore(this.state, this);
-    this.completeSoon();
     return store as unknown as IDBObjectStore;
   }
 }
@@ -618,6 +625,32 @@ describe("indexedDbTransport", () => {
 
     expect(idb.db.entries.size).toBe(1);
     expect(idb.db.closed).toBe(true);
+  });
+
+  it("waits for in-flight flushes before clearing persisted logs", async () => {
+    const idb = new FakeIndexedDB();
+    let releasePut!: () => void;
+    idb.db.state.putGate = new Promise<void>((resolve) => {
+      releasePut = resolve;
+    });
+    const transport = indexedDbTransport({
+      batchSize: 1,
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    transport.log?.(event("old", 1), context);
+    const clearing = transport.clear();
+    transport.log?.(event("new", 2), context);
+    await Promise.resolve();
+
+    expect(idb.db.entries.size).toBe(0);
+    releasePut();
+    await clearing;
+
+    expect(idb.db.entries.size).toBe(0);
+    await transport.flush?.();
+    expect((await collect(transport.query())).map((item) => item.id)).toEqual(["new"]);
   });
 
   it("spills pending buffered logs and drains them on the next load", async () => {

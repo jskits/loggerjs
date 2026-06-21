@@ -522,6 +522,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   let indexedDBFactoryPromise: Promise<IDBFactory | undefined> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let flushPromise: Promise<void> | undefined;
+  let clearPromise: Promise<void> | undefined;
   let pendingFlushBatch: LogEvent[] | undefined;
   let spillDrainPromise: Promise<void> | undefined;
   let localStorageSpillClearCandidate: LocalStorageSpillClearCandidate | undefined;
@@ -1195,7 +1196,9 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     clearTimer();
     const batch = buffer.splice(0, buffer.length);
     pendingFlushBatch = batch;
+    const clearBarrier = clearPromise;
     flushPromise = (async () => {
+      await clearBarrier;
       await ensureSpillDrained();
       await writeBatch(batch);
     })().finally(() => {
@@ -1279,10 +1282,20 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       return (await countEntries()) ?? (await getEntries()).length;
     },
     async clear() {
+      if (clearPromise) return clearPromise;
+      const inFlightFlush = flushPromise;
+      const inFlightDrain = spillDrainPromise;
       buffer.length = 0;
       clearTimer();
       clearLocalStorageSpill();
-      await withStore("readwrite", (store) => requestToPromise(store.clear()));
+      clearPromise = (async () => {
+        await inFlightFlush;
+        await inFlightDrain;
+        await withStore("readwrite", (store) => requestToPromise(store.clear()));
+      })().finally(() => {
+        clearPromise = undefined;
+      });
+      return clearPromise;
     },
     async remove(ids) {
       await flushPending();
