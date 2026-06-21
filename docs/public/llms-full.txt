@@ -365,6 +365,38 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 **Browser / frontend** (`@loggerjs/browser`) — `browserHttpTransport` · `indexedDbTransport` · `browserWebSocketTransport` · `browserServiceWorkerTransport` · `browserBroadcastChannelTransport` · `offlineFirstTransport`
 
+For frontend support bundles, `indexedDbTransport()` is session-aware by
+default and can add a bounded `localStorage` spill for the async IndexedDB write
+tail:
+
+```ts
+import { createLogger, downloadBlob, exportLogsToZip, indexedDbTransport } from "@loggerjs/browser";
+import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
+
+const supportStore = indexedDbTransport({
+  dbName: "my-app-support-logs",
+  localStorageSpill: { namespace: "my-app-support-logs" },
+});
+
+const logger = createLogger({
+  category: ["web"],
+  processors: [redactProcessor(), privacyGuardProcessor()],
+  transports: [supportStore],
+});
+
+export async function downloadSupportLogs() {
+  await logger.flush();
+  downloadBlob(
+    await exportLogsToZip(supportStore, {
+      groupBySession: true,
+      includeRecent: true,
+      query: { order: "asc" },
+    }),
+    "support-logs.zip",
+  );
+}
+```
+
 **Observability & vendors** — `otlpHttpTransport` · `openTelemetryLogBridgeTransport` · `sentryTransport` · `datadogLogsTransport` · `elasticTransport` · `lokiTransport` · `cloudWatchLogsTransport`. HTTP wire transports depend on `fetch`/crypto and credential placement; SDK/provider adapters use the SDK object or provider your app already owns.
 
 **Databases / local app / backend** — `databaseTransport` · `postgresTransport` · `sqliteTransport`. These require application-provided database drivers and are intended for Node.js, Electron, CLIs, or backend workers.
@@ -3308,7 +3340,7 @@ packages and entry families are:
 | Package | Stable surface |
 | --- | --- |
 | `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
-| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
+| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, support ZIP export, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
 | `@loggerjs/node` | Documented stable subpaths for stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
 | `@loggerjs/processors` | Root package processor and middleware catalog. |
@@ -3343,9 +3375,9 @@ be stable v1 candidates yet. Current compatible areas include:
   compatible components. Use the stable subpaths above when you need a v1
   candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service
-  worker, WebSocket, ZIP export, framework errors, framework routers, generic
-  router capture, ReportingObserver, runtime host, service worker messages,
-  user actions, and WebSocket capture.
+  worker, WebSocket, framework errors, framework routers, generic router
+  capture, ReportingObserver, runtime host, service worker messages, user
+  actions, and WebSocket capture.
 - Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi,
   Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method
   wrapping, and CLI capture.

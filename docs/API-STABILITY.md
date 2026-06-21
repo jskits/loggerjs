@@ -40,7 +40,7 @@ packages and entry families are:
 | Package | Stable surface |
 | --- | --- |
 | `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
-| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
+| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, support ZIP export, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
 | `@loggerjs/node` | Documented stable subpaths for stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
 | `@loggerjs/processors` | Root package processor and middleware catalog. |
@@ -75,9 +75,9 @@ be stable v1 candidates yet. Current compatible areas include:
   compatible components. Use the stable subpaths above when you need a v1
   candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service
-  worker, WebSocket, ZIP export, framework errors, framework routers, generic
-  router capture, ReportingObserver, runtime host, service worker messages,
-  user actions, and WebSocket capture.
+  worker, WebSocket, framework errors, framework routers, generic router
+  capture, ReportingObserver, runtime host, service worker messages, user
+  actions, and WebSocket capture.
 - Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi,
   Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method
   wrapping, and CLI capture.
