@@ -6,21 +6,21 @@ import {
   type LogEvent,
   type TransportContext,
 } from "@loggerjs/core";
-import { indexedDbTransport, type IndexedDbLogEntry } from "../src";
+import { indexedDbTransport, type IndexedDbLogEntry, type IndexedDbLogSession } from "../src";
 
 class FakeRequest<T> {
   result!: T;
   error: Error | null = null;
-  private listeners = new Map<string, Array<() => void>>();
+  private listeners = new Map<string, Array<(event: Event) => void>>();
 
-  addEventListener(type: string, listener: () => void) {
+  addEventListener(type: string, listener: (event: Event) => void) {
     const listeners = this.listeners.get(type) ?? [];
     listeners.push(listener);
     this.listeners.set(type, listeners);
   }
 
-  dispatch(type: string) {
-    for (const listener of this.listeners.get(type) ?? []) listener();
+  dispatch(type: string, dispatchedEvent: Event = { type } as Event) {
+    for (const listener of this.listeners.get(type) ?? []) listener(dispatchedEvent);
   }
 
   succeed(value: T) {
@@ -35,18 +35,27 @@ class FakeOpenRequest extends FakeRequest<FakeDatabase> {
 
 type FakeKeyPath = string | readonly string[];
 
-interface FakeState {
-  entries: Map<string, IndexedDbLogEntry>;
+type FakeRecord = IndexedDbLogEntry | IndexedDbLogSession;
+
+interface FakeStoreState<T extends FakeRecord = FakeRecord> {
+  records: Map<string, T>;
   getAllCalls: number;
+  openCursorCalls: number;
   indexes: Map<string, FakeKeyPath>;
+  keyPath: FakeKeyPath;
+}
+
+interface FakeState {
+  stores: Map<string, FakeStoreState>;
   putGate?: Promise<void>;
 }
 
-function valueForKeyPath(entry: IndexedDbLogEntry, keyPath: FakeKeyPath): IDBValidKey {
+function valueForKeyPath(record: FakeRecord, keyPath: FakeKeyPath): IDBValidKey {
   if (typeof keyPath === "string") {
-    return entry[keyPath as keyof IndexedDbLogEntry] as IDBValidKey;
+    const value = (record as unknown as Record<string, IDBValidKey | undefined>)[keyPath];
+    return value ?? "";
   }
-  return keyPath.map((key) => entry[key as keyof IndexedDbLogEntry]) as IDBValidKey;
+  return keyPath.map((key) => valueForKeyPath(record, key)) as IDBValidKey;
 }
 
 function compareKey(left: IDBValidKey, right: IDBValidKey): number {
@@ -67,14 +76,15 @@ function compareKey(left: IDBValidKey, right: IDBValidKey): number {
 class FakeCursor {
   constructor(
     private readonly state: FakeState,
-    private readonly items: IndexedDbLogEntry[],
+    private readonly storeState: FakeStoreState,
+    private readonly items: FakeRecord[],
     private index: number,
     private readonly request: FakeRequest<IDBCursorWithValue | null>,
     private readonly transaction?: FakeTransaction,
   ) {}
 
   get value() {
-    return this.items[this.index] as IndexedDbLogEntry;
+    return this.items[this.index] as FakeRecord;
   }
 
   continue() {
@@ -82,74 +92,92 @@ class FakeCursor {
     const next =
       this.index >= this.items.length
         ? null
-        : new FakeCursor(this.state, this.items, this.index, this.request, this.transaction);
+        : new FakeCursor(
+            this.state,
+            this.storeState,
+            this.items,
+            this.index,
+            this.request,
+            this.transaction,
+          );
     this.request.succeed(next as unknown as IDBCursorWithValue | null);
     this.transaction?.completeSoon();
   }
 
   delete() {
     const request = new FakeRequest<undefined>();
-    this.state.entries.delete(this.value.id);
+    this.storeState.records.delete(String(valueForKeyPath(this.value, this.storeState.keyPath)));
     request.succeed(undefined);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
   }
 }
 
-class FakeIndex {
+class FakeIndex<T extends FakeRecord = FakeRecord> {
   constructor(
     private readonly state: FakeState,
+    private readonly storeState: FakeStoreState<T>,
     private readonly keyPath: FakeKeyPath,
     private readonly transaction?: FakeTransaction,
   ) {}
 
   openCursor(_query?: IDBValidKey | IDBKeyRange | null, direction: IDBCursorDirection = "next") {
-    const items = [...this.state.entries.values()];
+    this.storeState.openCursorCalls += 1;
+    const items = [...this.storeState.records.values()];
     items.sort((left, right) =>
       compareKey(valueForKeyPath(left, this.keyPath), valueForKeyPath(right, this.keyPath)),
     );
     if (direction === "prev" || direction === "prevunique") items.reverse();
-    return createCursorRequest(this.state, items, this.transaction);
+    return createCursorRequest(this.state, this.storeState, items, this.transaction);
   }
 }
 
 function createCursorRequest(
   state: FakeState,
-  items: IndexedDbLogEntry[],
+  storeState: FakeStoreState,
+  items: FakeRecord[],
   transaction?: FakeTransaction,
 ) {
   const request = new FakeRequest<IDBCursorWithValue | null>();
-  const cursor = items.length === 0 ? null : new FakeCursor(state, items, 0, request, transaction);
+  const cursor =
+    items.length === 0 ? null : new FakeCursor(state, storeState, items, 0, request, transaction);
   request.succeed(cursor as unknown as IDBCursorWithValue | null);
   transaction?.completeSoon();
   return request as unknown as IDBRequest<IDBCursorWithValue | null>;
 }
 
-class FakeObjectStore {
+class FakeObjectStore<T extends FakeRecord = FakeRecord> {
   readonly indexNames = {
-    contains: (name: string) => this.state.indexes.has(name),
+    contains: (name: string) => this.storeState.indexes.has(name),
   };
 
   constructor(
     private readonly state: FakeState,
+    private readonly storeState: FakeStoreState<T>,
     private readonly transaction?: FakeTransaction,
   ) {}
 
   createIndex(name: string, keyPath: FakeKeyPath) {
-    this.state.indexes.set(name, keyPath);
+    this.storeState.indexes.set(name, keyPath);
   }
 
   index(name: string) {
-    const keyPath = this.state.indexes.get(name);
+    const keyPath = this.storeState.indexes.get(name);
     if (!keyPath) throw new Error(`Missing index ${name}`);
-    return new FakeIndex(this.state, keyPath, this.transaction) as unknown as IDBIndex;
+    return new FakeIndex(
+      this.state,
+      this.storeState,
+      keyPath,
+      this.transaction,
+    ) as unknown as IDBIndex;
   }
 
-  put(item: IndexedDbLogEntry) {
+  put(item: T) {
     const request = new FakeRequest<IDBValidKey>();
     const write = () => {
-      this.state.entries.set(item.id, item);
-      request.succeed(item.id);
+      const key = valueForKeyPath(item, this.storeState.keyPath);
+      this.storeState.records.set(String(key), item);
+      request.succeed(key);
       this.transaction?.completeSoon();
     };
     if (this.state.putGate) {
@@ -160,31 +188,44 @@ class FakeObjectStore {
     return request as unknown as IDBRequest<IDBValidKey>;
   }
 
-  getAll() {
-    const request = new FakeRequest<IndexedDbLogEntry[]>();
-    this.state.getAllCalls += 1;
-    request.succeed([...this.state.entries.values()]);
+  get(id: IDBValidKey) {
+    const request = new FakeRequest<T | undefined>();
+    request.succeed(this.storeState.records.get(String(id)));
     this.transaction?.completeSoon();
-    return request as unknown as IDBRequest<IndexedDbLogEntry[]>;
+    return request as unknown as IDBRequest<T | undefined>;
+  }
+
+  getAll() {
+    const request = new FakeRequest<T[]>();
+    this.storeState.getAllCalls += 1;
+    request.succeed([...this.storeState.records.values()]);
+    this.transaction?.completeSoon();
+    return request as unknown as IDBRequest<T[]>;
   }
 
   count() {
     const request = new FakeRequest<number>();
-    request.succeed(this.state.entries.size);
+    request.succeed(this.storeState.records.size);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<number>;
   }
 
   openCursor(_query?: IDBValidKey | IDBKeyRange | null, direction: IDBCursorDirection = "next") {
-    const items = [...this.state.entries.values()];
-    items.sort((left, right) => compareKey(left.id, right.id));
+    this.storeState.openCursorCalls += 1;
+    const items = [...this.storeState.records.values()];
+    items.sort((left, right) =>
+      compareKey(
+        valueForKeyPath(left, this.storeState.keyPath),
+        valueForKeyPath(right, this.storeState.keyPath),
+      ),
+    );
     if (direction === "prev" || direction === "prevunique") items.reverse();
-    return createCursorRequest(this.state, items, this.transaction);
+    return createCursorRequest(this.state, this.storeState, items, this.transaction);
   }
 
   delete(id: IDBValidKey) {
     const request = new FakeRequest<undefined>();
-    this.state.entries.delete(String(id));
+    this.storeState.records.delete(String(id));
     request.succeed(undefined);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
@@ -192,7 +233,7 @@ class FakeObjectStore {
 
   clear() {
     const request = new FakeRequest<undefined>();
-    this.state.entries.clear();
+    this.storeState.records.clear();
     request.succeed(undefined);
     this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
@@ -231,38 +272,62 @@ class FakeTransaction {
     for (const listener of this.listeners.get(type) ?? []) listener();
   }
 
-  objectStore() {
-    const store = new FakeObjectStore(this.state, this);
+  objectStore(name = "logs") {
+    const storeState = this.state.stores.get(name);
+    if (!storeState) throw new Error(`Missing store ${name}`);
+    const store = new FakeObjectStore(this.state, storeState, this);
     return store as unknown as IDBObjectStore;
   }
 }
 
 class FakeDatabase {
   readonly state: FakeState = {
-    entries: new Map<string, IndexedDbLogEntry>(),
-    getAllCalls: 0,
-    indexes: new Map<string, FakeKeyPath>(),
+    stores: new Map<string, FakeStoreState>(),
   };
   readonly transactionOptions: IDBTransactionOptions[] = [];
   closed = false;
-  private store: FakeObjectStore | undefined;
-  private hasStore = false;
   objectStoreNames = {
-    contains: () => this.hasStore,
+    contains: (name: string) => this.state.stores.has(name),
   };
 
   get entries() {
-    return this.state.entries;
+    return this.storeState<IndexedDbLogEntry>("logs", "id").records;
+  }
+
+  get sessions() {
+    return this.storeState<IndexedDbLogSession>("logs__sessions", "sessionId").records;
   }
 
   get getAllCalls() {
-    return this.state.getAllCalls;
+    return this.storeState<IndexedDbLogEntry>("logs", "id").getAllCalls;
   }
 
-  createObjectStore() {
-    this.hasStore = true;
-    this.store = new FakeObjectStore(this.state);
-    return this.store as unknown as IDBObjectStore;
+  get sessionGetAllCalls() {
+    return this.storeState<IndexedDbLogSession>("logs__sessions", "sessionId").getAllCalls;
+  }
+
+  get logCursorCalls() {
+    return this.storeState<IndexedDbLogEntry>("logs", "id").openCursorCalls;
+  }
+
+  get sessionCursorCalls() {
+    return this.storeState<IndexedDbLogSession>("logs__sessions", "sessionId").openCursorCalls;
+  }
+
+  resetCalls() {
+    for (const store of this.state.stores.values()) {
+      store.getAllCalls = 0;
+      store.openCursorCalls = 0;
+    }
+  }
+
+  createObjectStore(name: string, options?: IDBObjectStoreParameters) {
+    const keyPath =
+      typeof options?.keyPath === "string" || Array.isArray(options?.keyPath)
+        ? options.keyPath
+        : "id";
+    const store = this.storeState(name, keyPath);
+    return new FakeObjectStore(this.state, store) as unknown as IDBObjectStore;
   }
 
   transaction(
@@ -270,13 +335,26 @@ class FakeDatabase {
     _mode?: IDBTransactionMode,
     options?: IDBTransactionOptions,
   ) {
-    if (!this.store) this.createObjectStore();
     if (options) this.transactionOptions.push(options);
     return new FakeTransaction(this.state) as unknown as IDBTransaction;
   }
 
   close() {
     this.closed = true;
+  }
+
+  private storeState<T extends FakeRecord>(name: string, keyPath: FakeKeyPath): FakeStoreState<T> {
+    const existing = this.state.stores.get(name);
+    if (existing) return existing as FakeStoreState<T>;
+    const store: FakeStoreState<T> = {
+      getAllCalls: 0,
+      indexes: new Map<string, FakeKeyPath>(),
+      keyPath,
+      openCursorCalls: 0,
+      records: new Map<string, T>(),
+    };
+    this.state.stores.set(name, store as FakeStoreState);
+    return store;
   }
 }
 
@@ -288,7 +366,10 @@ class FakeIndexedDB {
     request.result = this.db;
     request.transaction = this.db.transaction() as unknown as FakeTransaction;
     queueMicrotask(() => {
-      request.dispatch("upgradeneeded");
+      request.dispatch("upgradeneeded", {
+        oldVersion: 0,
+        type: "upgradeneeded",
+      } as IDBVersionChangeEvent);
       request.dispatch("success");
     });
     return request as unknown as IDBOpenDBRequest;
@@ -490,6 +571,15 @@ describe("indexedDbTransport", () => {
     transport.log?.(event("a2", 3, { context: { sessionId: "session-a" } }), context);
     await transport.flush?.();
 
+    expect(idb.db.sessions.get("session-a")).toMatchObject({
+      byteLength: expect.any(Number),
+      count: 2,
+      firstSeen: 1,
+      lastSeen: 3,
+      sessionId: "session-a",
+    });
+    idb.db.resetCalls();
+
     expect(await transport.sessions()).toMatchObject([
       {
         count: 2,
@@ -510,6 +600,9 @@ describe("indexedDbTransport", () => {
       },
     ]);
     expect(idb.db.getAllCalls).toBe(0);
+    expect(idb.db.sessionGetAllCalls).toBe(0);
+    expect(idb.db.logCursorCalls).toBe(0);
+    expect(idb.db.sessionCursorCalls).toBe(2);
   });
 
   it("drops old persisted entries by maxEntries and ttl", async () => {
@@ -519,6 +612,7 @@ describe("indexedDbTransport", () => {
     const transport = indexedDbTransport({
       indexedDB: idb as unknown as IDBFactory,
       maxEntries: 2,
+      session: { id: "page-session" },
       ttlMs: 5,
     });
 
@@ -529,6 +623,14 @@ describe("indexedDbTransport", () => {
     await transport.flush?.();
 
     expect((await collect(transport.query())).map((item) => item.id)).toEqual(["second", "third"]);
+    expect(await transport.sessions()).toMatchObject([
+      {
+        count: 2,
+        firstSeen: 7,
+        lastSeen: 8,
+        sessionId: "page-session",
+      },
+    ]);
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.indexeddb.persisted.dropped.max-entries": 1,
       "transport.indexeddb.persisted.dropped.ttl": 1,
@@ -543,6 +645,7 @@ describe("indexedDbTransport", () => {
       indexedDB: idb as unknown as IDBFactory,
       maxBufferSize: 1,
       onDrop: (item, reason) => dropped.push(`${item.id}:${reason}`),
+      session: { id: "page-session" },
     });
 
     transport.log?.(event("kept", 1), context);
@@ -558,12 +661,14 @@ describe("indexedDbTransport", () => {
     });
     await transport.clear();
     expect(await transport.count()).toBe(0);
+    expect(await transport.sessions()).toEqual([]);
   });
 
   it("removes selected persisted logs by id", async () => {
     const idb = new FakeIndexedDB();
     const transport = indexedDbTransport({
       indexedDB: idb as unknown as IDBFactory,
+      session: { id: "page-session" },
     });
 
     transport.log?.(event("first", 1), context);
@@ -573,6 +678,14 @@ describe("indexedDbTransport", () => {
     await transport.remove(["first", "third"]);
 
     expect((await collect(transport.query())).map((item) => item.id)).toEqual(["second"]);
+    expect(await transport.sessions()).toMatchObject([
+      {
+        count: 1,
+        firstSeen: 2,
+        lastSeen: 2,
+        sessionId: "page-session",
+      },
+    ]);
   });
 
   it("passes durability to readwrite transactions when configured", async () => {

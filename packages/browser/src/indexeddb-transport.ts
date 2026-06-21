@@ -147,10 +147,12 @@ const DEFAULT_SESSION_CONTEXT_KEY = "sessionId";
 const DEFAULT_SPILL_MAX_ENTRIES = 200;
 const DEFAULT_SPILL_MAX_BYTES = 512 * 1024;
 const DEFAULT_SPILL_MAX_ORIGIN_BYTES = 5 * 1024 * 1024;
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const ORDER_INDEX_NAME = "createdAtSeq";
 const SESSION_INDEX_NAME = "sessionId";
 const SESSION_ORDER_INDEX_NAME = "sessionIdCreatedAtSeq";
+const SESSION_STORE_SUFFIX = "__sessions";
+const SESSION_LAST_SEEN_INDEX_NAME = "lastSeenSessionId";
 const SPILL_SCHEMA = "loggerjs.indexeddb-spill.v1";
 
 interface NormalizedSessionOptions {
@@ -380,6 +382,10 @@ function ensureIndex(store: IDBObjectStore, name: string, keyPath: string | read
   if (!indexExists(store, name)) store.createIndex(name, keyPath);
 }
 
+function sessionStoreNameFor(storeName: string): string {
+  return `${storeName}${SESSION_STORE_SUFFIX}`;
+}
+
 function getStoreIndex(store: IDBObjectStore, name: string): IDBIndex | undefined {
   const maybeStore = store as IDBObjectStore & {
     index?: (indexName: string) => IDBIndex;
@@ -430,6 +436,59 @@ function shouldKeepEntry(entry: IndexedDbLogEntry, options: IndexedDbTransportQu
   return true;
 }
 
+function addSessionSummary(
+  sessions: Map<string, IndexedDbLogSession>,
+  entry: IndexedDbLogEntry,
+): void {
+  if (!entry.sessionId) return;
+  const current = sessions.get(entry.sessionId);
+  if (current) {
+    current.firstSeen = Math.min(current.firstSeen, entry.createdAt);
+    current.lastSeen = Math.max(current.lastSeen, entry.createdAt);
+    current.count += 1;
+    current.byteLength += entry.byteLength;
+    return;
+  }
+  sessions.set(entry.sessionId, {
+    byteLength: entry.byteLength,
+    count: 1,
+    firstSeen: entry.createdAt,
+    lastSeen: entry.createdAt,
+    sessionId: entry.sessionId,
+  });
+}
+
+function mergeSessionSummary(
+  current: IndexedDbLogSession | undefined,
+  incoming: IndexedDbLogSession,
+): IndexedDbLogSession {
+  if (!current) return incoming;
+  return {
+    byteLength: current.byteLength + incoming.byteLength,
+    count: current.count + incoming.count,
+    firstSeen: Math.min(current.firstSeen, incoming.firstSeen),
+    lastSeen: Math.max(current.lastSeen, incoming.lastSeen),
+    sessionId: incoming.sessionId,
+  };
+}
+
+function orderSessions(
+  sessions: readonly IndexedDbLogSession[],
+  order: "asc" | "desc" = "desc",
+): IndexedDbLogSession[] {
+  // oxlint-disable-next-line no-array-sort -- Sort a copy for deterministic session lists.
+  const sorted = [...sessions].sort((left, right) => {
+    if (left.lastSeen !== right.lastSeen) return left.lastSeen - right.lastSeen;
+    return left.sessionId < right.sessionId ? -1 : left.sessionId > right.sessionId ? 1 : 0;
+  });
+  if (order === "asc") return sorted;
+  const reversed: IndexedDbLogSession[] = [];
+  for (let index = sorted.length - 1; index >= 0; index -= 1) {
+    reversed.push(sorted[index] as IndexedDbLogSession);
+  }
+  return reversed;
+}
+
 function orderRangeForQuery(options: IndexedDbTransportQueryOptions): IDBKeyRange | undefined {
   if (typeof IDBKeyRange === "undefined") return undefined;
   if (options.sessionId !== undefined) {
@@ -455,6 +514,28 @@ function orderRangeForQuery(options: IndexedDbTransportQueryOptions): IDBKeyRang
   if (lower) return IDBKeyRange.lowerBound(lower);
   if (upper) return IDBKeyRange.upperBound(upper);
   return undefined;
+}
+
+function orderRangeForSessionId(sessionId: string): IDBKeyRange | undefined {
+  if (typeof IDBKeyRange === "undefined") return undefined;
+  return IDBKeyRange.bound(
+    [sessionId, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, ""],
+    [sessionId, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, "\uffff"],
+  );
+}
+
+function migrateSessionSummaries(logStore: IDBObjectStore, sessionStore: IDBObjectStore): void {
+  const summaries = new Map<string, IndexedDbLogSession>();
+  const request = logStore.openCursor();
+  request.addEventListener("success", () => {
+    const cursor = request.result;
+    if (!cursor) {
+      for (const summary of summaries.values()) sessionStore.put(summary);
+      return;
+    }
+    addSessionSummary(summaries, cursor.value as IndexedDbLogEntry);
+    cursor.continue();
+  });
 }
 
 function iterateCursor(
@@ -494,6 +575,7 @@ function iterateCursor(
 export function indexedDbTransport(options: IndexedDbTransportOptions = {}): IndexedDbTransport {
   const dbName = options.dbName ?? DEFAULT_DB_NAME;
   const storeName = options.storeName ?? DEFAULT_STORE_NAME;
+  const sessionStoreName = sessionStoreNameFor(storeName);
   const codec = options.codec ?? (safeJsonCodec() as Codec<string | Uint8Array>);
   const batchSize = normalizePositiveInteger(options.batchSize, 100);
   const flushIntervalMs = normalizePositiveInteger(options.flushIntervalMs, 1000);
@@ -644,7 +726,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       if (!idb) throw new Error("IndexedDB is not available for indexedDbTransport");
       return new Promise<IDBDatabase>((resolve, reject) => {
         const request = idb.open(dbName, DB_VERSION);
-        request.addEventListener("upgradeneeded", () => {
+        request.addEventListener("upgradeneeded", (event) => {
           const db = request.result;
           const store = db.objectStoreNames.contains(storeName)
             ? request.transaction?.objectStore(storeName)
@@ -657,6 +739,12 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           ensureIndex(store, ORDER_INDEX_NAME, ["createdAt", "seq", "id"]);
           ensureIndex(store, SESSION_INDEX_NAME, "sessionId");
           ensureIndex(store, SESSION_ORDER_INDEX_NAME, ["sessionId", "createdAt", "seq", "id"]);
+          const sessionStore = db.objectStoreNames.contains(sessionStoreName)
+            ? request.transaction?.objectStore(sessionStoreName)
+            : db.createObjectStore(sessionStoreName, { keyPath: "sessionId" });
+          if (!sessionStore) return;
+          ensureIndex(sessionStore, SESSION_LAST_SEEN_INDEX_NAME, ["lastSeen", "sessionId"]);
+          if (event.oldVersion < 4) migrateSessionSummaries(store, sessionStore);
         });
         request.addEventListener(
           "success",
@@ -676,13 +764,17 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     return dbPromise;
   };
 
-  const createTransaction = (db: IDBDatabase, mode: IDBTransactionMode) => {
-    if (mode !== "readwrite" || !transactionOptions) return db.transaction(storeName, mode);
+  const createTransaction = (
+    db: IDBDatabase,
+    mode: IDBTransactionMode,
+    stores: string | string[] = storeName,
+  ) => {
+    if (mode !== "readwrite" || !transactionOptions) return db.transaction(stores, mode);
     try {
-      return db.transaction(storeName, mode, transactionOptions);
+      return db.transaction(stores, mode, transactionOptions);
     } catch {
       statsState.transactionOptionFallbacks += 1;
-      return db.transaction(storeName, mode);
+      return db.transaction(stores, mode);
     }
   };
 
@@ -709,6 +801,99 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     }
   };
 
+  const withLogAndSessionStores = async <T>(
+    mode: IDBTransactionMode,
+    run: (
+      store: IDBObjectStore,
+      sessionStore: IDBObjectStore,
+      transaction: IDBTransaction,
+    ) => T | Promise<T>,
+  ): Promise<T> => {
+    const db = await openDb();
+    const tx = createTransaction(db, mode, [storeName, sessionStoreName]);
+    const settled = transactionToPromise(tx);
+    try {
+      const result = await run(tx.objectStore(storeName), tx.objectStore(sessionStoreName), tx);
+      await settled;
+      return result;
+    } catch (error) {
+      if (tx.error === null) {
+        try {
+          tx.abort();
+        } catch {
+          // The transaction may already be committed or aborted.
+        }
+      }
+      throw error;
+    }
+  };
+
+  const withSessionStore = async <T>(
+    mode: IDBTransactionMode,
+    run: (sessionStore: IDBObjectStore, transaction: IDBTransaction) => T | Promise<T>,
+  ): Promise<T> => {
+    const db = await openDb();
+    const tx = createTransaction(db, mode, sessionStoreName);
+    const settled = transactionToPromise(tx);
+    try {
+      const result = await run(tx.objectStore(sessionStoreName), tx);
+      await settled;
+      return result;
+    } catch (error) {
+      if (tx.error === null) {
+        try {
+          tx.abort();
+        } catch {
+          // The transaction may already be committed or aborted.
+        }
+      }
+      throw error;
+    }
+  };
+
+  const mergeSessionSummaries = async (
+    sessionStore: IDBObjectStore,
+    entries: readonly IndexedDbLogEntry[],
+  ) => {
+    const summaries = new Map<string, IndexedDbLogSession>();
+    for (const entry of entries) addSessionSummary(summaries, entry);
+    for (const summary of summaries.values()) {
+      // oxlint-disable-next-line no-await-in-loop -- IndexedDB requests must stay ordered in the active transaction.
+      const current = await requestToPromise(
+        sessionStore.get(summary.sessionId) as IDBRequest<IndexedDbLogSession | undefined>,
+      );
+      // oxlint-disable-next-line no-await-in-loop -- IndexedDB requests must stay ordered in the active transaction.
+      await requestToPromise(sessionStore.put(mergeSessionSummary(current, summary)));
+    }
+  };
+
+  const rebuildSessionSummaries = async (
+    store: IDBObjectStore,
+    sessionStore: IDBObjectStore,
+    sessionIds: ReadonlySet<string>,
+  ) => {
+    if (sessionIds.size === 0) return;
+    const index = getStoreIndex(store, SESSION_ORDER_INDEX_NAME);
+    for (const sessionId of sessionIds) {
+      const summaries = new Map<string, IndexedDbLogSession>();
+      const range = orderRangeForSessionId(sessionId);
+      const request = index && range ? index.openCursor(range) : store.openCursor();
+      // oxlint-disable-next-line no-await-in-loop -- Rebuilds one session at a time inside the active transaction.
+      await iterateCursor(request, (cursor) => {
+        const entry = cursor.value as IndexedDbLogEntry;
+        if (entry.sessionId === sessionId) addSessionSummary(summaries, entry);
+      });
+      const summary = summaries.get(sessionId);
+      if (summary) {
+        // oxlint-disable-next-line no-await-in-loop -- IndexedDB requests must stay ordered in the active transaction.
+        await requestToPromise(sessionStore.put(summary));
+      } else {
+        // oxlint-disable-next-line no-await-in-loop -- IndexedDB requests must stay ordered in the active transaction.
+        await requestToPromise(sessionStore.delete(sessionId));
+      }
+    }
+  };
+
   const getEntries = async () =>
     orderEntries(
       await withStore("readonly", (store) =>
@@ -727,12 +912,15 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
 
   const deleteEntries = async (entries: readonly IndexedDbLogEntry[], reason: string) => {
     if (entries.length === 0) return;
-    await withStore("readwrite", async (store) => {
+    await withLogAndSessionStores("readwrite", async (store, sessionStore) => {
+      const affectedSessionIds = new Set<string>();
       for (const entry of entries) {
         // oxlint-disable-next-line no-await-in-loop -- Deletes are sequenced for fake IDB compatibility.
         await requestToPromise(store.delete(entry.id));
+        if (entry.sessionId) affectedSessionIds.add(entry.sessionId);
         dropPersistedEntry(entry, reason);
       }
+      await rebuildSessionSummaries(store, sessionStore, affectedSessionIds);
     });
   };
 
@@ -741,18 +929,21 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     openCursor: (store: IDBObjectStore) => IDBRequest<IDBCursorWithValue | null> | undefined,
     shouldDelete: (entry: IndexedDbLogEntry, deleted: number) => boolean,
   ): Promise<number | undefined> =>
-    withStore("readwrite", async (store) => {
+    withLogAndSessionStores("readwrite", async (store, sessionStore) => {
       const request = openCursor(store);
       if (!request) return undefined;
       let deleted = 0;
+      const affectedSessionIds = new Set<string>();
       await iterateCursor(request, (cursor) => {
         const entry = cursor.value as IndexedDbLogEntry;
         if (!shouldDelete(entry, deleted)) return false;
         cursor.delete();
         deleted += 1;
+        if (entry.sessionId) affectedSessionIds.add(entry.sessionId);
         dropPersistedEntry(entry, reason);
         return true;
       });
+      await rebuildSessionSummaries(store, sessionStore, affectedSessionIds);
       return deleted;
     });
 
@@ -833,41 +1024,26 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
   const listSessions = async (
     sessionQueryOptions: IndexedDbTransportSessionQueryOptions = {},
   ): Promise<IndexedDbLogSession[]> => {
-    const sessions = new Map<string, IndexedDbLogSession>();
-    const add = (entry: IndexedDbLogEntry) => {
-      if (!entry.sessionId) return;
-      const current = sessions.get(entry.sessionId);
-      if (current) {
-        current.firstSeen = Math.min(current.firstSeen, entry.createdAt);
-        current.lastSeen = Math.max(current.lastSeen, entry.createdAt);
-        current.count += 1;
-        current.byteLength += entry.byteLength;
-        return;
+    const limit = sessionQueryOptions.limit;
+    if (limit !== undefined && limit <= 0) return [];
+    return withSessionStore("readonly", async (sessionStore) => {
+      const sessions: IndexedDbLogSession[] = [];
+      const index = getStoreIndex(sessionStore, SESSION_LAST_SEEN_INDEX_NAME);
+      if (!index) {
+        const items = await requestToPromise(
+          sessionStore.getAll() as IDBRequest<IndexedDbLogSession[]>,
+        );
+        return orderSessions(items, sessionQueryOptions.order).slice(0, limit);
       }
-      sessions.set(entry.sessionId, {
-        byteLength: entry.byteLength,
-        count: 1,
-        firstSeen: entry.createdAt,
-        lastSeen: entry.createdAt,
-        sessionId: entry.sessionId,
-      });
-    };
-
-    const usedCursor = await withStore("readonly", async (store) => {
-      const index = getStoreIndex(store, ORDER_INDEX_NAME);
-      if (!index) return false;
-      await iterateCursor(index.openCursor(), (cursor) => add(cursor.value as IndexedDbLogEntry));
-      return true;
+      await iterateCursor(
+        index.openCursor(undefined, sessionQueryOptions.order === "asc" ? "next" : "prev"),
+        (cursor) => {
+          sessions.push(cursor.value as IndexedDbLogSession);
+          return limit === undefined || sessions.length < limit;
+        },
+      );
+      return sessions;
     });
-    if (!usedCursor) for (const entry of await getEntries()) add(entry);
-
-    // oxlint-disable-next-line no-array-sort -- Sort a copy for deterministic session lists.
-    const ordered = [...sessions.values()].sort((left, right) => {
-      if (left.lastSeen !== right.lastSeen) return left.lastSeen - right.lastSeen;
-      return left.sessionId < right.sessionId ? -1 : left.sessionId > right.sessionId ? 1 : 0;
-    });
-    if (sessionQueryOptions.order !== "asc") ordered.reverse();
-    return ordered.slice(0, sessionQueryOptions.limit);
   };
 
   const pruneWithEntries = async () => {
@@ -1031,10 +1207,23 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     statsState.lastFlushBatchSize = events.length;
     const entries = events.map(eventToEntry);
     try {
-      await withStore("readwrite", (store) => {
+      await withLogAndSessionStores("readwrite", async (store, sessionStore) => {
+        const rebuildSessionIds = new Set<string>();
         for (const entry of entries) {
-          store.put(entry);
+          // oxlint-disable-next-line no-await-in-loop -- Reads must precede the matching put for overwrite accounting.
+          const existing = await requestToPromise(
+            store.get(entry.id) as IDBRequest<IndexedDbLogEntry | undefined>,
+          );
+          if (existing?.sessionId) rebuildSessionIds.add(existing.sessionId);
+          if (existing && entry.sessionId) rebuildSessionIds.add(entry.sessionId);
+          // oxlint-disable-next-line no-await-in-loop -- IndexedDB requests must stay ordered in the active transaction.
+          await requestToPromise(store.put(entry));
         }
+        await rebuildSessionSummaries(store, sessionStore, rebuildSessionIds);
+        await mergeSessionSummaries(
+          sessionStore,
+          entries.filter((entry) => !entry.sessionId || !rebuildSessionIds.has(entry.sessionId)),
+        );
       });
       statsState.persisted += entries.length;
       incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);
@@ -1299,7 +1488,10 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       clearPromise = (async () => {
         await inFlightFlush;
         await inFlightDrain;
-        await withStore("readwrite", (store) => requestToPromise(store.clear()));
+        await withLogAndSessionStores("readwrite", async (store, sessionStore) => {
+          await requestToPromise(store.clear());
+          await requestToPromise(sessionStore.clear());
+        });
       })().finally(() => {
         clearPromise = undefined;
       });
@@ -1309,11 +1501,18 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       await flushPending();
       const items = typeof ids === "string" ? [ids] : ids;
       if (items.length === 0) return;
-      await withStore("readwrite", async (store) => {
+      await withLogAndSessionStores("readwrite", async (store, sessionStore) => {
+        const affectedSessionIds = new Set<string>();
         for (const id of items) {
+          // oxlint-disable-next-line no-await-in-loop -- Reads must precede deletes for session metadata repair.
+          const entry = await requestToPromise(
+            store.get(id) as IDBRequest<IndexedDbLogEntry | undefined>,
+          );
+          if (entry?.sessionId) affectedSessionIds.add(entry.sessionId);
           // oxlint-disable-next-line no-await-in-loop -- Deletes must preserve fake IDB transaction ordering.
           await requestToPromise(store.delete(id));
         }
+        await rebuildSessionSummaries(store, sessionStore, affectedSessionIds);
       });
     },
     async *query(queryOptions: IndexedDbTransportQueryOptions = {}) {
