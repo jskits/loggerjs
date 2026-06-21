@@ -413,15 +413,21 @@ class FakeDatabase {
 class FakeIndexedDB {
   readonly db = new FakeDatabase();
 
+  constructor(private readonly oldVersion = 0) {}
+
   open() {
     const request = new FakeOpenRequest();
     request.result = this.db;
     request.transaction = this.db.transaction() as unknown as FakeTransaction;
     queueMicrotask(() => {
       request.dispatch("upgradeneeded", {
-        oldVersion: 0,
+        oldVersion: this.oldVersion,
         type: "upgradeneeded",
       } as IDBVersionChangeEvent);
+      if (this.oldVersion > 0) {
+        setTimeout(() => request.dispatch("success"), 0);
+        return;
+      }
       request.dispatch("success");
     });
     return request as unknown as IDBOpenDBRequest;
@@ -669,6 +675,70 @@ describe("indexedDbTransport", () => {
     expect(idb.db.sessionGetAllCalls).toBe(0);
     expect(idb.db.logCursorCalls).toBe(0);
     expect(idb.db.sessionCursorCalls).toBe(2);
+  });
+
+  it("migrates v3 log entries into session metadata", async () => {
+    const idb = new FakeIndexedDB(3);
+    idb.db.entries.set("a1", {
+      byteLength: 10,
+      createdAt: 1,
+      id: "a1",
+      level: 30,
+      levelName: "info",
+      logger: "web",
+      payload: "{}",
+      seq: 1,
+      sessionId: "session-a",
+    } satisfies IndexedDbLogEntry);
+    idb.db.entries.set("b1", {
+      byteLength: 20,
+      createdAt: 2,
+      id: "b1",
+      level: 30,
+      levelName: "info",
+      logger: "web",
+      payload: "{}",
+      seq: 2,
+      sessionId: "session-b",
+    } satisfies IndexedDbLogEntry);
+    idb.db.entries.set("a2", {
+      byteLength: 30,
+      createdAt: 3,
+      id: "a2",
+      level: 30,
+      levelName: "info",
+      logger: "web",
+      payload: "{}",
+      seq: 3,
+      sessionId: "session-a",
+    } satisfies IndexedDbLogEntry);
+
+    const transport = indexedDbTransport({
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    expect(await transport.sessions()).toMatchObject([
+      {
+        byteLength: 40,
+        count: 2,
+        firstSeen: 1,
+        lastSeen: 3,
+        sessionId: "session-a",
+      },
+      {
+        byteLength: 20,
+        count: 1,
+        firstSeen: 2,
+        lastSeen: 2,
+        sessionId: "session-b",
+      },
+    ]);
+    expect(idb.db.sessions.get("session-a")).toMatchObject({
+      byteLength: 40,
+      count: 2,
+      firstSeen: 1,
+      lastSeen: 3,
+    });
   });
 
   it("drops old persisted entries by maxEntries and ttl", async () => {
