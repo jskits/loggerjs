@@ -40,6 +40,7 @@ type FakeRecord = IndexedDbLogEntry | IndexedDbLogSession;
 interface FakeStoreState<T extends FakeRecord = FakeRecord> {
   records: Map<string, T>;
   getAllCalls: number;
+  lastCursorSize: number;
   openCursorCalls: number;
   indexes: Map<string, FakeKeyPath>;
   keyPath: FakeKeyPath;
@@ -71,6 +72,46 @@ function compareKey(left: IDBValidKey, right: IDBValidKey): number {
   const leftString = String(left);
   const rightString = String(right);
   return leftString < rightString ? -1 : leftString > rightString ? 1 : 0;
+}
+
+class FakeKeyRange {
+  private constructor(
+    private readonly lower: IDBValidKey | undefined,
+    private readonly upper: IDBValidKey | undefined,
+    private readonly lowerOpen: boolean,
+    private readonly upperOpen: boolean,
+  ) {}
+
+  static bound(lower: IDBValidKey, upper: IDBValidKey, lowerOpen = false, upperOpen = false) {
+    return new FakeKeyRange(lower, upper, lowerOpen, upperOpen);
+  }
+
+  static lowerBound(lower: IDBValidKey, open = false) {
+    return new FakeKeyRange(lower, undefined, open, false);
+  }
+
+  static upperBound(upper: IDBValidKey, open = false) {
+    return new FakeKeyRange(undefined, upper, false, open);
+  }
+
+  includes(key: IDBValidKey): boolean {
+    if (this.lower !== undefined) {
+      const lower = compareKey(key, this.lower);
+      if (lower < 0 || (lower === 0 && this.lowerOpen)) return false;
+    }
+    if (this.upper !== undefined) {
+      const upper = compareKey(key, this.upper);
+      if (upper > 0 || (upper === 0 && this.upperOpen)) return false;
+    }
+    return true;
+  }
+}
+
+function keyMatchesQuery(key: IDBValidKey, query?: IDBValidKey | IDBKeyRange | null): boolean {
+  if (query === undefined || query === null) return true;
+  const maybeRange = query as { includes?: (value: IDBValidKey) => boolean };
+  if (typeof maybeRange.includes === "function") return maybeRange.includes(key);
+  return compareKey(key, query as IDBValidKey) === 0;
 }
 
 class FakeCursor {
@@ -123,7 +164,10 @@ class FakeIndex<T extends FakeRecord = FakeRecord> {
 
   openCursor(_query?: IDBValidKey | IDBKeyRange | null, direction: IDBCursorDirection = "next") {
     this.storeState.openCursorCalls += 1;
-    const items = [...this.storeState.records.values()];
+    const items = [...this.storeState.records.values()].filter((item) =>
+      keyMatchesQuery(valueForKeyPath(item, this.keyPath), _query),
+    );
+    this.storeState.lastCursorSize = items.length;
     items.sort((left, right) =>
       compareKey(valueForKeyPath(left, this.keyPath), valueForKeyPath(right, this.keyPath)),
     );
@@ -212,7 +256,10 @@ class FakeObjectStore<T extends FakeRecord = FakeRecord> {
 
   openCursor(_query?: IDBValidKey | IDBKeyRange | null, direction: IDBCursorDirection = "next") {
     this.storeState.openCursorCalls += 1;
-    const items = [...this.storeState.records.values()];
+    const items = [...this.storeState.records.values()].filter((item) =>
+      keyMatchesQuery(valueForKeyPath(item, this.storeState.keyPath), _query),
+    );
+    this.storeState.lastCursorSize = items.length;
     items.sort((left, right) =>
       compareKey(
         valueForKeyPath(left, this.storeState.keyPath),
@@ -310,6 +357,10 @@ class FakeDatabase {
     return this.storeState<IndexedDbLogEntry>("logs", "id").openCursorCalls;
   }
 
+  get logLastCursorSize() {
+    return this.storeState<IndexedDbLogEntry>("logs", "id").lastCursorSize;
+  }
+
   get sessionCursorCalls() {
     return this.storeState<IndexedDbLogSession>("logs__sessions", "sessionId").openCursorCalls;
   }
@@ -350,6 +401,7 @@ class FakeDatabase {
       getAllCalls: 0,
       indexes: new Map<string, FakeKeyPath>(),
       keyPath,
+      lastCursorSize: 0,
       openCursorCalls: 0,
       records: new Map<string, T>(),
     };
@@ -496,6 +548,7 @@ describe("indexedDbTransport", () => {
   });
 
   it("persists buffered logs with micro-batch flush and queries them in order", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const idb = new FakeIndexedDB();
     const transport = indexedDbTransport({
       batchSize: 2,
@@ -517,6 +570,11 @@ describe("indexedDbTransport", () => {
         (item) => item.id,
       ),
     ).toEqual(["first"]);
+    idb.db.resetCalls();
+    expect((await collect(transport.query({ from: 2, to: 2 }))).map((item) => item.id)).toEqual([
+      "second",
+    ]);
+    expect(idb.db.logLastCursorSize).toBe(1);
     expect(idb.db.getAllCalls).toBe(0);
     expect(transport.stats()).toMatchObject({
       bufferDepth: 0,
@@ -526,7 +584,7 @@ describe("indexedDbTransport", () => {
       maxBufferDepth: 2,
       persisted: 2,
       prunes: 1,
-      queries: 3,
+      queries: 4,
       queryFallbacks: 0,
     });
     expect(getLoggerMetaStats()).toMatchObject({
@@ -535,6 +593,7 @@ describe("indexedDbTransport", () => {
   });
 
   it("persists page sessions and queries logs by session", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const idb = new FakeIndexedDB();
     const transport = indexedDbTransport({
       indexedDB: idb as unknown as IDBFactory,
@@ -557,6 +616,13 @@ describe("indexedDbTransport", () => {
     expect((await collect(transport.query({ sessionId: "page-session" })))[0]?.context).toEqual({
       sessionId: "page-session",
     });
+    idb.db.resetCalls();
+    expect(
+      (await collect(transport.query({ from: 2, sessionId: "checkout-session" }))).map(
+        (item) => item.id,
+      ),
+    ).toEqual(["third"]);
+    expect(idb.db.logLastCursorSize).toBe(1);
   });
 
   it("summarizes persisted sessions by recency", async () => {
@@ -606,6 +672,7 @@ describe("indexedDbTransport", () => {
   });
 
   it("drops old persisted entries by maxEntries and ttl", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const now = vi.spyOn(Date, "now");
     now.mockReturnValue(10);
     const idb = new FakeIndexedDB();
