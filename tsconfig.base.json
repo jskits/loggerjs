@@ -17,6 +17,8 @@
     "paths": {
       "@loggerjs/core": ["./packages/core/src/index.ts"],
       "@loggerjs/browser": ["./packages/browser/src/index.ts"],
+      "@loggerjs/browser/transport-indexeddb": ["./packages/browser/src/indexeddb-transport.ts"],
+      "@loggerjs/browser/export-zip": ["./packages/browser/src/zip-export.ts"],
       "@loggerjs/database": ["./packages/database/src/index.ts"],
       "@loggerjs/node": ["./packages/node/src/index.ts"],
       "@loggerjs/pretty": ["./packages/pretty/src/index.ts"],
