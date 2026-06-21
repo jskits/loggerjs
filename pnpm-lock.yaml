@@ -117,6 +117,9 @@ importers:
       '@loggerjs/browser':
         specifier: workspace:*
         version: link:../../packages/browser
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@loggerjs/processors':
         specifier: workspace:*
         version: link:../../packages/processors

@@ -101,12 +101,9 @@ export const logger = createLogger({
 当 support 或 QA 需要一份可本地保留、可按页面 session 导出的日志包时使用。这个本地 store 和 HTTP delivery queue 分开：IndexedDB 是可查询的事实来源，`localStorageSpill` 只保护用户刷新或关闭页面时尚未完成 async IndexedDB write 的小尾巴。
 
 ```ts
-import {
-  createLogger,
-  downloadBlob,
-  exportLogsToZip,
-  indexedDbTransport,
-} from "@loggerjs/browser";
+import { createLogger } from "@loggerjs/core";
+import { indexedDbTransport } from "@loggerjs/browser/transport-indexeddb";
+import { downloadBlob, exportLogsToZip } from "@loggerjs/browser/export-zip";
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const supportStore = indexedDbTransport({

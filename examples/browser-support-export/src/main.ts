@@ -1,4 +1,6 @@
-import { createLogger, downloadBlob, exportLogsToZip, indexedDbTransport } from "@loggerjs/browser";
+import { createLogger } from "@loggerjs/core";
+import { indexedDbTransport } from "@loggerjs/browser/transport-indexeddb";
+import { downloadBlob, exportLogsToZip } from "@loggerjs/browser/export-zip";
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 function randomId(): string {

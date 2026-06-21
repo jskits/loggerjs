@@ -75,7 +75,7 @@ For a support-log store that survives reloads and exports per page session, the
 short setup is:
 
 ```ts
-import { createLogger } from "@loggerjs/browser";
+import { createLogger } from "@loggerjs/core";
 import { indexedDbTransport } from "@loggerjs/browser/transport-indexeddb";
 import { downloadBlob, exportLogsToZip } from "@loggerjs/browser/export-zip";
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
