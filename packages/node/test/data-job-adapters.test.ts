@@ -107,4 +107,83 @@ describe("data and job adapters", () => {
       }),
     );
   });
+
+  it("classifies BullMQ addBulk as publish", async () => {
+    const client = {
+      name: "emails",
+      addBulk: vi.fn<(jobs: unknown[]) => Promise<unknown>>(async () => [
+        { id: "job-1" },
+        { id: "job-2" },
+      ]),
+    };
+    const { context, capture } = createContext("bullmq");
+    bullMqIntegration({ client, captureAll: true, capturePayload: true }).setup(context);
+
+    await client.addBulk([
+      { data: { id: "job-1" }, name: "welcome" },
+      { data: { id: "job-2" }, name: "receipt" },
+    ]);
+
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Queue publish emails",
+        props: {
+          queue: expect.objectContaining({
+            kind: "bullmq",
+            method: "addBulk",
+            operation: "publish",
+            payload: [
+              { data: { id: "job-1" }, name: "welcome" },
+              { data: { id: "job-2" }, name: "receipt" },
+            ],
+            queueName: "emails",
+            system: "bullmq",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("wraps legacy BullMQ process methods as consume operations", () => {
+    const client = {
+      name: "emails",
+      process: vi.fn<(name: string, handler: () => void) => void>(),
+    };
+    const { context, capture } = createContext("bullmq");
+    bullMqIntegration({ client, captureAll: true }).setup(context);
+
+    client.process("welcome", () => {});
+
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Queue consume welcome",
+        props: {
+          queue: expect.objectContaining({
+            kind: "bullmq",
+            method: "process",
+            operation: "consume",
+            queueName: "welcome",
+            system: "bullmq",
+          }),
+        },
+      }),
+    );
+  });
+
+  it("does not hook BullMQ Worker or QueueEvents lifecycle listeners", () => {
+    const client = {
+      name: "emails",
+      add: vi.fn<(name: string, payload: unknown) => Promise<unknown>>(async () => ({
+        id: "job-1",
+      })),
+      off: vi.fn<(event: string, listener: (...args: unknown[]) => void) => void>(),
+      on: vi.fn<(event: string, listener: (...args: unknown[]) => void) => void>(),
+    };
+    const { context } = createContext("bullmq");
+
+    bullMqIntegration({ client, captureAll: true }).setup(context);
+
+    expect(client.on).not.toHaveBeenCalled();
+    expect(client.off).not.toHaveBeenCalled();
+  });
 });
