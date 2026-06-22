@@ -238,6 +238,22 @@ describe("otlpJsonCodec", () => {
 });
 
 describe("otlpHttpTransport", () => {
+  const event: LogEvent = {
+    id: "evt-1",
+    time: 1,
+    seq: 1,
+    level: 30,
+    levelName: "info",
+    logger: "api",
+    message: "created",
+  };
+  const context = {
+    loggerName: "test",
+    now: () => 1,
+    toEvent: recordToEvent,
+    reportInternalError() {},
+  };
+
   it("uses shared batch retry options", async () => {
     const fetchFn = vi.fn<typeof fetch>(async () => {
       if (fetchFn.mock.calls.length === 1) throw new Error("temporary failure");
@@ -250,25 +266,112 @@ describe("otlpHttpTransport", () => {
       retryBaseDelayMs: 0,
       fetchFn,
     });
-    const event: LogEvent = {
-      id: "evt-1",
-      time: 1,
-      seq: 1,
-      level: 30,
-      levelName: "info",
-      logger: "api",
-      message: "created",
-    };
-    const context = {
-      loggerName: "test",
-      now: () => 1,
-      toEvent: recordToEvent,
-      reportInternalError() {},
-    };
 
     transport.log?.(event, context);
     await transport.flush?.();
 
     expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("posts OTLP JSON with default content type and custom headers", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => ({ ok: true, status: 204 }) as Response);
+    const transport = otlpHttpTransport({
+      url: "https://collector.example/v1/logs",
+      flushIntervalMs: 0,
+      headers: { authorization: "Bearer token" },
+      fetchFn,
+    });
+
+    transport.log?.(event, context);
+    await transport.flush?.();
+
+    const [url, init] = fetchFn.mock.calls[0] ?? [];
+    const payload = JSON.parse(String(init?.body));
+    expect(url).toBe("https://collector.example/v1/logs");
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: "Bearer token",
+      },
+    });
+    expect(payload.resourceLogs[0].scopeLogs[0].logRecords[0]).toMatchObject({
+      body: { stringValue: "created" },
+      severityText: "INFO",
+    });
+  });
+
+  it("throws a transport-specific error on non-2xx responses", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => ({ ok: false, status: 503 }) as Response);
+    const transport = otlpHttpTransport({
+      url: "https://collector.example/v1/logs",
+      flushIntervalMs: 0,
+      maxRetries: 0,
+      fetchFn,
+    });
+
+    transport.log?.(event, context);
+
+    await expect(transport.flush?.()).rejects.toThrow("otlpHttpTransport failed with status 503");
+  });
+
+  it("propagates fetch rejections when retries are exhausted", async () => {
+    const error = new Error("collector unavailable");
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      throw error;
+    });
+    const transport = otlpHttpTransport({
+      url: "https://collector.example/v1/logs",
+      flushIntervalMs: 0,
+      maxRetries: 0,
+      fetchFn,
+    });
+
+    transport.log?.(event, context);
+
+    await expect(transport.flush?.()).rejects.toBe(error);
+  });
+
+  it("filters below minLevel before sending", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => ({ ok: true, status: 204 }) as Response);
+    const transport = otlpHttpTransport({
+      url: "https://collector.example/v1/logs",
+      flushIntervalMs: 0,
+      minLevel: "warn",
+      fetchFn,
+    });
+
+    transport.log?.(event, context);
+    await transport.flush?.();
+
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("throws a clear error when fetch is unavailable", async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: undefined,
+        writable: true,
+      });
+      const transport = otlpHttpTransport({
+        url: "https://collector.example/v1/logs",
+        flushIntervalMs: 0,
+        maxRetries: 0,
+      });
+
+      transport.log?.(event, context);
+
+      await expect(transport.flush?.()).rejects.toThrow(
+        "fetch is not available. Use Node.js 18+ or pass fetchFn.",
+      );
+    } finally {
+      Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: originalFetch,
+        writable: true,
+      });
+    }
   });
 });

@@ -56,10 +56,10 @@ const packageCoverageThresholds = {
     statements: 86,
   },
   "packages/otel/src/**/*.ts": {
-    branches: 66,
-    functions: 94,
-    lines: 88,
-    statements: 81,
+    branches: 80,
+    functions: 100,
+    lines: 98,
+    statements: 94,
   },
   "packages/pretty/src/**/*.ts": {
     branches: 68,
