@@ -1,5 +1,15 @@
 # @loggerjs/otel
 
+## 0.5.4
+
+### Patch Changes
+
+- Hardened OTLP HTTP transport coverage for default content type, custom headers, `minLevel` filtering, missing `fetch`, rejected `fetch`, and non-2xx collector responses.
+- Raised the OTLP package coverage floor after the transport failure-path tests.
+- No OTEL runtime source changes landed between the `0.5.3` and `0.5.4` package releases.
+- Updated dependencies:
+  - @loggerjs/core@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes

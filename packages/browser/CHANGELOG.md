@@ -1,5 +1,16 @@
 # @loggerjs/browser
 
+## 0.5.4
+
+### Patch Changes
+
+- Added durable IndexedDB session summaries in a separate metadata store, migrated existing stores to DB version 4, and made `sessions()` read ordered summaries without scanning every persisted log entry.
+- Fixed IndexedDB session metadata maintenance when entries are flushed, overwritten, pruned, removed, or cleared, including serialization between `clear()`, in-flight flushes, and localStorage spill draining.
+- Added short support-log setup examples that use stable `@loggerjs/browser/transport-indexeddb` and `@loggerjs/browser/export-zip` subpath imports.
+- Expanded browser runtime fallback coverage for BroadcastChannel, WebSocket, ReportingObserver, and browser HTTP delivery, and raised the browser package and HTTP transport coverage floors.
+- Updated dependencies:
+  - @loggerjs/core@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes

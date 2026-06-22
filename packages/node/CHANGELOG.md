@@ -1,5 +1,14 @@
 # @loggerjs/node
 
+## 0.5.4
+
+### Patch Changes
+
+- `bullMqIntegration()` now classifies `addBulk()` calls as `publish` operations instead of the generic `other` operation.
+- Added contract coverage pinning the documented Node integration boundaries: Prisma raw-query methods only, BullMQ Queue-like methods only, and Nest Express-compatible middleware only.
+- Updated dependencies:
+  - @loggerjs/core@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes

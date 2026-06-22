@@ -1,5 +1,15 @@
 # @loggerjs/pretty
 
+## 0.5.4
+
+### Patch Changes
+
+- Expanded formatter, pretty console, and stream transport coverage for output suppression, time formatting, truncation, console fallback, batch entry points, write failures, stream errors, flush rejection, and close lifecycle behavior.
+- Raised the Pretty package coverage floor after the formatter and transport edge-case tests.
+- No Pretty runtime source changes landed between the `0.5.3` and `0.5.4` package releases.
+- Updated dependencies:
+  - @loggerjs/core@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes

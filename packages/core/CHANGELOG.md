@@ -1,5 +1,13 @@
 # @loggerjs/core
 
+## 0.5.4
+
+### Patch Changes
+
+- Version alignment for package release `0.5.4`.
+- No core runtime source changes landed between the `0.5.3` and `0.5.4` package releases.
+- Added repository coverage-ratchet documentation and refreshed the measured coverage snapshot used by quality gates.
+
 ## 0.5.3
 
 ### Patch Changes

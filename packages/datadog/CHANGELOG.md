@@ -1,5 +1,14 @@
 # @loggerjs/datadog
 
+## 0.5.4
+
+### Patch Changes
+
+- Version alignment for package release `0.5.4`.
+- No Datadog runtime source changes landed between the `0.5.3` and `0.5.4` package releases.
+- Updated dependencies:
+  - @loggerjs/core@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes
