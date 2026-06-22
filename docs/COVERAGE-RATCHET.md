@@ -16,7 +16,7 @@ Measured on 2026-06-22 with `pnpm test:coverage`.
 
 | Scope | Statements | Branches | Functions | Lines |
 | --- | ---: | ---: | ---: | ---: |
-| All files | 87.16 | 78.44 | 90.91 | 91.21 |
+| All files | 87.18 | 78.47 | 90.91 | 91.23 |
 | Browser package | 84.25 | 73.49 | 86.86 | 89.12 |
 | Browser HTTP transport | 95.90 | 91.09 | 92.50 | 99.46 |
 | Core package | 86.67 | 77.65 | 90.27 | 89.26 |
