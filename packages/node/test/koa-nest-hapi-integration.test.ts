@@ -25,6 +25,26 @@ function createLogger(): LoggerLike {
   };
 }
 
+function createResponseHarness(statusCode: number) {
+  const listeners = new Map<"finish" | "close", () => void>();
+  const res = {
+    statusCode,
+    writableEnded: true,
+    once: vi.fn<(event: "finish" | "close", listener: () => void) => void>((event, listener) => {
+      listeners.set(event, listener);
+    }),
+    off: vi.fn<(event: "finish" | "close", listener: () => void) => void>((event, listener) => {
+      if (listeners.get(event) === listener) listeners.delete(event);
+    }),
+  };
+  return {
+    emit(event: "finish" | "close") {
+      listeners.get(event)?.();
+    },
+    res,
+  };
+}
+
 describe("Node framework adapters", () => {
   it("logs Koa request lifecycle", async () => {
     const logger = createLogger();
@@ -58,6 +78,33 @@ describe("Node framework adapters", () => {
     expect(logger.log).toHaveBeenCalledWith("info", "Express 200 GET /nest", {
       http: expect.objectContaining({ framework: "express", kind: "nestjs" }),
     });
+  });
+
+  it("keeps Nest middleware scoped to Express response lifecycle logging", () => {
+    const logger = createLogger();
+    const middleware = nestMiddlewareIntegration(logger, { captureAll: true });
+    const { emit, res } = createResponseHarness(200);
+    const error = new Error("handler failed");
+
+    expect(() => {
+      middleware({ method: "GET", originalUrl: "/nest?token=secret" }, res, () => {
+        res.statusCode = 500;
+        throw error;
+      });
+    }).toThrow(error);
+
+    emit("finish");
+
+    expect(logger.captureException).not.toHaveBeenCalled();
+    expect(logger.log).toHaveBeenCalledWith("error", "Express 500 GET /nest", {
+      http: expect.objectContaining({
+        framework: "express",
+        kind: "nestjs",
+        status: 500,
+        url: "/nest",
+      }),
+    });
+    expect(vi.mocked(logger.log).mock.calls[0]?.[2]).not.toHaveProperty("error");
   });
 
   it("registers Hapi request and response hooks", () => {
