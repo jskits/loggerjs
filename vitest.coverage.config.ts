@@ -62,10 +62,10 @@ const packageCoverageThresholds = {
     statements: 94,
   },
   "packages/pretty/src/**/*.ts": {
-    branches: 68,
-    functions: 75,
-    lines: 82,
-    statements: 73,
+    branches: 82,
+    functions: 88,
+    lines: 92,
+    statements: 88,
   },
   "packages/processors/src/**/*.ts": {
     branches: 79,
@@ -92,10 +92,10 @@ export default defineConfig({
       thresholds: {
         // Ratchet from the current measured coverage floor. Raise these after
         // coverage improves; do not lower without an explicit quality review.
-        branches: 75,
-        functions: 88,
-        lines: 89,
-        statements: 85,
+        branches: 76,
+        functions: 90,
+        lines: 90,
+        statements: 86,
         ...packageCoverageThresholds,
       },
     },

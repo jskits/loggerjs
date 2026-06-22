@@ -114,4 +114,105 @@ describe("prettyStreamTransport", () => {
     expect(stdoutWrite).toHaveBeenCalledTimes(1);
     expect(stderrWrite).toHaveBeenCalledTimes(1);
   });
+
+  it("throws a clear setup error when process streams are missing", () => {
+    expect(() => prettyStdoutTransport({ process: { env: {} } })).toThrow(
+      "pretty stdout transport requires a writable stream or process.stdout",
+    );
+    expect(() => prettyStderrTransport({ process: { env: {} } })).toThrow(
+      "pretty stderr transport requires a writable stream or process.stderr",
+    );
+  });
+
+  it("reports synchronous write errors and rejects flush", async () => {
+    const error = new Error("write failed");
+    const reportInternalError = vi.fn<TransportContext["reportInternalError"]>();
+    const transportContext: TransportContext = {
+      ...context(),
+      reportInternalError,
+    };
+    const stream: PrettyWritableLike = {
+      write: vi.fn<StreamWrite>(() => {
+        throw error;
+      }),
+    };
+    const transport = prettyStreamTransport({ name: "pretty-test", stream });
+
+    transport.log?.(event(), transportContext);
+
+    await expect(transport.flush?.()).rejects.toBe(error);
+    expect(reportInternalError).toHaveBeenCalledWith(error, {
+      operation: "write",
+      phase: "transport",
+      transport: "pretty-test",
+    });
+  });
+
+  it("rejects pending flushes when the stream errors before drain", async () => {
+    let errorListener: ((error: Error) => void) | undefined;
+    let drainListener: (() => void) | undefined;
+    const error = new Error("stream failed");
+    const stream: PrettyWritableLike = {
+      write: vi.fn<StreamWrite>(() => false),
+      on: (_event, listener) => {
+        errorListener = listener;
+      },
+      once: (_event, listener) => {
+        drainListener = listener;
+      },
+    };
+    const transport = prettyStreamTransport({ stream });
+
+    transport.log?.(event(), context());
+    const flushed = transport.flush?.();
+    errorListener?.(error);
+    drainListener?.();
+
+    await expect(flushed).rejects.toBe(error);
+  });
+
+  it("treats false writes without drain support as synchronously accepted", async () => {
+    const write = vi.fn<StreamWrite>(() => false);
+    const transport = prettyStreamTransport({ stream: { write } });
+
+    transport.log?.(event(), context());
+
+    await expect(transport.flush?.()).resolves.toBeUndefined();
+  });
+
+  it("detaches stream error listeners, ends on close, and stops future writes", async () => {
+    const write = vi.fn<StreamWrite>(() => true);
+    const off = vi.fn<PrettyWritableLike["off"]>();
+    const end = vi.fn<NonNullable<PrettyWritableLike["end"]>>((callback) => {
+      callback?.();
+    });
+    const stream: PrettyWritableLike = {
+      write,
+      off,
+      end,
+      on: vi.fn<NonNullable<PrettyWritableLike["on"]>>(),
+    };
+    const transport = prettyStreamTransport({ stream, endOnClose: true });
+
+    transport.log?.(event({ message: "before" }), context());
+    await transport.close?.();
+    transport.log?.(event({ message: "after" }), context());
+
+    expect(off).toHaveBeenCalledWith("error", expect.any(Function));
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates stream end errors on close", async () => {
+    const error = new Error("end failed");
+    const stream: PrettyWritableLike = {
+      write: vi.fn<StreamWrite>(() => true),
+      end: vi.fn<NonNullable<PrettyWritableLike["end"]>>((callback) => {
+        callback?.(error);
+      }),
+    };
+    const transport = prettyStreamTransport({ stream, endOnClose: true });
+
+    await expect(transport.close?.()).rejects.toBe(error);
+  });
 });

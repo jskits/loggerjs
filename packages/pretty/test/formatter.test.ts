@@ -77,4 +77,61 @@ describe("formatPrettyEvent", () => {
     expect(rendered.text).toContain("CAUTION");
     expect(rendered.ansiText).toContain("\x1b[95mCAUTION");
   });
+
+  it("can suppress base segments and structured detail sections", () => {
+    const rendered = formatPrettyEvent(
+      event({
+        context: { requestId: "req_1" },
+        error: { name: "Error", message: "failed" },
+        source: { integration: "test" },
+        trace: { traceId: "0af7651916cd43dd8448eb211c80319c", spanId: "b7ad6b7169203331" },
+      }),
+      {
+        includeContext: true,
+        includeData: false,
+        includeError: false,
+        includeId: true,
+        includeLogger: false,
+        includeSource: true,
+        includeTags: false,
+        includeTrace: true,
+        includeType: false,
+        time: "none",
+      },
+    );
+
+    expect(rendered.text).toBe(
+      'WARN  payment retry context={"requestId":"req_1"} trace={"spanId":"b7ad6b7169203331","traceId":"0af7651916cd43dd8448eb211c80319c"} source={"integration":"test"} id="evt-1"',
+    );
+    expect(rendered.details.map((detail) => detail.key)).toEqual([
+      "context",
+      "trace",
+      "source",
+      "id",
+    ]);
+  });
+
+  it("supports local, ISO, and callback time formatters", () => {
+    const iso = formatPrettyEvent(event(), { time: "iso" });
+    const local = formatPrettyEvent(event(), { time: "local" });
+    const custom = formatPrettyEvent(event(), { time: (item) => `seq-${item.seq}` });
+
+    expect(iso.text).toContain("[2026-01-02T03:04:05.678Z]");
+    expect(local.text).toContain("[");
+    expect(local.text).toContain("WARN");
+    expect(custom.text).toContain("[seq-1]");
+  });
+
+  it("truncates inline tags and details with very small limits", () => {
+    const rendered = formatPrettyEvent(
+      event({
+        tags: { feature: "very-long-feature-name" },
+        data: { value: "very-long-data-value" },
+      }),
+      { maxInlineLength: 1 },
+    );
+
+    expect(rendered.text).toContain("[feature=v]");
+    expect(rendered.text).toContain("data={");
+  });
 });

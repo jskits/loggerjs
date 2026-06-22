@@ -95,4 +95,39 @@ describe("prettyConsoleTransport", () => {
 
     expect(error).toHaveBeenCalledWith(expect.stringContaining("ERROR"), source.data);
   });
+
+  it("falls back to log for missing level methods and can include the raw event", () => {
+    const log = vi.fn<ConsoleWriter>();
+    const source = event();
+    const transport = prettyConsoleTransport({
+      console: { log },
+      browserStyles: false,
+      includeEvent: true,
+    });
+
+    transport.log?.(source, context(source));
+
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("ERROR"), source.data, source);
+  });
+
+  it("honors custom filters and batch entry points", () => {
+    const info = vi.fn<ConsoleWriter>();
+    const warn = vi.fn<ConsoleWriter>();
+    const transport = prettyConsoleTransport({
+      console: { info, warn },
+      browserStyles: false,
+      filter: (item) => item.levelName !== "debug",
+    });
+    const infoEvent = event({ level: 30, levelName: "info", message: "kept" });
+    const debugEvent = event({ level: 20, levelName: "debug", message: "dropped" });
+    const warnEvent = event({ level: 40, levelName: "warn", message: "record" });
+
+    transport.logBatch?.([infoEvent, debugEvent], context(infoEvent));
+    transport.writeBatch?.([{} as never], context(warnEvent));
+
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(info.mock.calls[0]?.[0])).toContain("kept");
+    expect(String(warn.mock.calls[0]?.[0])).toContain("record");
+  });
 });
