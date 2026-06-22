@@ -4,6 +4,7 @@ import type { LogEvent, TransportContext } from "@loggerjs/core";
 import type { PrettyWritableLike } from "../src";
 
 type StreamWrite = PrettyWritableLike["write"];
+type StreamOff = NonNullable<PrettyWritableLike["off"]>;
 
 function event(patch: Partial<LogEvent> = {}): LogEvent {
   return {
@@ -182,7 +183,7 @@ describe("prettyStreamTransport", () => {
 
   it("detaches stream error listeners, ends on close, and stops future writes", async () => {
     const write = vi.fn<StreamWrite>(() => true);
-    const off = vi.fn<PrettyWritableLike["off"]>();
+    const off = vi.fn<StreamOff>();
     const end = vi.fn<NonNullable<PrettyWritableLike["end"]>>((callback) => {
       callback?.();
     });
