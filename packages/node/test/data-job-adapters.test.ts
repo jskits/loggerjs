@@ -51,6 +51,26 @@ describe("data and job adapters", () => {
     );
   });
 
+  it("keeps Prisma integration scoped to raw query methods", async () => {
+    const findMany = vi.fn<() => Promise<unknown[]>>(async () => [{ id: 1 }]);
+    const client = {
+      $on: vi.fn<(event: string, listener: (...args: unknown[]) => void) => void>(),
+      $queryRawUnsafe: vi.fn<(statement: string) => Promise<unknown>>(async () => []),
+      user: {
+        findMany,
+      },
+    };
+    const { context, capture } = createContext("prisma");
+
+    prismaIntegration({ client, captureAll: true }).setup(context);
+
+    await client.user.findMany();
+
+    expect(client.$on).not.toHaveBeenCalled();
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(capture).not.toHaveBeenCalled();
+  });
+
   it("wraps Redis command methods", async () => {
     const client = {
       get: vi.fn<(key: string) => Promise<string>>(async () => "value"),
