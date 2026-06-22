@@ -97,6 +97,7 @@ class FakeWebSocket implements BrowserWebSocketLike {
 describe("browserWebSocketTransport", () => {
   afterEach(() => {
     resetLoggerMetaStats();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -144,6 +145,41 @@ describe("browserWebSocketTransport", () => {
     expect(socket.sent).toEqual(["ready"]);
   });
 
+  it("does not create a socket for empty batches", () => {
+    const factory = vi.fn<BrowserWebSocketFactory>(() => new FakeWebSocket());
+    const transport = browserWebSocketTransport({
+      url: "wss://logs.example",
+      codec: textCodec,
+      webSocketFactory: factory,
+    });
+
+    transport.logBatch?.([], createContext());
+
+    expect(factory).not.toHaveBeenCalled();
+    expect(transport.queueSize()).toBe(0);
+  });
+
+  it("copies Uint8Array payloads before sending", () => {
+    const socket = new FakeWebSocket();
+    socket.readyState = 1;
+    const payload = new Uint8Array([1, 2, 3]);
+    const codec: Codec<BrowserWebSocketPayload> = {
+      name: "binary",
+      contentType: "application/octet-stream",
+      encode: vi.fn<Codec<BrowserWebSocketPayload>["encode"]>(() => payload),
+    };
+    const transport = browserWebSocketTransport({
+      url: "wss://logs.example",
+      codec,
+      webSocketFactory: () => socket,
+    });
+
+    transport.log?.(createEvent("binary"), createContext());
+
+    expect(socket.sent).toEqual([payload]);
+    expect(socket.sent[0]).not.toBe(payload);
+  });
+
   it("drops queued payloads according to the configured policy", () => {
     const dropped: string[] = [];
     const transport = browserWebSocketTransport({
@@ -165,6 +201,24 @@ describe("browserWebSocketTransport", () => {
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.dropped": 1,
       "transport.dropped.queue-full": 1,
+    });
+  });
+
+  it("reports default WebSocket unavailability as dropped events", () => {
+    vi.stubGlobal("WebSocket", undefined);
+    const errors: unknown[] = [];
+    const transport = browserWebSocketTransport({
+      url: "wss://logs.example",
+      codec: textCodec,
+    });
+
+    transport.log?.(createEvent("lost"), createContext(errors));
+
+    expect(errors).toHaveLength(1);
+    expect(transport.queueSize()).toBe(0);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.dropped": 1,
+      "transport.dropped.create-socket": 1,
     });
   });
 
@@ -212,6 +266,27 @@ describe("browserWebSocketTransport", () => {
     });
   });
 
+  it("reports onError callback failures without hiding send errors", () => {
+    const errors: unknown[] = [];
+    const socket = new FakeWebSocket();
+    socket.readyState = 1;
+    socket.sendError = new Error("send failed");
+    const transport = browserWebSocketTransport({
+      url: "wss://logs.example",
+      codec: textCodec,
+      webSocketFactory: () => socket,
+      onError() {
+        throw new Error("observer failed");
+      },
+    });
+
+    transport.log?.(createEvent("lost"), createContext(errors));
+
+    expect(errors).toHaveLength(2);
+    expect(String(errors[0])).toContain("observer failed");
+    expect(String(errors[1])).toContain("send failed");
+  });
+
   it("closes the socket, detaches listeners, and drops queued payloads", async () => {
     const socket = new FakeWebSocket();
     const transport = browserWebSocketTransport({
@@ -234,5 +309,32 @@ describe("browserWebSocketTransport", () => {
       "transport.dropped": 1,
       "transport.dropped.closed": 1,
     });
+  });
+
+  it("reports socket close failures", async () => {
+    const errors: unknown[] = [];
+    class CloseFailingWebSocket extends FakeWebSocket {
+      override close() {
+        throw new Error("close failed");
+      }
+    }
+    const socket = new CloseFailingWebSocket();
+    const onError = vi.fn<(error: unknown, detail: unknown) => void>();
+    const transport = browserWebSocketTransport({
+      url: "wss://logs.example",
+      codec: textCodec,
+      webSocketFactory: () => socket,
+      onError,
+    });
+
+    transport.log?.(createEvent("queued"), createContext(errors));
+    await transport.close?.();
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      droppedEvents: 0,
+      operation: "close-socket",
+    });
+    expect(errors).toHaveLength(1);
+    expect(String(errors[0])).toContain("close failed");
   });
 });

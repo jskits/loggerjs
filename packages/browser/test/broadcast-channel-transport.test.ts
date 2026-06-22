@@ -39,6 +39,7 @@ function createChannel() {
 describe("browserBroadcastChannelTransport", () => {
   afterEach(() => {
     resetLoggerMetaStats();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -100,6 +101,33 @@ describe("browserBroadcastChannelTransport", () => {
     expect(channel.postMessage).toHaveBeenNthCalledWith(2, ["evt-2", "evt-3"]);
   });
 
+  it("does not create a channel for empty batches", () => {
+    const factory = vi.fn<() => BrowserBroadcastChannelLike>(() => createChannel());
+    const transport = browserBroadcastChannelTransport({
+      channelName: "loggerjs",
+      channelFactory: factory,
+    });
+
+    transport.logBatch?.([], createContext());
+
+    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it("honors closeChannelOnClose=false for shared channels", async () => {
+    const channel = createChannel();
+    const transport = browserBroadcastChannelTransport({
+      channelName: "loggerjs",
+      closeChannelOnClose: false,
+      channelFactory: () => channel,
+    });
+
+    transport.log?.(event, createContext());
+    await transport.close?.();
+
+    expect(channel.postMessage).toHaveBeenCalledTimes(1);
+    expect(channel.close).not.toHaveBeenCalled();
+  });
+
   it("reports channel creation failures as dropped events", () => {
     resetLoggerMetaStats();
     const errors: unknown[] = [];
@@ -122,6 +150,24 @@ describe("browserBroadcastChannelTransport", () => {
     expect(getLoggerMetaStats()).toMatchObject({
       "transport.dropped": 1,
       "transport.dropped.create-channel": 1,
+    });
+  });
+
+  it("reports default channel unavailability", () => {
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const errors: unknown[] = [];
+    const onError = vi.fn<(error: unknown, detail: unknown) => void>();
+    const transport = browserBroadcastChannelTransport({
+      channelName: "loggerjs",
+      onError,
+    });
+
+    transport.log?.(event, createContext(errors));
+
+    expect(errors).toHaveLength(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      droppedEvents: 1,
+      operation: "create-channel",
     });
   });
 
@@ -151,5 +197,52 @@ describe("browserBroadcastChannelTransport", () => {
       "transport.dropped": 2,
       "transport.dropped.post-message": 2,
     });
+  });
+
+  it("reports onError callback failures without hiding the original error", () => {
+    const errors: unknown[] = [];
+    const channel: BrowserBroadcastChannelLike = {
+      postMessage() {
+        throw new Error("post failed");
+      },
+    };
+    const transport = browserBroadcastChannelTransport({
+      channelName: "loggerjs",
+      channelFactory: () => channel,
+      onError() {
+        throw new Error("observer failed");
+      },
+    });
+
+    transport.log?.(event, createContext(errors));
+
+    expect(errors).toHaveLength(2);
+    expect(errors).toEqual([expect.any(Error), expect.any(Error)]);
+    expect(String(errors[0])).toContain("observer failed");
+    expect(String(errors[1])).toContain("post failed");
+  });
+
+  it("reports close failures without counting dropped events", async () => {
+    const onError = vi.fn<(error: unknown, detail: unknown) => void>();
+    const channel: BrowserBroadcastChannelLike = {
+      postMessage: vi.fn<(message: unknown) => void>(),
+      close() {
+        throw new Error("close failed");
+      },
+    };
+    const transport = browserBroadcastChannelTransport({
+      channelName: "loggerjs",
+      channelFactory: () => channel,
+      onError,
+    });
+
+    transport.log?.(event, createContext());
+    await transport.close?.();
+
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      droppedEvents: 0,
+      operation: "close-channel",
+    });
+    expect(getLoggerMetaStats()).not.toHaveProperty("transport.dropped.close-channel");
   });
 });

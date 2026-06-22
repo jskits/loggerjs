@@ -59,6 +59,16 @@ class FakeReportingObserver implements BrowserReportingObserverLike {
   }
 }
 
+class ThrowingReportingObserver implements BrowserReportingObserverLike {
+  constructor() {
+    throw new Error("observer unavailable");
+  }
+
+  observe() {}
+
+  disconnect() {}
+}
+
 function createLogger(): LoggerLike {
   return {
     log: vi.fn<LoggerLike["log"]>(),
@@ -228,6 +238,81 @@ describe("captureReportingIntegration", () => {
             body: { id: "autoplay" },
             type: "intervention",
             url: "https://app.example/video",
+          },
+        },
+      },
+      source: "integration:capture-reporting",
+    });
+  });
+
+  it("ignores ReportingObserver constructor failures", () => {
+    const { context, capture } = createIntegrationContext();
+
+    expect(() => {
+      const teardown = captureReportingIntegration({
+        ReportingObserver: ThrowingReportingObserver,
+        addEventListener: undefined,
+      }).setup(context);
+      if (typeof teardown === "function") teardown();
+    }).not.toThrow();
+
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("respects disabled capture switches", () => {
+    const harness = createListenerHarness();
+    const { context, capture } = createIntegrationContext();
+    const teardown = captureReportingIntegration({
+      ReportingObserver: FakeReportingObserver,
+      addEventListener: harness.addEventListener,
+      removeEventListener: harness.removeEventListener,
+      captureReportingObserver: false,
+      captureSecurityPolicyViolation: false,
+    }).setup(context);
+
+    if (typeof teardown === "function") teardown();
+
+    expect(harness.addEventListener).not.toHaveBeenCalled();
+    expect(FakeReportingObserver.instances).toHaveLength(0);
+    expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("normalizes toJSON reports and supports dynamic levels", () => {
+    const { context, capture } = createIntegrationContext();
+    captureReportingIntegration({
+      ReportingObserver: FakeReportingObserver,
+      addEventListener: undefined,
+      level(report) {
+        return report.type === "crash" ? "error" : "info";
+      },
+      sanitizeUrl: (url) => url.replace(/token=[^&]+/, "token=[redacted]"),
+    }).setup(context);
+
+    FakeReportingObserver.instances[0]?.emit([
+      {
+        type: "ignored",
+        url: "https://fallback.example",
+        body: { ignored: true },
+        toJSON() {
+          return {
+            body: { id: "renderer-crash" },
+            type: "crash",
+            url: "https://app.example/report?token=secret",
+          };
+        },
+      },
+    ]);
+
+    expect(capture).toHaveBeenCalledWith({
+      level: "error",
+      message: "Browser report crash",
+      props: {
+        browser: {
+          kind: "report",
+          report: {
+            body: { id: "renderer-crash" },
+            type: "crash",
+            url: "https://app.example/report?token=[redacted]",
           },
         },
       },

@@ -2,10 +2,16 @@ import { defineConfig } from "vitest/config";
 
 const packageCoverageThresholds = {
   "packages/browser/src/**/*.ts": {
-    branches: 71,
-    functions: 84,
-    lines: 88,
-    statements: 83,
+    branches: 73,
+    functions: 86,
+    lines: 89,
+    statements: 84,
+  },
+  "packages/browser/src/http-transport.ts": {
+    branches: 91,
+    functions: 92,
+    lines: 99,
+    statements: 95,
   },
   "packages/cloudwatch/src/**/*.ts": {
     branches: 78,
