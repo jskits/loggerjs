@@ -224,6 +224,12 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
+`browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec`
+when pagehide or hidden-page Beacon requests need a different encoding or content
+type; it falls back to `codec` when omitted. Beacon delivery is skipped when
+`transformPayload` is configured, so lifecycle flushes use the normal Fetch path
+and `beaconCodec` does not apply.
+
 `browserHttpTransport()` also accepts `transformPayload`. Use
 `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
 

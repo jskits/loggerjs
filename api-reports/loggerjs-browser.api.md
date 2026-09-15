@@ -231,6 +231,7 @@ export interface BrowserHttpTransportOptions {
     credentials?: RequestCredentials;
     keepalive?: boolean;
     codec?: Codec<string | Uint8Array>;
+    beaconCodec?: Codec<string | Uint8Array>;
     minLevel?: LoggerLevel;
     maxBatchSize?: number;
     flushIntervalMs?: number;

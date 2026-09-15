@@ -10,6 +10,12 @@ interface BeaconCapture {
   body: string;
 }
 
+interface BeaconCodecCapture {
+  body: string;
+  contentType: string;
+  url: string;
+}
+
 interface SupportExportManifestSession {
   logCount?: number;
   logFileName?: string;
@@ -50,6 +56,7 @@ interface LoggerJsE2eApi {
   ) => Promise<SupportSpillDrainResult>;
   queueIndexedDbOfflineLog: (dbName: string, message: string) => Promise<number>;
   replayIndexedDbOfflineLog: (dbName: string) => Promise<number>;
+  runBeaconCodecPagehide: (message: string) => Promise<BeaconCodecCapture[]>;
   runBeaconPagehide: (message: string) => Promise<BeaconCapture[]>;
   runIndexedDbSupportExport: (
     dbName: string,
@@ -141,6 +148,23 @@ test("pagehide uses sendBeacon with the queued browser HTTP payload", async ({ p
   expect(captures[0]?.url).toBe("/api/e2e-beacon-logs");
   expect(captures[0]?.body).toContain(message);
   expect(captures[0]?.events.map((event) => event.message)).toContain(message);
+});
+
+test("pagehide uses beaconCodec in a real browser", async ({ page }) => {
+  const message = `pagehide beacon codec ${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  await openHarness(page);
+  const captures = await page.evaluate((input) => {
+    return window.loggerjsE2e.runBeaconCodecPagehide(input);
+  }, message);
+
+  expect(captures).toEqual([
+    {
+      body: `beacon:${message}`,
+      contentType: "application/x-e2e-beacon",
+      url: "/api/e2e-beacon-codec-logs",
+    },
+  ]);
 });
 
 test("IndexedDB support store queries sessions and exports ZIP files in a real browser", async ({
