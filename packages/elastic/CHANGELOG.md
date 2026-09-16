@@ -1,5 +1,14 @@
 # @loggerjs/elastic
 
+## 0.5.5
+
+### Patch Changes
+
+- Version alignment for package release `0.5.5`.
+- No Elastic runtime source changes landed between the `0.5.4` and `0.5.5` package releases.
+- Updated dependencies:
+  - @loggerjs/core@0.5.5
+
 ## 0.5.4
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @loggerjs/core
 
+## 0.5.5
+
+### Patch Changes
+
+- Version alignment for package release `0.5.5`.
+- No core runtime source changes landed between the `0.5.4` and `0.5.5` package releases.
+
 ## 0.5.4
 
 ### Patch Changes

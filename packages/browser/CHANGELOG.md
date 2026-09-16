@@ -1,5 +1,15 @@
 # @loggerjs/browser
 
+## 0.5.5
+
+### Patch Changes
+
+- Added optional `beaconCodec` support to `browserHttpTransport()` so Beacon delivery on pagehide, hidden-page flushes, and transport close can use a separate encoding and content type. Fetch delivery continues to use `codec`, and `beaconCodec` defaults to `codec` when omitted.
+- Beacon chunk sizes are calculated from the Beacon codec's encoded payload. When `transformPayload` is configured, lifecycle flushes continue to use Fetch and do not apply `beaconCodec`.
+- Added unit and Chromium pagehide E2E coverage for Beacon-specific payloads and content types.
+- Updated dependencies:
+  - @loggerjs/core@0.5.5
+
 ## 0.5.4
 
 ### Patch Changes
