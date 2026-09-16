@@ -49,6 +49,7 @@ export interface BrowserHttpTransportOptions {
   credentials?: RequestCredentials;
   keepalive?: boolean;
   codec?: Codec<string | Uint8Array>;
+  beaconCodec?: Codec<string | Uint8Array>;
   minLevel?: LoggerLevel;
   maxBatchSize?: number;
   flushIntervalMs?: number;
@@ -139,6 +140,7 @@ function remainingEvents(chunks: BeaconChunk[], startIndex: number): LogEvent[] 
 
 export function browserHttpTransport(options: BrowserHttpTransportOptions): Transport {
   const codec = options.codec ?? safeJsonCodec();
+  const beaconCodec = options.beaconCodec ?? codec;
   const queue: LogEvent[] = [];
   const maxBatchSize = options.maxBatchSize ?? 50;
   const flushIntervalMs = options.flushIntervalMs ?? 2000;
@@ -189,7 +191,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
     for (const event of batch) {
       const candidateEvents = [...currentEvents, event];
-      const candidatePayload = codec.encode(candidateEvents);
+      const candidatePayload = beaconCodec.encode(candidateEvents);
       if (payloadByteLength(candidatePayload) <= beaconMaxBytes) {
         currentEvents = candidateEvents;
         currentPayload = candidatePayload;
@@ -200,7 +202,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         chunks.push({ events: currentEvents, payload: currentPayload });
       }
 
-      const singlePayload = codec.encode([event]);
+      const singlePayload = beaconCodec.encode([event]);
       if (payloadByteLength(singlePayload) <= beaconMaxBytes) {
         currentEvents = [event];
         currentPayload = singlePayload;
@@ -229,7 +231,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       if (!chunk) continue;
       const ok = navigator.sendBeacon(
         options.url,
-        payloadToBeaconBody(chunk.payload, codec.contentType),
+        payloadToBeaconBody(chunk.payload, beaconCodec.contentType),
       );
       if (!ok) return { ok: false, remaining: remainingEvents(chunks, index) };
     }

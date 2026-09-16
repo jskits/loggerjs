@@ -5,6 +5,7 @@ import {
   exportLogsToZip,
   indexedDbBrowserHttpOfflineQueue,
   indexedDbTransport,
+  type Codec,
   type LogEvent,
 } from "@loggerjs/browser";
 
@@ -16,6 +17,12 @@ interface BeaconCapture {
   url: string;
   events: LogEvent[];
   body: string;
+}
+
+interface BeaconCodecCapture {
+  body: string;
+  contentType: string;
+  url: string;
 }
 
 interface SupportExportManifestSession {
@@ -58,6 +65,7 @@ interface LoggerJsE2eApi {
   ) => Promise<SupportSpillDrainResult>;
   queueIndexedDbOfflineLog: (dbName: string, message: string) => Promise<number>;
   replayIndexedDbOfflineLog: (dbName: string) => Promise<number>;
+  runBeaconCodecPagehide: (message: string) => Promise<BeaconCodecCapture[]>;
   runBeaconPagehide: (message: string) => Promise<BeaconCapture[]>;
   runIndexedDbSupportExport: (
     dbName: string,
@@ -280,6 +288,68 @@ window.loggerjsE2e = {
         transports: [
           browserHttpTransport({
             url: "/api/e2e-beacon-logs",
+            flushIntervalMs: 60_000,
+            maxBatchSize: 100,
+            useBeaconOnPageHide: true,
+          }),
+        ],
+      });
+
+      logger.info(message, { phase: "pagehide" });
+      window.dispatchEvent(new PageTransitionEvent("pagehide"));
+      await waitFor(() => (captures.length > 0 ? true : undefined), "sendBeacon capture");
+      await logger.close();
+      return Promise.all(captures);
+    } finally {
+      Object.defineProperty(navigator, "sendBeacon", {
+        configurable: true,
+        value: originalSendBeacon,
+      });
+    }
+  },
+
+  async runBeaconCodecPagehide(message) {
+    const originalSendBeacon = navigator.sendBeacon.bind(navigator);
+    const captures: Array<Promise<BeaconCodecCapture>> = [];
+
+    Object.defineProperty(navigator, "sendBeacon", {
+      configurable: true,
+      value(url: string | URL, body?: BodyInit | null) {
+        const captured = bodyToText(body).then((bodyText) => ({
+          body: bodyText,
+          contentType: body instanceof Blob ? body.type : "",
+          url: String(url),
+        }));
+        captures.push(captured);
+        return true;
+      },
+    });
+
+    const fetchCodec: Codec<string | Uint8Array> = {
+      name: "e2e-fetch-codec",
+      contentType: "text/plain",
+      encode(input) {
+        const events = Array.isArray(input) ? input : [input];
+        return `fetch:${events.map((event) => event.message).join("|")}`;
+      },
+    };
+    const beaconCodec: Codec<string | Uint8Array> = {
+      name: "e2e-beacon-codec",
+      contentType: "application/x-e2e-beacon",
+      encode(input) {
+        const events = Array.isArray(input) ? input : [input];
+        return `beacon:${events.map((event) => event.message).join("|")}`;
+      },
+    };
+
+    try {
+      const logger = createLogger({
+        category: ["e2e", "beacon-codec"],
+        transports: [
+          browserHttpTransport({
+            url: "/api/e2e-beacon-codec-logs",
+            codec: fetchCodec,
+            beaconCodec,
             flushIntervalMs: 60_000,
             maxBatchSize: 100,
             useBeaconOnPageHide: true,

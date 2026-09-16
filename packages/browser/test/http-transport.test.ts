@@ -194,6 +194,39 @@ describe("browserHttpTransport", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it("uses beaconCodec only for Beacon payloads", async () => {
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const beaconCodec: Codec<string | Uint8Array> = {
+      ...textCodec,
+      name: "beacon-text",
+      contentType: "application/x-beacon-text",
+      encode(input) {
+        return `beacon:${textCodec.encode(input)}`;
+      },
+    };
+    vi.stubGlobal("navigator", { sendBeacon });
+
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      beaconCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+    });
+    const context = createTransportContext();
+
+    transport.log?.(createEvent("fetch"), context);
+    await transport.flush?.();
+    transport.log?.(createEvent("beacon"), context);
+    await transport.close?.();
+
+    expect(fetchFn.mock.calls[0]?.[1]?.body).toBe("fetch");
+    expect(await blobText(beaconBodyAt(sendBeacon, 0))).toBe("beacon:beacon");
+    expect((beaconBodyAt(sendBeacon, 0) as Blob).type).toBe("application/x-beacon-text");
+  });
+
   it("counts queue drops through logger meta counters", () => {
     const dropped: Array<[string, string]> = [];
     const transport = browserHttpTransport({
@@ -773,6 +806,14 @@ describe("browserHttpTransport", () => {
   it("flushes with beacon on pagehide and visibility hidden events", async () => {
     const addEventListener = vi.fn<typeof globalThis.addEventListener>();
     const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
+    const beaconCodec: Codec<string | Uint8Array> = {
+      ...textCodec,
+      name: "beacon-text",
+      contentType: "application/x-beacon-text",
+      encode(input) {
+        return `beacon:${textCodec.encode(input)}`;
+      },
+    };
     const documentState = { visibilityState: "visible" };
     vi.stubGlobal("addEventListener", addEventListener);
     vi.stubGlobal("navigator", { sendBeacon });
@@ -780,6 +821,7 @@ describe("browserHttpTransport", () => {
     const transport = browserHttpTransport({
       url: "/logs",
       codec: textCodec,
+      beaconCodec,
       flushIntervalMs: 0,
       fetchFn: vi.fn<typeof fetch>(),
     });
@@ -789,7 +831,8 @@ describe("browserHttpTransport", () => {
     if (typeof pagehideListener !== "function")
       throw new Error("pagehide listener is not callable");
     pagehideListener(new Event("pagehide"));
-    expect(await blobText(beaconBodyAt(sendBeacon, 0))).toBe("pagehide");
+    expect(await blobText(beaconBodyAt(sendBeacon, 0))).toBe("beacon:pagehide");
+    expect((beaconBodyAt(sendBeacon, 0) as Blob).type).toBe("application/x-beacon-text");
 
     transport.log?.(createEvent("visible"), createTransportContext());
     const visibilityListener = listenerFor(addEventListener, "visibilitychange");
@@ -801,7 +844,7 @@ describe("browserHttpTransport", () => {
 
     documentState.visibilityState = "hidden";
     visibilityListener(new Event("visibilitychange"));
-    expect(await blobText(beaconBodyAt(sendBeacon, 1))).toBe("visible");
+    expect(await blobText(beaconBodyAt(sendBeacon, 1))).toBe("beacon:visible");
   });
 
   it("removes pagehide and visibilitychange listeners on close", async () => {
