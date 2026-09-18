@@ -65,6 +65,12 @@ import { pageLifecycleIntegration } from "@loggerjs/browser";
 const integrations = [pageLifecycleIntegration()];
 ```
 
+`maxBatchSize` 默认是 50，必须是正安全整数。它既是自动 flush 的触发阈值，也限制每个新 Fetch 或 Beacon 请求中的 event 数。Fetch 串行排空，包括最后不足一批的日志；`flushIntervalMs: 0` 也不会阻止后续批次发送。并发 `flush()` 等待同一轮排空，新产生的日志也会被处理，直到队列为空。失败批次恢复到队首并终止本轮，除非离线队列已接受编码后的 payload；之前成功的批次不会重新入队。
+
+这个限制计算条数，不是字节数。Beacon 还受 `beaconMaxBytes` 限制；Fetch 没有严格 payload 字节预算。拆分批次可能增加请求数和 codec/transform 调用次数。离线容量 `maxEntries` 计算已编码请求数，而非 event 数。已保存的 payload 原样 replay，包括超过当前条数限制的旧批次。离线 replay 和实时投递不保证全局顺序或 exactly-once。
+
+Pagehide、隐藏页面和 `close()` 会同步提交仍在队列中的 Beacon 分块，即使之前的 Fetch 尚未完成；发送中的 Fetch 批次不会再经 Beacon 重复发送，`close()` 仍等待它完成。这个 best-effort 退出路径可能让服务器乱序收到请求。未被接受的 Beacon 分块回退到按条数限制的 Fetch。设置 `transformPayload` 时，生命周期 flush 仍使用 Fetch。flush 成功可能只表示离线队列或浏览器 Beacon 队列接受了日志，不代表服务器确认收货。
+
 浏览器存储和关闭行为仍是 best effort。`sendBeacon` 可能受大小限制或在 shutdown 中被跳过；内存队列会在 reload 后消失；IndexedDB 可能不可用、满、被驱逐，或被 upgrade 阻塞。生产浏览器投递建议组合：
 
 - `browserHttpTransport()`：常规远程投递。

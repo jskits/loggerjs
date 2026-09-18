@@ -59,6 +59,7 @@ interface ServiceWorkerResult {
 }
 
 interface LoggerJsE2eApi {
+  runHttpBatchBurst: () => Promise<void>;
   drainIndexedDbSupportSpill: (
     dbName: string,
     namespace: string,
@@ -188,6 +189,23 @@ async function waitFor<T>(
 }
 
 window.loggerjsE2e = {
+  async runHttpBatchBurst() {
+    const transport = browserHttpTransport({
+      url: "/api/e2e-batched-logs",
+      maxBatchSize: 2,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      codec: {
+        name: "json-array",
+        contentType: "application/json",
+        encode: (input) => JSON.stringify(input),
+      },
+    });
+    const logger = createLogger({ name: "batch-e2e", transports: [transport] });
+    for (let index = 1; index <= 7; index++) logger.info(String(index));
+    await logger.flush();
+    await logger.close();
+  },
   async drainIndexedDbSupportSpill(dbName, namespace) {
     const supportStore = indexedDbTransport({
       dbName,

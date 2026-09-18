@@ -336,6 +336,348 @@ describe("browserHttpTransport", () => {
     expect(fetchFn.mock.calls[0]?.[1]?.body).toBe("one|two");
   });
 
+  it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid maxBatchSize %s before registering listeners",
+    (maxBatchSize) => {
+      const addEventListener = vi.fn<typeof globalThis.addEventListener>();
+      vi.stubGlobal("addEventListener", addEventListener);
+      expect(() => browserHttpTransport({ url: "/logs", maxBatchSize })).toThrow(
+        "maxBatchSize must be a positive safe integer",
+      );
+      expect(addEventListener).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([1, 2, 3])(
+    "drains bounded batches and the tail with maxBatchSize %s",
+    async (maxBatchSize) => {
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const fetchFn = vi.fn<typeof fetch>(async () => {
+        if (fetchFn.mock.calls.length === 1) await blocked;
+        return new Response(null, { status: 204 });
+      });
+      const transport = browserHttpTransport({
+        url: "/logs",
+        codec: textCodec,
+        maxBatchSize,
+        flushIntervalMs: 0,
+        useBeaconOnPageHide: false,
+        fetchFn,
+      });
+      for (const message of ["1", "2", "3", "4", "5", "6", "7"]) {
+        transport.log?.(createEvent(message), createTransportContext());
+      }
+      let finished = false;
+      const first = transport.flush?.();
+      const second = transport.flush?.();
+      expect(second).toBe(first);
+      void first?.then(() => {
+        finished = true;
+      });
+      await waitFor(() => fetchFn.mock.calls.length === 1);
+      expect(finished).toBe(false);
+      release();
+      await Promise.all([first, second]);
+      const batches = fetchFn.mock.calls.map(([, init]) => String(init?.body).split("|"));
+      expect(batches.every((batch) => batch.length <= maxBatchSize)).toBe(true);
+      expect(batches.flat()).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+      expect(finished).toBe(true);
+    },
+  );
+
+  it.each(["fetch", "codec", "transform", "offline-enqueue"] as const)(
+    "restores only the failed batch after a middle %s failure",
+    async (failure) => {
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let fail = true;
+      const fetchFn = vi.fn<typeof fetch>(async (_, init) => {
+        if (init?.body === "1|2") await blocked;
+        if (
+          init?.body === "3|4" &&
+          fail &&
+          (failure === "fetch" || failure === "offline-enqueue")
+        ) {
+          throw new Error("fetch failed");
+        }
+        return new Response(null, { status: 204 });
+      });
+      const transport = browserHttpTransport({
+        url: "/logs",
+        maxBatchSize: 2,
+        flushIntervalMs: 0,
+        useBeaconOnPageHide: false,
+        fetchFn,
+        codec: {
+          ...textCodec,
+          encode(input) {
+            const body = textCodec.encode(input);
+            if (body === "3|4" && fail && failure === "codec") throw new Error("codec failed");
+            return body;
+          },
+        },
+        transformPayload(payload) {
+          if (payload === "3|4" && fail && failure === "transform")
+            throw new Error("transform failed");
+          return payload;
+        },
+        offlineQueue:
+          failure === "offline-enqueue"
+            ? {
+                enqueue() {
+                  throw new Error("offline-enqueue failed");
+                },
+                replay() {},
+              }
+            : undefined,
+      });
+      for (const message of ["1", "2", "3", "4", "5", "6", "7"]) {
+        transport.log?.(createEvent(message), createTransportContext());
+      }
+      const flush = transport.flush?.();
+      const secondFlush = transport.flush?.();
+      release();
+      await Promise.all([
+        expect(flush).rejects.toThrow(`${failure} failed`),
+        expect(secondFlush).rejects.toThrow(`${failure} failed`),
+      ]);
+      expect(fetchFn.mock.calls.map(([, init]) => init?.body)).not.toContain("5|6");
+      const previousCalls = fetchFn.mock.calls.length;
+      fail = false;
+      await transport.flush?.();
+      expect(fetchFn.mock.calls.slice(previousCalls).map(([, init]) => init?.body)).toEqual([
+        "3|4",
+        "5|6",
+        "7",
+      ]);
+      expect(fetchFn.mock.calls.filter(([, init]) => init?.body === "1|2")).toHaveLength(1);
+    },
+  );
+
+  it("stores bounded transformed batches and replays stored bodies unchanged", async () => {
+    const addEventListener = vi.fn<typeof globalThis.addEventListener>();
+    vi.stubGlobal("addEventListener", addEventListener);
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    await offlineQueue.enqueue(offlineEntry("legacy", "legacy|oversized|batch"));
+    let fail = true;
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      if (fail) throw new Error("offline");
+      return new Response(null, { status: 204 });
+    });
+    const transformPayload = vi.fn<(payload: string | Uint8Array) => string>(
+      (payload) => `encoded:${payload}`,
+    );
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      maxBatchSize: 2,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      fetchFn,
+      transformPayload,
+    });
+    for (const message of ["1", "2", "3", "4", "5"]) {
+      transport.log?.(createEvent(message), createTransportContext());
+    }
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(4);
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual([
+      "encoded:1|2",
+      "encoded:3|4",
+      "encoded:5",
+    ]);
+    fail = false;
+    const online = listenerFor(addEventListener, "online");
+    if (typeof online !== "function") throw new Error("online listener is not callable");
+    online(new Event("online"));
+    await waitFor(() => offlineQueue.size() === 0);
+    expect(fetchFn.mock.calls.slice(3).map(([, init]) => init?.body)).toEqual([
+      "legacy|oversized|batch",
+      "encoded:1|2",
+      "encoded:3|4",
+      "encoded:5",
+    ]);
+    expect(transformPayload).toHaveBeenCalledTimes(3);
+    await transport.close?.();
+  });
+
+  it.each(["close", "pagehide", "visibilitychange"] as const)(
+    "submits bounded Beacons synchronously during active Fetch on %s",
+    async (trigger) => {
+      const addEventListener = vi.fn<typeof globalThis.addEventListener>();
+      vi.stubGlobal("addEventListener", addEventListener);
+      vi.stubGlobal("document", { visibilityState: "hidden" });
+      const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
+      vi.stubGlobal("navigator", { sendBeacon });
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const fetchFn = vi.fn<typeof fetch>(async () => {
+        await blocked;
+        return new Response(null, { status: 204 });
+      });
+      const transport = browserHttpTransport({
+        url: "/logs",
+        codec: textCodec,
+        maxBatchSize: 2,
+        flushIntervalMs: 0,
+        fetchFn,
+        beaconCodec: { ...textCodec, encode: (input) => `beacon:${textCodec.encode(input)}` },
+      });
+      for (const message of ["1", "2", "3", "4", "5", "6", "7"]) {
+        transport.log?.(createEvent(message), createTransportContext());
+      }
+      await waitFor(() => fetchFn.mock.calls.length === 1);
+      let closing: void | Promise<void> = undefined;
+      if (trigger === "close") closing = transport.close?.();
+      else {
+        const listener = listenerFor(addEventListener, trigger);
+        if (typeof listener !== "function") throw new Error("listener is not callable");
+        listener(new Event(trigger));
+      }
+      expect(sendBeacon).toHaveBeenCalledTimes(3);
+      expect(await Promise.all(sendBeacon.mock.calls.map(([, body]) => blobText(body)))).toEqual([
+        "beacon:3|4",
+        "beacon:5|6",
+        "beacon:7",
+      ]);
+      let finished = false;
+      const draining = transport.flush?.()?.then(() => {
+        finished = true;
+      });
+      await Promise.resolve();
+      expect(finished).toBe(false);
+      release();
+      await Promise.all([draining, closing]);
+      expect(fetchFn).toHaveBeenCalledTimes(1);
+      await transport.close?.();
+    },
+  );
+
+  it.each([false, true])(
+    "preserves unsent Beacon chunks when sendBeacon throws: %s",
+    async (throws) => {
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const fetchFn = vi.fn<typeof fetch>(async () => {
+        if (fetchFn.mock.calls.length === 1) await blocked;
+        return new Response(null, { status: 204 });
+      });
+      const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => {
+        if (sendBeacon.mock.calls.length === 1) return true;
+        if (throws) throw new Error("beacon failed");
+        return false;
+      });
+      vi.stubGlobal("navigator", { sendBeacon });
+      const transport = browserHttpTransport({
+        url: "/logs",
+        codec: textCodec,
+        maxBatchSize: 2,
+        beaconMaxBytes: 3,
+        flushIntervalMs: 0,
+        useBeaconOnPageHide: false,
+        fetchFn,
+      });
+      for (const message of ["1", "2", "3", "4", "5", "6", "7"]) {
+        transport.log?.(createEvent(message), createTransportContext());
+      }
+      const closing = transport.close?.();
+      const errors: string[] = [];
+      const completion = closing?.catch((error: Error) => {
+        errors.push(error.message);
+      });
+      release();
+      await completion;
+      expect(errors).toEqual(throws ? ["beacon failed"] : []);
+      expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["1|2", "5|6", "7"]);
+      expect(sendBeacon).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("keeps lifecycle flushes on bounded Fetch when a transform is configured", async () => {
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
+    vi.stubGlobal("navigator", { sendBeacon });
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      maxBatchSize: 2,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      transformPayload: (payload) => payload,
+    });
+    for (const message of ["1", "2", "3", "4", "5"]) {
+      transport.log?.(createEvent(message), createTransportContext());
+    }
+    await transport.close?.();
+    expect(sendBeacon).not.toHaveBeenCalled();
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["1|2", "3|4", "5"]);
+  });
+
+  it("serializes logs produced reentrantly by a codec", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    let appended = false;
+    const transport = browserHttpTransport({
+      url: "/logs",
+      maxBatchSize: 1,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      codec: {
+        ...textCodec,
+        encode(input) {
+          if (!appended) {
+            appended = true;
+            transport.log?.(createEvent("second"), createTransportContext());
+          }
+          return textCodec.encode(input);
+        },
+      },
+    });
+    transport.log?.(createEvent("first"), createTransportContext());
+    await transport.flush?.();
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["first", "second"]);
+  });
+
+  it("does not requeue accepted chunks when a standalone Beacon drain throws", async () => {
+    let failFetch = true;
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      if (failFetch) throw new Error("fetch failed");
+      return new Response(null, { status: 204 });
+    });
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => {
+      if (sendBeacon.mock.calls.length === 1) return true;
+      throw new Error("beacon failed");
+    });
+    vi.stubGlobal("navigator", { sendBeacon });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      maxBatchSize: 2,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+    });
+    for (const message of ["1", "2", "3", "4", "5"]) {
+      transport.log?.(createEvent(message), createTransportContext());
+    }
+    await expect(transport.flush?.()).rejects.toThrow("fetch failed");
+    await expect(transport.close?.()).rejects.toThrow("beacon failed");
+    failFetch = false;
+    await transport.flush?.();
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["1|2", "3|4", "5"]);
+  });
+
   it("flushes queued events on the scheduled timer", async () => {
     vi.useFakeTimers();
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));

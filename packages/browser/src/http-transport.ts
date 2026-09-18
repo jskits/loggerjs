@@ -143,6 +143,9 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const beaconCodec = options.beaconCodec ?? codec;
   const queue: LogEvent[] = [];
   const maxBatchSize = options.maxBatchSize ?? 50;
+  if (!Number.isSafeInteger(maxBatchSize) || maxBatchSize <= 0) {
+    throw new RangeError("maxBatchSize must be a positive safe integer");
+  }
   const flushIntervalMs = options.flushIntervalMs ?? 2000;
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
@@ -155,7 +158,8 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const fetchFn = options.fetchFn ?? globalThis.fetch?.bind(globalThis);
   let offlineEntrySeq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let flushing = false;
+  let activeFlush: Promise<void> | undefined;
+  let flushingBeacon = false;
   let replayingOffline = false;
   let lastContext: TransportContext | undefined;
 
@@ -186,10 +190,16 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
   const createBeaconChunks = (batch: LogEvent[]): BeaconChunk[] => {
     const chunks: BeaconChunk[] = [];
+    const oversized: LogEvent[] = [];
     let currentEvents: LogEvent[] = [];
     let currentPayload: string | Uint8Array | undefined;
 
     for (const event of batch) {
+      if (currentEvents.length === maxBatchSize && currentPayload !== undefined) {
+        chunks.push({ events: currentEvents, payload: currentPayload });
+        currentEvents = [];
+        currentPayload = undefined;
+      }
       const candidateEvents = [...currentEvents, event];
       const candidatePayload = beaconCodec.encode(candidateEvents);
       if (payloadByteLength(candidatePayload) <= beaconMaxBytes) {
@@ -198,7 +208,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         continue;
       }
 
-      if (currentEvents.length > 0 && currentPayload) {
+      if (currentEvents.length > 0 && currentPayload !== undefined) {
         chunks.push({ events: currentEvents, payload: currentPayload });
       }
 
@@ -209,34 +219,41 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       } else {
         currentEvents = [];
         currentPayload = undefined;
-        reportDrop(event, "beacon-too-large");
+        oversized.push(event);
       }
     }
 
-    if (currentEvents.length > 0 && currentPayload) {
+    if (currentEvents.length > 0 && currentPayload !== undefined) {
       chunks.push({ events: currentEvents, payload: currentPayload });
     }
 
+    for (const event of oversized) reportDrop(event, "beacon-too-large");
     return chunks;
   };
 
-  const sendBeaconBatch = (batch: LogEvent[]): { ok: boolean; remaining: LogEvent[] } => {
+  const sendBeaconBatch = (
+    batch: LogEvent[],
+  ): { remaining: LogEvent[]; failure?: { error: unknown } } => {
     if (typeof navigator === "undefined" || !navigator.sendBeacon) {
-      return { ok: false, remaining: batch };
+      return { remaining: batch };
     }
 
     const chunks = createBeaconChunks(batch);
     for (let index = 0; index < chunks.length; index++) {
       const chunk = chunks[index];
       if (!chunk) continue;
-      const ok = navigator.sendBeacon(
-        options.url,
-        payloadToBeaconBody(chunk.payload, beaconCodec.contentType),
-      );
-      if (!ok) return { ok: false, remaining: remainingEvents(chunks, index) };
+      try {
+        const ok = navigator.sendBeacon(
+          options.url,
+          payloadToBeaconBody(chunk.payload, beaconCodec.contentType),
+        );
+        if (!ok) return { remaining: remainingEvents(chunks, index) };
+      } catch (error) {
+        return { remaining: remainingEvents(chunks, index), failure: { error } };
+      }
     }
 
-    return { ok: true, remaining: [] };
+    return { remaining: [] };
   };
 
   const sendPayload = async (entry: BrowserHttpOfflineEntry) => {
@@ -353,34 +370,75 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     }
   };
 
-  const flush = async (preferBeacon = false) => {
-    if (flushing || queue.length === 0) return;
-    flushing = true;
-    clearTimer();
-    const batch = queue.splice(0, queue.length);
-    let pendingBatch = batch;
-
+  // Beacon submission is synchronous, even while an earlier Fetch is pending.
+  // Only queued events are eligible; the active Fetch batch keeps its ownership.
+  const flushBeaconQueue = () => {
+    if (flushingBeacon || options.transformPayload || queue.length === 0) return;
+    flushingBeacon = true;
+    let pending = queue.splice(0, queue.length);
     try {
-      if (preferBeacon && !options.transformPayload) {
-        const beaconResult = sendBeaconBatch(batch);
-        if (beaconResult.ok || beaconResult.remaining.length === 0) return;
-        pendingBatch = beaconResult.remaining;
-      }
-
-      await sendFetchBatch(pendingBatch);
-      pendingBatch = [];
-    } catch (error) {
-      if (pendingBatch.length > 0) queue.unshift(...pendingBatch);
-      throw error;
+      const result = sendBeaconBatch(pending);
+      pending = result.remaining;
+      if (result.failure) throw result.failure.error;
     } finally {
-      flushing = false;
-      if (queue.length > 0) schedule();
+      if (pending.length > 0) queue.unshift(...pending);
+      flushingBeacon = false;
     }
   };
 
+  const flush = (preferBeacon = false): Promise<void> => {
+    if (activeFlush) {
+      if (preferBeacon) {
+        try {
+          flushBeaconQueue();
+        } catch (error) {
+          // close() must still wait for the active delivery before reporting a Beacon error.
+          return activeFlush.then(() => {
+            throw error;
+          });
+        }
+      }
+      return activeFlush;
+    }
+    if (queue.length === 0) return Promise.resolve();
+    clearTimer();
+
+    // Publish the task before invoking user codecs/transforms, which may reenter log().
+    let resolve!: () => void;
+    let reject!: (error: unknown) => void;
+    const task = new Promise<void>((onResolve, onReject) => {
+      resolve = onResolve;
+      reject = onReject;
+    });
+    activeFlush = task;
+    void (async () => {
+      try {
+        if (preferBeacon) flushBeaconQueue();
+        while (queue.length > 0) {
+          const batch = queue.splice(0, maxBatchSize);
+          try {
+            // oxlint-disable-next-line no-await-in-loop -- Preserve batch order and stop on the first unhandled failure.
+            await sendFetchBatch(batch);
+          } catch (error) {
+            queue.unshift(...batch);
+            throw error;
+          }
+        }
+        resolve();
+      } catch (error) {
+        reject(error);
+      } finally {
+        activeFlush = undefined;
+        if (queue.length > 0) schedule();
+      }
+    })();
+    return task;
+  };
+
   const schedule = () => {
-    if (timer || flushIntervalMs <= 0) return;
+    if (activeFlush || timer || flushIntervalMs <= 0) return;
     timer = setTimeout(() => {
+      timer = undefined;
       void flush(false).catch((error: unknown) => reportInternalError(error, "flush"));
     }, flushIntervalMs);
   };
@@ -418,6 +476,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         if (dropped) reportDrop(dropped, "queue-full");
       }
       queue.push(event);
+      if (activeFlush) return;
       if (queue.length >= maxBatchSize) {
         void flush(false).catch((error: unknown) => reportInternalError(error, "flush"));
       } else schedule();
