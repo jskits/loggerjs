@@ -50,6 +50,7 @@ interface ServiceWorkerResult {
 }
 
 interface LoggerJsE2eApi {
+  runHttpBatchBurst: () => Promise<void>;
   drainIndexedDbSupportSpill: (
     dbName: string,
     namespace: string,
@@ -264,4 +265,34 @@ test("service worker transport posts logs to an active worker in a real browser"
 
   expect(result.supported).toBe(true);
   expect(result.messages).toContain(message);
+});
+
+test("HTTP flush drains a burst in bounded requests while the first request is pending", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const batches: string[][] = [];
+  await page.route("**/api/e2e-batched-logs", async (route) => {
+    batches.push(parseLogEvents(route.request().postData()).map((event) => event.message ?? ""));
+    if (batches.length === 1) await blocked;
+    await route.fulfill({ status: 204 });
+  });
+  await openHarness(page);
+  let finished = false;
+  const flushing = page
+    .evaluate(() => window.loggerjsE2e.runHttpBatchBurst())
+    .then(() => {
+      finished = true;
+    });
+  try {
+    await expect.poll(() => batches.length).toBe(1);
+    expect(finished).toBe(false);
+  } finally {
+    release();
+  }
+  await flushing;
+  expect(batches).toEqual([["1", "2"], ["3", "4"], ["5", "6"], ["7"]]);
 });

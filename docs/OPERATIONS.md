@@ -59,6 +59,29 @@ const transport = browserHttpTransport({
 });
 ```
 
+`maxBatchSize` defaults to 50 and must be a positive safe integer. It both triggers
+flushing and limits the number of events in each new Fetch or Beacon request.
+Fetch batches drain serially, including the final partial batch, even with
+`flushIntervalMs: 0`. Concurrent `flush()` calls wait for the active drain; new
+logs produced during that drain are included until the queue is empty. A failed
+batch returns to the front of the queue and stops that drain unless an offline
+queue accepts its encoded payload. Successful earlier batches are not requeued.
+
+The limit counts events, not bytes. Beacon requests also respect `beaconMaxBytes`;
+Fetch has no strict payload byte budget. Smaller batches can increase request
+counts and codec/transform invocations. Offline storage capacity (`maxEntries`)
+counts encoded requests, not individual events. Already stored payloads replay
+unchanged, including older batches above the current limit. Offline replay and
+live delivery do not guarantee global ordering or exactly-once delivery.
+
+Pagehide, hidden visibility, and `close()` submit queued Beacon chunks
+synchronously, including while an earlier Fetch is pending. The in-flight Fetch
+batch is never also sent by Beacon; its completion is still awaited by `close()`.
+This best-effort exit path can reach the server out of order. Rejected Beacon
+chunks fall back to bounded Fetch batches. With `transformPayload`, lifecycle
+flushes use Fetch instead. A successful flush may mean acceptance by the offline
+queue or browser Beacon queue, rather than server acknowledgment.
+
 When the browser fires `online`, the transport replays stored payloads with retry and backoff. Page lifecycle integration should be enabled when logs matter during tab close or navigation:
 
 ```ts
