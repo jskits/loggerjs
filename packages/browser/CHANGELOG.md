@@ -1,5 +1,16 @@
 # @loggerjs/browser
 
+## 0.5.6
+
+### Patch Changes
+
+- Fixed `browserHttpTransport()` to enforce `maxBatchSize` on new Fetch and Beacon batches. Fetch batches drain serially, including partial tails when flush timers are disabled, and concurrent `flush()` / `close()` calls wait for active delivery.
+- Failed Fetch batches retain their queue order without replaying earlier successful batches. Lifecycle Beacon submission can drain queued events while Fetch is pending; partial Beacon failures retain only unsent events.
+- `maxBatchSize` must now be a positive safe integer. Smaller batches can increase request and codec/transform counts; offline entry limits count requests, and existing offline payloads replay unchanged. The event limit does not impose a Fetch byte budget or global ordering across offline replay, live delivery, and Beacon.
+- Added unit and Chromium pagehide E2E coverage for batch limits, queue draining, and lifecycle delivery.
+- Updated dependencies:
+  - @loggerjs/core@0.5.6
+
 ## 0.5.5
 
 ### Patch Changes
