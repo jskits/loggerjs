@@ -2480,7 +2480,7 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/PERFORMANCE.md
 
 # Performance Guide
 
-This page is the user-facing companion to [BENCHMARKS.md](BENCHMARKS.md) (measured numbers), [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md) (checked-in machine evidence), and the Performance Budget section of [ARCHITECTURE.md](ARCHITECTURE.md) (targets and decisions). It tells you how to configure LoggerJS for throughput and which habits keep the hot path hot.
+This page is the user-facing companion to [BENCHMARKS.md](BENCHMARKS.md) (measured numbers), [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md) (checked-in machine evidence), and the Performance section of [ARCHITECTURE.md](ARCHITECTURE.md) (targets and decisions). It tells you how to configure LoggerJS for throughput and which habits keep the hot path hot.
 
 Reference numbers (Apple M1 Max, Node v22.21.1 — see [BENCHMARKS.md](BENCHMARKS.md) for methodology and [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md) for the checked-in row). The loggerjs-vs-pino figures come from the paired A/B harness; ranking vs pino is CPU/Node-V8 dependent — reproduce with `BENCH_AB=1 pnpm bench:node`:
 
@@ -2535,9 +2535,9 @@ Practical guidance:
 
 ## Batching for Remote Destinations
 
-Per-event network calls are the dominant real-world cost; every remote transport here is built on `batchTransport`:
+Per-event network calls are the dominant real-world cost. `nodeHttpTransport()` and `otlpHttpTransport()` wrap themselves in `batchTransport`, `browserHttpTransport()` batches internally, and the raw Datadog, Elastic, Loki, and CloudWatch transports should be wrapped with `batchTransport()` yourself (see [TRANSPORTS.md](TRANSPORTS.md#vendor-packages)):
 
-- `maxRecords` / `maxWaitMs` trade latency for batch size; defaults (50 / 2000ms) suit most services.
+- `maxRecords` / `maxWaitMs` trade latency for batch size; `batchTransport` defaults (50 records / 1000 ms) suit most services.
 - Set `maxBytes` only when the destination enforces payload limits — enabling it turns on per-log byte estimation.
 - `concurrency: 2..4` overlaps slow endpoint round trips.
 - Watch `getLoggerMetaStats()` for `transport.dropped.*` — drops mean the queue bound and your traffic disagree.

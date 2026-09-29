@@ -6,7 +6,7 @@ description: "热路径调优、批量、codec 选择和性能护栏。"
 
 # 性能指南
 
-本页是面向用户的性能说明，与 [基准](BENCHMARKS.md)（测量数字）、[基准矩阵](BENCHMARK-MATRIX.md)（签入的机器证据）和 [架构](ARCHITECTURE.md) 的性能预算部分（目标和决策）配套。它说明如何按吞吐量配置 LoggerJS，以及哪些习惯能让 hot path 保持 hot。
+本页是面向用户的性能说明，与 [基准](BENCHMARKS.md)（测量数字）、[基准矩阵](BENCHMARK-MATRIX.md)（签入的机器证据）和 [架构](ARCHITECTURE.md) 的性能部分（目标和决策）配套。它说明如何按吞吐量配置 LoggerJS，以及哪些习惯能让 hot path 保持 hot。
 
 参考数字（Apple M1 Max，Node v22.21.1；方法见 [基准](BENCHMARKS.md)，签入行见 [基准矩阵](BENCHMARK-MATRIX.md)）。loggerjs-vs-pino 数字来自 paired A/B harness；相对 pino 的排序依赖 CPU/Node-V8，请用 `BENCH_AB=1 pnpm bench:node` 复现：
 
@@ -61,9 +61,9 @@ createLogger({
 
 ## 远程目的地的 Batching
 
-Per-event network calls 是现实中的主要成本；这里每个 remote transport 都基于 `batchTransport`：
+逐条发起网络请求是现实中最主要的成本。`nodeHttpTransport()` 和 `otlpHttpTransport()` 内部已用 `batchTransport` 包装，`browserHttpTransport()` 自带批量；Datadog、Elastic、Loki 和 CloudWatch 的原始 transport 需要自行用 `batchTransport()` 包装（见 [传输](TRANSPORTS.md#vendor-packages)）：
 
-- `maxRecords` / `maxWaitMs` 在 latency 和 batch size 间取舍；默认（50 / 2000ms）适合大多数服务。
+- `maxRecords` / `maxWaitMs` 在 latency 和 batch size 间取舍；`batchTransport` 的默认值（50 条 / 1000 毫秒）适合大多数服务。
 - 只有目的地强制 payload limits 时才设置 `maxBytes`，因为启用它会打开 per-log byte estimation。
 - `concurrency: 2..4` 可重叠慢 endpoint round trips。
 - 观察 `getLoggerMetaStats()` 中的 `transport.dropped.*`；drops 表示 queue bound 与流量不匹配。
