@@ -163,7 +163,8 @@ Core has no printf-style formatting. Structured fields are first-class; formatti
 - Transports are named (an object, or an array keyed by each transport's `name`); routes select them by name and fall back to all transports.
 - Global processors run before route processors.
 - Integrations configured through `configure()` are installed once on an internal host logger.
-- `configure({ reset: true })` closes the previous snapshot's integrations and transports before installing the new one.
+- Calling `configure()` again replaces the previous snapshot: its integrations are torn down before the new ones are installed, and transports the new configuration no longer references are closed. Transports passed again stay open.
+- `configure({ reset: true })` closes every previous integration and transport, including reused ones, before installing the new snapshot.
 - The configuration is stored as a snapshot, so log calls do not walk mutable configuration.
 
 The registry is what lets third-party libraries log without coupling to a backend or forcing application configuration.

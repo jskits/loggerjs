@@ -73,4 +73,36 @@ describe("logger registry", () => {
 
     expect(ready).toHaveBeenCalledTimes(1);
   });
+
+  it("replaces the previous configuration when configure runs again", async () => {
+    let activeIntegrations = 0;
+    const integration = () => ({
+      name: "counting",
+      setup() {
+        activeIntegrations += 1;
+        return () => {
+          activeIntegrations -= 1;
+        };
+      },
+    });
+    const dropped: Transport = { name: "dropped", log() {}, close: vi.fn<() => void>() };
+    const shared: Transport = {
+      name: "shared",
+      log: vi.fn<() => void>(),
+      close: vi.fn<() => void>(),
+    };
+
+    await configure({ transports: { dropped, shared }, integrations: [integration()] });
+    await configure({ transports: { shared }, integrations: [integration()] });
+    getLogger("app").info("after reconfigure");
+
+    expect(activeIntegrations).toBe(1);
+    expect(dropped.close).toHaveBeenCalledTimes(1);
+    expect(shared.close).not.toHaveBeenCalled();
+    expect(shared.log).toHaveBeenCalledTimes(1);
+
+    await configure({ reset: true });
+    expect(activeIntegrations).toBe(0);
+    expect(shared.close).toHaveBeenCalledTimes(1);
+  });
 });

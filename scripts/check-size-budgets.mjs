@@ -6,7 +6,8 @@ import { gzipSync } from "node:zlib";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  ["@loggerjs/core", "packages/core/dist/index.js", 88_000, 19_500],
+  // Pending-write tracking, batch close cleanup, and registry snapshot replacement measure 88,391 raw bytes.
+  ["@loggerjs/core", "packages/core/dist/index.js", 89_000, 19_800],
   // Offline-queue replay on startup and after collector recovery measures 141,484 raw bytes.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 142_000, 30_000],
   // Unhandled-rejection exit handling that honors --unhandled-rejections measures 75,230 raw bytes.

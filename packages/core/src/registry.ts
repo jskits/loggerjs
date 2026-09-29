@@ -127,10 +127,35 @@ function getRuntimeLogger(category: readonly string[]): Logger | undefined {
   return logger;
 }
 
+// The integration host only needs to deliver captures. Giving it forwarding
+// transports without close() means closing the host tears down integrations
+// and flushes, but never closes transports a later configuration still uses.
+function hostTransport(transport: Transport): Transport {
+  return {
+    name: transport.name,
+    minLevel: transport.minLevel,
+    ready: transport.ready && (() => transport.ready?.()),
+    write: transport.write && ((record, context) => transport.write?.(record, context)),
+    writeBatch:
+      transport.writeBatch && ((records, context) => transport.writeBatch?.(records, context)),
+    log: transport.log && ((event, context) => transport.log?.(event, context)),
+    logBatch: transport.logBatch && ((events, context) => transport.logBatch?.(events, context)),
+    flush: transport.flush && (() => transport.flush?.()),
+    flushSync: transport.flushSync && (() => transport.flushSync?.()),
+  };
+}
+
+async function closeTransport(transport: Transport): Promise<void> {
+  if (transport.close) await transport.close();
+  else await transport.flush?.();
+}
+
 async function closeSnapshot(snapshot: RuntimeSnapshot | null): Promise<void> {
   if (!snapshot) return;
   await snapshot.integrationHost?.close();
-  await Promise.all([...snapshot.transports.values()].map((transport) => transport.close?.()));
+  await Promise.all(
+    [...snapshot.transports.values()].map((transport) => closeTransport(transport)),
+  );
 }
 
 export async function resetLoggerRegistry(): Promise<void> {
@@ -140,7 +165,11 @@ export async function resetLoggerRegistry(): Promise<void> {
 }
 
 export async function configure(options: ConfigureOptions = {}): Promise<void> {
+  const previous = options.reset ? null : runtime;
   if (options.reset) await resetLoggerRegistry();
+  // Reconfiguring replaces the previous snapshot: remove its integrations
+  // before installing new ones so platform hooks are never patched twice.
+  await previous?.integrationHost?.close();
 
   const transports = normalizeTransports(options.transports);
   const snapshot: RuntimeSnapshot = {
@@ -165,12 +194,23 @@ export async function configure(options: ConfigureOptions = {}): Promise<void> {
       category: ["loggerjs", "integration"],
       level: snapshot.level,
       processors: snapshot.processors,
-      transports: [...snapshot.transports.values()],
+      transports: [...snapshot.transports.values()].map(hostTransport),
       integrations: snapshot.integrations,
     });
   }
 
   runtime = snapshot;
+
+  if (previous) {
+    // Close transports the new configuration no longer references; transports
+    // passed again are kept open.
+    const retained = new Set(snapshot.transports.values());
+    await Promise.all(
+      [...previous.transports.values()]
+        .filter((transport) => !retained.has(transport))
+        .map((transport) => closeTransport(transport)),
+    );
+  }
 }
 
 export class RegistryLogger implements LoggerLike {

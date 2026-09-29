@@ -169,7 +169,8 @@ core 不提供 printf 风格的格式化。结构化字段是一等公民；格�
 - transport 是具名的（传对象，或传数组并以各 transport 的 `name` 为键）；路由按名称选择 transport，没有指定时使用全部 transport。
 - 全局 processor 先于路由 processor 运行。
 - 通过 `configure()` 配置的 integration 只在一个内部宿主 logger 上安装一次。
-- `configure({ reset: true })` 会先关闭上一份快照中的 integration 和 transport，再安装新的配置。
+- 再次调用 `configure()` 会替换上一份快照：先拆除旧的 integration 再安装新的，并关闭新配置不再引用的 transport；再次传入的 transport 保持打开。
+- `configure({ reset: true })` 会在安装新快照之前关闭所有旧的 integration 和 transport，包括被复用的。
 - 配置以快照形式保存，日志调用不需要遍历可变的配置结构。
 
 有了 registry，第三方库可以记录日志，而不必绑定某个后端，也不会强迫应用做配置。
