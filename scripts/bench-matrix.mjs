@@ -205,6 +205,7 @@ function collectMetadata(label) {
     node: process.version,
     v8: process.versions.v8,
     packageManager: rootPackage.packageManager ?? "unknown",
+    loggerjs: readJson(join(repoRoot, "packages", "core", "package.json"))?.version ?? "unknown",
     dependencies: {
       pino: packageVersion("pino", rootPackage),
       winston: packageVersion("winston", rootPackage),
@@ -296,6 +297,7 @@ Generated: ${artifact.createdAt}
 
 | Field | Value |
 | --- | --- |
+| LoggerJS | ${loggerjsVersion(metadata)}${metadata.git.dirty ? " (dirty)" : ""} |
 | Git | ${metadata.git.branch}@${metadata.git.sha}${metadata.git.dirty ? " (dirty)" : ""} |
 | Runtime | ${metadata.node}, V8 ${metadata.v8} |
 | OS | ${metadata.platform}/${metadata.arch} ${metadata.osRelease} |
@@ -329,7 +331,7 @@ to combine artifacts from multiple machines into a publishable matrix.
 
 function markdownForMatrix(artifacts) {
   const sorted = artifacts.toSorted((a, b) => a.metadata.label.localeCompare(b.metadata.label));
-  const generatedAt = new Date().toISOString();
+  const generatedAt = new Date().toISOString().slice(0, 10);
   const coverage = evidenceCoverage(sorted);
   const rows = sorted
     .map((artifact) => {
@@ -337,22 +339,36 @@ function markdownForMatrix(artifacts) {
       const lean = aggregate.ratios["loggerjs lean / pino ndjson"];
       const prepared = aggregate.ratios["loggerjs prepared / pino ndjson"];
       const result = resultLabel(lean.median, prepared.median);
-      return `| ${metadata.label} | ${metadata.platform}/${metadata.arch} | ${trimCpu(metadata.cpuModel)} | ${metadata.node} | ${metadata.git.sha}${metadata.git.dirty ? "*" : ""} | ${aggregate.runs} | ${formatNs(aggregate.contenders["pino ndjson"].median)} | ${formatNs(aggregate.contenders["loggerjs lean"].median)} | ${formatNs(aggregate.contenders["loggerjs prepared"].median)} | ${formatRatio(lean.median)} (${formatPercent(lean.throughputPct)}) | ${formatRatio(prepared.median)} (${formatPercent(prepared.throughputPct)}) | ${result} |`;
+      return `| ${metadata.label} | ${metadata.platform}/${metadata.arch} | ${trimCpu(metadata.cpuModel)} | ${metadata.node} | ${loggerjsVersion(metadata)}${metadata.git.dirty ? "*" : ""} | ${aggregate.runs} | ${formatNs(aggregate.contenders["pino ndjson"].median)} | ${formatNs(aggregate.contenders["loggerjs lean"].median)} | ${formatNs(aggregate.contenders["loggerjs prepared"].median)} | ${formatRatio(lean.median)} (${formatPercent(lean.throughputPct)}) | ${formatRatio(prepared.median)} (${formatPercent(prepared.throughputPct)}) | ${result} |`;
+    })
+    .join("\n");
+  const details = sorted
+    .map((artifact) => {
+      const { metadata, aggregate, config } = artifact;
+      const preparedVsLean = aggregate.ratios["loggerjs prepared / loggerjs lean"];
+      return `| ${metadata.label} | ${metadata.totalMemoryGb} GB | pino ${metadata.dependencies.pino}, winston ${metadata.dependencies.winston}, LogTape ${metadata.dependencies.logtape} | ${config.runs} runs, ${config.rounds} rounds x ${config.batch} ops, ${config.warmup} warmup | ${formatPercent(aggregate.baselineSpreadPct.median)} | ${formatRatio(preparedVsLean.median)} (${formatPercent(preparedVsLean.throughputPct)}) |`;
     })
     .join("\n");
 
   return `# LoggerJS Benchmark Matrix
 
-Generated: ${generatedAt}
+Last updated: ${generatedAt}
 
-This table aggregates local artifacts produced by \`pnpm bench:matrix\`.
+This table aggregates artifacts produced by \`pnpm bench:matrix\`.
 Ratios are paired per-round latency medians from the interleaved A/B harness,
 not one-off sequential-run ratios. A ratio below \`1.00x\` means the LoggerJS
-path had lower latency than pino on that machine.
+path had lower latency than pino on that machine; the percentage in parentheses
+is LoggerJS throughput relative to pino.
 
-| Label | Platform | CPU | Node | Git | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
+| Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 ${rows}
+
+## Row Details
+
+| Label | Memory | Dependencies | Sampling | Baseline spread | Prepared / lean |
+| --- | ---: | --- | --- | ---: | ---: |
+${details}
 
 ## Evidence Coverage
 
@@ -368,7 +384,8 @@ Notes:
 - Keep README/BENCHMARKS wording scoped to the covered rows. If either evidence
   requirement above is missing, describe the numbers as reference-machine
   results.
-- A dirty Git marker (\`*\`) means the artifact was captured with local changes.
+- A \`*\` after the LoggerJS version means the artifact was captured from a
+  working tree with local changes.
 - Reproduce a row with:
 
 \`\`\`bash
@@ -398,6 +415,17 @@ function evidenceCoverage(artifacts) {
     platforms: formatSet(platforms),
     nodeMajors: formatSet(nodeMajors),
   };
+}
+
+function loggerjsVersion(metadata) {
+  if (metadata.loggerjs) return metadata.loggerjs;
+  // Artifacts recorded before the version field existed only carry the commit.
+  const packageJson = shellText("git", ["show", `${metadata.git.sha}:packages/core/package.json`]);
+  try {
+    return JSON.parse(packageJson).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
 }
 
 function nodeMajor(version) {
