@@ -1,148 +1,148 @@
-# LoggerJS 与其他 JavaScript Logger 对比
+# LoggerJS 与其他 JavaScript 日志库对比
 
 本页比较 LoggerJS 与常见的 JavaScript 日志库，描述的是各个包当前实际提供的能力，而不是规划中的功能。
 
 ## 范围
 
-除非表格单元格明确写着 “ecosystem”，否则比较使用 first-party 行为。来源检查时间为 2026-06-12：
+除非单元格明确写着“生态”，否则比较的都是各库官方自带的能力。资料核对时间为 2026-06-12：
 
 - LoggerJS 仓库文档：[README](https://github.com/jskits/loggerjs/blob/main/README.md)、[核心概念](CONCEPTS.md)、[传输](TRANSPORTS.md)、[集成](INTEGRATIONS.md)、[处理器](PROCESSORS.md)、[编解码](CODECS.md)、[基准](BENCHMARKS.md)。
 - Pino 官方文档：<https://getpino.io/>、<https://github.com/pinojs/pino/blob/main/docs/api.md>、<https://github.com/pinojs/pino/blob/main/docs/transports.md>、<https://github.com/pinojs/pino/blob/main/docs/browser.md>、<https://github.com/pinojs/pino/blob/main/docs/redaction.md>。
 - Winston 官方 README：<https://github.com/winstonjs/winston>。
-- LogTape 官方文档和 JSR package page：<https://logtape.org/>、<https://logtape.org/manual/categories>、<https://logtape.org/manual/sinks>、<https://logtape.org/manual/contexts>、<https://jsr.io/@logtape/logtape>。
+- LogTape 官方文档和 JSR 包页面：<https://logtape.org/>、<https://logtape.org/manual/categories>、<https://logtape.org/manual/sinks>、<https://logtape.org/manual/contexts>、<https://jsr.io/@logtape/logtape>。
 - Bunyan 官方 README：<https://github.com/trentm/node-bunyan>。
-- 轻量和 developer-experience 工具：<https://github.com/pimterry/loglevel>、<https://github.com/debug-js/debug>、<https://github.com/unjs/consola>、<https://tslog.js.org/>。
+- 轻量级和注重开发体验的工具：<https://github.com/pimterry/loglevel>、<https://github.com/debug-js/debug>、<https://github.com/unjs/consola>、<https://tslog.js.org/>。
 
-下方 benchmark 数字只适用于 [基准](BENCHMARKS.md) 中的场景。它们不声称在所有 sinks、runtimes、payload shapes 或第三方 transports 上都有普遍优势。
+下文的基准数字只适用于 [基准](BENCHMARKS.md) 中的场景，并不代表在所有 sink、运行时、payload 结构或第三方 transport 上都有优势。
 
-## 简短结论
+## 简要结论
 
-当日志问题横跨浏览器和服务器采集时，LoggerJS 最合适：automatic integrations、structured middleware、可靠 transport delivery、浏览器离线持久化、每个 destination 自选 codec，以及从同一心智模型投递到 vendor/DB/OTLP。它最可防御的细分场景是 **vendor-neutral, self-hosted delivery**：日志发送到你自己拥有的目的地（HTTP、files、your DB、Loki/Elasticsearch、OTLP），来自一个能在 strict CSP、edge/Workers、offline 场景中运行的 zero-dependency core。对于这些场景，纯 Node logger 或 managed APM SaaS 往往不够贴合。
+当日志需求同时覆盖浏览器和服务端采集时，LoggerJS 最合适：自动采集的 integration、结构化的 middleware、可靠的 transport 投递、浏览器离线持久化、按目的地选择 codec，以及用同一套思路投递到厂商服务、数据库或 OTLP。它最有优势的场景是**不绑定厂商、投递到自有目的地**：日志发送到你自己掌控的地方（HTTP、文件、自己的数据库、Loki/Elasticsearch、OTLP），而核心库零依赖，可以在严格 CSP、edge/Workers 和离线环境中运行。在这些场景下，只支持 Node 的 logger 或托管 APM SaaS 往往不够合适。
 
-如果主要需求是最小、Node-first、生态成熟的 JSON logger，Pino 仍是成熟默认选择。在当前 M1 Max 参考 benchmark 上，LoggerJS 等价 lean/prepared paths 更快，但排序依赖 CPU/Node-V8。Winston 仍是成熟、灵活的 Node transport 和 format ecosystem。LogTape 是最接近的架构同行，适合 library-first usage 和 multi-runtime categories。Bunyan 是稳定的 legacy Node JSON logger。
+如果主要需求是一个精简、以 Node 为主、生态成熟的 JSON logger，Pino 仍是成熟的默认选择。在 M1 Max 参考机器的基准中，LoggerJS 等价的 lean/prepared 路径更快，但排名取决于 CPU 和 Node/V8 版本。Winston 仍然拥有成熟、灵活的 Node transport 和 format 生态。LogTape 在架构上与 LoggerJS 最接近，适合以库为先的使用方式和多运行时的 category 配置。Bunyan 是一个稳定但偏老的 Node JSON logger。
 
 ## 一览
 
-图例：✅ first-party fit，🧩 ecosystem fit，⚠️ partial 或依赖配置，❌ checked first-party equivalent 不存在，📊 本仓库测量。
+图例：✅ 官方自带，🧩 依靠生态，⚠️ 部分支持或取决于配置，❌ 在核对的官方文档中未发现等价功能，📊 在本仓库中实测。
 
 | 能力 | LoggerJS | Pino | Winston | LogTape | Bunyan |
 | --- | --- | --- | --- | --- | --- |
-| Node server logging | ✅ first-party | ✅ first-party | ✅ first-party | ✅ first-party | ✅ first-party |
-| Browser runtime | ✅ first-party | ⚠️ browser API | ⚠️ not primary | ✅ first-party | ⚠️ bundler support |
-| Library-safe default | ✅ silent until configured | ⚠️ app-oriented | ⚠️ app-oriented | ✅ core design | ⚠️ app-oriented |
-| Automatic browser capture | ✅ 19 first-party integrations | ❌ none checked | ❌ none checked | ❌ none checked | ❌ none checked |
-| Automatic Node collection | ✅ 16 first-party integrations | 🧩 ecosystem | ⚠️ exceptions/rejections | ✅ framework packages | ⚠️ stream/custom |
-| Multi-destination delivery | ✅ transports | ✅ transports | ✅ transports | ✅ sinks | ✅ streams |
-| Built-in batching/retry/offline | ✅ shared primitives | ⚠️ transport-dependent | ⚠️ transport-dependent | ⚠️ sink-dependent | ⚠️ stream-dependent |
-| Transport-owned codecs | ✅ explicit boundary | ⚠️ logger/transport formatting | ⚠️ format pipeline | ⚠️ sink formatting | ⚠️ serializers |
-| Privacy/redaction | ✅ processors + sanitizers | ✅ built-in redaction | ⚠️ custom formats | ✅ redaction package | ⚠️ serializers/custom |
-| Direct Node JSON path | ✅ M1 上 1.19x pino | 📊 baseline（同级；其他 CPU/V8 上可领先） | ❌ measured slower | ❌ measured slower | Not measured here |
+| Node 服务端日志 | ✅ 官方自带 | ✅ 官方自带 | ✅ 官方自带 | ✅ 官方自带 | ✅ 官方自带 |
+| 浏览器运行时 | ✅ 官方自带 | ⚠️ 提供浏览器 API | ⚠️ 不是主要场景 | ✅ 官方自带 | ⚠️ 依赖打包工具 |
+| 对库友好的默认行为 | ✅ 配置前保持静默 | ⚠️ 面向应用 | ⚠️ 面向应用 | ✅ 核心设计目标 | ⚠️ 面向应用 |
+| 浏览器自动采集 | ✅ 19 个官方 integration | ❌ 未发现 | ❌ 未发现 | ❌ 未发现 | ❌ 未发现 |
+| Node 自动采集 | ✅ 16 个官方 integration | 🧩 生态 | ⚠️ 异常/rejection | ✅ 框架集成包 | ⚠️ 流/自定义 |
+| 多目的地投递 | ✅ transport | ✅ transport | ✅ transport | ✅ sink | ✅ stream |
+| 内置批量/重试/离线 | ✅ 共享基础组件 | ⚠️ 取决于 transport | ⚠️ 取决于 transport | ⚠️ 取决于 sink | ⚠️ 取决于 stream |
+| 由 transport 决定 codec | ✅ 明确的边界 | ⚠️ logger/transport 格式化 | ⚠️ format 管线 | ⚠️ sink 格式化 | ⚠️ serializer |
+| 隐私/脱敏 | ✅ processor + 清洗函数 | ✅ 内置脱敏 | ⚠️ 自定义 format | ✅ 脱敏扩展包 | ⚠️ serializer/自定义 |
+| Node 直接 JSON 路径 | ✅ M1 上为 pino 的 1.19 倍 | 📊 基线（同一量级；在其他 CPU/V8 上可能领先） | ❌ 实测更慢 | ❌ 实测更慢 | 未在此测量 |
 
-## 详细矩阵
+## 详细对比
 
 | 维度 | LoggerJS | Pino | Winston | LogTape | Bunyan |
 | --- | --- | --- | --- | --- | --- |
-| Primary fit | 带 automatic collection 和可靠 delivery 的同构结构化日志 | 低开销 Node JSON logging | 成熟 format/transport model 的灵活 Node logger | 跨 JS runtimes 的 library-first structured logging | Node services 的简单 JSON logging |
-| Runtime posture | `@loggerjs/core` 平台中立；first-party Node 和 browser packages 按 runtime 拆分 | Node-first，带文档化 browser API | Node-first；browser 不是主要文档路径 | first-party 支持 Node、Deno、Bun、browsers、Cloudflare Workers 和 edge | Node services；文档提到 Browserify/Webpack/NW.js support |
-| Library-safe default | 是：`getLogger()` 在宿主配置前保持 silent | 部分：库可以接收/注入 logger，但 Pino 本身偏 app-oriented | 部分：库可以接收/注入 logger，但 Winston 本身偏 app-oriented | 是：core design goal | 部分：child loggers 有帮助，但预期 app-level configuration |
-| Structured data | 是：records/events 保留 message、data、context、tags、trace、source、type | 是：默认 JSON logs | 是：mutable `info` objects 加 formats | 是：structured log records/properties | 是：JSON records |
-| Levels | 兼容 Pino 的 numeric levels 加 names | 内置 numeric levels 和 custom levels | RFC5424-style levels 加 custom levels | 带 category configuration 的 severity levels | Numeric levels |
-| Category/logger model | Category arrays、child loggers、registry configuration | Child loggers 和 bindings | Logger instances、child loggers、containers | 带 sink inheritance 的 hierarchical categories | Logger name 加 child loggers；文档说 names 非层级 |
-| Middleware/filter layer | first-party middleware/processors：enrich、redact、sample、dedupe、route、rate-limit、fingerprint、normalize | Hooks、serializers、mixins、redaction；更广 middleware 通常是 app/ecosystem code | Format chains 和 custom formats；mutable object pipeline | Filters、contexts、formatters、redaction package | Serializers 和 custom streams |
-| Serialization ownership | Codec 属于每个 transport；内置 JSON、safe JSON、NDJSON、fast-event-json、msgpackr、OTLP JSON | Core JSON serialization 加 serializers/formatters 和 transport output | Format chain 为每个 logger/transport 最终化输出 | Sinks 和 formatters 拥有输出 | JSON records 加 serializers |
-| Transport/sink model | first-party console、pretty DevTools/terminal output、memory、test、batch、stdout/stderr、file、rotating file、HTTP、syslog、worker、browser HTTP、IndexedDB、WebSocket、service worker、BroadcastChannel、OTLP、Sentry、Datadog、Elasticsearch、Loki、CloudWatch、SQLite/Postgres/custom DB | Destination/transport API、multi-target transports、`pino/file`、`pino-pretty` 和 ecosystem transports | 内置 console/file/http/stream-style transports 和广泛 custom transport ecosystem | Core 中的 console/stream sinks，以及 file、OTEL、Sentry、syslog、CloudWatch、Windows Event Log 等 packages | stdout/file/rotation/raw/custom streams |
-| Automatic browser collection | 19 个 first-party browser/frontend integrations：console、script/resource errors、unhandled rejection、fetch、XHR、Web Vitals、performance entries、user actions、router adapters、ReportingObserver、service worker、WebSocket、framework error hooks、runtime host、browser context propagation | Browser API 可直接 logging；checked docs 未发现等价 LoggerJS browser capture suite | checked docs 未发现等价 LoggerJS browser capture suite | 支持 browser runtime；checked docs 未显示等价 browser capture/offline suite | checked docs 未发现等价能力 |
-| Automatic Node collection | 16 个 first-party Node.js/server integrations：process、diagnostics_channel、Express、Fastify、Koa、Hapi、Nest middleware、fetch、http client、CLI、serverless、queue、BullMQ、Prisma、Redis、generic DB clients | Fastify/Pino、pino-http 等 ecosystem integrations 常见；core docs 覆盖 logger/transports | 内置 uncaught exception 和 unhandled rejection handling；framework request logging 通常是 ecosystem code | first-party framework integration packages 包括 Express、Fastify、Hono、Koa 和 Drizzle | checked docs 未显示广泛 first-party instrumentation suite |
-| Browser persistence/export | first-party IndexedDB transport、IndexedDB HTTP offline queue、pagehide flush、ZIP export | checked docs 未发现 first-party equivalent | checked docs 未发现 first-party equivalent | checked core docs 未发现 first-party equivalent | checked docs 未发现 first-party equivalent |
-| Delivery reliability | 共享 batching、retry/backoff、byte limits、circuit breaker、flush/flushSync/close、适用时 offline queues | 高吞吐 stream/transport model；transport startup caveats 有文档 | Transport model 带 exceptions/rejections、querying、streaming、close/await guidance | Sink model 带 category/filter/context control；reliability 取决于 chosen sink packages | Stream model；reliability 取决于 chosen streams |
-| Privacy controls | Redaction、privacy guard、normalize-error、safe codecs、integration 中 URL/header sanitizers | 使用 fast-redact 的内置 path redaction | Formatting 和 custom transforms；checked README 中无 built-in redaction claim | Redaction package 和 filters | Serializers/custom streams |
-| Context propagation | Child loggers、bindings、tags、`withContext()`、Node AsyncLocalStorage installer | Child loggers、bindings、mixins；async context 是 app/ecosystem code | Child logger metadata；async context 是 app/ecosystem code | Explicit 和 implicit contexts，带 configurable context local storage | Child loggers 和 serializers |
-| TypeScript posture | first-party TypeScript source/declarations、typed events、subpath exports | Types included in package ecosystem | Types included in package ecosystem | TypeScript-first package | 历史 Node package，带 TypeScript ecosystem support |
-| Dependency posture | `@loggerjs/core` 无 dependencies；完整 workspace packages 只增加目标依赖，例如 `@loggerjs/codecs` 中的 `msgpackr` | 小 core，加 focused dependencies | 成熟但更大的 dependency graph | `@logtape/logtape` zero dependencies | 较老 package，某些功能有 optional deps |
+| 主要定位 | 带自动采集和可靠投递的同构结构化日志 | 低开销的 Node JSON 日志 | 拥有成熟 format/transport 模型的灵活 Node logger | 跨 JS 运行时、以库为先的结构化日志 | 面向 Node 服务的简单 JSON 日志 |
+| 运行时定位 | `@loggerjs/core` 与平台无关；官方 Node 和浏览器包按运行时拆分 | 以 Node 为主，提供有文档的浏览器 API | 以 Node 为主；浏览器不是主要的文档路径 | 官方支持 Node、Deno、Bun、浏览器、Cloudflare Workers 和 edge | 面向 Node 服务；文档提到支持 Browserify/Webpack/NW.js |
+| 对库友好的默认行为 | 是：`getLogger()` 在宿主配置前保持静默 | 部分：库可以接收或注入 logger，但 Pino 本身面向应用 | 部分：库可以接收或注入 logger，但 Winston 本身面向应用 | 是：核心设计目标 | 部分：child logger 有帮助，但仍需要应用层配置 |
+| 结构化数据 | 是：record/event 保留 message、data、context、tags、trace、source、type | 是：默认输出 JSON 日志 | 是：可变的 `info` 对象加 format | 是：结构化日志记录/属性 | 是：JSON 记录 |
+| 级别 | 与 Pino 兼容的数值级别加名称 | 内置数值级别和自定义级别 | RFC5424 风格级别和自定义级别 | 严重级别，按 category 配置 | 数值级别 |
+| category/logger 模型 | category 数组、child logger、registry 配置 | child logger 和 bindings | logger 实例、child logger、container | 分层 category，sink 可继承 | logger 名称加 child logger；文档说明名称没有层级 |
+| middleware/过滤层 | 官方 middleware/processor：补充字段、脱敏、采样、去重、路由、限流、指纹、规范化 | hooks、serializers、mixins、脱敏；更完整的 middleware 通常要靠应用或生态代码 | format 链和自定义 format；可变对象管线 | filter、context、formatter、脱敏扩展包 | serializer 和自定义 stream |
+| 序列化归属 | codec 属于各个 transport；内置 JSON、safe JSON、NDJSON、fast-event-json、msgpackr、OTLP JSON | core 负责 JSON 序列化，配合 serializer/formatter 和 transport 输出 | format 链为每个 logger/transport 生成最终输出 | sink 和 formatter 负责输出 | JSON 记录加 serializer |
+| transport/sink 模型 | 官方提供 console、pretty DevTools/终端输出、memory、test、batch、stdout/stderr、文件、轮转文件、HTTP、syslog、worker、浏览器 HTTP、IndexedDB、WebSocket、service worker、BroadcastChannel、OTLP、Sentry、Datadog、Elasticsearch、Loki、CloudWatch、SQLite/Postgres/自定义数据库 | destination/transport API、多目标 transport、`pino/file`、`pino-pretty` 以及生态 transport | 内置 console/file/http/stream 类 transport，以及丰富的自定义 transport 生态 | core 中有 console/stream sink，另有 file、OTEL、Sentry、syslog、CloudWatch、Windows Event Log 等扩展包 | stdout/file/rotation/raw/自定义 stream |
+| 浏览器自动采集 | 19 个官方浏览器/前端 integration：console、脚本/资源错误、未处理的 rejection、fetch、XHR、Web Vitals、performance 条目、用户操作、路由适配器、ReportingObserver、service worker、WebSocket、框架错误钩子、运行时宿主、浏览器 context 传播 | 可以通过浏览器 API 直接记录；核对的文档中未发现与 LoggerJS 等价的浏览器采集套件 | 核对的文档中未发现与 LoggerJS 等价的浏览器采集套件 | 支持浏览器运行时；核对的文档中未发现等价的浏览器采集/离线套件 | 核对的文档中未发现等价功能 |
+| Node 自动采集 | 16 个官方 Node.js/服务端 integration：process、diagnostics_channel、Express、Fastify、Koa、Hapi、Nest 中间件、fetch、http 客户端、CLI、serverless、队列、BullMQ、Prisma、Redis、通用数据库客户端 | 常见的是 Fastify/Pino、pino-http 等生态集成；core 文档主要介绍 logger/transport | 内置未捕获异常和未处理 rejection 的处理；框架请求日志通常靠生态代码 | 官方框架集成包包括 Express、Fastify、Hono、Koa 和 Drizzle | 核对的文档中没有成体系的官方埋点套件 |
+| 浏览器持久化/导出 | 官方 IndexedDB transport、IndexedDB HTTP 离线队列、pagehide flush、ZIP 导出 | 核对的文档中未发现官方等价功能 | 核对的文档中未发现官方等价功能 | 核对的 core 文档中未发现官方等价功能 | 核对的文档中未发现官方等价功能 |
+| 投递可靠性 | 共享的批量、重试/退避、字节限制、熔断、flush/flushSync/close，以及适用场景下的离线队列 | 高吞吐的 stream/transport 模型；文档说明了 transport 启动相关的注意事项 | transport 模型支持异常/rejection、查询、流式读取，并说明了 close/await 的用法 | sink 模型支持 category/filter/context 控制；可靠性取决于选用的 sink 包 | stream 模型；可靠性取决于选用的 stream |
+| 隐私控制 | 脱敏、隐私防护、错误规范化、安全 codec，以及 integration 中的 URL/header 清洗 | 基于 fast-redact 的内置路径脱敏 | 通过 format 和自定义转换实现；核对的 README 中没有内置脱敏的说法 | 脱敏扩展包和 filter | serializer/自定义 stream |
+| context 传播 | child logger、bindings、tags、`withContext()`、Node AsyncLocalStorage 安装器 | child logger、bindings、mixins；异步 context 靠应用或生态代码 | child logger 元数据；异步 context 靠应用或生态代码 | 显式和隐式 context，可配置 context 本地存储 | child logger 和 serializer |
+| TypeScript 支持 | 官方 TypeScript 源码与声明、类型化事件、子路径导出 | 包内自带类型 | 包内自带类型 | 以 TypeScript 为先的包 | 历史较久的 Node 包，TypeScript 支持来自生态 |
+| 依赖情况 | `@loggerjs/core` 无依赖；其他包只按需增加依赖，例如 `@loggerjs/codecs` 中的 `msgpackr` | 核心小，依赖精简 | 成熟但依赖图更大 | `@logtape/logtape` 零依赖 | 较老的包，部分功能有可选依赖 |
 
 ## 性能快照
 
-当前测量快照来自 [基准](BENCHMARKS.md) 和签入的 [基准矩阵](BENCHMARK-MATRIX.md)：参考机器 Apple M1 Max（64 GB）、Node v22.21.1、pino 10.3.1、winston 3.19.0、LogTape 2.1.3。loggerjs-vs-pino 行来自 drift-canceling paired A/B（22 runs）；竞争者 landscape 行来自顺序套件：
+当前数据来自 [基准](BENCHMARKS.md) 和仓库中的 [基准矩阵](BENCHMARK-MATRIX.md)：参考机器为 Apple M1 Max（64 GB）、Node v22.21.1、pino 10.3.1、winston 3.19.0、LogTape 2.1.3。loggerjs 与 pino 的对比来自抵消漂移的配对 A/B 测试（22 次运行）；其他日志库的数据来自顺序测试套件：
 
-| Scenario | ns/op | 解读 |
+| 场景 | ns/op | 解读 |
 | --- | ---: | --- |
-| loggerjs disabled debug, lazy message | 3 | Disabled level path 与 pino 同级 |
-| pino disabled debug | 9 | 同一等级开销 |
-| loggerjs prepared lean record sink | 224 | Codec-owned prepared encoder，paired A/B 下 1.28x pino |
-| loggerjs lean record sink | 242 | `fastEventJsonCodec` lean JSON，paired A/B 下 1.19x pino |
-| pino NDJSON noop sink | 287 | Direct JSON path；baseline |
-| loggerjs full-envelope record sink | 307 | 额外 `id`、`seq` 和 `levelName`，约 0.9x pino |
+| loggerjs disabled debug, lazy message | 3 | 禁用级别路径与 pino 相当 |
+| pino disabled debug | 9 | 同一量级的开销 |
+| loggerjs prepared lean record sink | 224 | codec 持有的 prepared 编码器，配对 A/B 下为 pino 的 1.28 倍 |
+| loggerjs lean record sink | 242 | 通过 `fastEventJsonCodec` 输出 lean JSON，配对 A/B 下为 pino 的 1.19 倍 |
+| pino NDJSON noop sink | 287 | 直接 JSON 路径；基线 |
+| loggerjs full-envelope record sink | 307 | 额外输出 `id`、`seq` 和 `levelName`，约为 pino 的 0.9 倍 |
 | node console info noop stream | 769 | 比同一套件中的 loggerjs lean sink 慢约 3x |
 | winston JSON noop sink | 2,726 | 比同一套件中的 loggerjs lean sink 慢约 10x |
 | LogTape JSON lines noop sink | 6,584 | 比同一套件中的 loggerjs lean sink 慢约 24x |
 
 如何解读这些数字：
 
-- 在 M1 Max 参考机器上，LoggerJS lean 和 prepared 在等价输出下 **快于 Pino**（1.19x / 1.28x，paired A/B，22 runs 可复现）。这 **不是** 普遍“beats Pino”声明：排序依赖 CPU/Node-V8，文档把差异当成经验 benchmark 结果，而不是已证明机制。请在你的硬件上用 `BENCH_AB=1 pnpm bench:node` 复现，并用 `pnpm bench:matrix` 增加持久跨机器证据。
-- LoggerJS 在等价输出上达到 Pino 同级，**没有** 放弃自己的 record pipeline。这个 pipeline 是设计目标，不是意外 overhead。
-- Record pipeline 换来 first-class middleware、integrations、multi-transport routing、codec selection 和 browser/server symmetry。
-- 这些数字没有比较每一种 Pino transport、Winston format chain、LogTape sink 或 browser scenario。
+- 在 M1 Max 参考机器上，LoggerJS 的 lean 和 prepared 路径在等价输出下**快于 Pino**（1.19 倍 / 1.28 倍，配对 A/B，22 次运行结果稳定）。这**不是**“全面超越 Pino”的说法：排名取决于 CPU 和 Node/V8 版本，文档把这一差异视为基准测试的经验结果，而不是已经证实的原理。请在自己的硬件上用 `BENCH_AB=1 pnpm bench:node` 复现，并用 `pnpm bench:matrix` 补充跨机器的数据。
+- LoggerJS 在等价输出下达到了 Pino 的量级，同时**没有**放弃自己的 record 管线。这条管线是有意的设计，而不是意外的开销。
+- record 管线换来了一等的 middleware、integration、多 transport 路由、codec 选择，以及浏览器与服务端的一致性。
+- 这些数字并没有覆盖每一种 Pino transport、Winston format 链、LogTape sink 或浏览器场景。
 
-## LoggerJS 更强的地方
+## LoggerJS 的优势
 
 ### 浏览器和同构应用
 
-LoggerJS 有 first-party browser transports 和 integrations：console capture、script/resource errors、fetch/XHR failures、Web Vitals、page lifecycle flushing、router events、user actions、WebSocket lifecycle、service worker lifecycle、ReportingObserver、IndexedDB persistence、offline HTTP queues 和 ZIP export。
+LoggerJS 官方提供浏览器 transport 和 integration：console 采集、脚本/资源错误、fetch/XHR 失败、Web Vitals、页面生命周期 flush、路由事件、用户操作、WebSocket 生命周期、service worker 生命周期、ReportingObserver、IndexedDB 持久化、HTTP 离线队列和 ZIP 导出。
 
-这是和 Pino、Winston、Bunyan 最大的实际差异。这些库可以不同程度在浏览器中使用，但 checked docs 没有显示与 LoggerJS 等价的 first-party automatic browser collection 和 local persistence suite。
+这是与 Pino、Winston、Bunyan 最大的实际差别。这些库都能在一定程度上用于浏览器，但核对的文档中没有与 LoggerJS 等价的官方浏览器自动采集和本地持久化套件。
 
-### Transport-Owned Codecs
+### 由 Transport 决定 Codec
 
-LoggerJS 在 transport 边界前保持结构化原始值。Serialization 是 transport 关注点，所以 stdout 可以用 NDJSON，browser HTTP 可以用 safe JSON 或 lean fast codec，OTLP 可以用 OTLP shape，自定义 transport 可以用 MessagePack 或 domain-specific projection。
+LoggerJS 在到达 transport 边界之前一直保留结构化的原始值。序列化是 transport 的职责，因此 stdout 可以用 NDJSON，浏览器 HTTP 可以用 safe JSON 或精简的快速 codec，OTLP 使用 OTLP 结构，自定义 transport 可以用 MessagePack 或领域专用的投影格式。
 
-这不同于常见 logger-level formatter model。多目的地 logging 会更少意外，因为每个目的地拥有自己的 wire contract。
+这与常见的“在 logger 层统一格式化”的模型不同。由于每个目的地各自掌控线上格式，多目的地日志的行为更可预期。
 
-### 内置可靠性 Primitives
+### 内置的可靠性组件
 
-LoggerJS 把常见投递控制作为可复用组件提供：batch transport、retry/backoff、byte limits、circuit breaker behavior、flush/close lifecycle、browser `sendBeacon`、IndexedDB offline queues，以及适用处的 transport stats。目标是：写 remote transport 时实现 destination，而不是重写 reliability layer。
+LoggerJS 把常见的投递控制做成可复用的组件：批量 transport、重试/退避、字节限制、熔断、flush/close 生命周期、浏览器 `sendBeacon`、IndexedDB 离线队列，以及适用场景下的 transport 统计。目标是：编写远程 transport 时只需实现目的地本身，而不必重写可靠性层。
 
-### Automatic Collection 是一等概念
+### 自动采集是一等概念
 
-LoggerJS integrations 显式、可逆，并通过与手动日志相同的管线路由。捕获日志仍经过 middleware、processors、routing、codecs 和 transports。对隐私很重要，因为 redaction 和 sampling 可以集中处理。
+LoggerJS 的 integration 显式且可撤销，并且与手动日志走同一条管线。采集到的日志同样经过 middleware、processor、路由、codec 和 transport。这对隐私很重要，因为脱敏和采样可以集中处理。
 
-## 什么时候其他 Logger 更合适
+## 什么时候选择其他日志库
 
-### 主要需求是最小 Node JSON Logging 时选 Pino
+### 只需要精简的 Node JSON 日志时，选 Pino
 
-Pino 仍是低开销 Node JSON logging 的参照点，并有成熟 Node web service 生态。当前 LoggerJS paired A/B 数字让 lean/prepared 等价输出路径在 M1 Max 参考机器上领先，但这个排序依赖 CPU/Node-V8。如果应用只需要 app-authored server logs 到 stdout 或 Pino transport，Pino 仍是更简单且更久经验证的选择。
+Pino 仍是低开销 Node JSON 日志的参照标准，并拥有成熟的 Node Web 服务生态。当前的配对 A/B 数据显示，在 M1 Max 参考机器上 LoggerJS 等价的 lean/prepared 路径领先，但这一排名取决于 CPU 和 Node/V8 版本。如果应用只需要把服务端自己写的日志输出到 stdout 或 Pino transport，Pino 仍是更简单、更久经考验的选择。
 
-### 需要成熟 Transport/Format 生态时选 Winston
+### 需要成熟的 Transport/Format 生态时，选 Winston
 
-Winston 广泛、稳定、灵活。它的 `format` chain 和 transport model 在许多 Node 应用中熟悉；README 记录了 exception handling、rejection handling、profiling、querying、streaming、custom formats 和 custom transports。已有 Winston 部署只有在 LoggerJS 的同构采集、middleware model 或测得的性能收益足以抵消迁移成本时才值得迁移。
+Winston 功能广泛、稳定且灵活，它的 `format` 链和 transport 模型为许多 Node 应用所熟悉；README 介绍了异常处理、rejection 处理、性能分析、查询、流式读取、自定义 format 和自定义 transport。已经在用 Winston 的项目，只有当 LoggerJS 的同构采集、middleware 模型或实测的性能收益足以抵消迁移成本时，才值得迁移。
 
-### Multi-Runtime Library-First Logging 优先时选 LogTape
+### 以多运行时、库为先的日志为重点时，选 LogTape
 
-对库作者而言，LogTape 是与 LoggerJS 最接近的概念同行。其官方 package page 强调 zero dependencies、library-first design、structured logging、hierarchical categories、runtime diversity、redaction 和 framework integration packages。如果 Deno/Bun/edge parity 和 core package zero dependencies 是最高优先级，LogTape 很适合。
+对库作者来说，LogTape 是在理念上与 LoggerJS 最接近的库。它的官方包页面强调零依赖、以库为先、结构化日志、分层 category、多运行时支持、脱敏以及框架集成包。如果 Deno/Bun/edge 的一致性和核心包零依赖是最高优先级，LogTape 非常合适。
 
-当 first-party browser telemetry capture、IndexedDB/offline workflows、Node process/client/server integrations、transport-owned codecs，以及当前相对 pino 的 Node benchmarks 更重要时，选择 LoggerJS。
+如果官方的浏览器遥测采集、IndexedDB/离线工作流、Node 进程/客户端/服务端 integration、由 transport 决定的 codec，以及当前相对 pino 的 Node 基准表现更重要，则选择 LoggerJS。
 
-### Legacy Node JSON 兼容时选 Bunyan
+### 需要兼容老的 Node JSON 格式时，选 Bunyan
 
-如果已有服务已经输出 Bunyan-shaped JSON，或依赖 Bunyan CLI/stream ecosystem，Bunyan 仍然相关。新 browser/server 应用中，LoggerJS 内置 surface 更广。
+如果已有服务已经输出 Bunyan 格式的 JSON，或依赖 Bunyan 的 CLI/stream 生态，Bunyan 仍然有用武之地。对于新的浏览器/服务端应用，LoggerJS 内置的能力范围更广。
 
 ## 其他常见工具
 
-| 工具 | 最适合 | 与 LoggerJS 的关系 |
+| 工具 | 最适合 | 与 LoggerJS 的比较 |
 | --- | --- | --- |
-| Native `console` | 开发输出和简单脚本 | LoggerJS 可以捕获 console calls 并路由，但 direct console 仍是最简单 debug output。它不是结构化投递管线。 |
-| `loglevel` | 很小的 browser/Node console method level filtering | 小得多也简单得多。它不试图提供 transports、codecs、integrations、offline storage 或 vendor delivery。 |
-| `debug` | 按 namespace、环境/local storage 开关的 debug traces | 非常适合 library debug traces。它不是结构化生产日志管线。 |
-| `consola` | Pretty CLI/browser console output 和 developer tooling UX | 人类可见 console UX、tags、reporters、console redirection、prompts 很强。LoggerJS 更关注结构化 observability delivery。 |
-| `tslog` | TypeScript-friendly pretty/JSON logger for Node and browser | 比 `debug` 或 `loglevel` 更接近完整 logger，并支持 attachable transports。LoggerJS 有更广的 first-party automatic collection、transport reliability 和 vendor/browser persistence surface。 |
+| 原生 `console` | 开发时输出和简单脚本 | LoggerJS 可以采集 console 调用并路由，但直接用 console 仍是最简单的调试输出。它不是结构化的投递管线。 |
+| `loglevel` | 在浏览器/Node 中对 console 方法做极简的级别过滤 | 小得多、简单得多，也不打算提供 transport、codec、integration、离线存储或厂商投递。 |
+| `debug` | 通过环境变量或 localStorage 按命名空间开关的调试输出 | 非常适合库的调试输出，但不是结构化的生产日志管线。 |
+| `consola` | 美观的 CLI/浏览器 console 输出和开发工具体验 | 在面向人的 console 体验、标签、reporter、console 重定向和交互提示方面很强。LoggerJS 更侧重结构化的可观测性投递。 |
+| `tslog` | 对 TypeScript 友好、支持 Node 和浏览器的 pretty/JSON logger | 比 `debug` 或 `loglevel` 更接近完整的 logger，支持挂载 transport。LoggerJS 在官方自动采集、transport 可靠性以及厂商/浏览器持久化方面覆盖更广。 |
 
-## 迁移摩擦
+## 迁移时的差异
 
-LoggerJS 有意在几个地方与 Pino 和 Winston 不同：
+LoggerJS 在以下几处有意与 Pino 和 Winston 不同：
 
-- 普通日志使用 `(message, data)`；Pino 常用 `(object, message)`。
-- 稳定 metadata 拆分到 `tags`、`bindings` 和 ambient context，而不是一个通用 `defaultMeta` 或 `base` 对象。
-- 数据塑形属于 middleware/processors；序列化属于挂在 transports 上的 codecs。
-- Automatic capture 是 opt-in。添加 `captureConsoleIntegration()` 或 `captureFetchIntegration()` 是显式且可逆的。
+- 普通日志使用 `(message, data)`；Pino 通常使用 `(object, message)`。
+- 稳定的元数据分为 `tags`、`bindings` 和环境 context，而不是一个通用的 `defaultMeta` 或 `base` 对象。
+- 数据整理属于 middleware/processor；序列化属于挂在 transport 上的 codec。
+- 自动采集需要主动开启。添加 `captureConsoleIntegration()` 或 `captureFetchIntegration()` 是显式且可撤销的。
 
 示例见 [迁移](MIGRATION.md)。
 
@@ -151,5 +151,5 @@ LoggerJS 有意在几个地方与 Pino 和 Winston 不同：
 - LoggerJS 并非在所有环境下都快于 Pino。Node 直接 JSON 路径的排名取决于 CPU 和 Node/V8 版本；[基准矩阵](BENCHMARK-MATRIX.md) 列出了实际测试过的机器，其中一些机器上 pino 更快。
 - Node.js 和浏览器之外的运行时，目前由打包产物在 Bun、Deno 和 workerd/Miniflare 上的冒烟测试覆盖，而不是每个运行时都有完整测试套件。
 - LoggerJS 的厂商 transport 直接使用常见目的地的线上协议。成熟的厂商 SDK 和生态插件可能提供更深入的平台特定功能。
-- “未发现一方等价实现”指的是在 [范围](#范围) 中列出的 Pino、Winston、LogTape 和 Bunyan 官方文档里没有找到等价功能，其他包可能提供类似的浏览器采集能力。
+- “未发现等价功能”指的是在 [范围](#范围) 中列出的 Pino、Winston、LogTape 和 Bunyan 官方文档里没有找到等价功能，其他包可能提供类似的浏览器采集能力。
 - 基准数字只是某一时刻的快照。依赖这些数字之前，请在自己的硬件上重新运行 `pnpm bench:node`。
