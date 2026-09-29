@@ -201,6 +201,8 @@ Node runtime diagnostics 可以从 `@loggerjs/node` 调用 `installLoggerDiagnos
 | `browserBroadcastChannelTransport({ channel })` | 把 logs fan out 到其他 tabs（天然 lossy；receivers 必须正在监听）。 |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把 logs（例如来自 `indexedDbTransport().query()`）打包成带 manifest、可选 per-session files、可选 `recent.ndjson`/`recent.json` 和 CRC 的 ZIP，用于 support workflows。 |
 
+`browserHttpTransport()` 在普通 Fetch 投递中使用 `codec`。如果 pagehide 或页面隐藏时的 Beacon 请求需要不同的编码或 content type，可以设置 `beaconCodec`；未设置时回退到 `codec`。配置了 `transformPayload` 时会跳过 Beacon 投递，生命周期 flush 改走普通 Fetch 路径，`beaconCodec` 也就不会生效。
+
 `browserHttpTransport()` 同样接收 `transformPayload`。支持 `CompressionStream` 的浏览器使用 `browserCompressionPayloadTransform()`：
 
 ```ts
