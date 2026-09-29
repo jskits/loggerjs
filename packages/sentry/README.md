@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://jskits.github.io/loggerjs/"><img src="https://raw.githubusercontent.com/jskits/loggerjs/main/docs/public/logo.png" alt="LoggerJS logo" width="96" height="96" /></a>
+</p>
+
 # @loggerjs/sentry
 
 > Forward LoggerJS logs to Sentry as structured logs, breadcrumbs, and captured exceptions/messages.

@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://jskits.github.io/loggerjs/"><img src="https://raw.githubusercontent.com/jskits/loggerjs/main/docs/public/logo.png" alt="LoggerJS logo" width="96" height="96" /></a>
+</p>
+
 # @loggerjs/processors
 
 > The composable middleware and processor toolbox for LoggerJS — redact, sample, dedupe, rate-limit, fingerprint, enrich, route, and buffer.

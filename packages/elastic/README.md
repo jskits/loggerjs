@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://jskits.github.io/loggerjs/"><img src="https://raw.githubusercontent.com/jskits/loggerjs/main/docs/public/logo.png" alt="LoggerJS logo" width="96" height="96" /></a>
+</p>
+
 # @loggerjs/elastic
 
 > Index LoggerJS logs into Elasticsearch or Elastic Cloud via the `_bulk` API.
