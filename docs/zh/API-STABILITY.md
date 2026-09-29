@@ -6,106 +6,106 @@ description: "v1 稳定 API 子集和 pre-1.0 兼容策略。"
 
 # API 稳定性
 
-LoggerJS 仍处于 pre-1.0。签入仓库的 `api-reports/` 文件描述了每一个已导出的 TypeScript 声明，但这并不表示每个导出符号都已经冻结为 v1 API。
+LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记录了每一个导出的 TypeScript 声明，但这并不表示每个导出符号都已经作为 v1 API 冻结。
 
-本页是面向人的稳定性契约。机器可读分类位于 [`docs/api-stability.policy.json`](https://github.com/jskits/loggerjs/blob/main/docs/api-stability.policy.json)，当某个 package export 未被纳入策略时，`pnpm verify:api-stability` 会失败。
+本页是写给人看的稳定性约定。机器可读的分级位于 [`docs/api-stability.policy.json`](https://github.com/jskits/loggerjs/blob/main/docs/api-stability.policy.json)；如果某个包的导出没有列入该文件，`pnpm verify:api-stability` 会失败。
 
 ## 当前策略
 
-在 v1 前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定集合被刻意限制在 core logger model、core pipeline contracts、主要 browser 和 Node delivery paths、pretty output、processors 和 codecs。
+在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定在 core 的 logger 模型、core 管线契约、主要的浏览器和 Node 投递路径、pretty 输出、processor 以及 codec。
 
-其他部分仍然可能是公开的、经过测试的、可用的，但并不全部属于 v1 兼容承诺。尤其是 vendor、observability 和 database packages，在获得更多真实使用和失败模式验证前，都保持 experimental。
+其他部分同样可能是公开的、经过测试且可用的，但并非都属于 v1 兼容承诺。尤其是厂商、可观测性和数据库相关的包，在获得更多真实使用和故障场景验证之前，仍保持实验状态。
 
-## 状态级别
+## 状态分级
 
 | 状态 | 含义 |
 | --- | --- |
-| Stable v1 Candidate | 计划带入 v1，不做移除、重命名或签名破坏；安全、数据丢失或 wire-protocol 正确性修复除外。允许 additive changes。 |
-| Compatible Public Surface | 公开且有测试，但还没稳定到 v1 candidate。pre-v1 minor releases 可能通过 release notes 调整 option names、captured fields 或 runtime edge behavior。 |
-| Experimental Before v1 | 公开 packages 或 subpaths 在 v1 前可能变化。当前行为适合时可以使用，但不要把它们视为冻结的兼容契约。 |
+| Stable v1 Candidate | 计划原样带入 v1：不删除、不重命名、不破坏签名，安全、数据丢失或线上协议正确性修复除外。允许新增。 |
+| Compatible Public Surface | 公开且有测试，但还没有稳定到 v1 候选的程度。v1 之前的 minor 版本可能调整选项名、采集字段或运行时边界行为，并在发布说明中注明。 |
+| Experimental Before v1 | 公开的包或子路径，在 v1 之前可能变化。当前行为满足需求时可以使用，但不要把它们当作已冻结的兼容契约。 |
 
-内部源码路径、`dist` 文件路径、生成 bundle 布局、private class fields，以及只从测试推断出的行为，在任何状态下都不是 public API。
+内部源码路径、`dist` 文件路径、生成的 bundle 结构、私有类字段，以及只能从测试中推断出的行为，在任何状态下都不属于公开 API。
 
 ## Stable v1 Candidate
 
-稳定 exports 在 `api-stability.policy.json` 中跟踪。当前稳定 packages 和入口家族如下：
+稳定的导出记录在 `api-stability.policy.json` 中。当前稳定的包和入口如下：
 
-| Package | 稳定 surface |
+| 包 | 稳定范围 |
 | --- | --- |
-| `@loggerjs/core` | Root package，以及 middleware、codecs、events、context、trace propagation、payload transforms 和 core transports 的文档化 core subpaths。 |
-| `@loggerjs/browser` | 用于 HTTP delivery、IndexedDB/offline-first storage、support ZIP export、payload transforms，以及主要 console/error/fetch/XHR/context/performance/page-lifecycle integrations 的文档化稳定 subpaths。 |
-| `@loggerjs/node` | 用于 stdout/stderr/file/rotating-file/HTTP/syslog/worker transports、payload transforms、process capture、outgoing HTTP capture、diagnostics 和 AsyncLocalStorage context 的文档化稳定 subpaths。 |
-| `@loggerjs/pretty` | Root package、formatter、console transport 和 stream transports。 |
-| `@loggerjs/processors` | Root package processor 和 middleware catalog。 |
-| `@loggerjs/codecs` | Root package codec catalog。 |
+| `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
+| `@loggerjs/browser` | 文档中列出的稳定子路径：HTTP 投递、IndexedDB/offline-first 存储、支持日志 ZIP 导出、payload 转换，以及主要的 console/error/fetch/XHR/context/performance/page-lifecycle integration。 |
+| `@loggerjs/node` | 文档中列出的稳定子路径：stdout/stderr/file/rotating-file/HTTP/syslog/worker transport、payload 转换、进程采集、出站 HTTP 采集、诊断，以及 AsyncLocalStorage context。 |
+| `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
+| `@loggerjs/processors` | 根入口导出的 processor 和 middleware 目录。 |
+| `@loggerjs/codecs` | 根入口导出的 codec 目录。 |
 
-稳定语义包括：
+稳定的语义包括：
 
-- 用于应用和 library-safe logging 的 `createLogger(options)`、`getLogger(category)` 和 `configure(...)`。
-- Logger instance methods：`trace`、`debug`、`info`、`warn`、`error`、`fatal`、`log`、`capture`、`event`、`child`、`withTags`、`withType`、`setLevel`、`getLevel`、`isEnabled`、`isLevelEnabled`、`addTransport`、`addProcessor`、`addIntegration`、`ready`、`flush`、`flushSync` 和 `close`。
-- Level 名称和数值：`trace=10`、`debug=20`、`info=30`、`warn=40`、`error=50`、`fatal=60` 和 `silent`。
-- `Middleware`、`Processor`、`Transport`、`Integration`、`Codec` 的 pipeline interfaces，包括 `TransportContext.toEvent(record)` 的 memoized projection。
-- 禁用级别在 record 分配和 lazy message 求值前返回。
-- Middleware、processors、codecs、integrations 和 transports 的错误与应用代码隔离。
-- 序列化仍然归 transport 所有；middleware 和 processors 保持结构化值。
+- 用于应用日志和对库友好日志的 `createLogger(options)`、`getLogger(category)` 和 `configure(...)`。
+- Logger 实例方法：`trace`、`debug`、`info`、`warn`、`error`、`fatal`、`log`、`capture`、`event`、`child`、`withTags`、`withType`、`setLevel`、`getLevel`、`isEnabled`、`isLevelEnabled`、`addTransport`、`addProcessor`、`addIntegration`、`ready`、`flush`、`flushSync` 和 `close`。
+- 级别名称和数值：`trace=10`、`debug=20`、`info=30`、`warn=40`、`error=50`、`fatal=60` 以及 `silent`。
+- `Middleware`、`Processor`、`Transport`、`Integration`、`Codec` 这些管线接口，包括 `TransportContext.toEvent(record)` 的缓存投影。
+- 禁用的级别会在分配 record 和计算延迟消息之前返回。
+- middleware、processor、codec、integration 和 transport 的错误与应用代码隔离。
+- 序列化仍由 transport 负责；middleware 和 processor 处理的始终是结构化的值。
 
 ## Compatible Public Surface
 
-Compatible exports 仍然会保持文档化和测试，但还没有稳定到 v1 candidate。当前 compatible areas 包括：
+Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选的程度。当前属于 Compatible 的部分包括：
 
-- Browser 和 Node root packages（`@loggerjs/browser`、`@loggerjs/node`）是 compatible convenience aggregators，因为它们同时 re-export stable 和 compatible components。需要 v1 candidate 兼容边界时，优先使用上面的 stable subpaths。
-- Browser secondary transports 和 collectors：BroadcastChannel、service worker、WebSocket、framework errors、framework routers、generic router capture、ReportingObserver、runtime host、service worker messages、user actions 和 WebSocket capture。
-- Node framework 和 data integrations：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、generic queues、BullMQ、serverless lifecycle、database method wrapping 和 CLI capture。
+- browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
+- 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
+- Node 的框架和数据类 integration：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、通用队列、BullMQ、serverless 生命周期、数据库方法包装和 CLI 采集。
 
-pre-v1 期间这些 public import paths 应保持可用，但具体 captured fields、hook coverage 和 edge behavior 仍可能被调整。如果真实使用表明当前 API 太宽，这些区域也是 v1 前收窄命名或降低承诺的合适位置。
+在 1.0 之前，这些公开的导入路径会继续保留，但具体的采集字段、钩子覆盖范围和边界行为仍可能调整。如果真实使用表明当前 API 过于宽泛，这些部分也是 v1 之前收窄命名或降低承诺的合适位置。
 
 ## Experimental Before v1
 
-这些 packages 是公开的，因为它们对集成测试和早期采用者有用，但不是 v1 兼容承诺：
+以下包之所以公开，是因为它们对集成测试和早期使用者有用，但它们不属于 v1 兼容承诺：
 
-| Package family | Experimental exports |
+| 包类别 | 实验性导出 |
 | --- | --- |
-| Observability adapters | `@loggerjs/otel/*`, `@loggerjs/sentry/*` |
-| Vendor wire transports | `@loggerjs/datadog/*`, `@loggerjs/elastic/*`, `@loggerjs/loki/*`, `@loggerjs/cloudwatch/*` |
-| Database transports | `@loggerjs/database/*` |
+| 可观测性适配器 | `@loggerjs/otel/*`, `@loggerjs/sentry/*` |
+| 厂商协议 transport | `@loggerjs/datadog/*`, `@loggerjs/elastic/*`, `@loggerjs/loki/*`, `@loggerjs/cloudwatch/*` |
+| 数据库 transport | `@loggerjs/database/*` |
 
-Experimental 不等于未测试。它表示 v1 前的 minor releases 可能根据 design partners 或 live endpoints 暴露出的更好形态，调整 option names、payload mapping、retry expectations、batching guidance 或 subpath layout。
+实验性不等于没有测试。它的意思是：如果早期合作用户或真实端点表明有更好的设计，v1 之前的 minor 版本可能调整选项名、payload 映射、重试预期、批量建议或子路径结构。
 
-Raw vendor transports 本身不是 durable。生产投递应使用 `batchTransport()` 和 `retryTransport()` 包装，或投递到由 collector endpoint 负责 queueing、retry、authentication 和 backoff 的服务。
+原始的厂商 transport 本身不具备持久性。生产投递应使用 `batchTransport()` 和 `retryTransport()` 包装，或者投递到一个自己负责排队、重试、认证和退避的收集端点。
 
 ## 变更策略
 
-对 Stable v1 Candidate APIs：
+对于 Stable v1 Candidate API：
 
-- v1 前不故意移除、重命名或破坏签名，除非有 deprecation note 和 migration path。
-- 允许 additive changes：新 options、fields、overloads、processors、transports、integrations 和 subpaths。
-- 影响 delivery、privacy 或 performance 的 defaults 需要文档和 release notes。
-- 安全修复、数据丢失修复、vendor wire-protocol 正确性修复可能改变 edge-case behavior。Release notes 必须说明这些变化。
+- v1 之前不会有意删除、重命名或破坏签名，除非同时提供弃用说明和迁移路径。
+- 允许新增：新的选项、字段、重载、processor、transport、integration 和子路径。
+- 影响投递、隐私或性能的默认值变化，需要更新文档并写入发布说明。
+- 安全修复、数据丢失修复和厂商线上协议正确性修复可能改变边界情况下的行为，发布说明中必须写明。
 
-对 Compatible 和 Experimental APIs：
+对于 Compatible 和 Experimental API：
 
-- Public exports 仍保持 typechecked、tested、API-reported 和 documented。
-- pre-v1 minor releases 可以调整 names、options、field shape 或具体 behavior。
-- Breaking changes 仍应带 release notes 和 migration guidance，因为 public 不等于 disposable。
+- 公开导出仍然保持类型检查、测试、API 报告和文档齐全。
+- v1 之前的 minor 版本可以调整名称、选项、字段结构或具体行为。
+- 破坏性变更仍应附带发布说明和迁移指南，因为“公开”不等于“可以随意丢弃”。
 
-## 新增 Public API
+## 新增公开 API
 
-新的 package exports 必须：
+新增包导出时必须：
 
-1. 在最接近实际 runtime 的层级新增或更新测试。
-2. 更新 import boundaries 和 caveats 的文档与示例。
-3. 把 export 加入 `docs/api-stability.policy.json`。
+1. 在尽可能贴近真实运行时的层级新增或更新测试。
+2. 更新文档和示例，说明导入边界和注意事项。
+3. 把新导出加入 `docs/api-stability.policy.json`。
 4. 运行 `pnpm verify:api-stability` 和 `pnpm api:check`。
 
-当现有稳定 API 能解决问题时，优先使用示例和组合，而不是新增 exports。
+如果现有的稳定 API 已经能解决问题，优先提供示例和组合方式，而不是新增导出。
 
-## 如何评估未来升级
+## 如何评估未来的升级
 
-1. 阅读 package changelog 和 release notes。
-2. 查看本页和 `api-stability.policy.json`，确认你依赖的 export 状态。
-3. 如果你是贡献者，在本仓库运行 `pnpm check`；如果你是消费者，运行自己的应用测试套件。
-4. 热路径变更用 `pnpm bench:node` 或 `pnpm bench:browser` 复现相关 benchmark。
-5. 远程投递要测试你的真实 collector/vendor endpoint，并监控 `transport.dropped.*`、`transport.retry.*` 和 queue-depth metrics。
+1. 阅读包的 changelog 和发布说明。
+2. 查看本页和 `api-stability.policy.json`，确认你依赖的导出属于哪个状态。
+3. 如果你是贡献者，在本仓库运行 `pnpm check`；如果你是使用者，运行你自己应用的测试套件。
+4. 对热路径，用 `pnpm bench:node` 或 `pnpm bench:browser` 复现相关的基准。
+5. 对远程投递，测试你真实使用的收集端或厂商端点，并监控 `transport.dropped.*`、`transport.retry.*` 以及队列深度指标。
 
 ## 相关链接
 
