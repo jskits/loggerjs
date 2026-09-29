@@ -1,5 +1,15 @@
 # @loggerjs/browser
 
+## 0.5.7
+
+### Patch Changes
+
+- Forward `ready()` through wrapper transports. `batchTransport()`, `retryTransport()`, `fallbackTransport()`, and `offlineFirstTransport()` did not expose the wrapped transport's `ready()`, so `logger.ready()` stopped waiting for startup handshakes (for example a worker or WebSocket transport) as soon as it was wrapped. Wrappers now expose `ready()` whenever a wrapped transport has one.
+
+- Replay the `browserHttpTransport` offline queue without waiting for an `online` event. Stored payloads are now replayed shortly after the transport is created (so an IndexedDB queue from an earlier page load is drained; opt out with `offlineReplayOnStart: false`), after a flush in which a live batch reached the collector, and on an explicit `flush()` with no live logs pending. Previously, batches queued during a server outage while the browser stayed online, and payloads persisted before a reload, were only sent after connectivity dropped and returned. A failed replay keeps the entries queued and is reported through `onInternalError`.
+- Updated dependencies:
+  - @loggerjs/core@0.5.7
+
 ## 0.5.6
 
 ### Patch Changes

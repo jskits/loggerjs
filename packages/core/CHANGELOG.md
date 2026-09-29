@@ -1,5 +1,19 @@
 # @loggerjs/core
 
+## 0.5.7
+
+### Patch Changes
+
+- `logger.flush()` and `logger.close()` now wait for asynchronous transport writes that are still in flight, including writes started by child loggers, before flushing or closing the transports. `retryTransport()` and `fallbackTransport()` also track their in-flight deliveries so their own `flush()` and `close()` wait for them. Previously, logs sent through these wrappers or through raw vendor transports could still be on the wire when `flush()` resolved, and were lost on shutdown.
+
+- Make `batchTransport().close()` clean up when the destination is failing. Previously a failed final flush made `close()` reject without closing the inner transport, and the retry timer kept firing after close. Close now stops the timer, always closes the inner transport, counts undelivered records (and any written after close) as `transport.dropped.closed`, and is idempotent. The final flush error is still thrown.
+
+- Let string codecs be passed to transports under strict TypeScript. `Codec.decode` was declared as a function-typed property, which made its payload parameter contravariant, so `stdoutTransport({ codec: ndjsonCodec() })` or `nodeHttpTransport({ codec: fastEventJsonCodec() })` failed to compile because `Codec<string>` was not assignable to `Codec<string | Uint8Array>`. `decode` is now declared with method syntax.
+
+- Calling `configure()` again without `reset: true` now replaces the previous configuration instead of leaking it. Previously the earlier integrations stayed installed (so console, fetch, and similar hooks were patched twice and captured duplicates) and transports dropped from the configuration were never flushed or closed. Reconfiguring now tears down the previous integrations before installing the new ones and closes transports that are no longer referenced; transports passed again stay open.
+
+- Forward `ready()` through wrapper transports. `batchTransport()`, `retryTransport()`, `fallbackTransport()`, and `offlineFirstTransport()` did not expose the wrapped transport's `ready()`, so `logger.ready()` stopped waiting for startup handshakes (for example a worker or WebSocket transport) as soon as it was wrapped. Wrappers now expose `ready()` whenever a wrapped transport has one.
+
 ## 0.5.6
 
 ### Patch Changes
