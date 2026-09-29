@@ -7,27 +7,35 @@ import { fileURLToPath } from "node:url";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const command = process.argv[2] ?? "run";
 const outputPath = join(repoRoot, "docs", "TEST-INVENTORY.md");
+const zhOutputPath = join(repoRoot, "docs", ".zh", "manual", "TEST-INVENTORY.md");
 const jsonPath = join(repoRoot, ".tmp", "test-inventory", "vitest-results.json");
 const vitestEntry = join(repoRoot, "node_modules", "vitest", "vitest.mjs");
 
 if (command === "run") {
-  const markdown = collectInventoryMarkdown();
-  writeFileSync(outputPath, markdown);
-  console.log(`Wrote ${relative(repoRoot, outputPath)}`);
-} else if (command === "check") {
-  const expected = collectInventoryMarkdown();
-  const actual = existsSync(outputPath) ? readFileSync(outputPath, "utf8") : "";
-  if (actual !== expected) {
-    console.error(`${relative(repoRoot, outputPath)} is stale. Run: pnpm test:inventory`);
-    process.exit(1);
+  const outputs = collectInventoryOutputs();
+  for (const [path, markdown] of outputs) {
+    writeFileSync(path, markdown);
+    console.log(`Wrote ${relative(repoRoot, path)}`);
   }
-  console.log(`${relative(repoRoot, outputPath)} is up to date.`);
+} else if (command === "check") {
+  const outputs = collectInventoryOutputs();
+  let stale = false;
+  for (const [path, expected] of outputs) {
+    const actual = existsSync(path) ? readFileSync(path, "utf8") : "";
+    if (actual !== expected) {
+      console.error(`${relative(repoRoot, path)} is stale. Run: pnpm test:inventory`);
+      stale = true;
+    } else {
+      console.log(`${relative(repoRoot, path)} is up to date.`);
+    }
+  }
+  if (stale) process.exit(1);
 } else {
   console.error("Usage: node scripts/test-inventory.mjs [run|check]");
   process.exit(1);
 }
 
-function collectInventoryMarkdown() {
+function collectInventoryOutputs() {
   mkdirSync(dirname(jsonPath), { recursive: true });
   execFileSync(
     process.execPath,
@@ -43,10 +51,14 @@ function collectInventoryMarkdown() {
   );
 
   const report = JSON.parse(readFileSync(jsonPath, "utf8"));
-  return renderInventory(report);
+  const summary = summarizeReport(report);
+  return [
+    [outputPath, renderInventory(summary)],
+    [zhOutputPath, renderChineseInventory(summary)],
+  ];
 }
 
-function renderInventory(report) {
+function summarizeReport(report) {
   const files = [...report.testResults].toSorted((left, right) =>
     left.name.localeCompare(right.name),
   );
@@ -59,11 +71,21 @@ function renderInventory(report) {
     );
   }
 
-  const status = report.success ? "passed" : "failed";
-  const rows = packageRows
-    .map((row) => `| ${row.packageName} | ${row.files} | ${row.tests} |`)
-    .join("\n");
+  return {
+    files: files.length,
+    tests: report.numTotalTests,
+    passed: report.numPassedTests,
+    failed: report.numFailedTests,
+    pending: report.numPendingTests,
+    todo: report.numTodoTests,
+    status: report.success ? "passed" : "failed",
+    rows: packageRows
+      .map((row) => `| ${row.packageName} | ${row.files} | ${row.tests} |`)
+      .join("\n"),
+  };
+}
 
+function renderInventory(summary) {
   return `# Test Inventory
 
 This file is generated from the Vitest JSON reporter so repository docs can cite
@@ -85,19 +107,56 @@ pnpm test:inventory:check
 
 | Metric | Count |
 | --- | ---: |
-| Test files | ${files.length} |
-| Test cases | ${report.numTotalTests} |
-| Passed | ${report.numPassedTests} |
-| Failed | ${report.numFailedTests} |
-| Pending | ${report.numPendingTests} |
-| Todo | ${report.numTodoTests} |
-| Status | ${status} |
+| Test files | ${summary.files} |
+| Test cases | ${summary.tests} |
+| Passed | ${summary.passed} |
+| Failed | ${summary.failed} |
+| Pending | ${summary.pending} |
+| Todo | ${summary.todo} |
+| Status | ${summary.status} |
 
 ## Package Breakdown
 
 | Package | Test files | Test cases |
 | --- | ---: | ---: |
-${rows}
+${summary.rows}
+`;
+}
+
+function renderChineseInventory(summary) {
+  return `# 测试清单
+
+本文件由 Vitest JSON reporter 生成，让仓库文档引用一个统一的测试计数来源，而不是手工维护数字。
+
+新增、删除或重命名测试后重新生成：
+
+\`\`\`bash
+pnpm test:inventory
+\`\`\`
+
+CI 漂移检查：
+
+\`\`\`bash
+pnpm test:inventory:check
+\`\`\`
+
+## 当前快照
+
+| 指标 | 数量 |
+| --- | ---: |
+| Test files | ${summary.files} |
+| Test cases | ${summary.tests} |
+| Passed | ${summary.passed} |
+| Failed | ${summary.failed} |
+| Pending | ${summary.pending} |
+| Todo | ${summary.todo} |
+| Status | ${summary.status} |
+
+## 包拆分
+
+| Package | Test files | Test cases |
+| --- | ---: | ---: |
+${summary.rows}
 `;
 }
 
