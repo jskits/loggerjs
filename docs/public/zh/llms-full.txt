@@ -3410,7 +3410,7 @@ workflow 通过 npm Trusted Publisher/OIDC 发布，不读取 `NPM_AUTH_TOKEN`�
 
 npm 要求 provenance 来自公开的源码仓库，并且包的 `repository` 元数据必须与该仓库一致。
 
-普通提交不会触发发布。发布流程是：先用 `pnpm version-packages` 消费待处理的 changesets，提交更新后的包版本信息，并让这次提交通过常规 CI。版本提交合入 `main` 后，创建并推送与新版本号一致的 release tag，例如 `v0.5.6`；`.github/workflows/release.yml` 只监听 `v*` tag 的推送，并拒绝不在 `origin/main` 可达范围内的 tag。如果仍有待处理的 changesets，发布任务会直接失败；否则它会为每个尚未发布的包验证 npm OIDC 权限，运行 `pnpm release:publish`，用 `pnpm publish --provenance` 发布每个尚未发布的 workspace 包，然后用幂等的 `changeset tag` 命令创建各包的 release tag，最后推送 `@loggerjs/*` 包 tag。
+普通提交不会触发发布。发布流程是：先用 `pnpm version-packages` 消费待处理的 changesets（它同时会重新生成列出包版本的站点参考页），提交更新后的包版本信息和重新生成的文档，并让这次提交通过常规 CI。版本提交合入 `main` 后，创建并推送与新版本号一致的 release tag，例如 `v0.5.6`；`.github/workflows/release.yml` 只监听 `v*` tag 的推送，并拒绝不在 `origin/main` 可达范围内的 tag。如果仍有待处理的 changesets，发布任务会直接失败；否则它会为每个尚未发布的包验证 npm OIDC 权限，运行 `pnpm release:publish`，用 `pnpm publish --provenance` 发布每个尚未发布的 workspace 包，然后用幂等的 `changeset tag` 命令创建各包的 release tag，最后推送 `@loggerjs/*` 包 tag。
 
 如果 npm 在发布或 `pnpm release:publish:preflight` 期间返回认证错误，请检查每个包的 Trusted Publisher 配置是否与仓库所有者、仓库名、workflow 文件名、可选的 environment 名称以及 allowed action 完全一致。npm 只在交换 OIDC 权限或尝试发布时才会检查这些字段。发布脚本可以安全重跑：已发布的包版本会被跳过，只发布剩余的包。
 
