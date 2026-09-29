@@ -316,16 +316,6 @@ const zhDocsCatalog = [
       "`pnpm test:inventory:check` 用于保持测试清单与仓库一致。",
     ],
   },
-  {
-    title: "生产强化提案",
-    slug: "PROPOSAL-PRODUCTION-HARDENING",
-    description: "生产可靠性、观测和交付强化计划。",
-    bullets: [
-      "提案聚焦可靠投递、浏览器持久化、崩溃路径、观测指标和文档闭环。",
-      "每项强化都应落到代码、测试、文档和可验证行为。",
-      "提案内容可能随实现推进而变化，最终行为以包 API 和正式文档为准。",
-    ],
-  },
 ];
 
 const packageOrder = [
