@@ -7,17 +7,17 @@
 - **Middleware** 运行在 `LogRecord` 上，在 id/message/error 工作之前执行，是 enrich 或 drop 的最低成本位置。
 - **Processors** 运行在 `LogEvent` 上，在投影之后执行；当你需要解析后的 event 形状时才必须使用。
 
-配置任何 processor 都会关闭该 logger 的 record fast path；middleware 不会。
+配置任何 processor 都会关闭该 logger 的 record 快速路径；middleware 不会。
 
 ## Runtime 支持
 
-全部 27 个 processors 和 middleware 都支持 browser/frontend 与 Node.js/server runtime。这个包本身不依赖 DOM、IndexedDB、filesystem、streams、worker threads 或任何 vendor SDK。
+全部 27 个 processor 和 middleware 都支持浏览器/前端以及 Node.js/服务端运行时。这个包本身不依赖 DOM、IndexedDB、文件系统、流、worker 线程或任何厂商 SDK。
 
 | Runtime | 支持 | 说明 |
 | --- | --- | --- |
-| Browser / frontend | 支持 | 在数据离开页面前，用于 enrichment、隐私清洗、sampling、dedupe、routing、breadcrumbs、schema checks 和 browser-captured errors。 |
-| Node.js / server | 支持 | 与 Node transports 和 integrations 使用同一套 processors；stack parsing 和 error normalization 处理标准 JavaScript errors。 |
-| Workers / edge / libraries | 支持 | 自定义 provider functions 保持同步。Routing 和 fingers-crossed targets 必须引用该 runtime 可用的 transports。 |
+| 浏览器 / 前端 | 支持 | 在数据离开页面之前，用于补充字段、隐私清洗、采样、去重、路由、breadcrumbs、结构校验，以及处理浏览器采集到的错误。 |
+| Node.js / 服务端 | 支持 | 与 Node 的 transport 和 integration 搭配使用同一套 processor；堆栈解析和错误规范化适用于标准的 JavaScript 错误。 |
+| Worker / edge / 库 | 支持 | 自定义 provider 函数必须保持同步。路由和 fingers-crossed 的目标必须是该运行时中可用的 transport。 |
 
 ## Enrichment
 
@@ -33,11 +33,11 @@
 
 | Export | 功能 |
 | --- | --- |
-| `redactProcessor(options)` | 按 key name、精确 dot path 或 regex，在 data/context/tags/structured errors 中 mask 或 remove 值。`censor` 是 `replacement` 的非破坏别名。采用 copy-on-write，async transports 不会看到半脱敏对象。 |
+| `redactProcessor(options)` | 按键名、精确的点路径或正则，在 data/context/tags/结构化错误中遮盖或移除值。`censor` 是 `replacement` 的兼容别名。采用写时复制，异步 transport 不会看到只脱敏了一半的对象。 |
 | `privacyGuardProcessor(options)` | 广谱 PII 清洗，带内置 patterns（email、bearer token、类似银行卡号的数字）和自定义 patterns。 |
 | `normalizeErrorProcessor(options)` | 强制 error shape：stack 截断、cause-chain 深度限制、可枚举属性捕获。 |
-| `stackParserProcessor(options)` / `parseStack(stack)` | 把 stack 解析为结构化 frames（file、line、column、function）。 |
-| `schemaDevCheckProcessor(options)` | 开发期 event shape 校验；发现 typed events 与实际 payload 的漂移。 |
+| `stackParserProcessor(options)` / `parseStack(stack)` | 把堆栈解析为结构化的帧（文件、行、列、函数）。 |
+| `schemaDevCheckProcessor(options)` | 开发期的 event 结构校验，用于发现类型化事件与实际 payload 之间的偏差。 |
 
 ### Redaction 行为
 
@@ -45,7 +45,7 @@
 
 选项：
 
-- `keys`：大小写不敏感 key names、匹配 key 或完整 path 的 regexes，或自定义 `(key, path, value) => boolean` matcher。
+- `keys`：不区分大小写的键名、匹配键或完整路径的正则表达式，或自定义的 `(key, path, value) => boolean` 匹配函数。
 - `paths`：相对于每个被脱敏 event field 的精确 dot paths，例如 `user.password` 或 `request.headers.authorization`；这些不是 glob patterns。
 - `replacement`：匹配时写入的值；默认 `"[REDACTED]"`。
 - `censor`：兼容 Pino 的 `replacement` 别名；设置了 `replacement` 时忽略。
@@ -64,7 +64,7 @@
 | `dedupeProcessor(options)` | 在时间窗口内把重复的相同日志折叠成一条带 count 的 event。 |
 | `coalesceProcessor(options)` | 抑制窗口内重复 events，并在下一个匹配 event 上输出前一次 repeat count。 |
 | `fingerprintProcessor(options)` | 从可配置 parts（`logger`、`error.name`、`stack.top`、自定义函数）计算稳定 fingerprint，用于 grouping 和 dedupe keys。 |
-| `filterProcessor(input)` | 通过 predicate 或声明式规则（`minLevel`、`logger`、`type`、`tags`、integration source 等）keep/drop。 |
+| `filterProcessor(input)` | 通过判断函数或声明式规则（`minLevel`、`logger`、`type`、`tags`、integration 来源等）决定保留或丢弃。 |
 | `levelOverrideProcessor(input)` | 按 category pattern 提升或限制 levels，例如把吵闹依赖降级。 |
 
 ## 缓冲和路由
@@ -72,16 +72,16 @@
 | Export | 功能 |
 | --- | --- |
 | `fingersCrossedProcessor(options)` | 在每个 key 的 ring buffer 中保留低级别日志；触发级别出现时，把缓冲历史 flush 到目标 transport。典型用途是“只有出问题时才给我 debug logs”。 |
-| `breadcrumbBufferProcessor(options)` | 维护有界 breadcrumb trail，并在触发 events 上附加或 replay。 |
-| `routeProcessor(input)` | 按规则把 events 固定到命名 transports 或排除 transports（例如 `[{ minLevel: "error", transports: ["alerts"] }]`）。 |
-| `symbolicateStackProcessor(options)` | 把 source-map 或 release-service symbolication 接入 parsed stack frames，但不捆绑 source-map parser。 |
+| `breadcrumbBufferProcessor(options)` | 维护有上限的 breadcrumb 轨迹，并在触发条件的 event 上附加或重放它们。 |
+| `routeProcessor(input)` | 按规则把 event 固定投递到指定名称的 transport，或排除某些 transport（例如 `[{ minLevel: "error", transports: ["alerts"] }]`）。 |
+| `symbolicateStackProcessor(options)` | 把 source map 或发布服务提供的符号化能力接入解析后的堆栈帧，但不内置 source map 解析器。 |
 
 ## 顺序建议
 
 顺序很重要，每个阶段看到的是前一阶段输出：
 
 1. **先 enrich**（tags、context、trace），让后续阶段能匹配这些字段。
-2. **再 normalize**（errors、stacks），然后做依赖错误形状的 fingerprint 或 match。
+2. **再规范化**（错误、堆栈），然后再做依赖错误结构的指纹计算或匹配。
 3. **在检查 data 的采样决策之前先 redact**，并且始终在任何内容离开进程前 redact。
 4. **最后做流量控制**（sample、rate-limit、dedupe），这样丢弃的是完整 events，counters 的含义也清楚。
 

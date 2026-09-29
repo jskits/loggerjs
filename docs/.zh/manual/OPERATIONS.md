@@ -4,12 +4,12 @@
 
 ## 隐私
 
-自动 integrations 都是 opt-in。只启用产品实际需要的捕获表面。
+所有自动采集的 integration 都需要主动开启。只开启产品实际需要的采集范围。
 
 推荐默认值：
 
 - 在任何 remote transport 之前使用 `redactProcessor()`。
-- 在 fetch/XHR integrations 中使用 HTTP header allowlist。默认不要发送 cookies、authorization headers 或完整 request bodies。
+- 在 fetch/XHR integration 中为 HTTP header 设置允许列表。默认不要发送 cookie、authorization header 或完整的请求 body。
 - 当 query string 可能包含 token 或用户数据时，清洗 URLs。
 - 除非明确需要 debug collection，否则 console capture 只采集 `warn` 和 `error`。
 - 使用稳定 tags，例如 `service`、`env`、`runtime`；把高基数字段放进 event data，而不是 tags。
@@ -63,14 +63,14 @@ const integrations = [pageLifecycleIntegration()];
 
 这个限制计算条数，不是字节数。Beacon 还受 `beaconMaxBytes` 限制；Fetch 没有严格 payload 字节预算。拆分批次可能增加请求数和 codec/transform 调用次数。离线容量 `maxEntries` 计算已编码请求数，而非 event 数。已保存的 payload 原样 replay，包括超过当前条数限制的旧批次。离线 replay 和实时投递不保证全局顺序或 exactly-once。
 
-Pagehide、隐藏页面和 `close()` 会同步提交仍在队列中的 Beacon 分块，即使之前的 Fetch 尚未完成；发送中的 Fetch 批次不会再经 Beacon 重复发送，`close()` 仍等待它完成。这个 best-effort 退出路径可能让服务器乱序收到请求。未被接受的 Beacon 分块回退到按条数限制的 Fetch。设置 `transformPayload` 时，生命周期 flush 仍使用 Fetch。flush 成功可能只表示离线队列或浏览器 Beacon 队列接受了日志，不代表服务器确认收货。
+Pagehide、隐藏页面和 `close()` 会同步提交仍在队列中的 Beacon 分块，即使之前的 Fetch 尚未完成；发送中的 Fetch 批次不会再经 Beacon 重复发送，`close()` 仍等待它完成。这条尽力而为的退出路径可能让服务端乱序收到请求。未被接受的 Beacon 分块回退到按条数限制的 Fetch。设置 `transformPayload` 时，生命周期 flush 仍使用 Fetch。flush 成功可能只表示离线队列或浏览器 Beacon 队列接受了日志，不代表服务器确认收货。
 
-浏览器存储和关闭行为仍是 best effort。`sendBeacon` 可能受大小限制或在 shutdown 中被跳过；内存队列会在 reload 后消失；IndexedDB 可能不可用、满、被驱逐，或被 upgrade 阻塞。生产浏览器投递建议组合：
+浏览器的存储和关闭行为依然只能尽力而为。`sendBeacon` 可能受大小限制，或在页面关闭时被跳过；内存队列在刷新后会消失；IndexedDB 可能不可用、已满、被驱逐，或被版本升级阻塞。生产环境的浏览器投递建议组合使用：
 
 - `browserHttpTransport()`：常规远程投递。
 - `indexedDbBrowserHttpOfflineQueue()` 或 `offlineFirstTransport()`：reload-surviving replay。
 - `pageLifecycleIntegration()` 和 `useBeaconOnPageHide`：最后机会 flush。
-- logger meta 中的 drop/queue metrics：让 quota 或 backpressure 可见。
+- logger meta 中的丢弃/队列指标：让配额或背压问题可见。
 
 ## Node 崩溃路径
 
@@ -88,10 +88,10 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 
 崩溃路径建议：
 
-- fatal process events 至少保留一个本地 transport。
+- 至少为致命的进程事件保留一个本地 transport。
 - transport 支持时，最终同步 shutdown 优先用 `flushSync()`；普通 drain-and-continue shutdown 使用 `await flush()`。
 - 每次写入都必须在日志调用返回前到达文件系统时，使用 `fileTransport({ sync: true })`。
-- HTTP/OTLP remote transports 用于常规投递，不要作为唯一 fatal-path sink。
+- HTTP/OTLP 远程 transport 用于常规投递，不要作为致命错误路径上唯一的 sink。
 - processor 工作保持同步且有界；crash handlers 不应执行慢 enrichment。
 
 对带 `exitOnUncaught: true` 的 `uncaughtException`，流程是：
@@ -101,11 +101,11 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 3. 运行一次由 `flushTimeoutMs` 控制的有界 async `flush()` race（默认 `250` ms）。
 4. 以 code `1` 退出。
 
-对带 `exitOnSignal: true` 的 signals，LoggerJS 捕获 fatal signal record，使用相同的 sync-plus-bounded-async flush 流程，然后按已知 signal exit code 退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
+对于启用了 `exitOnSignal: true` 的信号，LoggerJS 会记录一条致命的信号日志，执行同样的“同步 flush + 有时限的异步 flush”流程，然后按已知的信号退出码退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
 
 ## 远程 Transport 可靠性
 
-基于 batch 的 transports 支持同一套 core reliability 选项：
+基于批量的 transport 都支持同一套 core 可靠性选项：
 
 ```ts
 {
@@ -121,11 +121,11 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 }
 ```
 
-当 payload size 比 event count 更重要时使用 byte limits。使用 `onDrop` 把 queue drops 暴露到你自己的 metrics pipeline。
+当 payload 大小比条数更重要时，使用字节限制。用 `onDrop` 把队列丢弃情况接入你自己的指标系统。
 
 ## Context 和 Trace 关联
 
-构造时已知的值用显式 child context；request 级值用 ambient context：
+创建时就已知的值用显式的 child context；请求级别的值用环境 context：
 
 ```ts
 import { installAsyncLocalStorageContext } from "@loggerjs/node";
@@ -138,4 +138,4 @@ await withContext({ requestId: "req_123" }, async () => {
 });
 ```
 
-当 OpenTelemetry API object 可用时，用 `openTelemetryTraceProcessor()` 附加当前 active span context。
+当 OpenTelemetry API 对象可用时，用 `openTelemetryTraceProcessor()` 附加当前活跃 span 的 context。

@@ -20,7 +20,7 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对 Node 消费者，发布 tarball 会在 Node 20.19.0、22 和 24 上做 smoke test。仓库开发使用 Node >=22.13.0 来运行完整工具链。
+所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。
 
 ## 第一个 Logger（Node）
 
@@ -43,9 +43,9 @@ logger.error("payment failed", new Error("card declined"));
 await logger.flush();
 ```
 
-`stdoutTransport()` 每条日志写出一行 NDJSON。`captureProcessIntegration()` 会自动把 uncaught exception、unhandled rejection 和 process warning 转成日志事件。
+`stdoutTransport()` 每条日志写出一行 NDJSON。`captureProcessIntegration()` 会自动把未捕获的异常、未处理的 rejection 和进程警告转成日志事件。
 
-## 第一个 Logger（Browser）
+## 第一个 Logger（浏览器）
 
 ```ts
 import {
@@ -127,7 +127,7 @@ const checkoutLogger = logger.child({
 });
 ```
 
-子 logger 继承 level、tags、bindings、middleware、processors 和 transports；integrations 不会继承。`withTags()` 和 `withType()` 是常见子 logger 形态的快捷方式。
+子 logger 会继承级别、tags、bindings、middleware、processor 和 transport，但不会继承 integration。`withTags()` 和 `withType()` 是创建常见子 logger 的快捷方式。
 
 ## 环境上下文
 
@@ -191,15 +191,15 @@ await logger.close(); // tear down integrations, close transports
 
 ## 下一步
 
-- [核心概念](CONCEPTS.md)：records、events、middleware、processors、transports、codecs 的管线模型。
+- [核心概念](CONCEPTS.md)：由 record、event、middleware、processor、transport 和 codec 组成的管线模型。
 - [传输](TRANSPORTS.md)：所有内置 transport，以及如何编写自定义 transport。
 - [友好输出](PRETTY.md)：浏览器 DevTools 和 Node 终端的人类可读输出。
 - [集成](INTEGRATIONS.md)：浏览器和 Node 自动采集。
 - [处理器](PROCESSORS.md)：middleware/processor 工具箱。
-- [编解码](CODECS.md)：序列化归属和 codec 合约。
+- [编解码](CODECS.md)：序列化归属和 codec 契约。
 - [性能](PERFORMANCE.md)：如何按吞吐量配置。
 - [运维](OPERATIONS.md)：隐私、离线队列和崩溃路径。
-- [生产配方](PRODUCTION-RECIPES.md)：浏览器 HTTP/offline、Node stdout+OTLP、Loki/Datadog 部署。
+- [生产配方](PRODUCTION-RECIPES.md)：浏览器 HTTP/离线、Node stdout+OTLP、Loki/Datadog 部署。
 - [API 稳定性](API-STABILITY.md)：v1 稳定 API 子集和 pre-1.0 兼容策略。
 - [迁移](MIGRATION.md)：从 pino、winston 或 console 迁移。
 

@@ -37,9 +37,9 @@ const child = logger.child({ bindings: { requestId: "req_1" } });
 - pino `serializers` 变成 processors（`normalizeErrorProcessor`、`redactProcessor`、自定义 `enrichProcessor`），在序列化前作用于结构化数据。
 - pino redaction 映射到 `redactProcessor({ paths, censor, remove })`；`replacement` 是 LoggerJS 原生命名，等价于 `censor`；热日志器优先使用精确 key/path matching。
 - pino `transport`/`destination` 变成 LoggerJS transport：`stdoutTransport()`、`fileTransport()`、`nodeHttpTransport()`。
-- pino-pretty 的角色由 `prettyStdoutTransport()` / `prettyStderrTransport()`（terminal）或 `prettyConsoleTransport()`（browser DevTools）承担。Core `consoleTransport()` 仍是基础本地 console sink。
-- 需要 Pino-shaped NDJSON 时，使用 `@loggerjs/codecs` 的 `pinoCompatCodec()`。Root data merging 是 opt-in（`mergeData: true`），保留键冲突默认嵌套，而不是覆盖 `time`、`level`、`msg`、`pid`、`hostname` 或 `err`。
-- 最快 LoggerJS lean envelope 使用 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`。Record-aware custom transports 可以用 `createPreparedRecordEncoder(codec)` 包装它，复用稳定 logger/tag fragments。在 M1 Max 参考机器上，plain lean path 约 1.19x pino，prepared lean path 约 1.28x（paired A/B；相对 pino 排序依赖 CPU/V8，见 [基准](BENCHMARKS.md)）；在这个吞吐基础上，你还得到 middleware、integrations、multi-transport fan-out 和同构浏览器故事。
+- pino-pretty 的角色由 `prettyStdoutTransport()` / `prettyStderrTransport()`（终端）或 `prettyConsoleTransport()`（浏览器 DevTools）承担。core 的 `consoleTransport()` 仍然只是基础的本地 console sink。
+- 需要 Pino 格式的 NDJSON 时，使用 `@loggerjs/codecs` 的 `pinoCompatCodec()`。把数据合并到根级需要主动开启（`mergeData: true`），与保留键冲突时默认嵌套存放，而不是覆盖 `time`、`level`、`msg`、`pid`、`hostname` 或 `err`。
+- 最快的 LoggerJS lean 信封使用 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`。支持 record 的自定义 transport 可以用 `createPreparedRecordEncoder(codec)` 包装它，复用稳定的 logger/tag 片段。在 M1 Max 参考机器上，普通 lean 路径约为 pino 吞吐量的 1.19 倍，prepared lean 路径约为 1.28 倍（配对 A/B；相对 pino 的排名取决于 CPU/V8，见 [基准](BENCHMARKS.md)）；在此基础上，你还能获得 middleware、integration、多 transport 分发以及同构的浏览器支持。
 
 ## 从 winston 迁移
 
@@ -67,7 +67,7 @@ const logger = createLogger({
 - winston `format` chains 拆成两个关注点：**processors/middleware**（数据塑形：redact、enrich、filter）和 **codecs**（序列化，由每个 transport 拥有）。`format.combine(timestamp, json)` 通常就是默认输出。
 - `defaultMeta` -> `tags` 和/或 `bindings`。
 - Per-transport `level` 直接映射到任何 transport 的 `minLevel`。
-- Child loggers 替代 `winston.loggers` registries 做 per-module configuration；库作者优先使用 core 的 `getLogger()`。
+- 用 child logger 代替 `winston.loggers` 注册表来做按模块的配置；库作者优先使用 core 的 `getLogger()`。
 - 在顺序基准套件中，LoggerJS lean 路径的吞吐量约为 winston 的 10 倍（见 [基准](BENCHMARKS.md)）。
 
 ## 从 console.log 迁移
@@ -97,7 +97,7 @@ logger.info("order created", { orderId });
 logger.error(err, "payment failed");
 ```
 
-每一步获得的收益：levels 和 level gating、结构化数据替代插值字符串、数据离开进程前 redaction、batching/offline delivery，以及通过 error/process integrations 捕获 crash path。
+每一步带来的收益：日志级别及按级别过滤、用结构化数据代替字符串插值、数据离开进程前先脱敏、批量/离线投递，以及通过错误/进程 integration 采集崩溃路径。
 
 ---
 

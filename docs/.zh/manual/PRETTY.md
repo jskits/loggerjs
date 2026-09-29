@@ -1,6 +1,6 @@
 # 友好输出
 
-Pretty output 是本地 console 和 terminal 的开发体验层。LoggerJS 在内部仍然保持 records 结构化，只在 transport 边界把它们渲染成人类可读文本。
+pretty 输出是面向本地 console 和终端的开发体验层。LoggerJS 内部仍保持 record 的结构化，只在 transport 边界把它们渲染成人类可读的文本。
 
 在开发、demo、本地调试、Storybook、浏览器 DevTools、CLI，以及需要可读输出的测试中使用 pretty transports。生产投递应使用结构化 transports，例如 `stdoutTransport()`、`fileTransport()`、`browserHttpTransport()`、OTLP、Loki 或 Datadog。
 

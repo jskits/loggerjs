@@ -1,6 +1,6 @@
 # 生产配方
 
-这些配方是生产部署起点。它们有意展示 queue bounds、privacy processors、shutdown behavior，以及 credentials 应放在哪里。请按应用调整 names、tags 和 endpoint URLs。
+这些配方是生产部署的起点，有意展示了队列上限、隐私 processor、关闭行为以及凭据应该放在哪里。请根据自己的应用调整名称、tags 和端点 URL。
 
 ## 浏览器到 HTTP，并用 IndexedDB 离线重放
 
@@ -85,14 +85,14 @@ export const logger = createLogger({
 
 生产说明：
 
-- `/api/logs` 应该是你自己的 collector endpoint。不要把 vendor API keys 放进浏览器 bundle。
-- fetch/XHR header capture 保持 allowlist。默认不要捕获 cookies、authorization headers、request bodies 或 form values。
-- 当应用能暴露 logger meta counters 和 offline queue depth 时，对 `transport.dropped.*` 等指标告警。
-- HTTP offline queue 的 `dbName` 应与可查询的 support-log store 分开。两个 helper 使用独立的 IndexedDB schema 和版本生命周期。
+- `/api/logs` 应该是你自己的收集端点。不要把厂商 API key 打包进浏览器代码。
+- fetch/XHR 的 header 采集要使用允许列表。默认不要采集 cookie、authorization header、请求 body 或表单值。
+- 如果应用能暴露 logger meta 计数和离线队列深度，请对 `transport.dropped.*` 等指标设置告警。
+- HTTP 离线队列的 `dbName` 应与可查询的支持日志存储分开。两者使用各自独立的 IndexedDB 结构和版本生命周期。
 
-## 浏览器 Support Export，并使用 Session-Aware IndexedDB
+## 浏览器支持日志导出（按 session 组织的 IndexedDB）
 
-当 support 或 QA 需要一份可本地保留、可按页面 session 导出的日志包时使用。这个本地 store 和 HTTP delivery queue 分开：IndexedDB 是可查询的事实来源，`localStorageSpill` 只保护用户刷新或关闭页面时尚未完成 async IndexedDB write 的小尾巴。
+当技术支持或 QA 需要一份能在刷新后保留、并可按页面 session 导出的本地日志包时使用。这个本地存储与 HTTP 投递队列相互独立：IndexedDB 是可查询的权威数据来源，`localStorageSpill` 只负责保护用户刷新或关闭页面时尚未完成异步 IndexedDB 写入的那一小段尾部日志。
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -149,11 +149,11 @@ export async function downloadSupportLogZip() {
 
 - 隐私 processor 必须在 IndexedDB transport 前执行。任何本地持久化内容都可能被用户或 support flow 导出。
 - `indexedDbTransport()` 默认创建 page-session id，并在缺失时写入 IndexedDB entry metadata 和 `event.context.sessionId`。如果应用已有 session id，传 `session: { id, getId, contextKey }`。
-- `localStorageSpill` 是有界、best-effort 的最后机会保护。它改善普通 reload 和 close 行为，但不能防 process kill、crash、storage disabled、quota exhaustion 或 storage eviction。
+- `localStorageSpill` 是有上限、尽力而为的最后一道保护。它能改善普通刷新和关闭页面时的表现，但无法防止进程被杀、崩溃、存储被禁用、配额耗尽或存储被驱逐。
 
 ## Node 到 Stdout 加 OTLP
 
-把 stdout 作为本地、平台原生 sink，把 OTLP 作为远程 observability path。即使 OTLP endpoint 降级，stdout 对 container runtimes 和 fatal events 仍有价值。
+把 stdout 作为本地的、平台原生的 sink，把 OTLP 作为远程可观测性路径。即使 OTLP 端点性能下降，stdout 对容器运行时和致命事件依然有用。
 
 ```ts
 import * as otelApi from "@opentelemetry/api";
@@ -220,13 +220,13 @@ export async function closeLogger() {
 
 生产说明：
 
-- fatal process paths 至少保留一个本地 sink（`stdoutTransport()` 或 `fileTransport()`）。Remote OTLP 不应是唯一 crash-path sink。
-- 需要 active span correlation 时，在构造 logger 前安装 `@opentelemetry/api` 并初始化 tracing。
+- 至少为致命的进程路径保留一个本地 sink（`stdoutTransport()` 或 `fileTransport()`）。远程 OTLP 不应是崩溃路径上唯一的 sink。
+- 需要关联活跃 span 时，在创建 logger 之前安装 `@opentelemetry/api` 并初始化 tracing。
 - 使用部署平台的 graceful shutdown hook 调用 `logger.close()`。
 
 ## 全栈投递到 Loki 和 Datadog
 
-当浏览器和服务端日志需要进入同一 vendor backends 时使用。浏览器把日志发送到你自己的 collector；服务器持有 Loki 和 Datadog credentials，并转发 server-side events 和已接受的 browser batches。
+当浏览器和服务端日志需要汇入同一套厂商后端时使用。浏览器把日志发送到你自己的收集端；服务端持有 Loki 和 Datadog 的凭据，并同时转发服务端事件和已接收的浏览器批次。
 
 ```ts
 import {
@@ -314,5 +314,5 @@ export async function forwardBrowserLogs(events: LogEvent[]) {
 生产说明：
 
 - 调用 `forwardBrowserLogs()` 前验证并限制 `/api/logs` request body。过大的 batches 应尽早拒绝。
-- 只有低基数字段应该提升为 Loki labels 和 Datadog tags。User ids、request ids、order ids 和 URLs 放在 structured metadata/data 中。
+- 只把低基数字段提升为 Loki 标签和 Datadog tags。用户 id、请求 id、订单 id 和 URL 应放在结构化元数据或 data 中。
 - 浏览器和服务端 collector 使用同一套 redaction policy。把 browser-submitted logs 视为不可信输入。

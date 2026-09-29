@@ -44,7 +44,7 @@ Integrations 位于这个流程外部：它们 hook 平台行为（console 调�
 
 `recordToEvent()` / `eventToRecord()` 可以互相转换。转换存在文档化的信息损失：`runtime` source 会折叠为 integration source，标量 event data 会包装成 `{ value }`。对象 data 默认不会快照；如果后续修改不能影响延迟 transport，请在记录前 clone。
 
-### 修改合约
+### 修改约定
 
 Middleware 可以修改 record，但有一条规则：**替换字段，不要原地修改共享对象**。`record.ctx` 和 logger 级别的 `record.tags` 是冻结且跨 record 共享的；应写 `record.tags = { ...record.tags, extra }`，不要写 `record.tags.extra = ...`。原地修改冻结字段会抛错，并作为 middleware error 上报，不会污染其他 records。
 
@@ -60,9 +60,9 @@ Middleware 可以修改 record，但有一条规则：**替换字段，不要原
 | 修改 | 原地修改（替换字段） | 返回新 event |
 | 丢弃成本 | 最低 | 已经付过投影成本 |
 
-优先用 middleware 做 enrichment 和早期过滤。需要解析后的 event 形状时再用 processors，例如按 event 字段路由、对标准化错误做 fingerprint、为 fingers-crossed delivery 缓冲 events。
+补充字段和提前过滤优先用 middleware。需要解析后的 event 结构时再用 processor，例如按 event 字段路由、对规范化后的错误计算指纹、为 fingers-crossed 投递缓冲 event。
 
-**只要配置了任何 processor，该 logger 的 record fast path 就会关闭**，因为每条日志都必须先投影为 event。当你需要 event 级别行为时，这是正确取舍；数字见 [性能](PERFORMANCE.md)。
+**只要配置了任何 processor，该 logger 的 record 快速路径就会关闭**，因为每条日志都必须先投影为 event。需要 event 级别的行为时，这是合理的取舍；具体数字见 [性能](PERFORMANCE.md)。
 
 ## Transports
 
@@ -89,12 +89,12 @@ interface Transport {
 }
 ```
 
-- 支持 record 的 transports（`write`/`writeBatch`）参与 fast path，并可以直接编码 records。
+- 支持 record 的 transport（`write`/`writeBatch`）可以走快速路径，并直接编码 record。
 - Event transports（`log`/`logBatch`）接收投影后的 events。
 - `context.toEvent(record)` 按需转换；结果按 record memoize，所以多个 transports 共享一次投影，id 在多次转换间保持稳定。
 - transport 抛出的同步或异步错误都会被捕获并上报到 logger meta；一个失败 transport 不会阻塞其他 transport。
 - `ready()` 是显式、可选的。普通日志调用不会等待 transport 启动；需要确认启动完成的调用方使用 `logger.ready()`。
-- `close()` 必须在释放资源前包含自己的 best-effort flush。Core 在有 `close()` 时调用它；只有 transport 没有 `close()` 时才回退到 `flush()`。
+- `close()` 必须在释放资源前自行尽力 flush。存在 `close()` 时 core 会调用它；只有 transport 没有 `close()` 时才回退到调用 `flush()`。
 
 ## Codecs 属于 Transports
 
@@ -105,7 +105,7 @@ stdoutTransport({ codec: ndjsonCodec() });
 browserHttpTransport({ url: "/api/logs", codec: fastEventJsonCodec() });
 ```
 
-合约和 fast-by-default 安全语义见 [编解码](CODECS.md)。
+codec 契约以及“默认快速”的安全语义见 [编解码](CODECS.md)。
 
 ## Integrations
 
@@ -118,7 +118,7 @@ interface Integration {
 }
 ```
 
-setup context 提供 logging API 和三个安全工具：
+setup 上下文提供日志 API 和三个安全工具：
 
 - `api.capture(input)`：把捕获信号送入管线，并标记 `source: "integration:<name>"`。
 - `api.guard(fn)`：重入保护。如果 patched 代码路径调用 logger，而 logger 又调用到 patched 代码，内层调用会被丢弃并计数，避免无限循环。
@@ -136,12 +136,12 @@ import { routeProcessor } from "@loggerjs/processors";
 routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 ```
 
-Routes 作为不可枚举 event metadata 附加，并在 dispatch 时使用。Record fast path 不执行 route 过滤：routes 只能由 processors 附加，而 record path 只会在 logger 没有 processor 时运行。
+路由信息以不可枚举的 event 元数据形式附加，并在分发时使用。record 快速路径不做路由过滤：路由只能由 processor 附加，而 record 路径只在 logger 没有 processor 时才会运行。
 
 ## Levels、Categories、Sources
 
 - Levels 是数字（`trace` 10 到 `fatal` 60）并带名称；自定义数字级别在各处可用。
-- Categories 是字符串数组（`["api", "checkout"]`），在 events 中 join 成点分 logger 名；registry 按 category prefix 路由配置。
+- category 是字符串数组（`["api", "checkout"]`），在 event 中拼接成以点分隔的 logger 名；registry 按 category 前缀匹配配置。
 - `source` 区分应用日志和 integration 捕获日志，因此 console capture 可以从 console output 中排除，也能检测循环。
 
 ## 内部错误和 Meta Counters

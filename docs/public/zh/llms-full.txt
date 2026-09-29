@@ -125,7 +125,7 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对 Node 消费者，发布 tarball 会在 Node 20.19.0、22 和 24 上做 smoke test。仓库开发使用 Node >=22.13.0 来运行完整工具链。
+所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。
 
 ## 第一个 Logger（Node）
 
@@ -148,9 +148,9 @@ logger.error("payment failed", new Error("card declined"));
 await logger.flush();
 ```
 
-`stdoutTransport()` 每条日志写出一行 NDJSON。`captureProcessIntegration()` 会自动把 uncaught exception、unhandled rejection 和 process warning 转成日志事件。
+`stdoutTransport()` 每条日志写出一行 NDJSON。`captureProcessIntegration()` 会自动把未捕获的异常、未处理的 rejection 和进程警告转成日志事件。
 
-## 第一个 Logger（Browser）
+## 第一个 Logger（浏览器）
 
 ```ts
 import {
@@ -232,7 +232,7 @@ const checkoutLogger = logger.child({
 });
 ```
 
-子 logger 继承 level、tags、bindings、middleware、processors 和 transports；integrations 不会继承。`withTags()` 和 `withType()` 是常见子 logger 形态的快捷方式。
+子 logger 会继承级别、tags、bindings、middleware、processor 和 transport，但不会继承 integration。`withTags()` 和 `withType()` 是创建常见子 logger 的快捷方式。
 
 ## 环境上下文
 
@@ -296,15 +296,15 @@ await logger.close(); // tear down integrations, close transports
 
 ## 下一步
 
-- [核心概念](CONCEPTS.md)：records、events、middleware、processors、transports、codecs 的管线模型。
+- [核心概念](CONCEPTS.md)：由 record、event、middleware、processor、transport 和 codec 组成的管线模型。
 - [传输](TRANSPORTS.md)：所有内置 transport，以及如何编写自定义 transport。
 - [友好输出](PRETTY.md)：浏览器 DevTools 和 Node 终端的人类可读输出。
 - [集成](INTEGRATIONS.md)：浏览器和 Node 自动采集。
 - [处理器](PROCESSORS.md)：middleware/processor 工具箱。
-- [编解码](CODECS.md)：序列化归属和 codec 合约。
+- [编解码](CODECS.md)：序列化归属和 codec 契约。
 - [性能](PERFORMANCE.md)：如何按吞吐量配置。
 - [运维](OPERATIONS.md)：隐私、离线队列和崩溃路径。
-- [生产配方](PRODUCTION-RECIPES.md)：浏览器 HTTP/offline、Node stdout+OTLP、Loki/Datadog 部署。
+- [生产配方](PRODUCTION-RECIPES.md)：浏览器 HTTP/离线、Node stdout+OTLP、Loki/Datadog 部署。
 - [API 稳定性](API-STABILITY.md)：v1 稳定 API 子集和 pre-1.0 兼容策略。
 - [迁移](MIGRATION.md)：从 pino、winston 或 console 迁移。
 
@@ -371,7 +371,7 @@ Integrations 位于这个流程外部：它们 hook 平台行为（console 调�
 
 `recordToEvent()` / `eventToRecord()` 可以互相转换。转换存在文档化的信息损失：`runtime` source 会折叠为 integration source，标量 event data 会包装成 `{ value }`。对象 data 默认不会快照；如果后续修改不能影响延迟 transport，请在记录前 clone。
 
-### 修改合约
+### 修改约定
 
 Middleware 可以修改 record，但有一条规则：**替换字段，不要原地修改共享对象**。`record.ctx` 和 logger 级别的 `record.tags` 是冻结且跨 record 共享的；应写 `record.tags = { ...record.tags, extra }`，不要写 `record.tags.extra = ...`。原地修改冻结字段会抛错，并作为 middleware error 上报，不会污染其他 records。
 
@@ -387,9 +387,9 @@ Middleware 可以修改 record，但有一条规则：**替换字段，不要原
 | 修改 | 原地修改（替换字段） | 返回新 event |
 | 丢弃成本 | 最低 | 已经付过投影成本 |
 
-优先用 middleware 做 enrichment 和早期过滤。需要解析后的 event 形状时再用 processors，例如按 event 字段路由、对标准化错误做 fingerprint、为 fingers-crossed delivery 缓冲 events。
+补充字段和提前过滤优先用 middleware。需要解析后的 event 结构时再用 processor，例如按 event 字段路由、对规范化后的错误计算指纹、为 fingers-crossed 投递缓冲 event。
 
-**只要配置了任何 processor，该 logger 的 record fast path 就会关闭**，因为每条日志都必须先投影为 event。当你需要 event 级别行为时，这是正确取舍；数字见 [性能](PERFORMANCE.md)。
+**只要配置了任何 processor，该 logger 的 record 快速路径就会关闭**，因为每条日志都必须先投影为 event。需要 event 级别的行为时，这是合理的取舍；具体数字见 [性能](PERFORMANCE.md)。
 
 ## Transports
 
@@ -416,12 +416,12 @@ interface Transport {
 }
 ```
 
-- 支持 record 的 transports（`write`/`writeBatch`）参与 fast path，并可以直接编码 records。
+- 支持 record 的 transport（`write`/`writeBatch`）可以走快速路径，并直接编码 record。
 - Event transports（`log`/`logBatch`）接收投影后的 events。
 - `context.toEvent(record)` 按需转换；结果按 record memoize，所以多个 transports 共享一次投影，id 在多次转换间保持稳定。
 - transport 抛出的同步或异步错误都会被捕获并上报到 logger meta；一个失败 transport 不会阻塞其他 transport。
 - `ready()` 是显式、可选的。普通日志调用不会等待 transport 启动；需要确认启动完成的调用方使用 `logger.ready()`。
-- `close()` 必须在释放资源前包含自己的 best-effort flush。Core 在有 `close()` 时调用它；只有 transport 没有 `close()` 时才回退到 `flush()`。
+- `close()` 必须在释放资源前自行尽力 flush。存在 `close()` 时 core 会调用它；只有 transport 没有 `close()` 时才回退到调用 `flush()`。
 
 ## Codecs 属于 Transports
 
@@ -432,7 +432,7 @@ stdoutTransport({ codec: ndjsonCodec() });
 browserHttpTransport({ url: "/api/logs", codec: fastEventJsonCodec() });
 ```
 
-合约和 fast-by-default 安全语义见 [编解码](CODECS.md)。
+codec 契约以及“默认快速”的安全语义见 [编解码](CODECS.md)。
 
 ## Integrations
 
@@ -445,7 +445,7 @@ interface Integration {
 }
 ```
 
-setup context 提供 logging API 和三个安全工具：
+setup 上下文提供日志 API 和三个安全工具：
 
 - `api.capture(input)`：把捕获信号送入管线，并标记 `source: "integration:<name>"`。
 - `api.guard(fn)`：重入保护。如果 patched 代码路径调用 logger，而 logger 又调用到 patched 代码，内层调用会被丢弃并计数，避免无限循环。
@@ -463,12 +463,12 @@ import { routeProcessor } from "@loggerjs/processors";
 routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 ```
 
-Routes 作为不可枚举 event metadata 附加，并在 dispatch 时使用。Record fast path 不执行 route 过滤：routes 只能由 processors 附加，而 record path 只会在 logger 没有 processor 时运行。
+路由信息以不可枚举的 event 元数据形式附加，并在分发时使用。record 快速路径不做路由过滤：路由只能由 processor 附加，而 record 路径只在 logger 没有 processor 时才会运行。
 
 ## Levels、Categories、Sources
 
 - Levels 是数字（`trace` 10 到 `fatal` 60）并带名称；自定义数字级别在各处可用。
-- Categories 是字符串数组（`["api", "checkout"]`），在 events 中 join 成点分 logger 名；registry 按 category prefix 路由配置。
+- category 是字符串数组（`["api", "checkout"]`），在 event 中拼接成以点分隔的 logger 名；registry 按 category 前缀匹配配置。
 - `source` 区分应用日志和 integration 捕获日志，因此 console capture 可以从 console output 中排除，也能检测循环。
 
 ## 内部错误和 Meta Counters
@@ -939,7 +939,7 @@ description: "浏览器 DevTools 和 Node 终端的人类可读输出。"
 
 # 友好输出
 
-Pretty output 是本地 console 和 terminal 的开发体验层。LoggerJS 在内部仍然保持 records 结构化，只在 transport 边界把它们渲染成人类可读文本。
+pretty 输出是面向本地 console 和终端的开发体验层。LoggerJS 内部仍保持 record 的结构化，只在 transport 边界把它们渲染成人类可读的文本。
 
 在开发、demo、本地调试、Storybook、浏览器 DevTools、CLI，以及需要可读输出的测试中使用 pretty transports。生产投递应使用结构化 transports，例如 `stdoutTransport()`、`fileTransport()`、`browserHttpTransport()`、OTLP、Loki 或 Datadog。
 
@@ -1260,17 +1260,17 @@ description: "middleware / processor 目录、顺序和使用场景。"
 - **Middleware** 运行在 `LogRecord` 上，在 id/message/error 工作之前执行，是 enrich 或 drop 的最低成本位置。
 - **Processors** 运行在 `LogEvent` 上，在投影之后执行；当你需要解析后的 event 形状时才必须使用。
 
-配置任何 processor 都会关闭该 logger 的 record fast path；middleware 不会。
+配置任何 processor 都会关闭该 logger 的 record 快速路径；middleware 不会。
 
 ## Runtime 支持
 
-全部 27 个 processors 和 middleware 都支持 browser/frontend 与 Node.js/server runtime。这个包本身不依赖 DOM、IndexedDB、filesystem、streams、worker threads 或任何 vendor SDK。
+全部 27 个 processor 和 middleware 都支持浏览器/前端以及 Node.js/服务端运行时。这个包本身不依赖 DOM、IndexedDB、文件系统、流、worker 线程或任何厂商 SDK。
 
 | Runtime | 支持 | 说明 |
 | --- | --- | --- |
-| Browser / frontend | 支持 | 在数据离开页面前，用于 enrichment、隐私清洗、sampling、dedupe、routing、breadcrumbs、schema checks 和 browser-captured errors。 |
-| Node.js / server | 支持 | 与 Node transports 和 integrations 使用同一套 processors；stack parsing 和 error normalization 处理标准 JavaScript errors。 |
-| Workers / edge / libraries | 支持 | 自定义 provider functions 保持同步。Routing 和 fingers-crossed targets 必须引用该 runtime 可用的 transports。 |
+| 浏览器 / 前端 | 支持 | 在数据离开页面之前，用于补充字段、隐私清洗、采样、去重、路由、breadcrumbs、结构校验，以及处理浏览器采集到的错误。 |
+| Node.js / 服务端 | 支持 | 与 Node 的 transport 和 integration 搭配使用同一套 processor；堆栈解析和错误规范化适用于标准的 JavaScript 错误。 |
+| Worker / edge / 库 | 支持 | 自定义 provider 函数必须保持同步。路由和 fingers-crossed 的目标必须是该运行时中可用的 transport。 |
 
 ## Enrichment
 
@@ -1286,11 +1286,11 @@ description: "middleware / processor 目录、顺序和使用场景。"
 
 | Export | 功能 |
 | --- | --- |
-| `redactProcessor(options)` | 按 key name、精确 dot path 或 regex，在 data/context/tags/structured errors 中 mask 或 remove 值。`censor` 是 `replacement` 的非破坏别名。采用 copy-on-write，async transports 不会看到半脱敏对象。 |
+| `redactProcessor(options)` | 按键名、精确的点路径或正则，在 data/context/tags/结构化错误中遮盖或移除值。`censor` 是 `replacement` 的兼容别名。采用写时复制，异步 transport 不会看到只脱敏了一半的对象。 |
 | `privacyGuardProcessor(options)` | 广谱 PII 清洗，带内置 patterns（email、bearer token、类似银行卡号的数字）和自定义 patterns。 |
 | `normalizeErrorProcessor(options)` | 强制 error shape：stack 截断、cause-chain 深度限制、可枚举属性捕获。 |
-| `stackParserProcessor(options)` / `parseStack(stack)` | 把 stack 解析为结构化 frames（file、line、column、function）。 |
-| `schemaDevCheckProcessor(options)` | 开发期 event shape 校验；发现 typed events 与实际 payload 的漂移。 |
+| `stackParserProcessor(options)` / `parseStack(stack)` | 把堆栈解析为结构化的帧（文件、行、列、函数）。 |
+| `schemaDevCheckProcessor(options)` | 开发期的 event 结构校验，用于发现类型化事件与实际 payload 之间的偏差。 |
 
 ### Redaction 行为
 
@@ -1298,7 +1298,7 @@ description: "middleware / processor 目录、顺序和使用场景。"
 
 选项：
 
-- `keys`：大小写不敏感 key names、匹配 key 或完整 path 的 regexes，或自定义 `(key, path, value) => boolean` matcher。
+- `keys`：不区分大小写的键名、匹配键或完整路径的正则表达式，或自定义的 `(key, path, value) => boolean` 匹配函数。
 - `paths`：相对于每个被脱敏 event field 的精确 dot paths，例如 `user.password` 或 `request.headers.authorization`；这些不是 glob patterns。
 - `replacement`：匹配时写入的值；默认 `"[REDACTED]"`。
 - `censor`：兼容 Pino 的 `replacement` 别名；设置了 `replacement` 时忽略。
@@ -1317,7 +1317,7 @@ description: "middleware / processor 目录、顺序和使用场景。"
 | `dedupeProcessor(options)` | 在时间窗口内把重复的相同日志折叠成一条带 count 的 event。 |
 | `coalesceProcessor(options)` | 抑制窗口内重复 events，并在下一个匹配 event 上输出前一次 repeat count。 |
 | `fingerprintProcessor(options)` | 从可配置 parts（`logger`、`error.name`、`stack.top`、自定义函数）计算稳定 fingerprint，用于 grouping 和 dedupe keys。 |
-| `filterProcessor(input)` | 通过 predicate 或声明式规则（`minLevel`、`logger`、`type`、`tags`、integration source 等）keep/drop。 |
+| `filterProcessor(input)` | 通过判断函数或声明式规则（`minLevel`、`logger`、`type`、`tags`、integration 来源等）决定保留或丢弃。 |
 | `levelOverrideProcessor(input)` | 按 category pattern 提升或限制 levels，例如把吵闹依赖降级。 |
 
 ## 缓冲和路由
@@ -1325,16 +1325,16 @@ description: "middleware / processor 目录、顺序和使用场景。"
 | Export | 功能 |
 | --- | --- |
 | `fingersCrossedProcessor(options)` | 在每个 key 的 ring buffer 中保留低级别日志；触发级别出现时，把缓冲历史 flush 到目标 transport。典型用途是“只有出问题时才给我 debug logs”。 |
-| `breadcrumbBufferProcessor(options)` | 维护有界 breadcrumb trail，并在触发 events 上附加或 replay。 |
-| `routeProcessor(input)` | 按规则把 events 固定到命名 transports 或排除 transports（例如 `[{ minLevel: "error", transports: ["alerts"] }]`）。 |
-| `symbolicateStackProcessor(options)` | 把 source-map 或 release-service symbolication 接入 parsed stack frames，但不捆绑 source-map parser。 |
+| `breadcrumbBufferProcessor(options)` | 维护有上限的 breadcrumb 轨迹，并在触发条件的 event 上附加或重放它们。 |
+| `routeProcessor(input)` | 按规则把 event 固定投递到指定名称的 transport，或排除某些 transport（例如 `[{ minLevel: "error", transports: ["alerts"] }]`）。 |
+| `symbolicateStackProcessor(options)` | 把 source map 或发布服务提供的符号化能力接入解析后的堆栈帧，但不内置 source map 解析器。 |
 
 ## 顺序建议
 
 顺序很重要，每个阶段看到的是前一阶段输出：
 
 1. **先 enrich**（tags、context、trace），让后续阶段能匹配这些字段。
-2. **再 normalize**（errors、stacks），然后做依赖错误形状的 fingerprint 或 match。
+2. **再规范化**（错误、堆栈），然后再做依赖错误结构的指纹计算或匹配。
 3. **在检查 data 的采样决策之前先 redact**，并且始终在任何内容离开进程前 redact。
 4. **最后做流量控制**（sample、rate-limit、dedupe），这样丢弃的是完整 events，counters 的含义也清楚。
 
@@ -1398,9 +1398,9 @@ description: "序列化归属、快速默认行为和自定义 codec 合约。"
 
 # 编解码
 
-Codec 把日志 records 或 events 转成字节，也可以可选地反向解析。Codecs 属于 **transports**：管线内部保持原始值，让 redaction 和 routing 能处理结构化数据，并让每个目的地选择自己的 wire format。
+codec 把日志 record 或 event 转换成字节，也可以选择支持反向解析。codec 属于 **transport**：管线内部始终保留原始值，这样脱敏和路由处理的是结构化数据，每个目的地也能选择自己的线上格式。
 
-## 合约
+## 契约
 
 ```ts
 interface Codec<TPayload = string | Uint8Array> {
@@ -1412,7 +1412,7 @@ interface Codec<TPayload = string | Uint8Array> {
 }
 ```
 
-- `encode` 接收单项或批量，接收 events 或 records。core 的 `normalizeCodecInput()` 会把 records 投影成 events，供只理解 events 的 codecs 使用。
+- `encode` 可以接收单条或一批，可以是 event 也可以是 record。对于只理解 event 的 codec，可以用 core 的 `normalizeCodecInput()` 把 record 投影成 event。
 - `decode` 是可选的；内置 codecs 用 `JSON.parse` 实现对自身输出的对称 round trip。
 - `prepareRecordEncoder` 是可选的。Record-aware transports 可以调用 `createPreparedRecordEncoder(codec)`，让 codec 缓存稳定的 category/tags 片段，同时仍然由 transport 拥有序列化。
 
@@ -1421,20 +1421,20 @@ interface Codec<TPayload = string | Uint8Array> {
 | Codec | Package | 行为 |
 | --- | --- | --- |
 | `jsonCodec()` | core | 输入标准化后直接 `JSON.stringify`。速度快，但 circular/BigInt 会抛错；只在 payload 保证干净时使用。 |
-| `safeJsonCodec(options)` | core | 每次完整安全标准化：circular -> `"[Circular]"`、BigInt -> string、Error -> `{name, message, stack}`、深度/数组/key 截断、Map/Set 转换。`consoleTransport({ pretty: false })` 的默认 codec。 |
-| `ndjsonCodec(options)` | core | 每行一个 JSON object。遵守下方的 **fast-by-default 合约**。Node stdout/file transports 的默认 codec。 |
-| `fastEventJsonCodec(options)` | `@loggerjs/codecs` | 性能 codec：native fast path、片段缓存（level、logger、tags、time）、扫描式字符串转义、flat-data 直接写入、lean envelope 选项。 |
-| `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | 迁移用 Pino 形状 NDJSON：`level`、`time`、可选 `pid`/`hostname` base fields、`msg`、`err`，以及带保留键保护的可选 root data merge。 |
+| `safeJsonCodec(options)` | core | 每次都做完整的安全规范化：循环引用 -> `"[Circular]"`、BigInt -> 字符串、Error -> `{name, message, stack}`、按深度/数组长度/键数量截断、转换 Map/Set。是 `consoleTransport({ pretty: false })` 的默认 codec。 |
+| `ndjsonCodec(options)` | core | 每行一个 JSON 对象，遵循下文的**默认快速契约**。是 Node stdout/file transport 的默认 codec。 |
+| `fastEventJsonCodec(options)` | `@loggerjs/codecs` | 面向性能的 codec：原生快速路径、片段缓存（level、logger、tags、time）、扫描式字符串转义、扁平数据直接写入，以及 lean 信封选项。 |
+| `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | 用于迁移的 Pino 格式 NDJSON：`level`、`time`、可选的 `pid`/`hostname` 基础字段、`msg`、`err`，以及可选的、带保留键保护的根级数据合并。 |
 | `msgpackrCodec(options?)` | `@loggerjs/codecs` | 基于 `msgpackr` 的内置 MessagePack codec；返回 `Uint8Array`。仍支持传入 `{ pack, unpack }` 适配自定义 runtime。 |
-| `projectorCodec(options)` | `@loggerjs/codecs` | 通用 project -> serialize（-> parse -> unproject）适配器，用于自定义 wire schema。 |
-| `otlpJsonCodec(options)` | `@loggerjs/otel` | 带 resource attributes 的 OTLP/HTTP JSON log payload。 |
+| `projectorCodec(options)` | `@loggerjs/codecs` | 通用的“投影 -> 序列化（-> 解析 -> 反投影）”适配器，用于自定义线上格式。 |
+| `otlpJsonCodec(options)` | `@loggerjs/otel` | 带 resource 属性的 OTLP/HTTP JSON 日志 payload。 |
 
-## Fast-by-Default 合约
+## 默认快速契约
 
 `ndjsonCodec()` 和 `fastEventJsonCodec()` 共享同一套文档化行为：
 
-- **不设置任何选项**：encode 走 native fast path。输出遵循原生 `JSON.stringify` 语义：data 中嵌套的原始 `Error` 会序列化为 `{}`，没有深度截断。会让 native stringify *抛错* 的输入（circular references、BigInt）会透明地用 safe stringifier 重新编码；日志行不会因为编码失败而丢失，每次 fallback 都会增加 `codec.fallback` meta counter。
-- **设置任何 `SafeStringifyOptions` 字段**（`maxDepth`、`maxArrayLength`、`maxObjectKeys`、`includeStack`、`stable`、`space`）：codec 会对每一项启用完整安全标准化，也会保留 data payload 中 `Error` 的 name/message/stack。
+- **不设置任何选项**：编码走原生快速路径，输出遵循原生 `JSON.stringify` 的语义：data 中嵌套的原始 `Error` 会被序列化为 `{}`，也不做深度截断。对于会让原生序列化*抛错*的输入（循环引用、BigInt），会自动改用安全序列化重新编码；日志不会因为编码失败而丢失，每次回退都会让 meta 计数 `codec.fallback` 加一。
+- **设置任意 `SafeStringifyOptions` 字段**（`maxDepth`、`maxArrayLength`、`maxObjectKeys`、`includeStack`、`stable`、`space`）：codec 会对每一条都做完整的安全规范化，同时保留 data 中 `Error` 的 name/message/stack。
 
 这需要显式选择：native-fast 加 throw-protection，或完整标准化。`safeJsonCodec` 始终是 always-safe。
 
@@ -1466,13 +1466,13 @@ pinoCompatCodec({
 });
 ```
 
-Root data merging 是 opt-in。默认情况下，LoggerJS 把 payload 保留在 `data` 下；启用 `mergeData: true` 后，`time`、`level`、`msg`、`pid`、`hostname`、`err`、`logger`、`data` 等保留键会被嵌套，避免覆盖 transport-owned fields。迁移测试时如果希望拒绝这类 payload，可以设置 `collision: "throw"`。
+把数据合并到根级需要主动开启。默认情况下，LoggerJS 把 payload 保留在 `data` 下；启用 `mergeData: true` 后，`time`、`level`、`msg`、`pid`、`hostname`、`err`、`logger`、`data` 等保留键会被嵌套存放，避免覆盖由 transport 控制的字段。如果希望在迁移测试时直接拒绝这类 payload，可以设置 `collision: "throw"`。
 
-这个 codec 有意只支持 encode：Pino-shaped NDJSON 是迁移 wire format，不是 LoggerJS 原生 event envelope。
+这个 codec 有意只支持编码：Pino 格式的 NDJSON 是迁移用的线上格式，而不是 LoggerJS 原生的 event 信封。
 
 ## Records、Events 和 IDs
 
-编码原始 `LogRecord`（fast path）与编码 events 有一个语义差异：records 没有 id，所以 codec 会写入 `defaultRecordId(record, levelName)`，即 `time36-seq36-levelName` 字符串，与 `recordToEvent()` 分配的 id 一致。影响是：
+直接编码原始 `LogRecord`（快速路径）与编码 event 有一处语义差异：record 没有 id，所以 codec 会写入 `defaultRecordId(record, levelName)`，即 `time36-seq36-levelName` 形式的字符串，与 `recordToEvent()` 分配的 id 一致。影响是：
 
 - 使用默认 id factory 时，record-encoded 和 event-encoded 输出完全相同。
 - logger 上自定义的 `idFactory` 会被 record-direct encoding **绕过**。如果自定义 id 很重要，transport 应通过 `context.toEvent(record)` 转换（memoized，会应用 id factory），而不是直接编码 record。
@@ -1500,7 +1500,7 @@ export function csvCodec(): Codec<string> {
 建议：
 
 - **不要让 `encode` 抛出。** 包住风险路径，并 fallback 到 core 的 `safeJsonStringify`；用 `incrementLoggerMetaCounter("codec.fallback")` 计数。抛错的 codec 会变成 transport failure；在 batch transport 内还会形成消耗 retries 的 poison batch。
-- 除非你有意实现 record fast path，否则使用 `normalizeCodecInput()`。
+- 除非你有意实现 record 快速路径，否则请使用 `normalizeCodecInput()`。
 - 如果实现 `prepareRecordEncoder`，同一 record 的输出必须和 `encode(record)` 字节级一致，并保持相同 fallback 行为。
 - 二进制格式返回 `Uint8Array`，并设置准确的 `contentType`；HTTP transports 会发送它。
 - 只有当你的功能需要对称 round trip（replay、本地查询）时才实现 `decode`；投递不要求它。
@@ -1524,7 +1524,7 @@ description: "浏览器 HTTP/offline、Node stdout+OTLP、Loki、Datadog 等部�
 
 # 生产配方
 
-这些配方是生产部署起点。它们有意展示 queue bounds、privacy processors、shutdown behavior，以及 credentials 应放在哪里。请按应用调整 names、tags 和 endpoint URLs。
+这些配方是生产部署的起点，有意展示了队列上限、隐私 processor、关闭行为以及凭据应该放在哪里。请根据自己的应用调整名称、tags 和端点 URL。
 
 ## 浏览器到 HTTP，并用 IndexedDB 离线重放
 
@@ -1609,14 +1609,14 @@ export const logger = createLogger({
 
 生产说明：
 
-- `/api/logs` 应该是你自己的 collector endpoint。不要把 vendor API keys 放进浏览器 bundle。
-- fetch/XHR header capture 保持 allowlist。默认不要捕获 cookies、authorization headers、request bodies 或 form values。
-- 当应用能暴露 logger meta counters 和 offline queue depth 时，对 `transport.dropped.*` 等指标告警。
-- HTTP offline queue 的 `dbName` 应与可查询的 support-log store 分开。两个 helper 使用独立的 IndexedDB schema 和版本生命周期。
+- `/api/logs` 应该是你自己的收集端点。不要把厂商 API key 打包进浏览器代码。
+- fetch/XHR 的 header 采集要使用允许列表。默认不要采集 cookie、authorization header、请求 body 或表单值。
+- 如果应用能暴露 logger meta 计数和离线队列深度，请对 `transport.dropped.*` 等指标设置告警。
+- HTTP 离线队列的 `dbName` 应与可查询的支持日志存储分开。两者使用各自独立的 IndexedDB 结构和版本生命周期。
 
-## 浏览器 Support Export，并使用 Session-Aware IndexedDB
+## 浏览器支持日志导出（按 session 组织的 IndexedDB）
 
-当 support 或 QA 需要一份可本地保留、可按页面 session 导出的日志包时使用。这个本地 store 和 HTTP delivery queue 分开：IndexedDB 是可查询的事实来源，`localStorageSpill` 只保护用户刷新或关闭页面时尚未完成 async IndexedDB write 的小尾巴。
+当技术支持或 QA 需要一份能在刷新后保留、并可按页面 session 导出的本地日志包时使用。这个本地存储与 HTTP 投递队列相互独立：IndexedDB 是可查询的权威数据来源，`localStorageSpill` 只负责保护用户刷新或关闭页面时尚未完成异步 IndexedDB 写入的那一小段尾部日志。
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -1673,11 +1673,11 @@ export async function downloadSupportLogZip() {
 
 - 隐私 processor 必须在 IndexedDB transport 前执行。任何本地持久化内容都可能被用户或 support flow 导出。
 - `indexedDbTransport()` 默认创建 page-session id，并在缺失时写入 IndexedDB entry metadata 和 `event.context.sessionId`。如果应用已有 session id，传 `session: { id, getId, contextKey }`。
-- `localStorageSpill` 是有界、best-effort 的最后机会保护。它改善普通 reload 和 close 行为，但不能防 process kill、crash、storage disabled、quota exhaustion 或 storage eviction。
+- `localStorageSpill` 是有上限、尽力而为的最后一道保护。它能改善普通刷新和关闭页面时的表现，但无法防止进程被杀、崩溃、存储被禁用、配额耗尽或存储被驱逐。
 
 ## Node 到 Stdout 加 OTLP
 
-把 stdout 作为本地、平台原生 sink，把 OTLP 作为远程 observability path。即使 OTLP endpoint 降级，stdout 对 container runtimes 和 fatal events 仍有价值。
+把 stdout 作为本地的、平台原生的 sink，把 OTLP 作为远程可观测性路径。即使 OTLP 端点性能下降，stdout 对容器运行时和致命事件依然有用。
 
 ```ts
 import * as otelApi from "@opentelemetry/api";
@@ -1744,13 +1744,13 @@ export async function closeLogger() {
 
 生产说明：
 
-- fatal process paths 至少保留一个本地 sink（`stdoutTransport()` 或 `fileTransport()`）。Remote OTLP 不应是唯一 crash-path sink。
-- 需要 active span correlation 时，在构造 logger 前安装 `@opentelemetry/api` 并初始化 tracing。
+- 至少为致命的进程路径保留一个本地 sink（`stdoutTransport()` 或 `fileTransport()`）。远程 OTLP 不应是崩溃路径上唯一的 sink。
+- 需要关联活跃 span 时，在创建 logger 之前安装 `@opentelemetry/api` 并初始化 tracing。
 - 使用部署平台的 graceful shutdown hook 调用 `logger.close()`。
 
 ## 全栈投递到 Loki 和 Datadog
 
-当浏览器和服务端日志需要进入同一 vendor backends 时使用。浏览器把日志发送到你自己的 collector；服务器持有 Loki 和 Datadog credentials，并转发 server-side events 和已接受的 browser batches。
+当浏览器和服务端日志需要汇入同一套厂商后端时使用。浏览器把日志发送到你自己的收集端；服务端持有 Loki 和 Datadog 的凭据，并同时转发服务端事件和已接收的浏览器批次。
 
 ```ts
 import {
@@ -1838,7 +1838,7 @@ export async function forwardBrowserLogs(events: LogEvent[]) {
 生产说明：
 
 - 调用 `forwardBrowserLogs()` 前验证并限制 `/api/logs` request body。过大的 batches 应尽早拒绝。
-- 只有低基数字段应该提升为 Loki labels 和 Datadog tags。User ids、request ids、order ids 和 URLs 放在 structured metadata/data 中。
+- 只把低基数字段提升为 Loki 标签和 Datadog tags。用户 id、请求 id、订单 id 和 URL 应放在结构化元数据或 data 中。
 - 浏览器和服务端 collector 使用同一套 redaction policy。把 browser-submitted logs 视为不可信输入。
 
 ## 相关链接
@@ -1864,12 +1864,12 @@ description: "隐私、离线重放、崩溃路径、可靠性和 trace 关联�
 
 ## 隐私
 
-自动 integrations 都是 opt-in。只启用产品实际需要的捕获表面。
+所有自动采集的 integration 都需要主动开启。只开启产品实际需要的采集范围。
 
 推荐默认值：
 
 - 在任何 remote transport 之前使用 `redactProcessor()`。
-- 在 fetch/XHR integrations 中使用 HTTP header allowlist。默认不要发送 cookies、authorization headers 或完整 request bodies。
+- 在 fetch/XHR integration 中为 HTTP header 设置允许列表。默认不要发送 cookie、authorization header 或完整的请求 body。
 - 当 query string 可能包含 token 或用户数据时，清洗 URLs。
 - 除非明确需要 debug collection，否则 console capture 只采集 `warn` 和 `error`。
 - 使用稳定 tags，例如 `service`、`env`、`runtime`；把高基数字段放进 event data，而不是 tags。
@@ -1923,14 +1923,14 @@ const integrations = [pageLifecycleIntegration()];
 
 这个限制计算条数，不是字节数。Beacon 还受 `beaconMaxBytes` 限制；Fetch 没有严格 payload 字节预算。拆分批次可能增加请求数和 codec/transform 调用次数。离线容量 `maxEntries` 计算已编码请求数，而非 event 数。已保存的 payload 原样 replay，包括超过当前条数限制的旧批次。离线 replay 和实时投递不保证全局顺序或 exactly-once。
 
-Pagehide、隐藏页面和 `close()` 会同步提交仍在队列中的 Beacon 分块，即使之前的 Fetch 尚未完成；发送中的 Fetch 批次不会再经 Beacon 重复发送，`close()` 仍等待它完成。这个 best-effort 退出路径可能让服务器乱序收到请求。未被接受的 Beacon 分块回退到按条数限制的 Fetch。设置 `transformPayload` 时，生命周期 flush 仍使用 Fetch。flush 成功可能只表示离线队列或浏览器 Beacon 队列接受了日志，不代表服务器确认收货。
+Pagehide、隐藏页面和 `close()` 会同步提交仍在队列中的 Beacon 分块，即使之前的 Fetch 尚未完成；发送中的 Fetch 批次不会再经 Beacon 重复发送，`close()` 仍等待它完成。这条尽力而为的退出路径可能让服务端乱序收到请求。未被接受的 Beacon 分块回退到按条数限制的 Fetch。设置 `transformPayload` 时，生命周期 flush 仍使用 Fetch。flush 成功可能只表示离线队列或浏览器 Beacon 队列接受了日志，不代表服务器确认收货。
 
-浏览器存储和关闭行为仍是 best effort。`sendBeacon` 可能受大小限制或在 shutdown 中被跳过；内存队列会在 reload 后消失；IndexedDB 可能不可用、满、被驱逐，或被 upgrade 阻塞。生产浏览器投递建议组合：
+浏览器的存储和关闭行为依然只能尽力而为。`sendBeacon` 可能受大小限制，或在页面关闭时被跳过；内存队列在刷新后会消失；IndexedDB 可能不可用、已满、被驱逐，或被版本升级阻塞。生产环境的浏览器投递建议组合使用：
 
 - `browserHttpTransport()`：常规远程投递。
 - `indexedDbBrowserHttpOfflineQueue()` 或 `offlineFirstTransport()`：reload-surviving replay。
 - `pageLifecycleIntegration()` 和 `useBeaconOnPageHide`：最后机会 flush。
-- logger meta 中的 drop/queue metrics：让 quota 或 backpressure 可见。
+- logger meta 中的丢弃/队列指标：让配额或背压问题可见。
 
 ## Node 崩溃路径
 
@@ -1948,10 +1948,10 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 
 崩溃路径建议：
 
-- fatal process events 至少保留一个本地 transport。
+- 至少为致命的进程事件保留一个本地 transport。
 - transport 支持时，最终同步 shutdown 优先用 `flushSync()`；普通 drain-and-continue shutdown 使用 `await flush()`。
 - 每次写入都必须在日志调用返回前到达文件系统时，使用 `fileTransport({ sync: true })`。
-- HTTP/OTLP remote transports 用于常规投递，不要作为唯一 fatal-path sink。
+- HTTP/OTLP 远程 transport 用于常规投递，不要作为致命错误路径上唯一的 sink。
 - processor 工作保持同步且有界；crash handlers 不应执行慢 enrichment。
 
 对带 `exitOnUncaught: true` 的 `uncaughtException`，流程是：
@@ -1961,11 +1961,11 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 3. 运行一次由 `flushTimeoutMs` 控制的有界 async `flush()` race（默认 `250` ms）。
 4. 以 code `1` 退出。
 
-对带 `exitOnSignal: true` 的 signals，LoggerJS 捕获 fatal signal record，使用相同的 sync-plus-bounded-async flush 流程，然后按已知 signal exit code 退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
+对于启用了 `exitOnSignal: true` 的信号，LoggerJS 会记录一条致命的信号日志，执行同样的“同步 flush + 有时限的异步 flush”流程，然后按已知的信号退出码退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
 
 ## 远程 Transport 可靠性
 
-基于 batch 的 transports 支持同一套 core reliability 选项：
+基于批量的 transport 都支持同一套 core 可靠性选项：
 
 ```ts
 {
@@ -1981,11 +1981,11 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 }
 ```
 
-当 payload size 比 event count 更重要时使用 byte limits。使用 `onDrop` 把 queue drops 暴露到你自己的 metrics pipeline。
+当 payload 大小比条数更重要时，使用字节限制。用 `onDrop` 把队列丢弃情况接入你自己的指标系统。
 
 ## Context 和 Trace 关联
 
-构造时已知的值用显式 child context；request 级值用 ambient context：
+创建时就已知的值用显式的 child context；请求级别的值用环境 context：
 
 ```ts
 import { installAsyncLocalStorageContext } from "@loggerjs/node";
@@ -1998,7 +1998,7 @@ await withContext({ requestId: "req_123" }, async () => {
 });
 ```
 
-当 OpenTelemetry API object 可用时，用 `openTelemetryTraceProcessor()` 附加当前 active span context。
+当 OpenTelemetry API 对象可用时，用 `openTelemetryTraceProcessor()` 附加当前活跃 span 的 context。
 
 ## 相关链接
 
@@ -2019,31 +2019,31 @@ description: "热路径调优、批量、codec 选择和性能护栏。"
 
 # 性能指南
 
-本页是面向用户的性能说明，与 [基准](BENCHMARKS.md)（测量数字）、[基准矩阵](BENCHMARK-MATRIX.md)（签入的机器证据）和 [架构](ARCHITECTURE.md) 的性能部分（目标和决策）配套。它说明如何按吞吐量配置 LoggerJS，以及哪些习惯能让 hot path 保持 hot。
+本页是面向使用者的性能说明，与 [基准](BENCHMARKS.md)（测量数据）、[基准矩阵](BENCHMARK-MATRIX.md)（仓库中的跨机器数据）和 [架构](ARCHITECTURE.md) 的性能部分（目标与决策）互为补充。它介绍如何按吞吐量配置 LoggerJS，以及哪些习惯能让热路径保持高效。
 
-参考数字（Apple M1 Max，Node v22.21.1；方法见 [基准](BENCHMARKS.md)，签入行见 [基准矩阵](BENCHMARK-MATRIX.md)）。loggerjs-vs-pino 数字来自 paired A/B harness；相对 pino 的排序依赖 CPU/Node-V8，请用 `BENCH_AB=1 pnpm bench:node` 复现：
+参考数据（Apple M1 Max，Node v22.21.1；方法见 [基准](BENCHMARKS.md)，对应的数据行见 [基准矩阵](BENCHMARK-MATRIX.md)）。loggerjs 与 pino 的对比数据来自配对 A/B 测试框架；相对 pino 的排名取决于 CPU 和 Node/V8 版本，请用 `BENCH_AB=1 pnpm bench:node` 复现：
 
-| Path | Cost |
+| 路径 | 开销 |
 | --- | ---: |
-| Disabled level call | ~3 ns（pino parity） |
-| Enabled pipeline, record fast path, noop sink | ~83 ns |
-| Batch transport enqueue（默认设置） | ~172 ns |
-| Prepared lean NDJSON line to a sink | ~224 ns（1.28x pino） |
-| Lean NDJSON line to a sink | ~242 ns（1.19x pino） |
-| Full NDJSON line with id/seq/levelName | ~307 ns |
+| 禁用级别的调用 | ~3 ns（与 pino 相当） |
+| 启用的管线，record 快速路径，空操作 sink | ~83 ns |
+| batch transport 入队（默认设置） | ~172 ns |
+| 向 sink 输出一行 prepared lean NDJSON | ~224 ns（pino 的 1.28 倍） |
+| 向 sink 输出一行 lean NDJSON | ~242 ns（pino 的 1.19 倍） |
+| 输出一行带 id/seq/levelName 的完整 NDJSON | ~307 ns |
 
-## 免费收益（默认已经这样做）
+## 默认就有的优化
 
-- **Disabled levels 只花一次比较。** 保留代码里的 `trace`/`debug` 调用，用 `level` gate。
-- **Lazy messages** 只在级别启用时求值，且最多一次：`logger.debug(() => expensive())`。
-- **Logger tags 冻结并跨 records 共享**，没有 per-call copy。
-- **Default ids** 会按毫秒 memoize timestamp segment。
-- **Batch byte estimation** 只有设置有限 `maxBytes` 时才执行。
-- **`ndjsonCodec` 默认走 native fast path**，并为会抛错的输入提供 safe fallback。
+- **禁用的级别只需一次比较。** 可以放心在代码里保留 `trace`/`debug` 调用，用 `level` 控制是否输出。
+- **延迟消息**只在级别启用时计算，且最多计算一次：`logger.debug(() => expensive())`。
+- **logger 的 tags 被冻结并在 record 之间共享**，每次调用都不会复制。
+- **默认 id** 会按毫秒缓存时间戳部分。
+- **批量的字节估算**只有在设置了有限的 `maxBytes` 时才会执行。
+- **`ndjsonCodec` 默认走原生快速路径**，遇到会让原生序列化抛错的输入时才安全回退。
 
-## Record Fast Path
+## Record 快速路径
 
-这是最大的配置杠杆。当 logger 有 **零 processors**，且 transports 是 **record-aware**（`write`/`writeBatch`）时，不会构建 `LogEvent`：没有 id factory、没有 message-error projection、没有第二个对象。
+这是影响最大的配置项。当 logger **没有任何 processor**，且 transport **支持 record**（实现了 `write`/`writeBatch`）时，完全不会构建 `LogEvent`：不调用 id 工厂，不做消息和错误的投影，也不会创建第二个对象。
 
 ```ts
 // Fast path: middleware + record-aware transport
@@ -2061,38 +2061,38 @@ createLogger({
 
 实践建议：
 
-- 当 middleware variants 和 processor twins 同时存在时，优先使用 `tagsMiddleware`、`enrichMiddleware`、`traceContextMiddleware` 等 middleware 版本。
-- Processors 对 event-shape 行为仍是正确工具（routing、fingerprinting、fingers-crossed）。需要它们时接受 projection 成本：大约 100ns，不是灾难。
+- 同一功能既有 middleware 版本又有 processor 版本时，优先使用 middleware 版本，例如 `tagsMiddleware`、`enrichMiddleware`、`traceContextMiddleware`。
+- 对依赖 event 结构的行为（路由、指纹、fingers-crossed），processor 仍是正确的选择。需要时接受投影的开销即可：大约 100ns，算不上灾难。
 
 ## Codec 选择
 
-- 最高吞吐：`@loggerjs/codecs` 的 `fastEventJsonCodec()`；下游不需要 `id`/`seq`/`levelName` 时可使用 lean envelope。
-- `ndjsonCodec()`（stdout 默认）在 event path 上与 fast-event-json 差距约 10%。
-- Prepared record encoders 适合自定义 sinks。Record-aware transport 直接写 codec 时，用 `createPreparedRecordEncoder(codec)` 包装一次，让 codec-owned logger/tag fragments 可复用，而不把 serialization 移入 logger。
-- `safeJsonCodec()` 每条日志都付完整 normalization walk；把它用于经常有 hostile payloads 的场景，而不是最高吞吐路径。
-- 自定义 `idFactory`（UUID 等）会付 per-log 成本；默认 id 接近免费且可排序。
+- 最高吞吐：`@loggerjs/codecs` 中的 `fastEventJsonCodec()`；下游不需要这些字段时，可以使用 lean 信封（`includeId/includeSeq/includeLevelName: false`）。
+- `ndjsonCodec()`（stdout 的默认 codec）在 event 路径上与 fast-event-json 相差约 10%。
+- prepared record 编码器适合自定义 sink。当支持 record 的 transport 直接调用 codec 时，用 `createPreparedRecordEncoder(codec)` 包装一次，就能复用 codec 持有的 logger/tag 片段，而不必把序列化挪进 logger。
+- `safeJsonCodec()` 对每一条都做完整的规范化遍历；把它用在经常出现异常 payload 的场景，而不是追求吞吐量的路径。
+- 自定义 `idFactory`（UUID 等）每条日志都有开销；默认 id 几乎零成本且可排序。
 
-## 远程目的地的 Batching
+## 远程目的地的批量
 
 逐条发起网络请求是现实中最主要的成本。`nodeHttpTransport()` 和 `otlpHttpTransport()` 内部已用 `batchTransport` 包装，`browserHttpTransport()` 自带批量；Datadog、Elastic、Loki 和 CloudWatch 的原始 transport 需要自行用 `batchTransport()` 包装（见 [传输](TRANSPORTS.md#厂商包)）：
 
-- `maxRecords` / `maxWaitMs` 在 latency 和 batch size 间取舍；`batchTransport` 的默认值（50 条 / 1000 毫秒）适合大多数服务。
-- 只有目的地强制 payload limits 时才设置 `maxBytes`，因为启用它会打开 per-log byte estimation。
-- `concurrency: 2..4` 可重叠慢 endpoint round trips。
-- 观察 `getLoggerMetaStats()` 中的 `transport.dropped.*`；drops 表示 queue bound 与流量不匹配。
+- `maxRecords` / `maxWaitMs` 在延迟和批次大小之间取舍；`batchTransport` 的默认值（50 条 / 1000 毫秒）适合大多数服务。
+- 只有目的地限制 payload 大小时才设置 `maxBytes`，因为启用它会对每条日志做字节估算。
+- `concurrency: 2..4` 可以让慢端点的多次往返并行进行。
+- 关注 `getLoggerMetaStats()` 中的 `transport.dropped.*`；出现丢弃说明队列上限与实际流量不匹配。
 
-## 会伤害性能的习惯
+## 影响性能的习惯
 
-- **Middleware/processors 中的重同步工作。** 管线设计为同步；1ms enrichment 会让每条日志多 1ms。
-- **在管线中提前 stringify。** 序列化属于 transport codec；字符串 blob 也会破坏 redaction。
-- **所有日志都走一个共享 catch-all logger 并挂很多 processors**，但只有一条 route 需要它们。按目的拆分 loggers；children 很便宜。
-- **无界 data payloads。** 编码成本与 payload size 成正比；记录 identifiers，不要记录整块实体。
+- **在 middleware/processor 中做繁重的同步工作。** 管线是同步设计的；一次 1ms 的补充字段操作会让每条日志都慢 1ms。
+- **在管线中提前序列化。** 序列化属于 transport 的 codec；序列化后的字符串也会让脱敏失效。
+- **所有日志都走同一个挂了很多 processor 的通用 logger**，而其实只有一条路由需要它们。按用途拆分 logger，child logger 的成本很低。
+- **不设上限的 data payload。** 编码成本与 payload 大小成正比；记录标识符，而不是整个实体。
 
-## Import Boundaries
+## 导入边界
 
-Root `@loggerjs/browser` 和 `@loggerjs/node` 入口是 preset-style convenience imports：它们 re-export core 加所有第一方 runtime transports 和 integrations。当应用简洁性比最小 module graph 更重要时使用它们。
+`@loggerjs/browser` 和 `@loggerjs/node` 的根入口是预设式的便捷入口：它们重新导出 core 以及所有一方的运行时 transport 和 integration。当应用的简单性比最小的模块图更重要时使用它们。
 
-更小 bundle 使用文档化 subpaths。Browser 和 Node subpaths 构建为真实物理 entry bundles，并由 `pnpm verify:entry-boundaries` 验证，因此 focused import 不会指回 aggregate `dist/index`：
+需要更小的 bundle 时，导入文档中列出的子路径。browser 和 Node 的子路径都构建为独立的物理入口 bundle，并由 `pnpm verify:entry-boundaries` 校验，因此按需导入不会又指回聚合的 `dist/index`：
 
 ```ts
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
@@ -2100,13 +2100,13 @@ import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 ```
 
-新增 runtime-specific feature 且不属于 common preset path 时，应放在 subpath entry 后面。如果新功能让 root browser/node bundle 变大，size-budget diff 应解释为什么 preset entry 需要它。
+新增的运行时专有功能如果不属于常用预设路径，应放在单独的子路径入口后面。如果新功能让 browser/node 根入口的 bundle 变大，体积预算的变更说明中应解释预设入口为什么需要它。
 
 ## 护栏
 
-性能在 CI 中有门禁：`pnpm bench:gate` 运行 interleaved A/B suites，并用与匹配 pino baseline 的 paired ratios 强制限制（见 BENCHMARKS.md）。贡献 hot path 变更时本地运行；结构性回归会让 pull request 失败。
+性能在 CI 中有门禁：`pnpm bench:gate` 运行交错的 A/B 测试套件，并以与对应 pino 基线的配对比值作为阈值（见 [基准](BENCHMARKS.md)）。修改热路径时请在本地运行；结构性回归会让 pull request 失败。
 
-优化的有意终态记录在 ARCHITECTURE.md：保留共享 `LogRecord` 管线作为默认架构，但允许 codec/transport-owned preparation 复用稳定片段。绕过 record 的 fusion paths 仍不作为默认方案，因为它们会制造独立语义 hot path。
+优化的最终方向记录在 [架构](ARCHITECTURE.md) 中：默认架构保留共享的 `LogRecord` 管线，但允许由 codec/transport 负责的预处理来复用稳定片段。绕过 record 的融合路径仍不作为默认方案，因为它会形成一条独立语义的热路径。
 
 ## 相关链接
 
@@ -2559,9 +2559,9 @@ const child = logger.child({ bindings: { requestId: "req_1" } });
 - pino `serializers` 变成 processors（`normalizeErrorProcessor`、`redactProcessor`、自定义 `enrichProcessor`），在序列化前作用于结构化数据。
 - pino redaction 映射到 `redactProcessor({ paths, censor, remove })`；`replacement` 是 LoggerJS 原生命名，等价于 `censor`；热日志器优先使用精确 key/path matching。
 - pino `transport`/`destination` 变成 LoggerJS transport：`stdoutTransport()`、`fileTransport()`、`nodeHttpTransport()`。
-- pino-pretty 的角色由 `prettyStdoutTransport()` / `prettyStderrTransport()`（terminal）或 `prettyConsoleTransport()`（browser DevTools）承担。Core `consoleTransport()` 仍是基础本地 console sink。
-- 需要 Pino-shaped NDJSON 时，使用 `@loggerjs/codecs` 的 `pinoCompatCodec()`。Root data merging 是 opt-in（`mergeData: true`），保留键冲突默认嵌套，而不是覆盖 `time`、`level`、`msg`、`pid`、`hostname` 或 `err`。
-- 最快 LoggerJS lean envelope 使用 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`。Record-aware custom transports 可以用 `createPreparedRecordEncoder(codec)` 包装它，复用稳定 logger/tag fragments。在 M1 Max 参考机器上，plain lean path 约 1.19x pino，prepared lean path 约 1.28x（paired A/B；相对 pino 排序依赖 CPU/V8，见 [基准](BENCHMARKS.md)）；在这个吞吐基础上，你还得到 middleware、integrations、multi-transport fan-out 和同构浏览器故事。
+- pino-pretty 的角色由 `prettyStdoutTransport()` / `prettyStderrTransport()`（终端）或 `prettyConsoleTransport()`（浏览器 DevTools）承担。core 的 `consoleTransport()` 仍然只是基础的本地 console sink。
+- 需要 Pino 格式的 NDJSON 时，使用 `@loggerjs/codecs` 的 `pinoCompatCodec()`。把数据合并到根级需要主动开启（`mergeData: true`），与保留键冲突时默认嵌套存放，而不是覆盖 `time`、`level`、`msg`、`pid`、`hostname` 或 `err`。
+- 最快的 LoggerJS lean 信封使用 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`。支持 record 的自定义 transport 可以用 `createPreparedRecordEncoder(codec)` 包装它，复用稳定的 logger/tag 片段。在 M1 Max 参考机器上，普通 lean 路径约为 pino 吞吐量的 1.19 倍，prepared lean 路径约为 1.28 倍（配对 A/B；相对 pino 的排名取决于 CPU/V8，见 [基准](BENCHMARKS.md)）；在此基础上，你还能获得 middleware、integration、多 transport 分发以及同构的浏览器支持。
 
 ## 从 winston 迁移
 
@@ -2589,7 +2589,7 @@ const logger = createLogger({
 - winston `format` chains 拆成两个关注点：**processors/middleware**（数据塑形：redact、enrich、filter）和 **codecs**（序列化，由每个 transport 拥有）。`format.combine(timestamp, json)` 通常就是默认输出。
 - `defaultMeta` -> `tags` 和/或 `bindings`。
 - Per-transport `level` 直接映射到任何 transport 的 `minLevel`。
-- Child loggers 替代 `winston.loggers` registries 做 per-module configuration；库作者优先使用 core 的 `getLogger()`。
+- 用 child logger 代替 `winston.loggers` 注册表来做按模块的配置；库作者优先使用 core 的 `getLogger()`。
 - 在顺序基准套件中，LoggerJS lean 路径的吞吐量约为 winston 的 10 倍（见 [基准](BENCHMARKS.md)）。
 
 ## 从 console.log 迁移
@@ -2619,7 +2619,7 @@ logger.info("order created", { orderId });
 logger.error(err, "payment failed");
 ```
 
-每一步获得的收益：levels 和 level gating、结构化数据替代插值字符串、数据离开进程前 redaction、batching/offline delivery，以及通过 error/process integrations 捕获 crash path。
+每一步带来的收益：日志级别及按级别过滤、用结构化数据代替字符串插值、数据离开进程前先脱敏、批量/离线投递，以及通过错误/进程 integration 采集崩溃路径。
 
 ---
 
