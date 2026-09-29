@@ -125,7 +125,7 @@ export function captureThingIntegration(): Integration {
         api.capture({
           level: "info",
           message: "thing event",
-          data: { payload },
+          props: { payload },
         });
       });
 
