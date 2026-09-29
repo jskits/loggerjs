@@ -2,7 +2,7 @@
 
 LoggerJS is still pre-1.0. The checked-in `api-reports/` files describe every exported TypeScript declaration, but they are not a promise that every exported symbol is already frozen for v1.
 
-This page is the human contract. The machine-readable classification lives in [`docs/api-stability.policy.json`](api-stability.policy.json), and `pnpm verify:api-stability` fails when a package export is missing from that policy.
+This page is the human contract. The machine-readable classification lives in [`docs/api-stability.policy.json`](https://github.com/jskits/loggerjs/blob/main/docs/api-stability.policy.json), and `pnpm verify:api-stability` fails when a package export is missing from that policy.
 
 ## Current Policy
 

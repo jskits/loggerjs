@@ -2,7 +2,7 @@
 
 LoggerJS 仍处于 pre-1.0。签入仓库的 `api-reports/` 文件描述了每一个已导出的 TypeScript 声明，但这并不表示每个导出符号都已经冻结为 v1 API。
 
-本页是面向人的稳定性契约。机器可读分类位于 [`docs/api-stability.policy.json`](api-stability.policy.json)，当某个 package export 未被纳入策略时，`pnpm verify:api-stability` 会失败。
+本页是面向人的稳定性契约。机器可读分类位于 [`docs/api-stability.policy.json`](https://github.com/jskits/loggerjs/blob/main/docs/api-stability.policy.json)，当某个 package export 未被纳入策略时，`pnpm verify:api-stability` 会失败。
 
 ## 当前策略
 
