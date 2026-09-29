@@ -61,7 +61,7 @@ createLogger({
 
 ## 远程目的地的 Batching
 
-逐条发起网络请求是现实中最主要的成本。`nodeHttpTransport()` 和 `otlpHttpTransport()` 内部已用 `batchTransport` 包装，`browserHttpTransport()` 自带批量；Datadog、Elastic、Loki 和 CloudWatch 的原始 transport 需要自行用 `batchTransport()` 包装（见 [传输](TRANSPORTS.md#vendor-packages)）：
+逐条发起网络请求是现实中最主要的成本。`nodeHttpTransport()` 和 `otlpHttpTransport()` 内部已用 `batchTransport` 包装，`browserHttpTransport()` 自带批量；Datadog、Elastic、Loki 和 CloudWatch 的原始 transport 需要自行用 `batchTransport()` 包装（见 [传输](TRANSPORTS.md#厂商包)）：
 
 - `maxRecords` / `maxWaitMs` 在 latency 和 batch size 间取舍；`batchTransport` 的默认值（50 条 / 1000 毫秒）适合大多数服务。
 - 只有目的地强制 payload limits 时才设置 `maxBytes`，因为启用它会打开 per-log byte estimation。

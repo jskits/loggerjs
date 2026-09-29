@@ -1,115 +1,115 @@
 # 传输
 
-Transport 负责把日志 records 或 events 投递到某个目的地。本页列出所有内置 transport，并说明如何编写自己的 transport。精确 option types 以各 package 的 TypeScript declarations 和 `api-reports/` 为准。
+transport 负责把日志 record 或 event 投递到某个目的地。本页列出所有内置 transport，并说明如何编写自己的 transport。精确的选项类型以各包的 TypeScript 声明和 `api-reports/` 为准。
 
-每个 transport 到源码文件、公开入口和契约测试的可审计映射，见 [传输契约矩阵](TRANSPORT-CONTRACTS.md)。
+每个 transport 与源码文件、公开入口和契约测试的对应关系见 [传输契约矩阵](TRANSPORT-CONTRACTS.md)。
 
-## Runtime 支持
+## 运行时支持
 
-| Runtime | Transport support | 说明 |
+| 运行时 | 支持的 transport | 说明 |
 | --- | --- | --- |
-| Core / runtime-neutral | `consoleTransport`, `memoryTransport`, `testTransport`, `batchTransport`, `retryTransport`, `fallbackTransport` | 不依赖浏览器或 Node.js 专属 API。Wrappers 可以包住当前 runtime 可用的任何 transport。 |
-| Pretty / developer UX | `prettyConsoleTransport`, `prettyStreamTransport`, `prettyStdoutTransport`, `prettyStderrTransport` | 来自 `@loggerjs/pretty` 的浏览器 DevTools 和 Node terminal 显示 transports。用于人类可读输出，不是 durable production delivery。 |
-| Browser / frontend | `browserHttpTransport`, IndexedDB queues/store, WebSocket, service worker, BroadcastChannel, offline-first replay | 使用 `fetch`、`sendBeacon`、`IndexedDB`、`navigator.onLine`、service workers 和 BroadcastChannel 等浏览器 API；在可用处做 feature detection 和 fallback。 |
-| Node.js / server | `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, `nodeSyslogTransport`, `workerTransport` | 使用 Node.js streams、filesystem、worker threads、network sockets 和 Node fetch。 |
-| Vendor / observability | OTLP, Sentry, Datadog, Elastic, Loki, CloudWatch | HTTP wire transports 在具备 `fetch`/crypto/runtime 要求的环境中运行；SDK/provider adapters 需要应用传入已初始化的 SDK object 或 provider。Vendor credentials 通常更适合放在服务器或可信 worker。 |
-| Database / local app / backend | `databaseTransport`, `postgresTransport`, `sqliteTransport` | LoggerJS 层是 driver-agnostic，但应用必须提供数据库 drivers；面向 Node.js、Electron、CLIs 或 backend workers。 |
+| Core / 与运行时无关 | `consoleTransport`, `memoryTransport`, `testTransport`, `batchTransport`, `retryTransport`, `fallbackTransport` | 不依赖浏览器或 Node.js 专有 API。包装器可以包住当前运行时中可用的任何 transport。 |
+| Pretty / 开发体验 | `prettyConsoleTransport`, `prettyStreamTransport`, `prettyStdoutTransport`, `prettyStderrTransport` | 来自 `@loggerjs/pretty` 的浏览器 DevTools 和 Node 终端显示 transport，用于人类可读的输出，不用于持久的生产投递。 |
+| 浏览器 / 前端 | `browserHttpTransport`、IndexedDB 队列/存储、WebSocket、service worker、BroadcastChannel、offline-first 重放 | 使用 `fetch`、`sendBeacon`、`IndexedDB`、`navigator.onLine`、service worker 和 BroadcastChannel 等浏览器 API，并在可行处做特性检测和回退。 |
+| Node.js / 服务端 | `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, `nodeSyslogTransport`, `workerTransport` | 使用 Node.js 的流、文件系统、worker 线程、网络 socket 和 Node fetch。 |
+| 厂商 / 可观测性 | OTLP, Sentry, Datadog, Elastic, Loki, CloudWatch | HTTP 协议类 transport 可以运行在满足其 `fetch`/crypto/运行时要求的环境中；SDK/provider 适配器需要应用传入已初始化的 SDK 对象或 provider。厂商凭据通常更适合放在服务端或可信的 worker 中。 |
+| 数据库 / 本地应用 / 后端 | `databaseTransport`, `postgresTransport`, `sqliteTransport` | LoggerJS 层不绑定具体驱动，但应用必须提供数据库驱动；适用于 Node.js、Electron、CLI 或后端 worker。 |
 
-## 稳定性级别
+## 稳定性分级
 
-Transport 稳定性描述 public API 承诺，不是绝对投递保证。浏览器存储、进程关闭、网络 collectors 和 vendor backends 仍可能失败；下方可靠性表才是投递契约。
+transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投递保证。浏览器存储、进程关闭、网络收集端和厂商后端都可能失败；投递契约以下方的可靠性表为准。
 
 | 级别 | 含义 |
 | --- | --- |
-| Stable | 计划用于 v1-compatible application use。Option names 和高层语义由 API reports、tests 和 docs 保护。 |
-| Compatible | 公开且有测试，但精确 runtime behavior 或 message shape 在 v1 前仍可能调整。适用于 caveats 与部署匹配的场景。 |
-| Experimental | 公开且有测试，但还不属于 v1 兼容承诺。Names、options、payload mapping 或 batching guidance 在 v1 前可能变化。 |
-| Runtime-dependent | Public API 稳定，但实际可靠性高度依赖 LoggerJS 外部的浏览器、worker、storage、network、SDK 或 database 行为。必须在目标环境验证。 |
-| Test-only | 为 assertions 和 fixtures 构建，不用于生产投递。 |
+| Stable | 计划作为 v1 兼容的应用 API。选项名和高层语义受 API 报告、测试和文档保护。 |
+| Compatible | 公开且有测试，但在 v1 之前，具体运行时行为或消息结构仍可能调整。文档中的注意事项符合你的部署场景时再使用。 |
+| Experimental | 公开且有测试，但尚不属于 v1 兼容承诺。名称、选项、payload 映射或批量建议在 v1 之前都可能变化。 |
+| Runtime-dependent | 公开 API 稳定，但实际可靠性很大程度上取决于 LoggerJS 之外的浏览器、worker、存储、网络、SDK 或数据库行为。请在目标环境中验证。 |
+| Test-only | 为断言和测试夹具而设计，不用于生产投递。 |
 
-| Transport | Stability | 原因 |
+| Transport | 稳定性 | 原因 |
 | --- | --- | --- |
-| `consoleTransport()` | Stable | Runtime-neutral local sink，并为 console capture 做 loop prevention。 |
-| `memoryTransport()` | Stable | 有界 in-memory diagnostics cache；有意非 durable。 |
-| `testTransport()` | Test-only | 带 wait/snapshot APIs 的 assertion helper。 |
-| `batchTransport()` / `retryTransport()` / `fallbackTransport()` | Stable | 第一方 transports 使用的 core reliability wrappers。 |
-| Pretty transports | Stable | Developer display API 稳定；具体颜色/布局属于表现细节。 |
-| `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | 带 drain 和 crash-path 行为的生产本地 sinks。 |
-| `rotatingFileTransport()` | Stable | 本地 size rotation；每个文件使用一个 writer process。 |
-| `nodeHttpTransport()` | Stable | 自带 batch 包装的 HTTP delivery，共享 reliability options。 |
-| `otlpHttpTransport()` | Experimental | OTLP mapping 公开且有测试，但 observability adapter packages 在 v1 前不冻结。 |
-| `nodeSyslogTransport()` | Stable | Wire formatting 稳定；UDP/TCP 可靠性遵循 syslog transport 语义。 |
-| `workerTransport()` | Compatible | Message protocol 公开，但 ready/ack/fallback lifecycle tuning 可能继续演进。 |
-| `browserHttpTransport()` | Stable | 主要 browser remote transport；pagehide beacon 仍是 best effort。 |
-| `memoryBrowserHttpOfflineQueue()` | Stable | 临时离线期 API 稳定；不具备 reload durability。 |
-| `indexedDbBrowserHttpOfflineQueue()` / `indexedDbTransport()` / `offlineFirstTransport()` | Runtime-dependent | API 稳定，但持久性依赖浏览器 IndexedDB、quota、eviction、private mode 和 storage policy。 |
-| `browserWebSocketTransport()` | Compatible | 适合 live/debug channels；reconnection 和最终 durability 由调用方负责。 |
-| `browserServiceWorkerTransport()` | Runtime-dependent | API 公开，但 delivery 依赖 service worker registration、activation 和 lifetime。 |
-| `browserBroadcastChannelTransport()` | Compatible | 同源 tab fan-out 有意是 lossy 且 receiver-dependent。 |
-| Datadog / Elastic / Loki / CloudWatch transports | Experimental | Wire payloads 有测试，但 vendor packages 在 v1 前不冻结；生产 durability 需要在 raw transports 外包 batching/retry。 |
-| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | Adapter contracts 公开且有测试，但 SDK/provider mapping 在 v1 前仍可能变化。 |
-| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | Adapter APIs 公开且有测试，但 driver transaction 和 schema expectations 还需要更多 design-partner 验证。 |
+| `consoleTransport()` | Stable | 与运行时无关的本地 sink，针对 console 采集做了防回环处理。 |
+| `memoryTransport()` | Stable | 有界的内存诊断缓存，有意不做持久化。 |
+| `testTransport()` | Test-only | 带等待和快照 API 的断言辅助工具。 |
+| `batchTransport()` / `retryTransport()` / `fallbackTransport()` | Stable | 一方 transport 共同使用的 core 可靠性包装器。 |
+| Pretty transports | Stable | 开发显示 API 稳定；具体颜色和布局属于展示细节。 |
+| `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | 生产用本地 sink，具备 drain 和崩溃路径处理。 |
+| `rotatingFileTransport()` | Stable | 本地按大小轮转；每个文件只应有一个写入进程。 |
+| `nodeHttpTransport()` | Stable | 内置批量包装的 HTTP 投递，使用共享的可靠性选项。 |
+| `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包在 v1 之前不冻结。 |
+| `nodeSyslogTransport()` | Stable | 消息格式稳定；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
+| `workerTransport()` | Compatible | 消息协议公开，但 ready/ack/回退等生命周期细节可能继续调整。 |
+| `browserHttpTransport()` | Stable | 主要的浏览器远程 transport；pagehide 时的 Beacon 仍是尽力而为。 |
+| `memoryBrowserHttpOfflineQueue()` | Stable | 用于短暂离线的稳定 API；刷新页面后不保留。 |
+| `indexedDbBrowserHttpOfflineQueue()` / `indexedDbTransport()` / `offlineFirstTransport()` | Runtime-dependent | API 稳定，但持久性取决于浏览器的 IndexedDB、配额、驱逐策略、隐私模式和存储策略。 |
+| `browserWebSocketTransport()` | Compatible | 适合实时/调试通道；重连和最终持久性由调用方负责。 |
+| `browserServiceWorkerTransport()` | Runtime-dependent | API 公开，但投递取决于 service worker 的注册、激活和生命周期。 |
+| `browserBroadcastChannelTransport()` | Compatible | 同源标签页之间的分发本身就可能丢失，并取决于是否有接收方。 |
+| Datadog / Elastic / Loki / CloudWatch transports | Experimental | 线上 payload 有测试，但厂商包在 v1 之前不冻结；生产环境需要在原始 transport 外包一层批量/重试才能保证持久性。 |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | 适配器契约公开且有测试，但 SDK/provider 映射在 v1 之前仍可能变化。 |
+| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | 适配器 API 公开且有测试，但驱动事务和表结构约定还需要更多真实用户验证。 |
 
-## Import Boundaries
+## 导入边界
 
-Root package imports 是方便入口。Public transport subpaths 被明确记录，用户可以选择更窄的 bundle，新内置 transports 也不能在没有对应文档时悄悄扩大 surface。
+根入口是便捷预设。公开的 transport 子路径都列在这里，方便用户选择更小的 bundle，也防止新的内置 transport 在没有文档的情况下悄悄扩大 API。
 
-| Runtime | Public transport subpaths |
+| 运行时 | 公开的 transport 子路径 |
 | --- | --- |
 | Core | `@loggerjs/core/transport-console`, `@loggerjs/core/transport-batch`, `@loggerjs/core/transport-reliability`, `@loggerjs/core/transport-test` |
 | Browser | `@loggerjs/browser/transport-http`, `@loggerjs/browser/transport-broadcast-channel`, `@loggerjs/browser/transport-service-worker`, `@loggerjs/browser/transport-websocket`, `@loggerjs/browser/transport-indexeddb`, `@loggerjs/browser/offline-first-transport` |
 | Node.js | `@loggerjs/node/transport-http`, `@loggerjs/node/transport-file`, `@loggerjs/node/transport-rotating-file`, `@loggerjs/node/transport-stdout`, `@loggerjs/node/transport-syslog`, `@loggerjs/node/transport-worker` |
 | Pretty | `@loggerjs/pretty/transport-console`, `@loggerjs/pretty/transport-stream` |
-| Observability and data | `@loggerjs/otel/transport-http`, `@loggerjs/sentry/transport`, `@loggerjs/datadog/transport`, `@loggerjs/elastic/transport`, `@loggerjs/loki/transport`, `@loggerjs/cloudwatch/transport`, `@loggerjs/database/transport` |
+| 可观测性与数据 | `@loggerjs/otel/transport-http`, `@loggerjs/sentry/transport`, `@loggerjs/datadog/transport`, `@loggerjs/elastic/transport`, `@loggerjs/loki/transport`, `@loggerjs/cloudwatch/transport`, `@loggerjs/database/transport` |
 
-当 public transport subpath 被导出但未列在这里时，`pnpm verify:component-docs` 会失败。新增 entries 也应该更新上方稳定性和可靠性表。
+如果某个公开的 transport 子路径被导出却没有列在这里，`pnpm verify:component-docs` 会失败。新增条目时也应同步更新上方的稳定性表和可靠性表。
 
-## 可靠性姿态
+## 可靠性特性
 
-Transports 默认可组合。有些 transports 内部包含 batching 或 durable local storage；raw vendor wire transports 除非被包装，否则不会 retry。把下表视为生产投递契约：
+transport 默认是可组合的。有些 transport 内部自带批量或本地持久化；原始的厂商协议 transport 除非被包装，否则不会重试。请把下表当作生产投递契约：
 
-| Transport 或 wrapper | 默认姿态 | 生产说明 |
+| Transport 或包装器 | 默认行为 | 生产说明 |
 | --- | --- | --- |
-| `consoleTransport()` | 立即本地写入 | 人类/开发输出；除 console target 自身外没有 retry 或 durability。 |
-| `prettyConsoleTransport()` / `prettyStdoutTransport()` / `prettyStderrTransport()` | 立即写出人类可读本地输出 | 只用于开发体验。生产投递使用结构化 transports。 |
-| `memoryTransport()` | in-memory ring buffer | 仅 diagnostics cache；进程/页面退出即丢失。 |
-| `testTransport()` | in-memory assertion sink | 仅测试；不是生产投递机制。 |
-| `batchTransport(inner)` | 带可选 retry/circuit breaker 的 batch queue | raw I/O transports 需要 queue bounds、retries、backoff 或 drop accounting 时使用。 |
-| `retryTransport(inner)` | 立即投递加 retry | inner transport 已拥有 batching，或 per-call retry 可接受时使用。 |
-| `fallbackTransport(primary, fallback)` | primary 失败后走 fallback | 用作本地 backup sinks，不替代 queueing。 |
-| `stdoutTransport()` / `stderrTransport()` | 立即 stream write，`flush()` 感知 drain，可选 `minLength` buffering | 本地 process sink；默认把 `EPIPE` 当成干净 shutdown。 |
-| `fileTransport()` | 共享 file destination，支持 async stream mode、可选 `sync: true`、`mkdir`、`append`、`minLength` 和 crash-path `flushSync()` | 本地 durability path；每个文件优先一个 writer process。 |
-| `rotatingFileTransport()` | 带 size rotation 的同步共享 file destination | 带大小轮转的本地 durability path；写入时阻塞调用方。 |
-| `nodeHttpTransport()` | 自带 batch 包装的 HTTP delivery | 使用 `batchTransport`；生产中调节 queue、retry 和 circuit options。 |
-| `nodeSyslogTransport()` | 立即 UDP/TCP syslog write | UDP 可丢；TCP 仍依赖 socket state 和 close/flush 行为。 |
-| `workerTransport()` | worker offload，可选 ready/ack lifecycle | 默认 fire-and-forget；需要观察 worker acceptance 时配置 `readyTimeoutMs`、`ackTimeoutMs`、fallback 和 `autoEnd`；配置 ready handshake 后，`ready()` 等待 worker startup。 |
-| `browserHttpTransport()` | batched fetch，可选 offline queue 和 beacon pagehide mode | reload survival 需要 IndexedDB queue；beacon mode 是 best-effort 且有大小限制。 |
-| `memoryBrowserHttpOfflineQueue()` | in-memory offline queue | 可跨网络短暂中断，不跨 reload 或 tab close。 |
-| `indexedDbBrowserHttpOfflineQueue()` | IndexedDB offline queue | quota/storage 可用时跨 reload。 |
-| `offlineFirstTransport(remote)` | remote delivery 加 persistent queue replay | offline 或 remote failure 时 queue，之后 replay。 |
-| `indexedDbTransport()` | 本地 IndexedDB persistence | 本地 support/export store；durability 依赖浏览器 storage policy 和 quota。 |
-| `browserWebSocketTransport()` | socket closed 时 queue | Reconnection 由调用方负责；有界队列满时会 drop。 |
-| `browserServiceWorkerTransport()` | queue 到 active service worker 可用；`target: "ready"` 时 `ready()` 可等待 `serviceWorker.ready` | Delivery 依赖 registration、activation 和 worker lifetime。 |
-| `browserBroadcastChannelTransport()` | lossy tab broadcast | Receivers 必须已经监听；不 durable。 |
-| `otlpHttpTransport()` | 自带 batch 包装的 OTLP/HTTP delivery | 使用 `batchTransport`；生产中调节 retry 和 circuit options。 |
-| Datadog / Elastic / Loki / CloudWatch transports | raw HTTP wire delivery | 用 `batchTransport()` / `retryTransport()` 包装以获得 queueing、retry 和 circuit breaking。 |
-| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | SDK/provider adapter | 可靠性取决于传入的 SDK/provider。 |
-| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | batched database writes | 实际 transaction 和 connection 行为由 adapter/driver 拥有。 |
+| `consoleTransport()` | 立即本地输出 | 面向人或开发环境；除 console 本身外没有重试或持久化。 |
+| `prettyConsoleTransport()` / `prettyStdoutTransport()` / `prettyStderrTransport()` | 立即输出人类可读的本地日志 | 仅用于开发体验。生产投递请使用结构化 transport。 |
+| `memoryTransport()` | 内存环形缓冲区 | 仅作诊断缓存；进程或页面退出即丢失。 |
+| `testTransport()` | 内存断言 sink | 仅用于测试，不是生产投递机制。 |
+| `batchTransport(inner)` | 批量队列，可选重试和熔断 | 原始 I/O transport 需要队列上限、重试、退避或丢弃计数时使用。 |
+| `retryTransport(inner)` | 立即投递并重试 | 内部 transport 已自带批量，或可以接受逐次调用重试时使用。 |
+| `fallbackTransport(primary, fallback)` | 主 transport 失败后改用备用 transport | 用于本地备份 sink，不能代替队列。 |
+| `stdoutTransport()` / `stderrTransport()` | 立即写入流，`flush()` 会等待 drain，可选 `minLength` 缓冲 | 本地进程 sink；默认把 `EPIPE` 视为正常关闭。 |
+| `fileTransport()` | 共享的文件目的地，支持异步流模式、可选 `sync: true`、`mkdir`、`append`、`minLength` 和崩溃路径的 `flushSync()` | 本地持久化路径；每个文件最好只有一个写入进程。 |
+| `rotatingFileTransport()` | 带按大小轮转的同步共享文件目的地 | 带轮转的本地持久化路径；写入时会阻塞调用方。 |
+| `nodeHttpTransport()` | 内置批量包装的 HTTP 投递 | 基于 `batchTransport`；生产环境请调整队列、重试和熔断选项。 |
+| `nodeSyslogTransport()` | 立即通过 UDP/TCP 写入 syslog | UDP 可能丢失；TCP 仍取决于 socket 状态和 close/flush 行为。 |
+| `workerTransport()` | 卸载到 worker，可选 ready/ack 生命周期 | 默认只发不管；需要确认 worker 已接收时，配置 `readyTimeoutMs`、`ackTimeoutMs`、fallback 和 `autoEnd`；配置了 ready 握手后，`ready()` 会等待 worker 启动。 |
+| `browserHttpTransport()` | 批量 fetch，可选离线队列和 pagehide 时的 Beacon 模式 | 需要在刷新后保留时使用 IndexedDB 队列；Beacon 模式是尽力而为，且有大小限制。 |
+| `memoryBrowserHttpOfflineQueue()` | 内存离线队列 | 能扛过网络中断，但扛不过页面刷新或关闭标签页。 |
+| `indexedDbBrowserHttpOfflineQueue()` | IndexedDB 离线队列 | 在配额和存储可用时，刷新后仍然保留。 |
+| `offlineFirstTransport(remote)` | 远端投递，加持久化队列重放 | 离线或远端失败时入队，之后重放。 |
+| `indexedDbTransport()` | 本地 IndexedDB 持久化 | 本地支持/导出存储；持久性取决于浏览器存储策略和配额。 |
+| `browserWebSocketTransport()` | socket 关闭时排队 | 重连由调用方负责；有界队列满时会丢弃。 |
+| `browserServiceWorkerTransport()` | 排队直到有活跃的 service worker；`target: "ready"` 时 `ready()` 可以等待 `serviceWorker.ready` | 投递取决于注册、激活和 worker 生命周期。 |
+| `browserBroadcastChannelTransport()` | 可能丢失的标签页广播 | 接收方必须已在监听；不持久化。 |
+| `otlpHttpTransport()` | 内置批量包装的 OTLP/HTTP 投递 | 基于 `batchTransport`；生产环境请调整重试和熔断选项。 |
+| Datadog / Elastic / Loki / CloudWatch transports | 原始 HTTP 协议投递 | 用 `batchTransport()` / `retryTransport()` 包装，以获得排队、重试和熔断能力。 |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | SDK/provider 适配器 | 可靠性取决于你传入的 SDK/provider。 |
+| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | 批量写入数据库 | 实际的事务和连接行为由适配器/驱动负责。 |
 
-## Core / Runtime-Neutral（`@loggerjs/core`）
+## Core / 与运行时无关（`@loggerjs/core`）
 
 | Transport | 功能 |
 | --- | --- |
-| `consoleTransport()` | 按 level 的 pretty console output，或 `pretty: false` 时单行 JSON。通过 unpatched console 写出，避免 console capture 循环。默认过滤从 console 捕获来的 events。 |
-| `memoryTransport()` | 最近 events 的 ring buffer（`maxEvents`，默认 1000）。适合 diagnostics endpoints 和 tests。 |
-| `testTransport()` | 面向 assertion 的 sink：snapshots、call stats、`waitFor()`/`waitForCount()`、可注入失败。 |
-| `batchTransport(inner, options)` | 为任意 transport 加 batching、retry 和 reliability controls。 |
-| `retryTransport(inner, options)` | 为任意 transport 加 retries、exponential backoff、可选 circuit breaker 和可选 fallback。 |
-| `fallbackTransport(primary, fallback)` | primary 抛错时发送到 fallback transport。 |
+| `consoleTransport()` | 按级别输出易读的 console 日志，或在 `pretty: false` 时输出单行 JSON。通过未被 patch 的 console 输出，避免与 console 采集形成回环。默认过滤从 console 采集到的事件。 |
+| `memoryTransport()` | 保存最近事件的环形缓冲区（`maxEvents`，默认 1000）。适合诊断接口和测试。 |
+| `testTransport()` | 面向断言的 sink：快照、调用统计、`waitFor()`/`waitForCount()`、可注入的失败。 |
+| `batchTransport(inner, options)` | 为任意 transport 添加批量、重试和可靠性控制（见下文）。 |
+| `retryTransport(inner, options)` | 为任意 transport 添加重试、指数退避、可选熔断和可选回退。 |
+| `fallbackTransport(primary, fallback)` | 主 transport 抛错时改发到备用 transport。 |
 
 ### `batchTransport` 可靠性选项
 
-生态中的每个 batch-based transport 都共享这组选项：
+所有基于批量的 transport 都共享这组选项：
 
 ```ts
 batchTransport(inner, {
@@ -128,35 +128,35 @@ batchTransport(inner, {
 });
 ```
 
-注意：
+说明：
 
-- Byte estimation 会遍历 payload；只有 `maxBytes` 有限时才执行。
-- Drops 总会计入 logger meta（`transport.dropped.*`）；只有注册了 listener 时才进行 `onDrop` 的 event conversion。
-- 失败 batch 会重新入队到队头；circuit breaker 避免持续打爆死亡 endpoint。
+- 字节估算需要遍历 payload；只有 `maxBytes` 为有限值时才会执行。
+- 丢弃总会计入 logger meta（`transport.dropped.*`）；只有注册了 `onDrop` 回调时，才会为它把 record 转换成 event。
+- 失败的批次会重新放回队首；熔断器可以避免不断请求一个已经挂掉的端点。
 
-## Pretty / Developer UX（`@loggerjs/pretty`）
+## Pretty / 开发体验（`@loggerjs/pretty`）
 
-| Transport / helper | 功能 |
+| Transport / 辅助函数 | 功能 |
 | --- | --- |
-| `prettyConsoleTransport()` | 浏览器 DevTools 和本地 console 输出：level labels、可读 details、可选 `%c` 浏览器样式、原始对象参数、console-capture loop filtering。 |
-| `prettyStreamTransport({ stream })` | 向任意 writable stream-like target 写入人类可读行。按配置或 auto-detect 使用 ANSI colors。 |
-| `prettyStdoutTransport()` / `prettyStderrTransport()` | `process.stdout` / `process.stderr` 之上的 Node terminal helpers；尊重 `NO_COLOR` 和 `FORCE_COLOR`，支持 `minLevel`，`flush()` 可等待 `drain`。 |
-| `formatPrettyEvent()` | 自定义显示 transports 的共享 formatter。返回 plain text、ANSI text、browser console args 和 raw details。 |
+| `prettyConsoleTransport()` | 浏览器 DevTools 和本地 console 输出：级别标签、易读的详情、可选的 `%c` 浏览器样式、原始对象参数，并过滤 console 采集回环。 |
+| `prettyStreamTransport({ stream })` | 向任意可写的类流目标写入人类可读的行。按配置或自动检测决定是否使用 ANSI 颜色。 |
+| `prettyStdoutTransport()` / `prettyStderrTransport()` | 基于 `process.stdout` / `process.stderr` 的 Node 终端辅助函数；遵循 `NO_COLOR` 和 `FORCE_COLOR`，支持 `minLevel`，`flush()` 会等待 `drain`。 |
+| `formatPrettyEvent()` | 供自定义显示 transport 使用的共享格式化函数，返回纯文本、ANSI 文本、浏览器 console 参数和原始详情。 |
 
-Pretty transports 是显示 sinks。它们不 batch、不 retry、不 persist，也不实现 collector protocols。示例和选项建议见 [友好输出](PRETTY.md)。
+pretty transport 是显示用的 sink，不做批量、不重试、不持久化，也不实现收集端协议。示例和选项建议见 [友好输出](PRETTY.md)。
 
-## Node.js / Server（`@loggerjs/node`）
+## Node.js / 服务端（`@loggerjs/node`）
 
 | Transport | 功能 |
 | --- | --- |
-| `stdoutTransport()` / `stderrTransport()` | NDJSON lines，带 write backpressure tracking、clean `EPIPE` handling 和可选 `minLength` buffering；`flush()` 等待 pending writes。 |
-| `fileTransport({ path })` | 默认 append NDJSON 到文件；支持 `mkdir`、`append: false`、async `minLength` buffering、`sync: true` 和 crash-path `flushSync()`。 |
-| `rotatingFileTransport({ path, maxBytes, maxFiles })` | 基于大小的 rotation，通过同一个 file destination 生成 numbered archives。同步写入；每个文件使用一个 logger process。 |
+| `stdoutTransport()` / `stderrTransport()` | 输出 NDJSON 行，跟踪写入背压，妥善处理 `EPIPE`，可选 `minLength` 缓冲；`flush()` 会等待未完成的写入。 |
+| `fileTransport({ path })` | 默认以追加方式把 NDJSON 写入文件；支持 `mkdir`、`append: false`、异步 `minLength` 缓冲、`sync: true` 和崩溃路径的 `flushSync()`。 |
+| `rotatingFileTransport({ path, maxBytes, maxFiles })` | 通过同一个文件目的地按大小轮转，生成带编号的归档文件。同步写入；每个文件只应由一个 logger 进程写入。 |
 | `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。 |
-| `nodeSyslogTransport()` | UDP/TCP 上的 RFC syslog formatting；`formatSyslogMessage()` 单独导出。 |
-| `workerTransport({ workerScript })` | 用 codec 编码 batches 并 post 到 worker thread，可选 transfer buffers；支持 ready timeout、batch ack waiting、fallback 和 `autoEnd`。 |
+| `nodeSyslogTransport()` | 通过 UDP/TCP 发送 RFC 格式的 syslog 消息；`formatSyslogMessage()` 也单独导出。 |
+| `workerTransport({ workerScript })` | 用 codec 编码批次并发送到 worker 线程，可选转移 buffer；支持 ready 超时、等待批次 ack、回退和 `autoEnd`。 |
 
-`nodeHttpTransport()` 接收 `transformPayload`，可在 codec 后做 wire transform。gzip、brotli 或 deflate 使用 `nodeCompressionPayloadTransform()`：
+`nodeHttpTransport()` 接受 `transformPayload`，在 codec 编码之后对线上 payload 做转换。gzip、brotli 或 deflate 压缩使用 `nodeCompressionPayloadTransform()`：
 
 ```ts
 import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
@@ -167,37 +167,37 @@ nodeHttpTransport({
 });
 ```
 
-`fileTransport().flushSync()` 是 crash-path primitive。在 async stream mode 下，它会通过同步 fd 写出当前 buffered 或 pending payloads，让 fatal records 在进程退出前到达磁盘；如果进程继续运行，原 async stream 可能仍会完成。普通 drain-and-continue shutdown 使用 `await flush()`；每次写入都必须同步时配置 `sync: true`。
+`fileTransport().flushSync()` 是崩溃路径专用的原语。在异步流模式下，它会通过同步文件描述符写出当前缓冲或待写的 payload，让致命错误日志在进程退出前落盘；如果进程继续运行，原来的异步流可能仍会完成写入。正常的“排空后继续运行”式关闭请使用 `await flush()`；如果每次写入都必须同步完成，请配置 `sync: true`。
 
-`workerTransport()` 仍兼容只接收 object messages 的简单 workers。Lifecycle 是 opt-in：
+`workerTransport()` 仍然兼容只接收对象消息的简单 worker。生命周期协议需要主动开启：
 
-- 当 worker 会发送 `{ type: "loggerjs:ready" }` 时，设置 `readyTimeoutMs`。超时会标记 worker 失败，并把 batch 发送到 fallback，或计为 `transport.dropped.worker-ready-timeout`。显式 `transport.ready()` / `logger.ready()` 也会等待这个 startup handshake。
-- 当 worker 会用 `{ type: "loggerjs:batch:ack", id }` ack 每个 batch 时，设置 `ackTimeoutMs`。`flush()` 会等待这些 acks。
-- 主线程 post `{ type: "loggerjs:batch", id?, codec, contentType, count, payload }`。
-- Worker 可用 `{ type: "loggerjs:error", message, error }` 报告失败；pending batches 会 fallback 或计为 dropped。
-- `autoEnd` 默认 `true`；如果 worker 被共享且不应由 transport `close()` terminate，设置 `autoEnd: false`。
+- 如果 worker 会发送 `{ type: "loggerjs:ready" }`，设置 `readyTimeoutMs`。超时后 LoggerJS 会把 worker 标记为失败，并把批次交给配置的 fallback，或计为 `transport.dropped.worker-ready-timeout`。显式调用 `transport.ready()` / `logger.ready()` 也会等待这个启动握手。
+- 如果 worker 会用 `{ type: "loggerjs:batch:ack", id }` 确认每个批次，设置 `ackTimeoutMs`。`flush()` 会等待这些确认。
+- 主线程发送的消息是 `{ type: "loggerjs:batch", id?, codec, contentType, count, payload }`。
+- worker 可以用 `{ type: "loggerjs:error", message, error }` 报告失败；待确认的批次会交给 fallback 或计为丢弃。
+- `autoEnd` 默认为 `true`；如果 worker 是共享的、不应在 transport `close()` 时被终止，请设置 `autoEnd: false`。
 
-Worker lifecycle 会更新标准 transport gauges：`transport.ready.<name>` 和 `transport.queue.depth.<name>`；pending ack failures 会计入 `transport.worker.pending-dropped` 和 `transport.dropped.<reason>`。
+worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 和 `transport.queue.depth.<name>`；等待 ack 失败会计入 `transport.worker.pending-dropped` 和 `transport.dropped.<reason>`。
 
-Node runtime diagnostics 可以从 `@loggerjs/node` 调用 `installLoggerDiagnosticsChannel()`。它会把订阅的 LoggerJS internals 发布到 Node `diagnostics_channel` channels：`loggerjs.dispatch`、`loggerjs.transport`、`loggerjs.flush`、`loggerjs.encode` 和 `loggerjs.worker`。
+如果需要 Node 运行时诊断，可以调用 `@loggerjs/node` 的 `installLoggerDiagnosticsChannel()`。它会把被订阅的 LoggerJS 内部阶段发布到 Node `diagnostics_channel` 的这些频道：`loggerjs.dispatch`、`loggerjs.transport`、`loggerjs.flush`、`loggerjs.encode` 和 `loggerjs.worker`。
 
-## Browser / Frontend（`@loggerjs/browser`）
+## 浏览器 / 前端（`@loggerjs/browser`）
 
 | Transport | 功能 |
 | --- | --- |
-| `browserHttpTransport({ url })` | Batching HTTP delivery，带 offline queue、online replay with backoff，以及 page hide 上的 `sendBeacon`（按 `beaconMaxBytes` 切块）。 |
-| `memoryBrowserHttpOfflineQueue()` | In-memory offline queue adapter（reload 后丢失）。 |
-| `indexedDbBrowserHttpOfflineQueue()` | IndexedDB 中的 durable offline queue；跨 reload。 |
-| `offlineFirstTransport(remote)` | 标准 remote + persistent queue wrapper；offline 或 remote delivery 失败时 queue，之后 replay。 |
-| `indexedDbTransport()` | 把 logs 本地持久化到 IndexedDB，支持 session-aware indexes、TTL/count/byte pruning、durability hints、可选 Storage Bucket isolation、async `query()` API、`sessions()` 和 `stats()` observability。 |
-| `browserWebSocketTransport({ socket })` | 通过 WebSocket 发送 codec-encoded batches；socket closed 时 queue（reconnection 由调用方负责）。 |
-| `browserServiceWorkerTransport()` | 把 events post 给 service worker，在 active worker 可用前 queue；`target: "ready"` 时显式 `ready()` 等待 `serviceWorker.ready`。 |
-| `browserBroadcastChannelTransport({ channel })` | 把 logs fan out 到其他 tabs（天然 lossy；receivers 必须正在监听）。 |
-| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把 logs（例如来自 `indexedDbTransport().query()`）打包成带 manifest、可选 per-session files、可选 `recent.ndjson`/`recent.json` 和 CRC 的 ZIP，用于 support workflows。 |
+| `browserHttpTransport({ url })` | 批量 HTTP 投递，支持离线队列、恢复在线后带退避的重放，以及页面隐藏时的 `sendBeacon`（按 `beaconMaxBytes` 分块）。 |
+| `memoryBrowserHttpOfflineQueue()` | 内存离线队列适配器（刷新后丢失）。 |
+| `indexedDbBrowserHttpOfflineQueue()` | 基于 IndexedDB 的持久离线队列，刷新后仍保留。 |
+| `offlineFirstTransport(remote)` | 标准的“远端 + 持久化队列”包装器：离线或远端投递失败时入队，之后重放。 |
+| `indexedDbTransport()` | 把日志持久化到本地 IndexedDB，支持按 session 建索引、按 TTL/条数/字节清理、持久性提示、可选的 Storage Bucket 隔离、异步 `query()` API、`sessions()` 和 `stats()` 统计。 |
+| `browserWebSocketTransport({ socket })` | 通过 WebSocket 发送 codec 编码的批次；socket 关闭时排队（重连由调用方负责）。 |
+| `browserServiceWorkerTransport()` | 把事件发送给 service worker，在有活跃 worker 之前排队；`target: "ready"` 时，显式调用 `ready()` 会等待 `serviceWorker.ready`。 |
+| `browserBroadcastChannelTransport({ channel })` | 把日志分发到其他标签页（本身就可能丢失；接收方必须正在监听）。 |
+| `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把日志（例如来自 `indexedDbTransport().query()`）打包成 ZIP，包含 manifest、可选的按 session 拆分文件、可选的 `recent.ndjson`/`recent.json` 和 CRC，用于技术支持流程。 |
 
 `browserHttpTransport()` 在普通 Fetch 投递中使用 `codec`。如果 pagehide 或页面隐藏时的 Beacon 请求需要不同的编码或 content type，可以设置 `beaconCodec`；未设置时回退到 `codec`。配置了 `transformPayload` 时会跳过 Beacon 投递，生命周期 flush 改走普通 Fetch 路径，`beaconCodec` 也就不会生效。
 
-`browserHttpTransport()` 同样接收 `transformPayload`。支持 `CompressionStream` 的浏览器使用 `browserCompressionPayloadTransform()`：
+`browserHttpTransport()` 同样接受 `transformPayload`。在支持 `CompressionStream` 的浏览器中使用 `browserCompressionPayloadTransform()`：
 
 ```ts
 import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
@@ -208,7 +208,7 @@ browserHttpTransport({
 });
 ```
 
-现代 Chrome 上进行高吞吐本地浏览器采集时，优先使用独立 IndexedDB log store，并设置 relaxed durability：
+在较新的 Chrome 上做高吞吐的本地浏览器采集时，推荐使用独立的 IndexedDB 日志存储，并设置宽松持久性：
 
 ```ts
 indexedDbTransport({
@@ -223,33 +223,33 @@ indexedDbTransport({
 });
 ```
 
-不支持 Storage Buckets 的浏览器会回退到普通 IndexedDB instance，同时保持相同 transport API。
+不支持 Storage Buckets 的浏览器会回退到普通的 IndexedDB 实例，transport API 保持不变。
 
-`indexedDbTransport()` 默认分配 page-session id，把它作为 IndexedDB entry 顶层字段存储，并在事件缺少 `event.context.sessionId` 时把同一个值写入 context。传 `session: false` 可关闭这个物化 session 字段；传 `session: { id, getId, contextKey }` 可让持久化 session 对齐你自己的浏览器 context provider。
+`indexedDbTransport()` 默认会分配一个页面 session id，把它作为 IndexedDB 条目的顶层字段保存，并在事件没有 `event.context.sessionId` 时把同一个值写入 context。传入 `session: false` 可以关闭这个 session 字段；传入 `session: { id, getId, contextKey }` 可以让持久化的 session 与你自己的浏览器 context provider 保持一致。
 
-`localStorageSpill` 是 reload/close 前的最后机会保护，不是 IndexedDB 的替代品。正常日志仍然先进入内存 batch，并异步 flush 到 IndexedDB。`pagehide` 或 `visibilitychange: hidden` 时，transport 会同步把尚未确认落盘的尾部日志（`pendingFlushBatch` 加当前内存 buffer）写入一个很小的 `localStorage` temp entry。下一次 transport 实例会先把这个 temp entry drain 到 IndexedDB，写成功后才清除。它能降低普通 reload 和 tab close 时的丢失窗口，但不能防 process kill、browser crash、storage disabled、quota exhaustion 或 storage eviction。
+`localStorageSpill` 是页面刷新或关闭前的最后一道保护，不是 IndexedDB 的替代品。正常情况下日志仍先在内存中批量，再异步 flush 到 IndexedDB。在 `pagehide` 或 `visibilitychange: hidden` 时，transport 会把尚未确认写入的尾部日志（`pendingFlushBatch` 加上当前内存缓冲）同步写入一个很小的 `localStorage` 临时条目。下一个 transport 实例会在第一次 flush 之前先把这个临时条目导入 IndexedDB，写入成功后才清除它。这能减少普通刷新和关闭标签页时的日志丢失，但无法防止进程被杀、浏览器崩溃、存储被禁用、配额耗尽或存储被驱逐。
 
-### Browser failure boundaries
+### 浏览器的失败边界
 
-除非日志已经被你关心的 destination acknowledge，否则浏览器投递都是 best effort。关键丢失窗口：
+除非日志已经被你关心的目的地确认接收，浏览器投递都只是尽力而为。需要关注的丢失窗口：
 
-| Path | Failure boundary / loss window | 生产建议 |
+| 路径 | 失败边界 / 丢失窗口 | 生产建议 |
 | --- | --- | --- |
-| `browserHttpTransport()` | In-memory batches 在 reload、tab close、process kill，或 queue bound 在投递前 drop records 时丢失。Fetch 可能被 navigation abort。 | 需要 reload survival 时使用有界 queues、retry options 和 IndexedDB offline queue。 |
-| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` 是 fire-and-forget。浏览器会限制 payload size，并可能在 shutdown pressure 下 reject、truncate 或 skip delivery。 | 保守设置 `beaconMaxBytes`，把 pagehide flush 当最后机会，不要作为唯一 durability path。 |
-| `memoryBrowserHttpOfflineQueue()` | 只要 page process 存活，可跨临时 offline periods。 | 轻量应用或测试可用；需要 support/debug logs 跨 reload 时改用 IndexedDB。 |
-| `indexedDbBrowserHttpOfflineQueue()` | 跨 reload 存储 replay payloads，但 quota、private browsing mode、storage eviction、blocked upgrades 或 IndexedDB 不可用仍可能阻止持久化。 | 监控 queue/drop counters，保持 payloads 有界；搭配 HTTP replay 和 page lifecycle flush。 |
-| `offlineFirstTransport(remote)` | remote delivery 失败时 queue，之后 replay。如果 local storage 失败或被驱逐，replay 不是保证。 | 优先使用 persistent queue adapter；可控 shutdown/navigation 时尽量调用 `flush()`。 |
-| `indexedDbTransport()` | 本地持久性依赖 IndexedDB availability、quota、eviction policy、durability hints 和 Storage Buckets 支持。仍在内存 buffer 中、尚未完成 async IndexedDB write 的日志可能丢失。 | 可接受时用 `durability: "relaxed"` 提高吞吐；用 TTL/count/byte pruning 保持低于 quota。support logs 需要更可靠地跨普通 reload 时，启用有界 `localStorageSpill`。 |
-| `browserWebSocketTransport()` | 页面退出、queue bound 超出或调用方从不 reconnect socket 时，queued events 可能丢失。 | 在 transport 外负责 reconnection，并用 queue bounds/drop counters 检测 backpressure。 |
-| `browserServiceWorkerTransport()` | Delivery 依赖 service worker registration、activation、message delivery 和 worker lifetime。Terminating worker 会丢 in-flight work，除非它自己持久化 queue。 | 只把它当 centralization；除非 service worker 也写 durable storage，否则不要当 durability。 |
-| `browserBroadcastChannelTransport()` | BroadcastChannel 只到达当前打开、同源、正在监听的 tabs。Messages 不 durable，receivers 启动期间会错过。 | 用于 multi-tab aggregation 和 debugging，不作为 primary remote delivery guarantee。 |
+| `browserHttpTransport()` | 内存中的批次会在页面刷新、关闭标签页、进程被杀，或队列上限在投递前丢弃记录时丢失。页面跳转也可能中断 fetch。 | 使用有界队列和重试选项；需要在刷新后保留时，加上 IndexedDB 离线队列。 |
+| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` 只发不管。浏览器会限制 payload 大小，并可能在关闭压力下拒绝、截断或跳过投递。 | `beaconMaxBytes` 设得保守些，把 pagehide flush 当作最后机会，不要把它作为唯一的持久化路径。 |
+| `memoryBrowserHttpOfflineQueue()` | 只要页面进程存活，就能扛过临时离线。 | 适合轻量应用或测试；支持/调试日志需要在刷新后保留时，改用 IndexedDB。 |
+| `indexedDbBrowserHttpOfflineQueue()` | 在刷新之间保存待重放的 payload，但配额、隐私浏览模式、存储驱逐、升级被阻塞或 IndexedDB 不可用仍可能导致无法持久化。 | 监控队列和丢弃计数，保持 payload 有界；与 HTTP 重放和页面生命周期 flush 搭配使用。 |
+| `offlineFirstTransport(remote)` | 远端投递失败时入队，之后重放。如果本地存储失败或被驱逐，重放也无法保证。 | 优先使用持久化的队列适配器；在可控的关闭或跳转时尽量调用 `flush()`。 |
+| `indexedDbTransport()` | 本地持久性取决于 IndexedDB 是否可用、配额、驱逐策略、持久性提示以及浏览器对 Storage Buckets 的支持。仍在内存缓冲中、尚未完成异步写入的日志可能丢失。 | 可以接受时用 `durability: "relaxed"` 提高吞吐；用 TTL/条数/字节清理保持在配额以内。需要支持日志更可靠地扛过普通刷新时，启用有界的 `localStorageSpill`。 |
+| `browserWebSocketTransport()` | 页面退出、超出队列上限，或调用方始终没有重连 socket 时，排队中的事件可能丢失。 | 在 transport 之外处理重连，并通过队列上限和丢弃计数发现背压。 |
+| `browserServiceWorkerTransport()` | 投递取决于 service worker 的注册、激活、消息传递和生命周期。被终止的 worker 会丢失正在处理的工作，除非它自己持久化队列。 | 把它当作集中汇聚的手段，而不是持久化手段，除非 service worker 自己也写入持久存储。 |
+| `browserBroadcastChannelTransport()` | BroadcastChannel 只能送达当前打开、同源且正在监听的标签页。消息不持久化，接收方启动期间可能错过消息。 | 用于多标签页汇总和调试，不要作为主要的远程投递保证。 |
 
-常见生产浏览器栈是 HTTP batching + IndexedDB offline queue + page lifecycle flush。需要跨 tab centralization 时再加 service worker 或 BroadcastChannel；日志必须跨 reload 时，delivery path 中仍要有 durable queue。
+常见的生产浏览器组合是：HTTP 批量 + IndexedDB 离线队列 + 页面生命周期 flush。需要跨标签页集中汇聚时再加 service worker 或 BroadcastChannel；日志必须在刷新后保留时，投递路径上仍然要有持久化队列。
 
-## Payload transforms
+## Payload 转换
 
-Payload transforms 在 codec encoding 后、wire transport 发送或存储 payload 前运行。它们可以返回替换 payload，或 `{ payload, headers, contentType }`；HTTP transports 会把这些 headers 持久化到 offline queues 并在 replay 时保留。
+payload 转换在 codec 编码之后、协议类 transport 发送或存储 payload 之前运行。它可以返回替换后的 payload，也可以返回 `{ payload, headers, contentType }`；HTTP transport 会把这些 header 一并保存到离线队列，并在重放时保留。
 
 ```ts
 import {
@@ -271,13 +271,13 @@ browserHttpTransport({
 });
 ```
 
-`encryptionPayloadTransform()` 提供 hook；加密算法和 key management 仍由应用拥有。
+`encryptionPayloadTransform()` 只提供挂载点；加密算法和密钥管理仍由应用负责。
 
-## Vendor packages
+## 厂商包
 
-Vendor HTTP transports 通过 `fetch` 直接实现 wire protocol。Sentry 和 OpenTelemetry bridge 这类 SDK/provider adapters 使用应用已初始化的 SDK object 或 provider。`otlpHttpTransport()` 会自包 `batchTransport`；Datadog、Elastic、Loki 和 CloudWatch 暴露 `logBatch`，需要 queueing、retry 或 circuit-breaker 时用 core reliability wrappers 包住。
+厂商 HTTP transport 通过 `fetch` 直接实现线上协议。Sentry 和 OpenTelemetry bridge 这类 SDK/provider 适配器使用应用已经初始化好的 SDK 对象或 provider。`otlpHttpTransport()` 内部已用 `batchTransport` 包装；Datadog、Elastic、Loki 和 CloudWatch 只实现了 `logBatch`，需要排队、重试或熔断时，请用 core 的可靠性包装器包住它们。
 
-生产 vendor 使用应把 reliability wrapper 写出来：
+生产环境中使用厂商 transport 时，应显式写出可靠性包装：
 
 ```ts
 import { batchTransport } from "@loggerjs/core";
@@ -292,20 +292,20 @@ const transport = batchTransport(datadogLogsTransport({ apiKey: process.env.DD_A
 });
 ```
 
-| Package | Transport | Destination |
+| 包 | Transport | 目的地 |
 | --- | --- | --- |
-| `@loggerjs/otel` | `otlpHttpTransport({ url })` | OTLP/HTTP JSON logs endpoint；导出 `otlpJsonCodec()` 和 mapping helpers。 |
-| `@loggerjs/otel` | `openTelemetryLogBridgeTransport()` | Bridge into an OpenTelemetry `LoggerProvider`。 |
-| `@loggerjs/sentry` | `sentryTransport({ sentry })` | Sentry structured logs、breadcrumbs、exception/message capture。 |
+| `@loggerjs/otel` | `otlpHttpTransport({ url })` | OTLP/HTTP JSON 日志端点；同时导出 `otlpJsonCodec()` 和映射辅助函数。 |
+| `@loggerjs/otel` | `openTelemetryLogBridgeTransport()` | 桥接到 OpenTelemetry `LoggerProvider`。 |
+| `@loggerjs/sentry` | `sentryTransport({ sentry })` | Sentry 结构化日志、breadcrumbs、异常/消息捕获。 |
 | `@loggerjs/datadog` | `datadogLogsTransport({ apiKey })` | Datadog Logs intake API。 |
-| `@loggerjs/elastic` | `elasticTransport({ url, index })` | Elasticsearch `_bulk` API，支持 per-record index/pipeline/id selection。 |
-| `@loggerjs/loki` | `lokiTransport({ url })` | Grafana Loki push API，带 stream labels 和 structured metadata。 |
-| `@loggerjs/cloudwatch` | `cloudWatchLogsTransport({ ... })` | CloudWatch Logs `PutLogEvents`，内置 SigV4 signing。 |
-| `@loggerjs/database` | `sqliteTransport()` / `postgresTransport()` / `databaseTransport(adapter)` | 通过 driver-agnostic adapters 做 batched inserts。 |
+| `@loggerjs/elastic` | `elasticTransport({ url, index })` | Elasticsearch `_bulk` API，可按记录选择 index/pipeline/id。 |
+| `@loggerjs/loki` | `lokiTransport({ url })` | Grafana Loki push API，支持 stream 标签和结构化元数据。 |
+| `@loggerjs/cloudwatch` | `cloudWatchLogsTransport({ ... })` | CloudWatch Logs `PutLogEvents`，内置 SigV4 签名。 |
+| `@loggerjs/database` | `sqliteTransport()` / `postgresTransport()` / `databaseTransport(adapter)` | 通过不绑定驱动的适配器批量插入。 |
 
 ## 编写自定义 Transport
 
-实现四类 delivery methods 中的任意一种。最简单的 event transport：
+实现四种投递方法中的任意一种即可。最简单的 event transport：
 
 ```ts
 import type { Transport } from "@loggerjs/core";
@@ -319,7 +319,7 @@ const myTransport: Transport = {
 };
 ```
 
-Record-aware transport 会进入 fast path（logger 没有 processors 时不投影 event）：
+支持 record 的 transport 可以走快速路径（logger 没有 processor 时不做 event 投影）：
 
 ```ts
 import { fastEventJsonCodec } from "@loggerjs/codecs";
@@ -337,11 +337,11 @@ const recordSink: Transport = {
 };
 ```
 
-规则：
+注意事项：
 
-- 抛错（同步或 rejected promise）是安全的：错误会报告到 logger meta，其他 transports 继续运行。不要静默吞掉自己的错误，让它们暴露出来。
-- 当调用方可以显式等待启动时，实现 `ready()`。`logger.ready()` 是 opt-in；普通日志调用永远不等待 transport readiness。
-- 如果你会 buffer，实现 `flush()`；能在崩溃路径同步 drain 时实现 `flushSync()`；持有资源时实现 `close()`。
-- 如果实现 `close()`，释放资源前包含自己的 best-effort flush。Core 有 `close()` 时会调用它；只有 transport 没有 `close()` 时才 fallback 到 `flush()`。
-- 任何做 I/O 的 transport 优先使用 `logBatch`/`writeBatch` 加 `batchTransport`；per-event network calls 扛不住生产流量。
-- 直接编码 raw records 会跳过 logger 的 `idFactory`；records 会得到文档化的 `defaultRecordId`。自定义 ids 很重要时，通过 `context.toEvent()` 转换。见 [编解码](CODECS.md)。
+- 抛错（同步抛出或返回被拒绝的 promise）是安全的：错误会上报到 logger meta，其他 transport 继续运行。不要悄悄吞掉自己的错误，让它们暴露出来。
+- 如果调用方可能需要显式等待启动完成，实现 `ready()`。`logger.ready()` 需要主动调用；普通日志调用从不等待 transport 就绪。
+- 有缓冲时实现 `flush()`；能在崩溃路径上同步排空时实现 `flushSync()`；持有资源时实现 `close()`。
+- 如果实现了 `close()`，请在释放资源前自行尽力 flush。存在 `close()` 时 core 会调用它，只有没有 `close()` 的 transport 才会回退到调用 `flush()`。
+- 凡是涉及 I/O 的 transport，优先实现 `logBatch`/`writeBatch` 并配合 `batchTransport`；逐条发起网络请求扛不住生产流量。
+- 直接编码原始 record 会绕过 logger 的 `idFactory`，record 会使用文档中说明的 `defaultRecordId`。自定义 id 很重要时，请通过 `context.toEvent()` 转换。见 [编解码](CODECS.md)。
