@@ -110,7 +110,7 @@ them. Treat this table as the production delivery contract:
 | --- | --- |
 | `consoleTransport()` | Pretty per-level console output, or single-line JSON with `pretty: false`. Writes through the unpatched console so console capture cannot loop. Filters out events captured *from* the console by default. |
 | `memoryTransport()` | Ring buffer of recent events (`maxEvents`, default 1000). Useful for diagnostics endpoints and tests. |
-| `testTransport()` | Assertion-friendly sink: snapshots, call stats, `waitForEvent()`/`waitForCount()`, injectable failures. |
+| `testTransport()` | Assertion-friendly sink: snapshots, call stats, `waitFor()`/`waitForCount()`, injectable failures. |
 | `batchTransport(inner, options)` | Wraps any transport with batching, retry, and reliability controls (below). |
 | `retryTransport(inner, options)` | Wraps any transport with retries, exponential backoff, optional circuit breaker, and optional fallback. |
 | `fallbackTransport(primary, fallback)` | Sends to a fallback transport when the primary throws. |
@@ -161,7 +161,7 @@ collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance
 | `stdoutTransport()` / `stderrTransport()` | NDJSON lines with write backpressure tracking, clean `EPIPE` handling, and optional `minLength` buffering; `flush()` waits for pending writes. |
 | `fileTransport({ path })` | Append NDJSON to a file by default; supports `mkdir`, `append: false`, async `minLength` buffering, `sync: true`, and `flushSync()` for crash paths. |
 | `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. |
-| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport` (Node 18+). |
+| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. |
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
 

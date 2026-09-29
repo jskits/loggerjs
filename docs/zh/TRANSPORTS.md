@@ -108,7 +108,7 @@ Transports 默认可组合。有些 transports 内部包含 batching 或 durable
 | --- | --- |
 | `consoleTransport()` | 按 level 的 pretty console output，或 `pretty: false` 时单行 JSON。通过 unpatched console 写出，避免 console capture 循环。默认过滤从 console 捕获来的 events。 |
 | `memoryTransport()` | 最近 events 的 ring buffer（`maxEvents`，默认 1000）。适合 diagnostics endpoints 和 tests。 |
-| `testTransport()` | 面向 assertion 的 sink：snapshots、call stats、`waitForEvent()`/`waitForCount()`、可注入失败。 |
+| `testTransport()` | 面向 assertion 的 sink：snapshots、call stats、`waitFor()`/`waitForCount()`、可注入失败。 |
 | `batchTransport(inner, options)` | 为任意 transport 加 batching、retry 和 reliability controls。 |
 | `retryTransport(inner, options)` | 为任意 transport 加 retries、exponential backoff、可选 circuit breaker 和可选 fallback。 |
 | `fallbackTransport(primary, fallback)` | primary 抛错时发送到 fallback transport。 |
@@ -158,7 +158,7 @@ Pretty transports 是显示 sinks。它们不 batch、不 retry、不 persist，
 | `stdoutTransport()` / `stderrTransport()` | NDJSON lines，带 write backpressure tracking、clean `EPIPE` handling 和可选 `minLength` buffering；`flush()` 等待 pending writes。 |
 | `fileTransport({ path })` | 默认 append NDJSON 到文件；支持 `mkdir`、`append: false`、async `minLength` buffering、`sync: true` 和 crash-path `flushSync()`。 |
 | `rotatingFileTransport({ path, maxBytes, maxFiles })` | 基于大小的 rotation，通过同一个 file destination 生成 numbered archives。同步写入；每个文件使用一个 logger process。 |
-| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP delivery，包在 `batchTransport` 中（Node 18+）。 |
+| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。 |
 | `nodeSyslogTransport()` | UDP/TCP 上的 RFC syslog formatting；`formatSyslogMessage()` 单独导出。 |
 | `workerTransport({ workerScript })` | 用 codec 编码 batches 并 post 到 worker thread，可选 transfer buffers；支持 ready timeout、batch ack waiting、fallback 和 `autoEnd`。 |
 
