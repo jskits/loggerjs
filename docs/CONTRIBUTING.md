@@ -19,12 +19,13 @@ pnpm check     # the full gate — run before pushing
 
 ```
 packages/core         platform-neutral kernel: logger, record/event model, registry,
-                      context, middleware, integration API, console/memory/test/batch
-                      transports, json/safe-json/ndjson codecs
+                      context, middleware, integration API, console/memory/test/batch/
+                      retry/fallback transports, json/safe-json/ndjson/metrics codecs
 packages/browser      browser transports + integrations
 packages/node         node transports + integrations + AsyncLocalStorage context
 packages/processors   middleware/processor toolbox
-packages/codecs       fast-event-json, built-in msgpackr, projector
+packages/codecs       fast-event-json, pino-compat, msgpackr, projector
+packages/pretty       browser DevTools and terminal pretty output
 packages/otel|sentry|datadog|elastic|loki|cloudwatch|database   destination adapters
 examples/             runnable examples per platform
 scripts/              build/verify/bench/release tooling
