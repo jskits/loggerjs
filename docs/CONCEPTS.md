@@ -36,8 +36,7 @@ Integrations sit outside this flow: they hook platform behavior (console calls, 
 
 - `lazy` — an unevaluated message function, resolved at most once.
 - `err` — the raw error value, not yet normalized.
-- `props` — the user data object, shared by reference unless middleware,
-  processors, or a transport explicitly clone it.
+- `props` — the user data object, shared by reference unless middleware, processors, or a transport explicitly clone it.
 - `ctx` — a frozen bound context object, shared by reference.
 - `tags` — possibly the logger's frozen tags object, shared by reference.
 - No `id` — id computation is deferred to event projection.
@@ -76,15 +75,9 @@ interface Transport {
   minLevel?: LoggerLevel;
   ready?(): void | Promise<void>;
   write?(record: LogRecord, context: TransportContext): void | Promise<void>;
-  writeBatch?(
-    records: LogRecord[],
-    context: TransportContext,
-  ): void | Promise<void>;
+  writeBatch?(records: LogRecord[], context: TransportContext): void | Promise<void>;
   log?(event: LogEvent, context: TransportContext): void | Promise<void>;
-  logBatch?(
-    events: LogEvent[],
-    context: TransportContext,
-  ): void | Promise<void>;
+  logBatch?(events: LogEvent[], context: TransportContext): void | Promise<void>;
   flush?(): void | Promise<void>;
   flushSync?(): void;
   close?(): void | Promise<void>;
@@ -161,11 +154,7 @@ Use these counters to alert on silent degradation: queue drops, codec fallbacks,
 
 ## Trace and Semantic Events
 
-`trace-propagation` helpers parse/format W3C `traceparent` and baggage headers,
-and `addContextProvider()` lets integrations attach ambient context without
-replacing the app's context provider. `semanticEvents` defines common event
-families (`error`, `http`, `db`, `job`, `ui`, `action`, `security`,
-`performance`) so integrations and app logs can share field names.
+`trace-propagation` helpers parse/format W3C `traceparent` and baggage headers, and `addContextProvider()` lets integrations attach ambient context without replacing the app's context provider. `semanticEvents` defines common event families (`error`, `http`, `db`, `job`, `ui`, `action`, `security`, `performance`) so integrations and app logs can share field names.
 
 ## Further Reading
 

@@ -17,9 +17,7 @@ For an auditable map from each transport to source files, public entries, and co
 
 ## Stability Levels
 
-Transport stability describes the public API promise, not an absolute delivery
-guarantee. Browser storage, process shutdown, network collectors, and vendor
-backends can still fail; the reliability table below is the delivery contract.
+Transport stability describes the public API promise, not an absolute delivery guarantee. Browser storage, process shutdown, network collectors, and vendor backends can still fail; the reliability table below is the delivery contract.
 
 | Level | Meaning |
 | --- | --- |
@@ -54,9 +52,7 @@ backends can still fail; the reliability table below is the delivery contract.
 
 ## Import Boundaries
 
-Root package imports are convenience presets. Public transport subpaths are
-documented so users can choose narrower bundles and so new built-in transports
-cannot silently expand the surface without matching docs.
+Root package imports are convenience presets. Public transport subpaths are documented so users can choose narrower bundles and so new built-in transports cannot silently expand the surface without matching docs.
 
 | Runtime | Public transport subpaths |
 | --- | --- |
@@ -66,15 +62,11 @@ cannot silently expand the surface without matching docs.
 | Pretty | `@loggerjs/pretty/transport-console`, `@loggerjs/pretty/transport-stream` |
 | Observability and data | `@loggerjs/otel/transport-http`, `@loggerjs/sentry/transport`, `@loggerjs/datadog/transport`, `@loggerjs/elastic/transport`, `@loggerjs/loki/transport`, `@loggerjs/cloudwatch/transport`, `@loggerjs/database/transport` |
 
-`pnpm verify:component-docs` fails when a public transport subpath is exported
-without being listed here. New entries should also update the stability and
-reliability tables above.
+`pnpm verify:component-docs` fails when a public transport subpath is exported without being listed here. New entries should also update the stability and reliability tables above.
 
 ## Reliability Posture
 
-Transports are composable by default. Some transports include batching or durable
-local storage internally; raw vendor wire transports do not retry unless you wrap
-them. Treat this table as the production delivery contract:
+Transports are composable by default. Some transports include batching or durable local storage internally; raw vendor wire transports do not retry unless you wrap them. Treat this table as the production delivery contract:
 
 | Transport or wrapper | Default posture | Production note |
 | --- | --- | --- |
@@ -151,8 +143,7 @@ Notes:
 | `prettyStdoutTransport()` / `prettyStderrTransport()` | Node terminal helpers over `process.stdout` / `process.stderr`; honor `NO_COLOR` and `FORCE_COLOR`, support `minLevel`, and let `flush()` wait for `drain`. |
 | `formatPrettyEvent()` | Shared formatter for custom display transports. Returns plain text, ANSI text, browser console args, and raw details. |
 
-Pretty transports are display sinks. They do not batch, retry, persist, or speak
-collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance.
+Pretty transports are display sinks. They do not batch, retry, persist, or speak collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance.
 
 ## Node.js / Server (`@loggerjs/node`)
 
@@ -165,8 +156,7 @@ collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
 
-`nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use
-`nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
+`nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
 
 ```ts
 import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
@@ -177,38 +167,19 @@ nodeHttpTransport({
 });
 ```
 
-`fileTransport().flushSync()` is a crash-path primitive. In async stream mode it
-writes currently buffered or pending payloads through a synchronous fd so fatal
-records can reach disk before process exit; if the process continues, the
-original async stream may still complete. Use `await flush()` for normal
-drain-and-continue shutdowns, or configure `sync: true` when every write must be
-synchronous.
+`fileTransport().flushSync()` is a crash-path primitive. In async stream mode it writes currently buffered or pending payloads through a synchronous fd so fatal records can reach disk before process exit; if the process continues, the original async stream may still complete. Use `await flush()` for normal drain-and-continue shutdowns, or configure `sync: true` when every write must be synchronous.
 
-`workerTransport()` remains compatible with simple workers that only receive
-object messages. Lifecycle is opt-in:
+`workerTransport()` remains compatible with simple workers that only receive object messages. Lifecycle is opt-in:
 
-- Set `readyTimeoutMs` when the worker will send `{ type: "loggerjs:ready" }`.
-  If readiness times out, LoggerJS fails the worker and sends the batch to the
-  configured fallback or counts it as `transport.dropped.worker-ready-timeout`.
-  Explicit `transport.ready()` / `logger.ready()` also waits for this startup
-  handshake.
-- Set `ackTimeoutMs` when the worker will acknowledge each batch with
-  `{ type: "loggerjs:batch:ack", id }`. `flush()` waits for those acks.
+- Set `readyTimeoutMs` when the worker will send `{ type: "loggerjs:ready" }`. If readiness times out, LoggerJS fails the worker and sends the batch to the configured fallback or counts it as `transport.dropped.worker-ready-timeout`. Explicit `transport.ready()` / `logger.ready()` also waits for this startup handshake.
+- Set `ackTimeoutMs` when the worker will acknowledge each batch with `{ type: "loggerjs:batch:ack", id }`. `flush()` waits for those acks.
 - The main thread posts `{ type: "loggerjs:batch", id?, codec, contentType, count, payload }`.
-- A worker can report failure with `{ type: "loggerjs:error", message, error }`;
-  pending batches fall back or are counted as dropped.
-- `autoEnd` defaults to `true`; set `autoEnd: false` if the worker is shared and
-  should not be terminated by transport `close()`.
+- A worker can report failure with `{ type: "loggerjs:error", message, error }`; pending batches fall back or are counted as dropped.
+- `autoEnd` defaults to `true`; set `autoEnd: false` if the worker is shared and should not be terminated by transport `close()`.
 
-Worker lifecycle updates the standard transport gauges
-`transport.ready.<name>` and `transport.queue.depth.<name>`, and pending ack
-failures count `transport.worker.pending-dropped` plus
-`transport.dropped.<reason>`.
+Worker lifecycle updates the standard transport gauges `transport.ready.<name>` and `transport.queue.depth.<name>`, and pending ack failures count `transport.worker.pending-dropped` plus `transport.dropped.<reason>`.
 
-For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
-`@loggerjs/node`. It publishes subscribed LoggerJS internals to
-`diagnostics_channel` channels named `loggerjs.dispatch`, `loggerjs.transport`,
-`loggerjs.flush`, `loggerjs.encode`, and `loggerjs.worker`.
+For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@loggerjs/node`. It publishes subscribed LoggerJS internals to `diagnostics_channel` channels named `loggerjs.dispatch`, `loggerjs.transport`, `loggerjs.flush`, `loggerjs.encode`, and `loggerjs.worker`.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 
@@ -224,14 +195,9 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
-`browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec`
-when pagehide or hidden-page Beacon requests need a different encoding or content
-type; it falls back to `codec` when omitted. Beacon delivery is skipped when
-`transformPayload` is configured, so lifecycle flushes use the normal Fetch path
-and `beaconCodec` does not apply.
+`browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec` when pagehide or hidden-page Beacon requests need a different encoding or content type; it falls back to `codec` when omitted. Beacon delivery is skipped when `transformPayload` is configured, so lifecycle flushes use the normal Fetch path and `beaconCodec` does not apply.
 
-`browserHttpTransport()` also accepts `transformPayload`. Use
-`browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
+`browserHttpTransport()` also accepts `transformPayload`. Use `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
 
 ```ts
 import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
@@ -242,8 +208,7 @@ browserHttpTransport({
 });
 ```
 
-For high-throughput local browser capture on modern Chrome, prefer a dedicated
-IndexedDB log store with relaxed durability:
+For high-throughput local browser capture on modern Chrome, prefer a dedicated IndexedDB log store with relaxed durability:
 
 ```ts
 indexedDbTransport({
@@ -258,29 +223,15 @@ indexedDbTransport({
 });
 ```
 
-Browsers without Storage Buckets support fall back to the regular IndexedDB
-instance while keeping the same transport API.
+Browsers without Storage Buckets support fall back to the regular IndexedDB instance while keeping the same transport API.
 
-`indexedDbTransport()` assigns a page-session id by default, stores it as a
-top-level IndexedDB entry field, and mirrors it into `event.context.sessionId`
-when the event did not already provide one. Pass `session: false` to disable
-that materialized session field, or pass `session: { id, getId, contextKey }`
-to align the persisted session with your own browser context provider.
+`indexedDbTransport()` assigns a page-session id by default, stores it as a top-level IndexedDB entry field, and mirrors it into `event.context.sessionId` when the event did not already provide one. Pass `session: false` to disable that materialized session field, or pass `session: { id, getId, contextKey }` to align the persisted session with your own browser context provider.
 
-`localStorageSpill` is a last-chance reload/close safety net, not a replacement
-for IndexedDB. Normal logging still batches in memory and flushes to
-IndexedDB asynchronously. On `pagehide` or `visibilitychange: hidden`, the
-transport synchronously writes the still-unconfirmed tail (`pendingFlushBatch`
-plus the current memory buffer) to a small `localStorage` temp entry. The next
-transport instance drains that temp entry into IndexedDB before its first flush
-and clears it only after the write succeeds. This lowers loss during ordinary
-reloads and tab closes, but it cannot protect against process kill, browser
-crash, disabled storage, quota exhaustion, or storage eviction.
+`localStorageSpill` is a last-chance reload/close safety net, not a replacement for IndexedDB. Normal logging still batches in memory and flushes to IndexedDB asynchronously. On `pagehide` or `visibilitychange: hidden`, the transport synchronously writes the still-unconfirmed tail (`pendingFlushBatch` plus the current memory buffer) to a small `localStorage` temp entry. The next transport instance drains that temp entry into IndexedDB before its first flush and clears it only after the write succeeds. This lowers loss during ordinary reloads and tab closes, but it cannot protect against process kill, browser crash, disabled storage, quota exhaustion, or storage eviction.
 
 ### Browser failure boundaries
 
-Browser delivery is best effort unless the log has already been acknowledged by
-the destination you care about. These are the important loss windows:
+Browser delivery is best effort unless the log has already been acknowledged by the destination you care about. These are the important loss windows:
 
 | Path | Failure boundary / loss window | Production guidance |
 | --- | --- | --- |
@@ -294,17 +245,11 @@ the destination you care about. These are the important loss windows:
 | `browserServiceWorkerTransport()` | Delivery depends on service worker registration, activation, message delivery, and worker lifetime. A terminating worker can drop in-flight work unless it persists its own queue. | Treat it as centralization, not durability, unless the service worker also writes to durable storage. |
 | `browserBroadcastChannelTransport()` | BroadcastChannel only reaches currently open, same-origin listeners. Messages are not durable and receivers can miss them during startup. | Use for multi-tab aggregation and debugging, not as a primary remote delivery guarantee. |
 
-The usual production browser stack is HTTP batching plus an IndexedDB offline
-queue plus page lifecycle flush. Add a service worker or BroadcastChannel when
-you need centralization across tabs, but keep a durable queue in the delivery
-path when logs must survive reloads.
+The usual production browser stack is HTTP batching plus an IndexedDB offline queue plus page lifecycle flush. Add a service worker or BroadcastChannel when you need centralization across tabs, but keep a durable queue in the delivery path when logs must survive reloads.
 
 ## Payload transforms
 
-Payload transforms run after codec encoding and before a wire transport sends or
-stores the payload. They can return a replacement payload, or `{ payload,
-headers, contentType }`; HTTP transports persist those headers through offline
-queues and replay.
+Payload transforms run after codec encoding and before a wire transport sends or stores the payload. They can return a replacement payload, or `{ payload, headers, contentType }`; HTTP transports persist those headers through offline queues and replay.
 
 ```ts
 import {
@@ -326,8 +271,7 @@ browserHttpTransport({
 });
 ```
 
-`encryptionPayloadTransform()` provides the hook; the encryption algorithm and
-key management remain application-owned.
+`encryptionPayloadTransform()` provides the hook; the encryption algorithm and key management remain application-owned.
 
 ## Vendor packages
 

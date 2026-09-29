@@ -1,27 +1,16 @@
 # Transport Contract Matrix
 
-This matrix pins every first-party transport to its public entry points, source
-files, and contract tests. It is meant to make reliability claims auditable:
-raw wire transports must surface delivery failures, production-grade delivery
-must be explicit about wrappers or queues, and lifecycle behavior must have a
-named test path.
+This matrix pins every first-party transport to its public entry points, source files, and contract tests. It is meant to make reliability claims auditable: raw wire transports must surface delivery failures, production-grade delivery must be explicit about wrappers or queues, and lifecycle behavior must have a named test path.
 
-`pnpm verify:transport-contracts` checks this page against package exports and
-the repository file tree. When a transport source file or public transport
-subpath is added, update this matrix in the same change.
+`pnpm verify:transport-contracts` checks this page against package exports and the repository file tree. When a transport source file or public transport subpath is added, update this matrix in the same change.
 
 ## Contract Rules
 
-- Raw HTTP/vendor transports propagate non-2xx responses and rejected `fetch`
-  calls; they do not silently retry unless wrapped.
-- Production delivery for raw wire sinks requires `batchTransport()`,
-  `retryTransport()`, `fallbackTransport()`, or a transport that documents its
-  own queue/retry behavior.
-- Runtime-dependent transports must document the platform surface they depend on
-  and test unavailable or failing dependencies.
+- Raw HTTP/vendor transports propagate non-2xx responses and rejected `fetch` calls; they do not silently retry unless wrapped.
+- Production delivery for raw wire sinks requires `batchTransport()`, `retryTransport()`, `fallbackTransport()`, or a transport that documents its own queue/retry behavior.
+- Runtime-dependent transports must document the platform surface they depend on and test unavailable or failing dependencies.
 - Durable paths must expose `flush()` or persistence/replay behavior in tests.
-- Test-only and display-only transports must say so instead of implying delivery
-  durability.
+- Test-only and display-only transports must say so instead of implying delivery durability.
 
 ## Matrix
 

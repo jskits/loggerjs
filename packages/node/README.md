@@ -9,8 +9,7 @@
 The Node platform package for [LoggerJS](../../README.md). It re-exports the entire `@loggerjs/core` API and adds stdout/stderr/file/HTTP/syslog/worker transports, an AsyncLocalStorage context bridge, and integrations that turn process crashes, HTTP frameworks, clients, and queues into structured logs — all opt-in.
 
 `@loggerjs/node` is smoke-tested from packed packages on Node 20.19.0, 22, and
-24. The repository development toolchain uses Node >=22.13.0; that root
-requirement does not raise the published package runtime floor.
+24. The repository development toolchain uses Node >=22.13.0; that root requirement does not raise the published package runtime floor.
 
 ## Install
 
@@ -80,25 +79,11 @@ rotatingFileTransport({ path: "audit.log", maxBytes: 10 * 1024 * 1024 });
 | `nodeSyslogTransport` | RFC 5424 syslog over UDP/TCP |
 | `workerTransport` | a worker thread (encodes batches with a codec, optional buffer transfer, ready/ack lifecycle, fallback on worker failure) |
 
-File and process-stream transports share the same internal destination logic for
-write callbacks, drain waiting, `minLength` buffering, close, and sync crash
-flush. Use `await flush()` for normal shutdown. Use `flushSync()` only on fatal
-paths, or configure `fileTransport({ sync: true })` when every write must reach
-the filesystem before the log call returns.
+File and process-stream transports share the same internal destination logic for write callbacks, drain waiting, `minLength` buffering, close, and sync crash flush. Use `await flush()` for normal shutdown. Use `flushSync()` only on fatal paths, or configure `fileTransport({ sync: true })` when every write must reach the filesystem before the log call returns.
 
-`workerTransport()` is fire-and-forget unless you opt into lifecycle checks.
-Use `readyTimeoutMs` for workers that send `{ type: "loggerjs:ready" }`, and
-`ackTimeoutMs` for workers that acknowledge `{ type: "loggerjs:batch", id }`
-with `{ type: "loggerjs:batch:ack", id }`. Pending batches fall back or are
-counted as drops when readiness, posting, ack, or worker exit fails. Set
-`autoEnd: false` for shared workers you close elsewhere. Explicit
-`transport.ready()` / `logger.ready()` waits for the ready handshake when
-`readyTimeoutMs` is configured.
+`workerTransport()` is fire-and-forget unless you opt into lifecycle checks. Use `readyTimeoutMs` for workers that send `{ type: "loggerjs:ready" }`, and `ackTimeoutMs` for workers that acknowledge `{ type: "loggerjs:batch", id }` with `{ type: "loggerjs:batch:ack", id }`. Pending batches fall back or are counted as drops when readiness, posting, ack, or worker exit fails. Set `autoEnd: false` for shared workers you close elsewhere. Explicit `transport.ready()` / `logger.ready()` waits for the ready handshake when `readyTimeoutMs` is configured.
 
-Call `installLoggerDiagnosticsChannel()` to publish LoggerJS internal
-diagnostics to Node `diagnostics_channel` channels such as `loggerjs.dispatch`,
-`loggerjs.transport`, `loggerjs.flush`, `loggerjs.encode`, and
-`loggerjs.worker`.
+Call `installLoggerDiagnosticsChannel()` to publish LoggerJS internal diagnostics to Node `diagnostics_channel` channels such as `loggerjs.dispatch`, `loggerjs.transport`, `loggerjs.flush`, `loggerjs.encode`, and `loggerjs.worker`.
 
 ## Integrations (16)
 

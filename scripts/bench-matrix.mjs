@@ -323,9 +323,7 @@ ${contenderNames
 
 Baseline pino spread across local samples: ${formatPercent(aggregate.baselineSpreadPct.median)}
 
-Interpretation: these are paired A/B ratios for this machine and runtime only.
-Use \`pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md\`
-to combine artifacts from multiple machines into a publishable matrix.
+Interpretation: these are paired A/B ratios for this machine and runtime only. Use \`pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md\` to combine artifacts from multiple machines into a publishable matrix.
 `;
 }
 
@@ -354,11 +352,7 @@ function markdownForMatrix(artifacts) {
 
 Last updated: ${generatedAt}
 
-This table aggregates artifacts produced by \`pnpm bench:matrix\`.
-Ratios are paired per-round latency medians from the interleaved A/B harness,
-not one-off sequential-run ratios. A ratio below \`1.00x\` means the LoggerJS
-path had lower latency than pino on that machine; the percentage in parentheses
-is LoggerJS throughput relative to pino.
+This table aggregates artifacts produced by \`pnpm bench:matrix\`. Ratios are paired per-round latency medians from the interleaved A/B harness, not one-off sequential-run ratios. A ratio below \`1.00x\` means the LoggerJS path had lower latency than pino on that machine; the percentage in parentheses is LoggerJS throughput relative to pino.
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
@@ -379,13 +373,9 @@ ${details}
 
 Notes:
 
-- The matrix proves only the listed machine/runtime combinations. Do not turn
-  it into a universal "always faster than pino" claim.
-- Keep README/BENCHMARKS wording scoped to the covered rows. If either evidence
-  requirement above is missing, describe the numbers as reference-machine
-  results.
-- A \`*\` after the LoggerJS version means the artifact was captured from a
-  working tree with local changes.
+- The matrix proves only the listed machine/runtime combinations. Do not turn it into a universal "always faster than pino" claim.
+- Keep README/BENCHMARKS wording scoped to the covered rows. If either evidence requirement above is missing, describe the numbers as reference-machine results.
+- A \`*\` after the LoggerJS version means the artifact was captured from a working tree with local changes.
 - Reproduce a row with:
 
 \`\`\`bash

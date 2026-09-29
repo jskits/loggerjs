@@ -88,8 +88,7 @@ function summarizeReport(report) {
 function renderInventory(summary) {
   return `# Test Inventory
 
-This file is generated from the Vitest JSON reporter so repository docs can cite
-one test-count source instead of hand-maintained numbers.
+This file is generated from the Vitest JSON reporter so repository docs can cite one test-count source instead of hand-maintained numbers.
 
 Regenerate after adding, removing, or renaming tests:
 

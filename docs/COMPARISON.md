@@ -1,16 +1,12 @@
 # LoggerJS Compared With Other JavaScript Loggers
 
-This page compares LoggerJS with common JavaScript logging libraries. It
-describes what the packages ship today, not planned features.
+This page compares LoggerJS with common JavaScript logging libraries. It describes what the packages ship today, not planned features.
 
 ## Scope
 
-The comparison uses first-party behavior unless a cell explicitly says
-"ecosystem". Sources were checked on 2026-06-12:
+The comparison uses first-party behavior unless a cell explicitly says "ecosystem". Sources were checked on 2026-06-12:
 
-- LoggerJS repository docs: [README](https://github.com/jskits/loggerjs/blob/main/README.md), [Concepts](CONCEPTS.md),
-  [Transports](TRANSPORTS.md), [Integrations](INTEGRATIONS.md),
-  [Processors](PROCESSORS.md), [Codecs](CODECS.md), [Benchmarks](BENCHMARKS.md).
+- LoggerJS repository docs: [README](https://github.com/jskits/loggerjs/blob/main/README.md), [Concepts](CONCEPTS.md), [Transports](TRANSPORTS.md), [Integrations](INTEGRATIONS.md), [Processors](PROCESSORS.md), [Codecs](CODECS.md), [Benchmarks](BENCHMARKS.md).
 - Pino official docs: <https://getpino.io/>,
   <https://github.com/pinojs/pino/blob/main/docs/api.md>,
   <https://github.com/pinojs/pino/blob/main/docs/transports.md>,
@@ -25,33 +21,17 @@ The comparison uses first-party behavior unless a cell explicitly says
   <https://github.com/pimterry/loglevel>, <https://github.com/debug-js/debug>,
   <https://github.com/unjs/consola>, <https://tslog.js.org/>.
 
-The benchmark numbers below are only for the scenarios in
-[BENCHMARKS.md](BENCHMARKS.md). They do not claim universal superiority across
-all sinks, runtimes, payload shapes, or third-party transports.
+The benchmark numbers below are only for the scenarios in [BENCHMARKS.md](BENCHMARKS.md). They do not claim universal superiority across all sinks, runtimes, payload shapes, or third-party transports.
 
 ## Short Answer
 
-LoggerJS is best when the logging problem spans browser and server collection:
-automatic integrations, structured middleware, reliable transport delivery,
-offline browser persistence, codec choice per destination, and vendor/DB/OTLP
-delivery from one mental model. Its most defensible niche is **vendor-neutral,
-self-hosted delivery** — logs go to destinations you own (HTTP, files, your DB,
-Loki/Elasticsearch, OTLP), from a zero-dependency core that runs under strict
-CSP, on edge/Workers, and offline — where a Node-only logger or a managed APM
-SaaS is a poorer fit.
+LoggerJS is best when the logging problem spans browser and server collection: automatic integrations, structured middleware, reliable transport delivery, offline browser persistence, codec choice per destination, and vendor/DB/OTLP delivery from one mental model. Its most defensible niche is **vendor-neutral, self-hosted delivery** — logs go to destinations you own (HTTP, files, your DB, Loki/Elasticsearch, OTLP), from a zero-dependency core that runs under strict CSP, on edge/Workers, and offline — where a Node-only logger or a managed APM SaaS is a poorer fit.
 
-Pino is still the mature default when the main requirement is a minimal,
-Node-first JSON logger with a large ecosystem. On the current M1 Max reference
-benchmark, LoggerJS's equivalent lean/prepared paths are faster, but the ranking
-is CPU/Node-V8 dependent. Winston is still the mature, flexible Node transport
-and format ecosystem. LogTape is the closest architectural peer for
-library-first usage and multi-runtime categories. Bunyan is a stable legacy JSON
-logger for Node services.
+Pino is still the mature default when the main requirement is a minimal, Node-first JSON logger with a large ecosystem. On the current M1 Max reference benchmark, LoggerJS's equivalent lean/prepared paths are faster, but the ranking is CPU/Node-V8 dependent. Winston is still the mature, flexible Node transport and format ecosystem. LogTape is the closest architectural peer for library-first usage and multi-runtime categories. Bunyan is a stable legacy JSON logger for Node services.
 
 ## At A Glance
 
-Legend: ✅ first-party fit, 🧩 ecosystem fit, ⚠️ partial or depends on the chosen
-configuration, ❌ no checked first-party equivalent, 📊 measured in this repo.
+Legend: ✅ first-party fit, 🧩 ecosystem fit, ⚠️ partial or depends on the chosen configuration, ❌ no checked first-party equivalent, 📊 measured in this repo.
 
 | Capability                      | LoggerJS                       | Pino                                                | Winston                  | LogTape               | Bunyan                |
 | ------------------------------- | ------------------------------ | --------------------------------------------------- | ------------------------ | --------------------- | --------------------- |
@@ -90,11 +70,7 @@ configuration, ❌ no checked first-party equivalent, 📊 measured in this repo
 
 ## Performance Snapshot
 
-Current measured snapshot from [BENCHMARKS.md](BENCHMARKS.md) and the
-checked-in [benchmark matrix](BENCHMARK-MATRIX.md) — reference machine Apple M1
-Max (64 GB), Node v22.21.1, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The
-loggerjs-vs-pino rows are the drift-canceling paired A/B (22 runs); competitor
-rows are the sequential suite:
+Current measured snapshot from [BENCHMARKS.md](BENCHMARKS.md) and the checked-in [benchmark matrix](BENCHMARK-MATRIX.md) — reference machine Apple M1 Max (64 GB), Node v22.21.1, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The loggerjs-vs-pino rows are the drift-canceling paired A/B (22 runs); competitor rows are the sequential suite:
 
 | Scenario                              | ns/op | Read                                                         |
 | ------------------------------------- | ----: | ------------------------------------------------------------ |
@@ -110,99 +86,52 @@ rows are the sequential suite:
 
 How to read these numbers:
 
-- On the M1 Max reference machine LoggerJS lean and prepared are **faster than
-  Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across
-  22 runs). This is **not** a universal "beats Pino" claim: the ranking is
-  CPU/Node-V8 dependent, and the docs treat the difference as an empirical
-  benchmark result rather than a proven mechanism. Reproduce on your hardware
-  with `BENCH_AB=1 pnpm bench:node` and use `pnpm bench:matrix` for durable
-  cross-machine evidence.
-- LoggerJS reaches Pino's class on equivalent output **without** giving up its
-  record pipeline — that pipeline is a deliberate design, not accidental
-  overhead.
-- The record pipeline buys first-class middleware, integrations, multi-transport
-  routing, codec selection, and browser/server symmetry.
-- These numbers do not compare every possible Pino transport, Winston format
-  chain, LogTape sink, or browser scenario.
+- On the M1 Max reference machine LoggerJS lean and prepared are **faster than Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across 22 runs). This is **not** a universal "beats Pino" claim: the ranking is CPU/Node-V8 dependent, and the docs treat the difference as an empirical benchmark result rather than a proven mechanism. Reproduce on your hardware with `BENCH_AB=1 pnpm bench:node` and use `pnpm bench:matrix` for durable cross-machine evidence.
+- LoggerJS reaches Pino's class on equivalent output **without** giving up its record pipeline — that pipeline is a deliberate design, not accidental overhead.
+- The record pipeline buys first-class middleware, integrations, multi-transport routing, codec selection, and browser/server symmetry.
+- These numbers do not compare every possible Pino transport, Winston format chain, LogTape sink, or browser scenario.
 
 ## Where LoggerJS Is Stronger
 
 ### Browser and Isomorphic Applications
 
-LoggerJS has first-party browser transports and integrations: console capture,
-script/resource errors, fetch/XHR failures, Web Vitals, page lifecycle flushing,
-router events, user actions, WebSocket lifecycle, service worker lifecycle,
-ReportingObserver, IndexedDB persistence, offline HTTP queues, and ZIP export.
+LoggerJS has first-party browser transports and integrations: console capture, script/resource errors, fetch/XHR failures, Web Vitals, page lifecycle flushing, router events, user actions, WebSocket lifecycle, service worker lifecycle, ReportingObserver, IndexedDB persistence, offline HTTP queues, and ZIP export.
 
-This is the biggest practical difference from Pino, Winston, and Bunyan. Those
-libraries can be used in browsers to varying degrees, but the checked docs do
-not show a first-party automatic browser collection and local persistence suite
-equivalent to LoggerJS.
+This is the biggest practical difference from Pino, Winston, and Bunyan. Those libraries can be used in browsers to varying degrees, but the checked docs do not show a first-party automatic browser collection and local persistence suite equivalent to LoggerJS.
 
 ### Transport-Owned Codecs
 
-LoggerJS keeps structured values raw until the transport boundary. Serialization
-is a transport concern, so stdout can use NDJSON, browser HTTP can use safe JSON
-or a lean fast codec, OTLP can use an OTLP shape, and a custom transport can use
-MessagePack or a domain-specific projection.
+LoggerJS keeps structured values raw until the transport boundary. Serialization is a transport concern, so stdout can use NDJSON, browser HTTP can use safe JSON or a lean fast codec, OTLP can use an OTLP shape, and a custom transport can use MessagePack or a domain-specific projection.
 
-This is different from the common logger-level formatter model. It makes
-multi-destination logging less surprising because each destination owns its wire
-contract.
+This is different from the common logger-level formatter model. It makes multi-destination logging less surprising because each destination owns its wire contract.
 
 ### Built-In Reliability Primitives
 
-LoggerJS ships common delivery controls as reusable pieces: batch transport,
-retry/backoff, byte limits, circuit breaker behavior, flush/close lifecycle,
-browser `sendBeacon`, IndexedDB offline queues, and transport stats where
-applicable. The goal is that writing a remote transport means implementing the
-destination, not rewriting the reliability layer.
+LoggerJS ships common delivery controls as reusable pieces: batch transport, retry/backoff, byte limits, circuit breaker behavior, flush/close lifecycle, browser `sendBeacon`, IndexedDB offline queues, and transport stats where applicable. The goal is that writing a remote transport means implementing the destination, not rewriting the reliability layer.
 
 ### Automatic Collection as a First-Class Concept
 
-LoggerJS integrations are explicit, reversible, and routed through the same
-pipeline as manual logs. Captured logs still pass through middleware,
-processors, routing, codecs, and transports. This matters for privacy because
-redaction and sampling stay centralized.
+LoggerJS integrations are explicit, reversible, and routed through the same pipeline as manual logs. Captured logs still pass through middleware, processors, routing, codecs, and transports. This matters for privacy because redaction and sampling stay centralized.
 
 ## Where Another Logger May Be Better
 
 ### Choose Pino When Minimal Node JSON Logging Is The Main Requirement
 
-Pino remains the reference point for low-overhead Node JSON logging and has a
-mature ecosystem for Node web services. Current LoggerJS paired A/B numbers put
-the lean/prepared equivalent-output paths ahead on the M1 Max reference machine,
-but that ranking is CPU/Node-V8 dependent. If the application only needs
-app-authored server logs to stdout or a Pino transport, Pino is still the
-simpler and more battle-tested choice.
+Pino remains the reference point for low-overhead Node JSON logging and has a mature ecosystem for Node web services. Current LoggerJS paired A/B numbers put the lean/prepared equivalent-output paths ahead on the M1 Max reference machine, but that ranking is CPU/Node-V8 dependent. If the application only needs app-authored server logs to stdout or a Pino transport, Pino is still the simpler and more battle-tested choice.
 
 ### Choose Winston When You Need Its Mature Transport/Format Ecosystem
 
-Winston is broad, stable, and flexible. Its `format` chain and transport model
-are familiar in many Node applications, and its README documents exception
-handling, rejection handling, profiling, querying, streaming, custom formats,
-and custom transports. Existing Winston deployments should migrate only when
-LoggerJS's isomorphic collection, middleware model, or measured performance
-benefit matters enough to justify the change.
+Winston is broad, stable, and flexible. Its `format` chain and transport model are familiar in many Node applications, and its README documents exception handling, rejection handling, profiling, querying, streaming, custom formats, and custom transports. Existing Winston deployments should migrate only when LoggerJS's isomorphic collection, middleware model, or measured performance benefit matters enough to justify the change.
 
 ### Choose LogTape For Multi-Runtime Library-First Logging
 
-LogTape is the closest conceptual peer to LoggerJS for library authors. Its
-official package page emphasizes zero dependencies, library-first design,
-structured logging, hierarchical categories, runtime diversity, redaction, and
-framework integration packages. If Deno/Bun/edge parity and zero dependencies in
-the core package are the top priority, LogTape is a strong fit.
+LogTape is the closest conceptual peer to LoggerJS for library authors. Its official package page emphasizes zero dependencies, library-first design, structured logging, hierarchical categories, runtime diversity, redaction, and framework integration packages. If Deno/Bun/edge parity and zero dependencies in the core package are the top priority, LogTape is a strong fit.
 
-Choose LoggerJS over LogTape when first-party browser telemetry capture,
-IndexedDB/offline workflows, Node process/client/server integrations,
-transport-owned codecs, and current pino-relative Node benchmarks are more
-important.
+Choose LoggerJS over LogTape when first-party browser telemetry capture, IndexedDB/offline workflows, Node process/client/server integrations, transport-owned codecs, and current pino-relative Node benchmarks are more important.
 
 ### Choose Bunyan For Legacy Node JSON Compatibility
 
-Bunyan remains relevant when an existing service already emits Bunyan-shaped
-JSON or relies on the Bunyan CLI/stream ecosystem. For new browser/server
-applications, LoggerJS covers a much wider built-in surface.
+Bunyan remains relevant when an existing service already emits Bunyan-shaped JSON or relies on the Bunyan CLI/stream ecosystem. For new browser/server applications, LoggerJS covers a much wider built-in surface.
 
 ## Other Common Tools
 
@@ -218,30 +147,17 @@ applications, LoggerJS covers a much wider built-in surface.
 
 LoggerJS intentionally differs from Pino and Winston in a few places:
 
-- LoggerJS takes `(message, data)` for normal logs; Pino commonly uses
-  `(object, message)`.
-- Stable metadata is split between `tags`, `bindings`, and ambient context
-  instead of one generic `defaultMeta` or `base` object.
-- Data shaping belongs in middleware/processors; serialization belongs in
-  codecs attached to transports.
-- Automatic capture is opt-in. Adding `captureConsoleIntegration()` or
-  `captureFetchIntegration()` is explicit and reversible.
+- LoggerJS takes `(message, data)` for normal logs; Pino commonly uses `(object, message)`.
+- Stable metadata is split between `tags`, `bindings`, and ambient context instead of one generic `defaultMeta` or `base` object.
+- Data shaping belongs in middleware/processors; serialization belongs in codecs attached to transports.
+- Automatic capture is opt-in. Adding `captureConsoleIntegration()` or `captureFetchIntegration()` is explicit and reversible.
 
 See [MIGRATION.md](MIGRATION.md) for examples.
 
 ## Limits of This Comparison
 
-- LoggerJS is not universally faster than Pino. The direct Node JSON ranking
-  is CPU and Node/V8 dependent; the [benchmark matrix](BENCHMARK-MATRIX.md)
-  lists the exact machines tested, and pino wins on some of them.
-- Runtime support beyond Node.js and browsers is covered by smoke tests of the
-  packed packages on Bun, Deno, and workerd/Miniflare, not by a full test suite
-  per runtime.
-- LoggerJS vendor transports speak the wire protocol of common destinations.
-  Mature vendor SDKs and ecosystem plugins may expose deeper platform-specific
-  features.
-- "No checked first-party equivalent" means no equivalent was found in the
-  official docs listed under [Scope](#scope) for Pino, Winston, LogTape, or
-  Bunyan. Other packages may offer similar browser collection.
-- Benchmark numbers are a snapshot. Re-run `pnpm bench:node` on your own
-  hardware before relying on them.
+- LoggerJS is not universally faster than Pino. The direct Node JSON ranking is CPU and Node/V8 dependent; the [benchmark matrix](BENCHMARK-MATRIX.md) lists the exact machines tested, and pino wins on some of them.
+- Runtime support beyond Node.js and browsers is covered by smoke tests of the packed packages on Bun, Deno, and workerd/Miniflare, not by a full test suite per runtime.
+- LoggerJS vendor transports speak the wire protocol of common destinations. Mature vendor SDKs and ecosystem plugins may expose deeper platform-specific features.
+- "No checked first-party equivalent" means no equivalent was found in the official docs listed under [Scope](#scope) for Pino, Winston, LogTape, or Bunyan. Other packages may offer similar browser collection.
+- Benchmark numbers are a snapshot. Re-run `pnpm bench:node` on your own hardware before relying on them.

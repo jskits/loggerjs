@@ -357,9 +357,7 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 **Browser / frontend** (`@loggerjs/browser`) — `browserHttpTransport` · `indexedDbTransport` · `browserWebSocketTransport` · `browserServiceWorkerTransport` · `browserBroadcastChannelTransport` · `offlineFirstTransport`
 
-For frontend support bundles, `indexedDbTransport()` is session-aware by
-default and can add a bounded `localStorage` spill for the async IndexedDB write
-tail:
+For frontend support bundles, `indexedDbTransport()` is session-aware by default and can add a bounded `localStorage` spill for the async IndexedDB write tail:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -404,18 +402,20 @@ See [docs/TRANSPORTS.md](docs/TRANSPORTS.md) for options and how to write your o
 
 <br/>
 
-**Browser** (19) —
-_Console & errors:_ `captureConsoleIntegration` · `captureBrowserErrorsIntegration` · `captureFrameworkErrorsIntegration` · `captureReportingIntegration`
-_Network:_ `captureFetchIntegration` · `captureXHRIntegration` · `captureWebSocketIntegration`
-_Performance:_ `captureWebVitalsIntegration` · `capturePerformanceIntegration`
-_Navigation:_ `captureRouterIntegration` · `nextRouterIntegration` · `reactRouterIntegration` · `vueRouterIntegration` · `nuxtRouterIntegration`
-_Lifecycle & context:_ `pageLifecycleIntegration` · `captureUserActionsIntegration` · `captureServiceWorkerIntegration` · `captureRuntimeHostIntegration` · `browserContextPropagationIntegration`
+**Browser** (19):
 
-**Node** (16) —
-_Process & runtime:_ `captureProcessIntegration` · `captureCliIntegration` · `diagnosticsChannelIntegration` · `serverlessIntegration`
-_HTTP frameworks:_ `expressIntegration` · `fastifyIntegration` · `koaIntegration` · `hapiIntegration` · `nestMiddlewareIntegration`
-_Clients:_ `nodeFetchIntegration` · `nodeHttpClientIntegration` · `redisIntegration` · `prismaIntegration` · `databaseIntegration`
-_Queues:_ `queueIntegration` · `bullMqIntegration`
+- _Console & errors:_ `captureConsoleIntegration` · `captureBrowserErrorsIntegration` · `captureFrameworkErrorsIntegration` · `captureReportingIntegration`
+- _Network:_ `captureFetchIntegration` · `captureXHRIntegration` · `captureWebSocketIntegration`
+- _Performance:_ `captureWebVitalsIntegration` · `capturePerformanceIntegration`
+- _Navigation:_ `captureRouterIntegration` · `nextRouterIntegration` · `reactRouterIntegration` · `vueRouterIntegration` · `nuxtRouterIntegration`
+- _Lifecycle & context:_ `pageLifecycleIntegration` · `captureUserActionsIntegration` · `captureServiceWorkerIntegration` · `captureRuntimeHostIntegration` · `browserContextPropagationIntegration`
+
+**Node** (16):
+
+- _Process & runtime:_ `captureProcessIntegration` · `captureCliIntegration` · `diagnosticsChannelIntegration` · `serverlessIntegration`
+- _HTTP frameworks:_ `expressIntegration` · `fastifyIntegration` · `koaIntegration` · `hapiIntegration` · `nestMiddlewareIntegration`
+- _Clients:_ `nodeFetchIntegration` · `nodeHttpClientIntegration` · `redisIntegration` · `prismaIntegration` · `databaseIntegration`
+- _Queues:_ `queueIntegration` · `bullMqIntegration`
 
 Every integration uses re-entrancy guards and an unpatched-original registry so capture never loops. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for the integration API and how to write your own.
 
@@ -426,13 +426,13 @@ Every integration uses re-entrancy guards and an unpatched-original registry so 
 
 <br/>
 
-_Redaction & privacy:_ `redactProcessor` · `privacyGuardProcessor`
-_Sampling & volume:_ `sampleProcessor` · `dynamicSamplerProcessor` · `rateLimitProcessor` · `dedupeProcessor` · `coalesceProcessor`
-_Enrichment & tagging:_ `enrichProcessor` / `enrichMiddleware` · `tagsProcessor` / `tagsMiddleware` · `typeProcessor` / `typeMiddleware` · `contextProcessor` / `contextMiddleware` · `traceContextProcessor` / `traceContextMiddleware`
-_Errors:_ `normalizeErrorProcessor` · `fingerprintProcessor` · `stackParserProcessor` · `symbolicateStackProcessor`
-_Routing & control:_ `routeProcessor` · `filterProcessor` · `levelOverrideProcessor`
-_Buffering:_ `fingersCrossedProcessor` · `breadcrumbBufferProcessor`
-_Development:_ `schemaDevCheckProcessor`
+- _Redaction & privacy:_ `redactProcessor` · `privacyGuardProcessor`
+- _Sampling & volume:_ `sampleProcessor` · `dynamicSamplerProcessor` · `rateLimitProcessor` · `dedupeProcessor` · `coalesceProcessor`
+- _Enrichment & tagging:_ `enrichProcessor` / `enrichMiddleware` · `tagsProcessor` / `tagsMiddleware` · `typeProcessor` / `typeMiddleware` · `contextProcessor` / `contextMiddleware` · `traceContextProcessor` / `traceContextMiddleware`
+- _Errors:_ `normalizeErrorProcessor` · `fingerprintProcessor` · `stackParserProcessor` · `symbolicateStackProcessor`
+- _Routing & control:_ `routeProcessor` · `filterProcessor` · `levelOverrideProcessor`
+- _Buffering:_ `fingersCrossedProcessor` · `breadcrumbBufferProcessor`
+- _Development:_ `schemaDevCheckProcessor`
 
 Middleware run on raw records before id/message/error work; processors run on projected events. The processor package is platform-neutral and works in browser, Node.js, workers, and edge runtimes; only route/fingers-crossed targets depend on transports available in that runtime. See [docs/PROCESSORS.md](docs/PROCESSORS.md) for ordering guidance.
 
@@ -491,10 +491,7 @@ Runnable examples live in [`examples/`](examples): [Node basics](examples/node-b
 
 ## Development
 
-Use **Node >=22.13** for repository development and the full `pnpm check` gate.
-Published packages are smoke-tested as packed consumers on **Node 20.19, 22,
-and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain
-floor.
+Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor.
 
 ```bash
 pnpm install

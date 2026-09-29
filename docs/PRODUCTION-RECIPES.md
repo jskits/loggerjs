@@ -1,14 +1,10 @@
 # Production Recipes
 
-These recipes are starting points for production deployments. They intentionally
-show queue bounds, privacy processors, shutdown behavior, and where credentials
-belong. Tune names, tags, and endpoint URLs to your application.
+These recipes are starting points for production deployments. They intentionally show queue bounds, privacy processors, shutdown behavior, and where credentials belong. Tune names, tags, and endpoint URLs to your application.
 
 ## Browser to HTTP With IndexedDB Offline Replay
 
-Use this when browser logs should survive network drops and normal reloads. The
-browser still cannot guarantee delivery during process kill, storage eviction,
-private browsing restrictions, or quota exhaustion.
+Use this when browser logs should survive network drops and normal reloads. The browser still cannot guarantee delivery during process kill, storage eviction, private browsing restrictions, or quota exhaustion.
 
 ```ts
 import {
@@ -89,22 +85,14 @@ export const logger = createLogger({
 
 Production notes:
 
-- `/api/logs` should be your own collector endpoint. Do not put vendor API keys
-  in the browser bundle.
-- Keep fetch/XHR header capture allowlisted. Do not capture cookies,
-  authorization headers, request bodies, or form values by default.
-- Alert on logger meta counters such as `transport.dropped.*` and offline queue
-  depth when your app exposes them.
-- Keep the HTTP offline queue `dbName` separate from any queryable support-log
-  store. The two helpers use independent IndexedDB schemas and version lifecycles.
+- `/api/logs` should be your own collector endpoint. Do not put vendor API keys in the browser bundle.
+- Keep fetch/XHR header capture allowlisted. Do not capture cookies, authorization headers, request bodies, or form values by default.
+- Alert on logger meta counters such as `transport.dropped.*` and offline queue depth when your app exposes them.
+- Keep the HTTP offline queue `dbName` separate from any queryable support-log store. The two helpers use independent IndexedDB schemas and version lifecycles.
 
 ## Browser Support Export With Session-Aware IndexedDB
 
-Use this when support or QA needs a local log bundle that survives reloads and
-can be exported by session. The local store is separate from the HTTP delivery
-queue: IndexedDB is the queryable source of truth, while `localStorageSpill`
-only protects the small tail that has not finished its async IndexedDB write
-when the user refreshes or closes the page.
+Use this when support or QA needs a local log bundle that survives reloads and can be exported by session. The local store is separate from the HTTP delivery queue: IndexedDB is the queryable source of truth, while `localStorageSpill` only protects the small tail that has not finished its async IndexedDB write when the user refreshes or closes the page.
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -159,20 +147,13 @@ export async function downloadSupportLogZip() {
 
 Production notes:
 
-- Keep privacy processors before the IndexedDB transport. Anything persisted
-  locally can be exported by a user or support flow.
-- `indexedDbTransport()` creates a page-session id by default and stores it in
-  both the IndexedDB entry metadata and `event.context.sessionId` when absent.
-  If your app already owns session ids, pass `session: { id, getId, contextKey }`.
-- `localStorageSpill` is bounded and best effort. It improves normal reload and
-  close behavior but cannot protect against process kill, crash, disabled
-  storage, quota exhaustion, or storage eviction.
+- Keep privacy processors before the IndexedDB transport. Anything persisted locally can be exported by a user or support flow.
+- `indexedDbTransport()` creates a page-session id by default and stores it in both the IndexedDB entry metadata and `event.context.sessionId` when absent. If your app already owns session ids, pass `session: { id, getId, contextKey }`.
+- `localStorageSpill` is bounded and best effort. It improves normal reload and close behavior but cannot protect against process kill, crash, disabled storage, quota exhaustion, or storage eviction.
 
 ## Node to Stdout Plus OTLP
 
-Use stdout as the local, platform-native sink and OTLP as the remote
-observability path. Stdout remains useful for container runtimes and fatal
-events even if the OTLP endpoint is degraded.
+Use stdout as the local, platform-native sink and OTLP as the remote observability path. Stdout remains useful for container runtimes and fatal events even if the OTLP endpoint is degraded.
 
 ```ts
 import * as otelApi from "@opentelemetry/api";
@@ -239,17 +220,13 @@ export async function closeLogger() {
 
 Production notes:
 
-- Keep at least one local sink (`stdoutTransport()` or `fileTransport()`) for
-  fatal process paths. Remote OTLP should not be the only crash-path sink.
-- Install `@opentelemetry/api` and initialize tracing before constructing the
-  logger when you want active span correlation.
+- Keep at least one local sink (`stdoutTransport()` or `fileTransport()`) for fatal process paths. Remote OTLP should not be the only crash-path sink.
+- Install `@opentelemetry/api` and initialize tracing before constructing the logger when you want active span correlation.
 - Use your deployment platform's graceful shutdown hook to call `logger.close()`.
 
 ## Full Stack to Loki and Datadog
 
-Use this when browser and server logs should land in the same vendor backends.
-The browser sends logs to your own collector; the server owns Loki and Datadog
-credentials and forwards both server-side events and accepted browser batches.
+Use this when browser and server logs should land in the same vendor backends. The browser sends logs to your own collector; the server owns Loki and Datadog credentials and forwards both server-side events and accepted browser batches.
 
 ```ts
 import {
@@ -336,9 +313,6 @@ export async function forwardBrowserLogs(events: LogEvent[]) {
 
 Production notes:
 
-- Validate and bound the `/api/logs` request body before calling
-  `forwardBrowserLogs()`. Reject oversized batches early.
-- Promote only low-cardinality fields to Loki labels and Datadog tags. Keep user
-  ids, request ids, order ids, and URLs in structured metadata/data.
-- Apply the same redaction policy in the browser and the server collector. Treat
-  browser-submitted logs as untrusted input.
+- Validate and bound the `/api/logs` request body before calling `forwardBrowserLogs()`. Reject oversized batches early.
+- Promote only low-cardinality fields to Loki labels and Datadog tags. Keep user ids, request ids, order ids, and URLs in structured metadata/data.
+- Apply the same redaction policy in the browser and the server collector. Treat browser-submitted logs as untrusted input.

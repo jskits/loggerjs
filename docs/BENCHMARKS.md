@@ -14,24 +14,13 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 pnpm size:check
 ```
 
-`pnpm bench:gate` runs interleaved A/B suites and enforces regression limits as
-paired per-round ratios against the matching pino baseline. It uses the same
-drift-canceling method as `BENCH_AB`, so CPU frequency, scheduler placement, and
-GC pauses affect each contender in the same round. Limits live in
-`scripts/check-bench-regression.mjs` and are generous on purpose: they catch
-structural regressions, not noise. CI runs the gate on every pull request. Tune
-the gate with `BENCH_GATE_AB_ROUNDS`, `BENCH_GATE_AB_BATCH`, and
-`BENCH_GATE_AB_WARMUP`.
+`pnpm bench:gate` runs interleaved A/B suites and enforces regression limits as paired per-round ratios against the matching pino baseline. It uses the same drift-canceling method as `BENCH_AB`, so CPU frequency, scheduler placement, and GC pauses affect each contender in the same round. Limits live in `scripts/check-bench-regression.mjs` and are generous on purpose: they catch structural regressions, not noise. CI runs the gate on every pull request. Tune the gate with `BENCH_GATE_AB_ROUNDS`, `BENCH_GATE_AB_BATCH`, and `BENCH_GATE_AB_WARMUP`.
 
 `pnpm bench` builds the workspace first, then runs Node and browser benchmarks. Browser benchmarks use a local headless Chrome binary. Set `CHROME_BIN` when Chrome is not installed in a standard location.
 
 ### Apples-to-apples cross-logger ratios (`BENCH_AB`)
 
-The normal suite times each logger **once**, at a different point in the run, so
-its loggerjs-vs-pino ratio drifts with CPU frequency scaling and P/E-core
-scheduling — a single sequential run can make either logger look better purely
-by *when* it was measured. To compare two loggers fairly, use the interleaved
-A/B mode:
+The normal suite times each logger **once**, at a different point in the run, so its loggerjs-vs-pino ratio drifts with CPU frequency scaling and P/E-core scheduling — a single sequential run can make either logger look better purely by *when* it was measured. To compare two loggers fairly, use the interleaved A/B mode:
 
 ```bash
 BENCH_AB=1 node scripts/bench-node.mjs
@@ -39,22 +28,11 @@ BENCH_AB=1 node scripts/bench-node.mjs
 BENCH_AB=1 BENCH_JSON=1 node scripts/bench-node.mjs   # machine-readable
 ```
 
-Each round times every contender in the selected suite **back-to-back** and
-rotates the start position, so drift hits them equally and cancels in the
-**paired per-round ratio**. The default suite compares pino, lean, prepared, and
-the full-envelope record sink; `BENCH_AB_SUITE=disabled` and
-`BENCH_AB_SUITE=enqueue` are used by the CI gate. The report prints
-per-contender ns/op plus the median ratio with its min/max spread, and warns
-when the baseline spread exceeds 25% — the signal that the machine is too noisy
-to trust the absolute ns (the ratios stay fair regardless). Quote a cross-logger
-ratio only from this mode with a stable baseline, never from a single sequential
-run.
+Each round times every contender in the selected suite **back-to-back** and rotates the start position, so drift hits them equally and cancels in the **paired per-round ratio**. The default suite compares pino, lean, prepared, and the full-envelope record sink; `BENCH_AB_SUITE=disabled` and `BENCH_AB_SUITE=enqueue` are used by the CI gate. The report prints per-contender ns/op plus the median ratio with its min/max spread, and warns when the baseline spread exceeds 25% — the signal that the machine is too noisy to trust the absolute ns (the ratios stay fair regardless). Quote a cross-logger ratio only from this mode with a stable baseline, never from a single sequential run.
 
 ### Cross-machine benchmark matrix
 
-When you need to support a stronger statement such as "LoggerJS was faster than
-pino on every machine we tested," collect multiple local A/B artifacts and
-aggregate them:
+When you need to support a stronger statement such as "LoggerJS was faster than pino on every machine we tested," collect multiple local A/B artifacts and aggregate them:
 
 ```bash
 pnpm build
@@ -64,22 +42,11 @@ pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
 pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 ```
 
-`pnpm bench:matrix` wraps the `BENCH_AB=1 BENCH_JSON=1` harness, runs it several
-times, records CPU/OS/Node/dependency/Git metadata, and writes JSON plus
-Markdown artifacts under `benchmarks/matrix/` by default. That directory is
-ignored because it is local evidence. Commit only an intentionally curated
-aggregate such as [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md). The checked-in
-matrix is the evidence file to cite when making cross-machine performance
-statements.
+`pnpm bench:matrix` wraps the `BENCH_AB=1 BENCH_JSON=1` harness, runs it several times, records CPU/OS/Node/dependency/Git metadata, and writes JSON plus Markdown artifacts under `benchmarks/matrix/` by default. That directory is ignored because it is local evidence. Commit only an intentionally curated aggregate such as [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md). The checked-in matrix is the evidence file to cite when making cross-machine performance statements.
 
-For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions
-workflow `Benchmark Matrix`. It collects Linux x64 rows for Node 20.19.0, 22,
-and 24, then uploads an aggregate Markdown artifact for review. Commit the
-aggregate only after verifying the JSON artifacts and runner metadata.
+For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions workflow `Benchmark Matrix`. It collects Linux x64 rows for Node 20.19.0, 22, and 24, then uploads an aggregate Markdown artifact for review. Commit the aggregate only after verifying the JSON artifacts and runner metadata.
 
-Use the matrix wording carefully: it can prove the listed
-machine/runtime/dependency combinations, not a universal result for every
-future CPU, Node/V8 version, or pino release.
+Use the matrix wording carefully: it can prove the listed machine/runtime/dependency combinations, not a universal result for every future CPU, Node/V8 version, or pino release.
 
 ## Node Scenarios
 
@@ -95,22 +62,13 @@ future CPU, Node/V8 version, or pino release.
 
 ## Competitor Comparison
 
-The full-path scenarios log one structured info call per iteration and hand the
-serialized line to a discarding sink, so they compare pipeline plus
-serialization without terminal or filesystem I/O noise. pino, winston, and
-LogTape are dev dependencies pinned in the root lockfile. The Node console
-scenario uses a real `Console` instance backed by a discarding stream.
+The full-path scenarios log one structured info call per iteration and hand the serialized line to a discarding sink, so they compare pipeline plus serialization without terminal or filesystem I/O noise. pino, winston, and LogTape are dev dependencies pinned in the root lockfile. The Node console scenario uses a real `Console` instance backed by a discarding stream.
 
-Reference machine: **Apple M1 Max (64 GB), Node v22.21.1**, pino 10.3.1,
-winston 3.19.0, LogTape 2.1.3. The loggerjs-vs-pino rows come from the
-drift-canceling paired A/B harness (`BENCH_AB`, 22 runs x 120 rounds); the
-broader landscape is a single `BENCH_ITERATIONS=1000000` sequential run.
+Reference machine: **Apple M1 Max (64 GB), Node v22.21.1**, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The loggerjs-vs-pino rows come from the drift-canceling paired A/B harness (`BENCH_AB`, 22 runs x 120 rounds); the broader landscape is a single `BENCH_ITERATIONS=1000000` sequential run.
 
 ### Cross-logger comparison (paired A/B — the trustworthy method)
 
-Each round times pino, lean, and prepared back-to-back, so CPU frequency and
-core scheduling hit them equally and cancel in the ratio (see the `BENCH_AB`
-note above). Medians over 22 runs:
+Each round times pino, lean, and prepared back-to-back, so CPU frequency and core scheduling hit them equally and cancel in the ratio (see the `BENCH_AB` note above). Medians over 22 runs:
 
 | Path | ns/op | Throughput vs pino | Paired latency ratio |
 | --- | ---: | --- | --- |
@@ -118,24 +76,13 @@ note above). Medians over 22 runs:
 | loggerjs lean record sink | 242 | **1.19x** | 0.84 (range 0.82-0.87) |
 | loggerjs prepared lean record sink | 224 | **1.28x** | 0.78 |
 
-On this machine loggerjs lean and prepared are **faster than pino** for
-equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02
-across all 22 runs, and held even on rounds where a GC pause pushed the absolute
-spread past 80%. The prepared encoder is ~8% faster than plain lean.
+On this machine loggerjs lean and prepared are **faster than pino** for equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02 across all 22 runs, and held even on rounds where a GC pause pushed the absolute spread past 80%. The prepared encoder is ~8% faster than plain lean.
 
-**This ranking is environment-dependent.** pino and loggerjs both use hand-tuned
-JSON hot paths, and small CPU, scheduler, and Node/V8 differences can change
-which one wins. The table above is an empirical result for the listed reference
-machine, not a mechanism claim or a universal ranking. Always reproduce on your
-own hardware: `BENCH_AB=1 pnpm bench:node`, then add durable rows with
-`pnpm bench:matrix`.
+**This ranking is environment-dependent.** pino and loggerjs both use hand-tuned JSON hot paths, and small CPU, scheduler, and Node/V8 differences can change which one wins. The table above is an empirical result for the listed reference machine, not a mechanism claim or a universal ranking. Always reproduce on your own hardware: `BENCH_AB=1 pnpm bench:node`, then add durable rows with `pnpm bench:matrix`.
 
 ### Sequential suite (single 1,000,000-iteration run, same machine)
 
-Absolute per-scenario throughput. Cross-logger ratios here are **not** reliable
-(each logger is timed at a different point in the run) — use the A/B table above
-for loggerjs-vs-pino. This table is for the order-of-magnitude landscape and the
-codec paths.
+Absolute per-scenario throughput. Cross-logger ratios here are **not** reliable (each logger is timed at a different point in the run) — use the A/B table above for loggerjs-vs-pino. This table is for the order-of-magnitude landscape and the codec paths.
 
 | Scenario | ns/op |
 | --- | ---: |
@@ -151,36 +98,17 @@ codec paths.
 | winston json noop sink | 2,726 |
 | logtape json lines noop sink | 6,584 |
 
-All loggerjs and pino full-path loggers carry the same base fields
-(`service`, `env`). The lean sink uses
-`fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`;
-the prepared lean sink wraps it with `createPreparedRecordEncoder(codec)` to
-reuse codec-owned logger/tags fragments without moving serialization into the
-logger; the full-envelope sink additionally emits `id`, `seq`, and `levelName`.
-The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate`
-(default 60 rounds x 5000 ops per contender). The gate covers disabled-level
-logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope
-record sinks.
+All loggerjs and pino full-path loggers carry the same base fields (`service`, `env`). The lean sink uses `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`; the prepared lean sink wraps it with `createPreparedRecordEncoder(codec)` to reuse codec-owned logger/tags fragments without moving serialization into the logger; the full-envelope sink additionally emits `id`, `seq`, and `levelName`. The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate` (default 60 rounds x 5000 ops per contender). The gate covers disabled-level logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope record sinks.
 
 How to read these numbers:
 
 - Disabled-level logging is at parity with pino (both single-digit ns).
-- For equivalent lean output, loggerjs is **faster than pino on the M1 Max
-  reference machine** (paired A/B, lean 1.19x / prepared 1.28x) — but the
-  ranking is CPU/V8-dependent, so treat it as "in pino's class, machine-
-  dependent winner," not a universal claim. The prepared encoder adds ~8%.
-- The full-envelope path costs ~13% more than lean to carry `id`, `seq`, and
-  `levelName`; choose the lean envelope when downstream does not need them.
-- loggerjs is roughly an order of magnitude faster than winston (~10x) and
-  LogTape (~24x), and ~3x faster than Node console; these multiples swing with
-  system load, so treat them as approximate.
-- Each scenario is warmed with a quarter of its measured iterations. A fixed,
-  small warmup (for example 10k iterations) leaves some loggers un-optimized
-  by the JIT and can inflate their numbers severalfold, so treat cross-logger
-  comparisons as invalid unless warmup is proportionate.
+- For equivalent lean output, loggerjs is **faster than pino on the M1 Max reference machine** (paired A/B, lean 1.19x / prepared 1.28x) — but the ranking is CPU/V8-dependent, so treat it as "in pino's class, machine- dependent winner," not a universal claim. The prepared encoder adds ~8%.
+- The full-envelope path costs ~13% more than lean to carry `id`, `seq`, and `levelName`; choose the lean envelope when downstream does not need them.
+- loggerjs is roughly an order of magnitude faster than winston (~10x) and LogTape (~24x), and ~3x faster than Node console; these multiples swing with system load, so treat them as approximate.
+- Each scenario is warmed with a quarter of its measured iterations. A fixed, small warmup (for example 10k iterations) leaves some loggers un-optimized by the JIT and can inflate their numbers severalfold, so treat cross-logger comparisons as invalid unless warmup is proportionate.
 
-Re-run `pnpm bench:node` after hot-path changes and update this snapshot when
-the numbers move materially.
+Re-run `pnpm bench:node` after hot-path changes and update this snapshot when the numbers move materially.
 
 Tune iteration counts with:
 
@@ -192,8 +120,7 @@ BENCH_BROWSER_IDB_ITERATIONS=5000 pnpm bench:browser
 
 ## Browser Scenarios
 
-`pnpm bench:browser` runs in a local headless Chrome and measures browser-facing
-paths from the built `dist` packages:
+`pnpm bench:browser` runs in a local headless Chrome and measures browser-facing paths from the built `dist` packages:
 
 - Enabled browser logger with no transports.
 - Browser HTTP transport enqueue with a no-op `fetchFn`.
@@ -202,13 +129,7 @@ paths from the built `dist` packages:
 - IndexedDB transport flush of a persisted batch.
 - IndexedDB HTTP offline queue enqueue.
 
-The IndexedDB scenarios use a separate iteration count because they exercise
-real browser storage I/O. Tune it with `BENCH_BROWSER_IDB_ITERATIONS`; the
-default is intentionally smaller than `BENCH_BROWSER_ITERATIONS` so routine
-browser benchmark runs remain fast. Browser storage numbers are sensitive to
-Chrome version, profile state, device storage, private browsing policy, quota,
-and Storage Buckets support, so cite them only with the measured browser and
-hardware context.
+The IndexedDB scenarios use a separate iteration count because they exercise real browser storage I/O. Tune it with `BENCH_BROWSER_IDB_ITERATIONS`; the default is intentionally smaller than `BENCH_BROWSER_ITERATIONS` so routine browser benchmark runs remain fast. Browser storage numbers are sensitive to Chrome version, profile state, device storage, private browsing policy, quota, and Storage Buckets support, so cite them only with the measured browser and hardware context.
 
 ## Size Budgets
 

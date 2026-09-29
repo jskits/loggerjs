@@ -16,9 +16,7 @@ Custom integrations should feature-detect their platform surface and no-op when 
 
 ## Stability Levels
 
-Integration stability describes the public setup/options contract and teardown
-behavior. It does not mean the underlying platform emits every signal in every
-runtime, browser version, framework version, or deployment mode.
+Integration stability describes the public setup/options contract and teardown behavior. It does not mean the underlying platform emits every signal in every runtime, browser version, framework version, or deployment mode.
 
 | Level | Meaning |
 | --- | --- |
@@ -53,18 +51,14 @@ runtime, browser version, framework version, or deployment mode.
 
 ## Import Boundaries
 
-Root package imports are convenience presets. Public integration subpaths are
-documented so users can choose narrower bundles and so new built-in integrations
-cannot silently expand the surface without matching docs.
+Root package imports are convenience presets. Public integration subpaths are documented so users can choose narrower bundles and so new built-in integrations cannot silently expand the surface without matching docs.
 
 | Runtime | Public integration subpaths |
 | --- | --- |
 | Browser | `@loggerjs/browser/integration-console`, `@loggerjs/browser/integration-context`, `@loggerjs/browser/integration-errors`, `@loggerjs/browser/integration-fetch`, `@loggerjs/browser/integration-xhr`, `@loggerjs/browser/integration-framework-errors`, `@loggerjs/browser/integration-framework-routers`, `@loggerjs/browser/integration-reporting`, `@loggerjs/browser/integration-router`, `@loggerjs/browser/integration-runtime-host`, `@loggerjs/browser/integration-service-worker`, `@loggerjs/browser/integration-user-actions`, `@loggerjs/browser/integration-websocket`, `@loggerjs/browser/integration-web-vitals`, `@loggerjs/browser/integration-performance`, `@loggerjs/browser/integration-page-lifecycle` |
 | Node.js | `@loggerjs/node/integration-process`, `@loggerjs/node/integration-cli`, `@loggerjs/node/integration-koa`, `@loggerjs/node/integration-nest`, `@loggerjs/node/integration-hapi`, `@loggerjs/node/integration-prisma`, `@loggerjs/node/integration-redis`, `@loggerjs/node/integration-queue`, `@loggerjs/node/integration-bullmq`, `@loggerjs/node/integration-serverless`, `@loggerjs/node/integration-database`, `@loggerjs/node/integration-express`, `@loggerjs/node/integration-fastify`, `@loggerjs/node/integration-fetch`, `@loggerjs/node/integration-http-client`, `@loggerjs/node/integration-diagnostics` |
 
-`pnpm verify:component-docs` fails when a public integration subpath is exported
-without being listed here. New entries should also update the stability table
-above and the runtime validation notes for that integration family.
+`pnpm verify:component-docs` fails when a public integration subpath is exported without being listed here. New entries should also update the stability table above and the runtime validation notes for that integration family.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 

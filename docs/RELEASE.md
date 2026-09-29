@@ -27,19 +27,13 @@ changeset publish --tag canary
 
 ## New Component Readiness
 
-Before a release that adds a public transport or integration subpath, verify the
-change includes:
+Before a release that adds a public transport or integration subpath, verify the change includes:
 
 - stability classification in `docs/TRANSPORTS.md` or `docs/INTEGRATIONS.md`;
 - import-boundary coverage checked by `pnpm verify:component-docs`;
-- runtime validation appropriate to the component: browser E2E for browser
-  lifecycle/storage behavior, runtime smoke for edge/runtime claims,
-  Docker-backed live tests for local services, or external-provider smoke for
-  hosted vendors;
-- size-budget evidence from `pnpm size:check`, with any budget increase justified
-  in the change;
-- production docs that spell out delivery, retry, privacy, and credential
-  placement caveats.
+- runtime validation appropriate to the component: browser E2E for browser lifecycle/storage behavior, runtime smoke for edge/runtime claims, Docker-backed live tests for local services, or external-provider smoke for hosted vendors;
+- size-budget evidence from `pnpm size:check`, with any budget increase justified in the change;
+- production docs that spell out delivery, retry, privacy, and credential placement caveats.
 
 ## NPM Publishing
 

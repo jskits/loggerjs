@@ -1,18 +1,12 @@
 # Pretty Output
 
-Pretty output is a developer-experience layer for local consoles and terminals.
-It keeps LoggerJS records structured internally, then renders them at the
-transport boundary for humans.
+Pretty output is a developer-experience layer for local consoles and terminals. It keeps LoggerJS records structured internally, then renders them at the transport boundary for humans.
 
-Use pretty transports for development, demos, local debugging, Storybook,
-browser DevTools, CLIs, and tests that need readable output. Use structured
-transports such as `stdoutTransport()`, `fileTransport()`, `browserHttpTransport()`,
-OTLP, Loki, or Datadog for production delivery.
+Use pretty transports for development, demos, local debugging, Storybook, browser DevTools, CLIs, and tests that need readable output. Use structured transports such as `stdoutTransport()`, `fileTransport()`, `browserHttpTransport()`, OTLP, Loki, or Datadog for production delivery.
 
 ## Browser DevTools
 
-Use `prettyConsoleTransport()` from `@loggerjs/pretty` when you want readable
-browser console output with inspectable objects:
+Use `prettyConsoleTransport()` from `@loggerjs/pretty` when you want readable browser console output with inspectable objects:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -35,16 +29,13 @@ logger.info("cart updated", { itemCount: 3 });
 What it does:
 
 - Uses `%c` styles in browsers when `browserStyles: "auto"` detects DevTools.
-- Passes `data`, `error`, and other details as separate console arguments so
-  objects stay expandable.
-- Writes through LoggerJS' unpatched console registry, so it can run beside
-  `captureConsoleIntegration()` without loops.
+- Passes `data`, `error`, and other details as separate console arguments so objects stay expandable.
+- Writes through LoggerJS' unpatched console registry, so it can run beside `captureConsoleIntegration()` without loops.
 - Filters records captured from `captureConsoleIntegration()` by default.
 
 ## Node Terminal
 
-Use `prettyStdoutTransport()` or `prettyStderrTransport()` for local terminal
-output:
+Use `prettyStdoutTransport()` or `prettyStderrTransport()` for local terminal output:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -67,8 +58,7 @@ What it does:
 - Honors `NO_COLOR` and `FORCE_COLOR`.
 - Supports `minLevel`.
 - `flush()` waits for `drain` when the stream reports backpressure.
-- Does not end `process.stdout` / `process.stderr` on `close()` unless
-  `endOnClose: true` is set.
+- Does not end `process.stdout` / `process.stderr` on `close()` unless `endOnClose: true` is set.
 
 ## Shared Formatter
 
@@ -106,9 +96,7 @@ console.log(rendered.text);
 
 ## Production Boundary
 
-Pretty transports are intentionally not durability transports. They do not batch,
-retry, persist, or speak a collector wire protocol. For production Node services,
-prefer:
+Pretty transports are intentionally not durability transports. They do not batch, retry, persist, or speak a collector wire protocol. For production Node services, prefer:
 
 ```ts
 import { stdoutTransport } from "@loggerjs/node";

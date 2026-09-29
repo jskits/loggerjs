@@ -71,8 +71,7 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 - `exportLogsToZip()` + `downloadBlob()` — export a persisted store as a zip containing `logs.ndjson` or `logs.json`, `manifest.json`, optional per-session files, and optional `recent.ndjson` or `recent.json`.
 - Call the `indexedDbTransport()` instance's `stats()` to read flush, prune, query, drop, and buffer-depth counters.
 
-For a support-log store that survives reloads and exports per page session, the
-short setup is:
+For a support-log store that survives reloads and exports per page session, the short setup is:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -102,17 +101,9 @@ export async function downloadSupportLogs() {
 }
 ```
 
-`indexedDbTransport()` assigns a page-session id by default for browser support
-stores. Use `query({ sessionId })`, `sessions()`, and
-`exportLogsToZip(..., { groupBySession: true, includeRecent: true })` to build
-support bundles around reload-sized sessions. Enable `localStorageSpill` only
-as a bounded last-chance buffer for the still-unconfirmed memory tail during
-ordinary reloads or tab closes; IndexedDB remains the queryable source of truth.
+`indexedDbTransport()` assigns a page-session id by default for browser support stores. Use `query({ sessionId })`, `sessions()`, and `exportLogsToZip(..., { groupBySession: true, includeRecent: true })` to build support bundles around reload-sized sessions. Enable `localStorageSpill` only as a bounded last-chance buffer for the still-unconfirmed memory tail during ordinary reloads or tab closes; IndexedDB remains the queryable source of truth.
 
-Browser delivery has runtime loss windows: tab close can cut off async work,
-`sendBeacon` is size- and user-agent-limited, service worker delivery depends on
-activation and lifetime, and IndexedDB persistence depends on quota and browser
-storage policy. Use an IndexedDB offline queue when reload survival matters.
+Browser delivery has runtime loss windows: tab close can cut off async work, `sendBeacon` is size- and user-agent-limited, service worker delivery depends on activation and lifetime, and IndexedDB persistence depends on quota and browser storage policy. Use an IndexedDB offline queue when reload survival matters.
 
 ## Integrations (19)
 

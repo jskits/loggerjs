@@ -71,14 +71,9 @@ Per-event network calls are the dominant real-world cost. `nodeHttpTransport()` 
 
 ## Import Boundaries
 
-The root `@loggerjs/browser` and `@loggerjs/node` entries are preset-style
-convenience imports: they re-export core plus every first-party runtime
-transport and integration. Use them when application simplicity matters more
-than the smallest possible module graph.
+The root `@loggerjs/browser` and `@loggerjs/node` entries are preset-style convenience imports: they re-export core plus every first-party runtime transport and integration. Use them when application simplicity matters more than the smallest possible module graph.
 
-For tighter bundles, import the documented subpaths. Browser and Node subpaths
-are built as physical entry bundles and verified by `pnpm verify:entry-boundaries`,
-so a focused import does not point back at the aggregate `dist/index` file:
+For tighter bundles, import the documented subpaths. Browser and Node subpaths are built as physical entry bundles and verified by `pnpm verify:entry-boundaries`, so a focused import does not point back at the aggregate `dist/index` file:
 
 ```ts
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
@@ -86,9 +81,7 @@ import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 ```
 
-Keep new runtime-specific features behind a subpath entry when they are not part
-of the common preset path. If a new feature makes the root browser/node bundle
-larger, the size-budget diff should explain why the preset entry needs it.
+Keep new runtime-specific features behind a subpath entry when they are not part of the common preset path. If a new feature makes the root browser/node bundle larger, the size-budget diff should explain why the preset entry needs it.
 
 ## Guardrails
 

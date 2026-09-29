@@ -41,9 +41,7 @@ All 27 processors and middleware are supported in browser/frontend and Node.js/s
 
 ### Redaction behavior
 
-`redactProcessor()` is intentionally synchronous and interpreter-based. LoggerJS
-does not compile user-supplied paths with `eval` or `new Function`; custom
-matchers run as normal functions inside the processor error boundary.
+`redactProcessor()` is intentionally synchronous and interpreter-based. LoggerJS does not compile user-supplied paths with `eval` or `new Function`; custom matchers run as normal functions inside the processor error boundary.
 
 Options:
 
@@ -54,9 +52,7 @@ Options:
 - `remove`: omit matched object properties instead of replacing them. Depth-limit truncation is not a key/path match; when `maxDepth` is reached, the too-deep subtree is still collapsed to `replacement`.
 - `maxDepth`: maximum traversal depth; default `8`. Reached depth fails closed by replacing the whole subtree instead of emitting unknown nested values.
 
-Cost is proportional to traversed object size times matcher count. Prefer exact
-keys and paths for hot loggers; reserve broad regexes and deep traversal for
-edge loggers or lower-volume error paths.
+Cost is proportional to traversed object size times matcher count. Prefer exact keys and paths for hot loggers; reserve broad regexes and deep traversal for edge loggers or lower-volume error paths.
 
 ## Volume Control
 

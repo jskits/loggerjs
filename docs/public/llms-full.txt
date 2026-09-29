@@ -365,9 +365,7 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 **Browser / frontend** (`@loggerjs/browser`) — `browserHttpTransport` · `indexedDbTransport` · `browserWebSocketTransport` · `browserServiceWorkerTransport` · `browserBroadcastChannelTransport` · `offlineFirstTransport`
 
-For frontend support bundles, `indexedDbTransport()` is session-aware by
-default and can add a bounded `localStorage` spill for the async IndexedDB write
-tail:
+For frontend support bundles, `indexedDbTransport()` is session-aware by default and can add a bounded `localStorage` spill for the async IndexedDB write tail:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -412,18 +410,20 @@ See [docs/TRANSPORTS.md](docs/TRANSPORTS.md) for options and how to write your o
 
 <br/>
 
-**Browser** (19) —
-_Console & errors:_ `captureConsoleIntegration` · `captureBrowserErrorsIntegration` · `captureFrameworkErrorsIntegration` · `captureReportingIntegration`
-_Network:_ `captureFetchIntegration` · `captureXHRIntegration` · `captureWebSocketIntegration`
-_Performance:_ `captureWebVitalsIntegration` · `capturePerformanceIntegration`
-_Navigation:_ `captureRouterIntegration` · `nextRouterIntegration` · `reactRouterIntegration` · `vueRouterIntegration` · `nuxtRouterIntegration`
-_Lifecycle & context:_ `pageLifecycleIntegration` · `captureUserActionsIntegration` · `captureServiceWorkerIntegration` · `captureRuntimeHostIntegration` · `browserContextPropagationIntegration`
+**Browser** (19):
 
-**Node** (16) —
-_Process & runtime:_ `captureProcessIntegration` · `captureCliIntegration` · `diagnosticsChannelIntegration` · `serverlessIntegration`
-_HTTP frameworks:_ `expressIntegration` · `fastifyIntegration` · `koaIntegration` · `hapiIntegration` · `nestMiddlewareIntegration`
-_Clients:_ `nodeFetchIntegration` · `nodeHttpClientIntegration` · `redisIntegration` · `prismaIntegration` · `databaseIntegration`
-_Queues:_ `queueIntegration` · `bullMqIntegration`
+- _Console & errors:_ `captureConsoleIntegration` · `captureBrowserErrorsIntegration` · `captureFrameworkErrorsIntegration` · `captureReportingIntegration`
+- _Network:_ `captureFetchIntegration` · `captureXHRIntegration` · `captureWebSocketIntegration`
+- _Performance:_ `captureWebVitalsIntegration` · `capturePerformanceIntegration`
+- _Navigation:_ `captureRouterIntegration` · `nextRouterIntegration` · `reactRouterIntegration` · `vueRouterIntegration` · `nuxtRouterIntegration`
+- _Lifecycle & context:_ `pageLifecycleIntegration` · `captureUserActionsIntegration` · `captureServiceWorkerIntegration` · `captureRuntimeHostIntegration` · `browserContextPropagationIntegration`
+
+**Node** (16):
+
+- _Process & runtime:_ `captureProcessIntegration` · `captureCliIntegration` · `diagnosticsChannelIntegration` · `serverlessIntegration`
+- _HTTP frameworks:_ `expressIntegration` · `fastifyIntegration` · `koaIntegration` · `hapiIntegration` · `nestMiddlewareIntegration`
+- _Clients:_ `nodeFetchIntegration` · `nodeHttpClientIntegration` · `redisIntegration` · `prismaIntegration` · `databaseIntegration`
+- _Queues:_ `queueIntegration` · `bullMqIntegration`
 
 Every integration uses re-entrancy guards and an unpatched-original registry so capture never loops. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for the integration API and how to write your own.
 
@@ -434,13 +434,13 @@ Every integration uses re-entrancy guards and an unpatched-original registry so 
 
 <br/>
 
-_Redaction & privacy:_ `redactProcessor` · `privacyGuardProcessor`
-_Sampling & volume:_ `sampleProcessor` · `dynamicSamplerProcessor` · `rateLimitProcessor` · `dedupeProcessor` · `coalesceProcessor`
-_Enrichment & tagging:_ `enrichProcessor` / `enrichMiddleware` · `tagsProcessor` / `tagsMiddleware` · `typeProcessor` / `typeMiddleware` · `contextProcessor` / `contextMiddleware` · `traceContextProcessor` / `traceContextMiddleware`
-_Errors:_ `normalizeErrorProcessor` · `fingerprintProcessor` · `stackParserProcessor` · `symbolicateStackProcessor`
-_Routing & control:_ `routeProcessor` · `filterProcessor` · `levelOverrideProcessor`
-_Buffering:_ `fingersCrossedProcessor` · `breadcrumbBufferProcessor`
-_Development:_ `schemaDevCheckProcessor`
+- _Redaction & privacy:_ `redactProcessor` · `privacyGuardProcessor`
+- _Sampling & volume:_ `sampleProcessor` · `dynamicSamplerProcessor` · `rateLimitProcessor` · `dedupeProcessor` · `coalesceProcessor`
+- _Enrichment & tagging:_ `enrichProcessor` / `enrichMiddleware` · `tagsProcessor` / `tagsMiddleware` · `typeProcessor` / `typeMiddleware` · `contextProcessor` / `contextMiddleware` · `traceContextProcessor` / `traceContextMiddleware`
+- _Errors:_ `normalizeErrorProcessor` · `fingerprintProcessor` · `stackParserProcessor` · `symbolicateStackProcessor`
+- _Routing & control:_ `routeProcessor` · `filterProcessor` · `levelOverrideProcessor`
+- _Buffering:_ `fingersCrossedProcessor` · `breadcrumbBufferProcessor`
+- _Development:_ `schemaDevCheckProcessor`
 
 Middleware run on raw records before id/message/error work; processors run on projected events. The processor package is platform-neutral and works in browser, Node.js, workers, and edge runtimes; only route/fingers-crossed targets depend on transports available in that runtime. See [docs/PROCESSORS.md](docs/PROCESSORS.md) for ordering guidance.
 
@@ -499,10 +499,7 @@ Runnable examples live in [`examples/`](examples): [Node basics](examples/node-b
 
 ## Development
 
-Use **Node >=22.13** for repository development and the full `pnpm check` gate.
-Published packages are smoke-tested as packed consumers on **Node 20.19, 22,
-and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain
-floor.
+Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor.
 
 ```bash
 pnpm install
@@ -539,8 +536,7 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-All packages ship ESM and CJS entry points with full TypeScript declarations.
-For Node consumers, packed packages are smoke-tested on Node 20.19.0, 22, and
+All packages ship ESM and CJS entry points with full TypeScript declarations. For Node consumers, packed packages are smoke-tested on Node 20.19.0, 22, and
 24. Repository development uses Node >=22.13.0 for the full toolchain.
 
 ## First Logger (Node)
@@ -768,8 +764,7 @@ Integrations sit outside this flow: they hook platform behavior (console calls, 
 
 - `lazy` — an unevaluated message function, resolved at most once.
 - `err` — the raw error value, not yet normalized.
-- `props` — the user data object, shared by reference unless middleware,
-  processors, or a transport explicitly clone it.
+- `props` — the user data object, shared by reference unless middleware, processors, or a transport explicitly clone it.
 - `ctx` — a frozen bound context object, shared by reference.
 - `tags` — possibly the logger's frozen tags object, shared by reference.
 - No `id` — id computation is deferred to event projection.
@@ -808,15 +803,9 @@ interface Transport {
   minLevel?: LoggerLevel;
   ready?(): void | Promise<void>;
   write?(record: LogRecord, context: TransportContext): void | Promise<void>;
-  writeBatch?(
-    records: LogRecord[],
-    context: TransportContext,
-  ): void | Promise<void>;
+  writeBatch?(records: LogRecord[], context: TransportContext): void | Promise<void>;
   log?(event: LogEvent, context: TransportContext): void | Promise<void>;
-  logBatch?(
-    events: LogEvent[],
-    context: TransportContext,
-  ): void | Promise<void>;
+  logBatch?(events: LogEvent[], context: TransportContext): void | Promise<void>;
   flush?(): void | Promise<void>;
   flushSync?(): void;
   close?(): void | Promise<void>;
@@ -893,11 +882,7 @@ Use these counters to alert on silent degradation: queue drops, codec fallbacks,
 
 ## Trace and Semantic Events
 
-`trace-propagation` helpers parse/format W3C `traceparent` and baggage headers,
-and `addContextProvider()` lets integrations attach ambient context without
-replacing the app's context provider. `semanticEvents` defines common event
-families (`error`, `http`, `db`, `job`, `ui`, `action`, `security`,
-`performance`) so integrations and app logs can share field names.
+`trace-propagation` helpers parse/format W3C `traceparent` and baggage headers, and `addContextProvider()` lets integrations attach ambient context without replacing the app's context provider. `semanticEvents` defines common event families (`error`, `http`, `db`, `job`, `ui`, `action`, `security`, `performance`) so integrations and app logs can share field names.
 
 ## Further Reading
 
@@ -929,9 +914,7 @@ For an auditable map from each transport to source files, public entries, and co
 
 ## Stability Levels
 
-Transport stability describes the public API promise, not an absolute delivery
-guarantee. Browser storage, process shutdown, network collectors, and vendor
-backends can still fail; the reliability table below is the delivery contract.
+Transport stability describes the public API promise, not an absolute delivery guarantee. Browser storage, process shutdown, network collectors, and vendor backends can still fail; the reliability table below is the delivery contract.
 
 | Level | Meaning |
 | --- | --- |
@@ -966,9 +949,7 @@ backends can still fail; the reliability table below is the delivery contract.
 
 ## Import Boundaries
 
-Root package imports are convenience presets. Public transport subpaths are
-documented so users can choose narrower bundles and so new built-in transports
-cannot silently expand the surface without matching docs.
+Root package imports are convenience presets. Public transport subpaths are documented so users can choose narrower bundles and so new built-in transports cannot silently expand the surface without matching docs.
 
 | Runtime | Public transport subpaths |
 | --- | --- |
@@ -978,15 +959,11 @@ cannot silently expand the surface without matching docs.
 | Pretty | `@loggerjs/pretty/transport-console`, `@loggerjs/pretty/transport-stream` |
 | Observability and data | `@loggerjs/otel/transport-http`, `@loggerjs/sentry/transport`, `@loggerjs/datadog/transport`, `@loggerjs/elastic/transport`, `@loggerjs/loki/transport`, `@loggerjs/cloudwatch/transport`, `@loggerjs/database/transport` |
 
-`pnpm verify:component-docs` fails when a public transport subpath is exported
-without being listed here. New entries should also update the stability and
-reliability tables above.
+`pnpm verify:component-docs` fails when a public transport subpath is exported without being listed here. New entries should also update the stability and reliability tables above.
 
 ## Reliability Posture
 
-Transports are composable by default. Some transports include batching or durable
-local storage internally; raw vendor wire transports do not retry unless you wrap
-them. Treat this table as the production delivery contract:
+Transports are composable by default. Some transports include batching or durable local storage internally; raw vendor wire transports do not retry unless you wrap them. Treat this table as the production delivery contract:
 
 | Transport or wrapper | Default posture | Production note |
 | --- | --- | --- |
@@ -1063,8 +1040,7 @@ Notes:
 | `prettyStdoutTransport()` / `prettyStderrTransport()` | Node terminal helpers over `process.stdout` / `process.stderr`; honor `NO_COLOR` and `FORCE_COLOR`, support `minLevel`, and let `flush()` wait for `drain`. |
 | `formatPrettyEvent()` | Shared formatter for custom display transports. Returns plain text, ANSI text, browser console args, and raw details. |
 
-Pretty transports are display sinks. They do not batch, retry, persist, or speak
-collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance.
+Pretty transports are display sinks. They do not batch, retry, persist, or speak collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance.
 
 ## Node.js / Server (`@loggerjs/node`)
 
@@ -1077,8 +1053,7 @@ collector protocols. See [PRETTY.md](PRETTY.md) for examples and option guidance
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
 
-`nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use
-`nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
+`nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
 
 ```ts
 import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
@@ -1089,38 +1064,19 @@ nodeHttpTransport({
 });
 ```
 
-`fileTransport().flushSync()` is a crash-path primitive. In async stream mode it
-writes currently buffered or pending payloads through a synchronous fd so fatal
-records can reach disk before process exit; if the process continues, the
-original async stream may still complete. Use `await flush()` for normal
-drain-and-continue shutdowns, or configure `sync: true` when every write must be
-synchronous.
+`fileTransport().flushSync()` is a crash-path primitive. In async stream mode it writes currently buffered or pending payloads through a synchronous fd so fatal records can reach disk before process exit; if the process continues, the original async stream may still complete. Use `await flush()` for normal drain-and-continue shutdowns, or configure `sync: true` when every write must be synchronous.
 
-`workerTransport()` remains compatible with simple workers that only receive
-object messages. Lifecycle is opt-in:
+`workerTransport()` remains compatible with simple workers that only receive object messages. Lifecycle is opt-in:
 
-- Set `readyTimeoutMs` when the worker will send `{ type: "loggerjs:ready" }`.
-  If readiness times out, LoggerJS fails the worker and sends the batch to the
-  configured fallback or counts it as `transport.dropped.worker-ready-timeout`.
-  Explicit `transport.ready()` / `logger.ready()` also waits for this startup
-  handshake.
-- Set `ackTimeoutMs` when the worker will acknowledge each batch with
-  `{ type: "loggerjs:batch:ack", id }`. `flush()` waits for those acks.
+- Set `readyTimeoutMs` when the worker will send `{ type: "loggerjs:ready" }`. If readiness times out, LoggerJS fails the worker and sends the batch to the configured fallback or counts it as `transport.dropped.worker-ready-timeout`. Explicit `transport.ready()` / `logger.ready()` also waits for this startup handshake.
+- Set `ackTimeoutMs` when the worker will acknowledge each batch with `{ type: "loggerjs:batch:ack", id }`. `flush()` waits for those acks.
 - The main thread posts `{ type: "loggerjs:batch", id?, codec, contentType, count, payload }`.
-- A worker can report failure with `{ type: "loggerjs:error", message, error }`;
-  pending batches fall back or are counted as dropped.
-- `autoEnd` defaults to `true`; set `autoEnd: false` if the worker is shared and
-  should not be terminated by transport `close()`.
+- A worker can report failure with `{ type: "loggerjs:error", message, error }`; pending batches fall back or are counted as dropped.
+- `autoEnd` defaults to `true`; set `autoEnd: false` if the worker is shared and should not be terminated by transport `close()`.
 
-Worker lifecycle updates the standard transport gauges
-`transport.ready.<name>` and `transport.queue.depth.<name>`, and pending ack
-failures count `transport.worker.pending-dropped` plus
-`transport.dropped.<reason>`.
+Worker lifecycle updates the standard transport gauges `transport.ready.<name>` and `transport.queue.depth.<name>`, and pending ack failures count `transport.worker.pending-dropped` plus `transport.dropped.<reason>`.
 
-For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
-`@loggerjs/node`. It publishes subscribed LoggerJS internals to
-`diagnostics_channel` channels named `loggerjs.dispatch`, `loggerjs.transport`,
-`loggerjs.flush`, `loggerjs.encode`, and `loggerjs.worker`.
+For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@loggerjs/node`. It publishes subscribed LoggerJS internals to `diagnostics_channel` channels named `loggerjs.dispatch`, `loggerjs.transport`, `loggerjs.flush`, `loggerjs.encode`, and `loggerjs.worker`.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 
@@ -1136,14 +1092,9 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
-`browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec`
-when pagehide or hidden-page Beacon requests need a different encoding or content
-type; it falls back to `codec` when omitted. Beacon delivery is skipped when
-`transformPayload` is configured, so lifecycle flushes use the normal Fetch path
-and `beaconCodec` does not apply.
+`browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec` when pagehide or hidden-page Beacon requests need a different encoding or content type; it falls back to `codec` when omitted. Beacon delivery is skipped when `transformPayload` is configured, so lifecycle flushes use the normal Fetch path and `beaconCodec` does not apply.
 
-`browserHttpTransport()` also accepts `transformPayload`. Use
-`browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
+`browserHttpTransport()` also accepts `transformPayload`. Use `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
 
 ```ts
 import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
@@ -1154,8 +1105,7 @@ browserHttpTransport({
 });
 ```
 
-For high-throughput local browser capture on modern Chrome, prefer a dedicated
-IndexedDB log store with relaxed durability:
+For high-throughput local browser capture on modern Chrome, prefer a dedicated IndexedDB log store with relaxed durability:
 
 ```ts
 indexedDbTransport({
@@ -1170,29 +1120,15 @@ indexedDbTransport({
 });
 ```
 
-Browsers without Storage Buckets support fall back to the regular IndexedDB
-instance while keeping the same transport API.
+Browsers without Storage Buckets support fall back to the regular IndexedDB instance while keeping the same transport API.
 
-`indexedDbTransport()` assigns a page-session id by default, stores it as a
-top-level IndexedDB entry field, and mirrors it into `event.context.sessionId`
-when the event did not already provide one. Pass `session: false` to disable
-that materialized session field, or pass `session: { id, getId, contextKey }`
-to align the persisted session with your own browser context provider.
+`indexedDbTransport()` assigns a page-session id by default, stores it as a top-level IndexedDB entry field, and mirrors it into `event.context.sessionId` when the event did not already provide one. Pass `session: false` to disable that materialized session field, or pass `session: { id, getId, contextKey }` to align the persisted session with your own browser context provider.
 
-`localStorageSpill` is a last-chance reload/close safety net, not a replacement
-for IndexedDB. Normal logging still batches in memory and flushes to
-IndexedDB asynchronously. On `pagehide` or `visibilitychange: hidden`, the
-transport synchronously writes the still-unconfirmed tail (`pendingFlushBatch`
-plus the current memory buffer) to a small `localStorage` temp entry. The next
-transport instance drains that temp entry into IndexedDB before its first flush
-and clears it only after the write succeeds. This lowers loss during ordinary
-reloads and tab closes, but it cannot protect against process kill, browser
-crash, disabled storage, quota exhaustion, or storage eviction.
+`localStorageSpill` is a last-chance reload/close safety net, not a replacement for IndexedDB. Normal logging still batches in memory and flushes to IndexedDB asynchronously. On `pagehide` or `visibilitychange: hidden`, the transport synchronously writes the still-unconfirmed tail (`pendingFlushBatch` plus the current memory buffer) to a small `localStorage` temp entry. The next transport instance drains that temp entry into IndexedDB before its first flush and clears it only after the write succeeds. This lowers loss during ordinary reloads and tab closes, but it cannot protect against process kill, browser crash, disabled storage, quota exhaustion, or storage eviction.
 
 ### Browser failure boundaries
 
-Browser delivery is best effort unless the log has already been acknowledged by
-the destination you care about. These are the important loss windows:
+Browser delivery is best effort unless the log has already been acknowledged by the destination you care about. These are the important loss windows:
 
 | Path | Failure boundary / loss window | Production guidance |
 | --- | --- | --- |
@@ -1206,17 +1142,11 @@ the destination you care about. These are the important loss windows:
 | `browserServiceWorkerTransport()` | Delivery depends on service worker registration, activation, message delivery, and worker lifetime. A terminating worker can drop in-flight work unless it persists its own queue. | Treat it as centralization, not durability, unless the service worker also writes to durable storage. |
 | `browserBroadcastChannelTransport()` | BroadcastChannel only reaches currently open, same-origin listeners. Messages are not durable and receivers can miss them during startup. | Use for multi-tab aggregation and debugging, not as a primary remote delivery guarantee. |
 
-The usual production browser stack is HTTP batching plus an IndexedDB offline
-queue plus page lifecycle flush. Add a service worker or BroadcastChannel when
-you need centralization across tabs, but keep a durable queue in the delivery
-path when logs must survive reloads.
+The usual production browser stack is HTTP batching plus an IndexedDB offline queue plus page lifecycle flush. Add a service worker or BroadcastChannel when you need centralization across tabs, but keep a durable queue in the delivery path when logs must survive reloads.
 
 ## Payload transforms
 
-Payload transforms run after codec encoding and before a wire transport sends or
-stores the payload. They can return a replacement payload, or `{ payload,
-headers, contentType }`; HTTP transports persist those headers through offline
-queues and replay.
+Payload transforms run after codec encoding and before a wire transport sends or stores the payload. They can return a replacement payload, or `{ payload, headers, contentType }`; HTTP transports persist those headers through offline queues and replay.
 
 ```ts
 import {
@@ -1238,8 +1168,7 @@ browserHttpTransport({
 });
 ```
 
-`encryptionPayloadTransform()` provides the hook; the encryption algorithm and
-key management remain application-owned.
+`encryptionPayloadTransform()` provides the hook; the encryption algorithm and key management remain application-owned.
 
 ## Vendor packages
 
@@ -1322,28 +1251,17 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/TRANSPORT-CONTRACTS.md
 
 # Transport Contract Matrix
 
-This matrix pins every first-party transport to its public entry points, source
-files, and contract tests. It is meant to make reliability claims auditable:
-raw wire transports must surface delivery failures, production-grade delivery
-must be explicit about wrappers or queues, and lifecycle behavior must have a
-named test path.
+This matrix pins every first-party transport to its public entry points, source files, and contract tests. It is meant to make reliability claims auditable: raw wire transports must surface delivery failures, production-grade delivery must be explicit about wrappers or queues, and lifecycle behavior must have a named test path.
 
-`pnpm verify:transport-contracts` checks this page against package exports and
-the repository file tree. When a transport source file or public transport
-subpath is added, update this matrix in the same change.
+`pnpm verify:transport-contracts` checks this page against package exports and the repository file tree. When a transport source file or public transport subpath is added, update this matrix in the same change.
 
 ## Contract Rules
 
-- Raw HTTP/vendor transports propagate non-2xx responses and rejected `fetch`
-  calls; they do not silently retry unless wrapped.
-- Production delivery for raw wire sinks requires `batchTransport()`,
-  `retryTransport()`, `fallbackTransport()`, or a transport that documents its
-  own queue/retry behavior.
-- Runtime-dependent transports must document the platform surface they depend on
-  and test unavailable or failing dependencies.
+- Raw HTTP/vendor transports propagate non-2xx responses and rejected `fetch` calls; they do not silently retry unless wrapped.
+- Production delivery for raw wire sinks requires `batchTransport()`, `retryTransport()`, `fallbackTransport()`, or a transport that documents its own queue/retry behavior.
+- Runtime-dependent transports must document the platform surface they depend on and test unavailable or failing dependencies.
 - Durable paths must expose `flush()` or persistence/replay behavior in tests.
-- Test-only and display-only transports must say so instead of implying delivery
-  durability.
+- Test-only and display-only transports must say so instead of implying delivery durability.
 
 ## Matrix
 
@@ -1384,19 +1302,13 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/PRETTY.md
 
 # Pretty Output
 
-Pretty output is a developer-experience layer for local consoles and terminals.
-It keeps LoggerJS records structured internally, then renders them at the
-transport boundary for humans.
+Pretty output is a developer-experience layer for local consoles and terminals. It keeps LoggerJS records structured internally, then renders them at the transport boundary for humans.
 
-Use pretty transports for development, demos, local debugging, Storybook,
-browser DevTools, CLIs, and tests that need readable output. Use structured
-transports such as `stdoutTransport()`, `fileTransport()`, `browserHttpTransport()`,
-OTLP, Loki, or Datadog for production delivery.
+Use pretty transports for development, demos, local debugging, Storybook, browser DevTools, CLIs, and tests that need readable output. Use structured transports such as `stdoutTransport()`, `fileTransport()`, `browserHttpTransport()`, OTLP, Loki, or Datadog for production delivery.
 
 ## Browser DevTools
 
-Use `prettyConsoleTransport()` from `@loggerjs/pretty` when you want readable
-browser console output with inspectable objects:
+Use `prettyConsoleTransport()` from `@loggerjs/pretty` when you want readable browser console output with inspectable objects:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -1419,16 +1331,13 @@ logger.info("cart updated", { itemCount: 3 });
 What it does:
 
 - Uses `%c` styles in browsers when `browserStyles: "auto"` detects DevTools.
-- Passes `data`, `error`, and other details as separate console arguments so
-  objects stay expandable.
-- Writes through LoggerJS' unpatched console registry, so it can run beside
-  `captureConsoleIntegration()` without loops.
+- Passes `data`, `error`, and other details as separate console arguments so objects stay expandable.
+- Writes through LoggerJS' unpatched console registry, so it can run beside `captureConsoleIntegration()` without loops.
 - Filters records captured from `captureConsoleIntegration()` by default.
 
 ## Node Terminal
 
-Use `prettyStdoutTransport()` or `prettyStderrTransport()` for local terminal
-output:
+Use `prettyStdoutTransport()` or `prettyStderrTransport()` for local terminal output:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -1451,8 +1360,7 @@ What it does:
 - Honors `NO_COLOR` and `FORCE_COLOR`.
 - Supports `minLevel`.
 - `flush()` waits for `drain` when the stream reports backpressure.
-- Does not end `process.stdout` / `process.stderr` on `close()` unless
-  `endOnClose: true` is set.
+- Does not end `process.stdout` / `process.stderr` on `close()` unless `endOnClose: true` is set.
 
 ## Shared Formatter
 
@@ -1490,9 +1398,7 @@ console.log(rendered.text);
 
 ## Production Boundary
 
-Pretty transports are intentionally not durability transports. They do not batch,
-retry, persist, or speak a collector wire protocol. For production Node services,
-prefer:
+Pretty transports are intentionally not durability transports. They do not batch, retry, persist, or speak a collector wire protocol. For production Node services, prefer:
 
 ```ts
 import { stdoutTransport } from "@loggerjs/node";
@@ -1539,9 +1445,7 @@ Custom integrations should feature-detect their platform surface and no-op when 
 
 ## Stability Levels
 
-Integration stability describes the public setup/options contract and teardown
-behavior. It does not mean the underlying platform emits every signal in every
-runtime, browser version, framework version, or deployment mode.
+Integration stability describes the public setup/options contract and teardown behavior. It does not mean the underlying platform emits every signal in every runtime, browser version, framework version, or deployment mode.
 
 | Level | Meaning |
 | --- | --- |
@@ -1576,18 +1480,14 @@ runtime, browser version, framework version, or deployment mode.
 
 ## Import Boundaries
 
-Root package imports are convenience presets. Public integration subpaths are
-documented so users can choose narrower bundles and so new built-in integrations
-cannot silently expand the surface without matching docs.
+Root package imports are convenience presets. Public integration subpaths are documented so users can choose narrower bundles and so new built-in integrations cannot silently expand the surface without matching docs.
 
 | Runtime | Public integration subpaths |
 | --- | --- |
 | Browser | `@loggerjs/browser/integration-console`, `@loggerjs/browser/integration-context`, `@loggerjs/browser/integration-errors`, `@loggerjs/browser/integration-fetch`, `@loggerjs/browser/integration-xhr`, `@loggerjs/browser/integration-framework-errors`, `@loggerjs/browser/integration-framework-routers`, `@loggerjs/browser/integration-reporting`, `@loggerjs/browser/integration-router`, `@loggerjs/browser/integration-runtime-host`, `@loggerjs/browser/integration-service-worker`, `@loggerjs/browser/integration-user-actions`, `@loggerjs/browser/integration-websocket`, `@loggerjs/browser/integration-web-vitals`, `@loggerjs/browser/integration-performance`, `@loggerjs/browser/integration-page-lifecycle` |
 | Node.js | `@loggerjs/node/integration-process`, `@loggerjs/node/integration-cli`, `@loggerjs/node/integration-koa`, `@loggerjs/node/integration-nest`, `@loggerjs/node/integration-hapi`, `@loggerjs/node/integration-prisma`, `@loggerjs/node/integration-redis`, `@loggerjs/node/integration-queue`, `@loggerjs/node/integration-bullmq`, `@loggerjs/node/integration-serverless`, `@loggerjs/node/integration-database`, `@loggerjs/node/integration-express`, `@loggerjs/node/integration-fastify`, `@loggerjs/node/integration-fetch`, `@loggerjs/node/integration-http-client`, `@loggerjs/node/integration-diagnostics` |
 
-`pnpm verify:component-docs` fails when a public integration subpath is exported
-without being listed here. New entries should also update the stability table
-above and the runtime validation notes for that integration family.
+`pnpm verify:component-docs` fails when a public integration subpath is exported without being listed here. New entries should also update the stability table above and the runtime validation notes for that integration family.
 
 ## Browser / Frontend (`@loggerjs/browser`)
 
@@ -1735,9 +1635,7 @@ All 27 processors and middleware are supported in browser/frontend and Node.js/s
 
 ### Redaction behavior
 
-`redactProcessor()` is intentionally synchronous and interpreter-based. LoggerJS
-does not compile user-supplied paths with `eval` or `new Function`; custom
-matchers run as normal functions inside the processor error boundary.
+`redactProcessor()` is intentionally synchronous and interpreter-based. LoggerJS does not compile user-supplied paths with `eval` or `new Function`; custom matchers run as normal functions inside the processor error boundary.
 
 Options:
 
@@ -1748,9 +1646,7 @@ Options:
 - `remove`: omit matched object properties instead of replacing them. Depth-limit truncation is not a key/path match; when `maxDepth` is reached, the too-deep subtree is still collapsed to `replacement`.
 - `maxDepth`: maximum traversal depth; default `8`. Reached depth fails closed by replacing the whole subtree instead of emitting unknown nested values.
 
-Cost is proportional to traversed object size times matcher count. Prefer exact
-keys and paths for hot loggers; reserve broad regexes and deep traversal for
-edge loggers or lower-volume error paths.
+Cost is proportional to traversed object size times matcher count. Prefer exact keys and paths for hot loggers; reserve broad regexes and deep traversal for edge loggers or lower-volume error paths.
 
 ## Volume Control
 
@@ -1848,9 +1744,7 @@ interface Codec<TPayload = string | Uint8Array> {
 
 - `encode` accepts single items or batches, events or records. `normalizeCodecInput()` from core projects records to events for codecs that only understand events.
 - `decode` is optional; built-in codecs implement it with `JSON.parse` for symmetric round trips of their own output.
-- `prepareRecordEncoder` is optional. Record-aware transports can call
-  `createPreparedRecordEncoder(codec)` to let the codec cache stable
-  category/tags fragments while keeping serialization owned by the transport.
+- `prepareRecordEncoder` is optional. Record-aware transports can call `createPreparedRecordEncoder(codec)` to let the codec cache stable category/tags fragments while keeping serialization owned by the transport.
 
 ## Built-in Codecs
 
@@ -1937,9 +1831,7 @@ Guidelines:
 
 - **Never throw out of `encode`.** Wrap risky paths and fall back to `safeJsonStringify` from core; count fallbacks with `incrementLoggerMetaCounter("codec.fallback")`. A throwing codec turns into a transport failure and, inside a batch transport, a poison batch that burns retries.
 - Use `normalizeCodecInput()` unless you deliberately implement a record fast path.
-- If you implement `prepareRecordEncoder`, its output must be byte-for-byte
-  identical to `encode(record)` for the same record and must keep the same
-  fallback behavior.
+- If you implement `prepareRecordEncoder`, its output must be byte-for-byte identical to `encode(record)` for the same record and must keep the same fallback behavior.
 - For binary formats return `Uint8Array` and set an accurate `contentType` — HTTP transports send it.
 - Implement `decode` only when symmetric round trips are part of your feature (replay, local query); it is not required for delivery.
 
@@ -1951,15 +1843,11 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/PRODUCTION-RECIPES.md
 
 # Production Recipes
 
-These recipes are starting points for production deployments. They intentionally
-show queue bounds, privacy processors, shutdown behavior, and where credentials
-belong. Tune names, tags, and endpoint URLs to your application.
+These recipes are starting points for production deployments. They intentionally show queue bounds, privacy processors, shutdown behavior, and where credentials belong. Tune names, tags, and endpoint URLs to your application.
 
 ## Browser to HTTP With IndexedDB Offline Replay
 
-Use this when browser logs should survive network drops and normal reloads. The
-browser still cannot guarantee delivery during process kill, storage eviction,
-private browsing restrictions, or quota exhaustion.
+Use this when browser logs should survive network drops and normal reloads. The browser still cannot guarantee delivery during process kill, storage eviction, private browsing restrictions, or quota exhaustion.
 
 ```ts
 import {
@@ -2040,22 +1928,14 @@ export const logger = createLogger({
 
 Production notes:
 
-- `/api/logs` should be your own collector endpoint. Do not put vendor API keys
-  in the browser bundle.
-- Keep fetch/XHR header capture allowlisted. Do not capture cookies,
-  authorization headers, request bodies, or form values by default.
-- Alert on logger meta counters such as `transport.dropped.*` and offline queue
-  depth when your app exposes them.
-- Keep the HTTP offline queue `dbName` separate from any queryable support-log
-  store. The two helpers use independent IndexedDB schemas and version lifecycles.
+- `/api/logs` should be your own collector endpoint. Do not put vendor API keys in the browser bundle.
+- Keep fetch/XHR header capture allowlisted. Do not capture cookies, authorization headers, request bodies, or form values by default.
+- Alert on logger meta counters such as `transport.dropped.*` and offline queue depth when your app exposes them.
+- Keep the HTTP offline queue `dbName` separate from any queryable support-log store. The two helpers use independent IndexedDB schemas and version lifecycles.
 
 ## Browser Support Export With Session-Aware IndexedDB
 
-Use this when support or QA needs a local log bundle that survives reloads and
-can be exported by session. The local store is separate from the HTTP delivery
-queue: IndexedDB is the queryable source of truth, while `localStorageSpill`
-only protects the small tail that has not finished its async IndexedDB write
-when the user refreshes or closes the page.
+Use this when support or QA needs a local log bundle that survives reloads and can be exported by session. The local store is separate from the HTTP delivery queue: IndexedDB is the queryable source of truth, while `localStorageSpill` only protects the small tail that has not finished its async IndexedDB write when the user refreshes or closes the page.
 
 ```ts
 import { createLogger } from "@loggerjs/core";
@@ -2110,20 +1990,13 @@ export async function downloadSupportLogZip() {
 
 Production notes:
 
-- Keep privacy processors before the IndexedDB transport. Anything persisted
-  locally can be exported by a user or support flow.
-- `indexedDbTransport()` creates a page-session id by default and stores it in
-  both the IndexedDB entry metadata and `event.context.sessionId` when absent.
-  If your app already owns session ids, pass `session: { id, getId, contextKey }`.
-- `localStorageSpill` is bounded and best effort. It improves normal reload and
-  close behavior but cannot protect against process kill, crash, disabled
-  storage, quota exhaustion, or storage eviction.
+- Keep privacy processors before the IndexedDB transport. Anything persisted locally can be exported by a user or support flow.
+- `indexedDbTransport()` creates a page-session id by default and stores it in both the IndexedDB entry metadata and `event.context.sessionId` when absent. If your app already owns session ids, pass `session: { id, getId, contextKey }`.
+- `localStorageSpill` is bounded and best effort. It improves normal reload and close behavior but cannot protect against process kill, crash, disabled storage, quota exhaustion, or storage eviction.
 
 ## Node to Stdout Plus OTLP
 
-Use stdout as the local, platform-native sink and OTLP as the remote
-observability path. Stdout remains useful for container runtimes and fatal
-events even if the OTLP endpoint is degraded.
+Use stdout as the local, platform-native sink and OTLP as the remote observability path. Stdout remains useful for container runtimes and fatal events even if the OTLP endpoint is degraded.
 
 ```ts
 import * as otelApi from "@opentelemetry/api";
@@ -2190,17 +2063,13 @@ export async function closeLogger() {
 
 Production notes:
 
-- Keep at least one local sink (`stdoutTransport()` or `fileTransport()`) for
-  fatal process paths. Remote OTLP should not be the only crash-path sink.
-- Install `@opentelemetry/api` and initialize tracing before constructing the
-  logger when you want active span correlation.
+- Keep at least one local sink (`stdoutTransport()` or `fileTransport()`) for fatal process paths. Remote OTLP should not be the only crash-path sink.
+- Install `@opentelemetry/api` and initialize tracing before constructing the logger when you want active span correlation.
 - Use your deployment platform's graceful shutdown hook to call `logger.close()`.
 
 ## Full Stack to Loki and Datadog
 
-Use this when browser and server logs should land in the same vendor backends.
-The browser sends logs to your own collector; the server owns Loki and Datadog
-credentials and forwards both server-side events and accepted browser batches.
+Use this when browser and server logs should land in the same vendor backends. The browser sends logs to your own collector; the server owns Loki and Datadog credentials and forwards both server-side events and accepted browser batches.
 
 ```ts
 import {
@@ -2287,12 +2156,9 @@ export async function forwardBrowserLogs(events: LogEvent[]) {
 
 Production notes:
 
-- Validate and bound the `/api/logs` request body before calling
-  `forwardBrowserLogs()`. Reject oversized batches early.
-- Promote only low-cardinality fields to Loki labels and Datadog tags. Keep user
-  ids, request ids, order ids, and URLs in structured metadata/data.
-- Apply the same redaction policy in the browser and the server collector. Treat
-  browser-submitted logs as untrusted input.
+- Validate and bound the `/api/logs` request body before calling `forwardBrowserLogs()`. Reject oversized batches early.
+- Promote only low-cardinality fields to Loki labels and Datadog tags. Keep user ids, request ids, order ids, and URLs in structured metadata/data.
+- Apply the same redaction policy in the browser and the server collector. Treat browser-submitted logs as untrusted input.
 
 ---
 
@@ -2332,17 +2198,9 @@ const integrations = [
 ];
 ```
 
-`redactProcessor()` masks by key, exact dot path, regex, or custom matcher. Paths
-are relative to each redacted event field (`user.password`, not
-`data.user.password`). Use `replacement` (or the Pino-compatible `censor` alias)
-to mask values, and `remove: true` when the field should be omitted from the
-event. LoggerJS does not compile redaction paths with `eval` or `new Function`;
-wildcard-like regexes and deep traversal are safer than generated code but cost
-more than exact keys and paths.
+`redactProcessor()` masks by key, exact dot path, regex, or custom matcher. Paths are relative to each redacted event field (`user.password`, not `data.user.password`). Use `replacement` (or the Pino-compatible `censor` alias) to mask values, and `remove: true` when the field should be omitted from the event. LoggerJS does not compile redaction paths with `eval` or `new Function`; wildcard-like regexes and deep traversal are safer than generated code but cost more than exact keys and paths.
 
-`privacyGuardProcessor()` is broader: it scans selected fields for built-in and
-custom string patterns such as emails, bearer tokens, and card-like values. Use
-it as a safety net, not as a replacement for capture allowlists.
+`privacyGuardProcessor()` is broader: it scans selected fields for built-in and custom string patterns such as emails, bearer tokens, and card-like values. Use it as a safety net, not as a replacement for capture allowlists.
 
 ## Browser Queue And Offline Replay
 
@@ -2361,28 +2219,11 @@ const transport = browserHttpTransport({
 });
 ```
 
-`maxBatchSize` defaults to 50 and must be a positive safe integer. It both triggers
-flushing and limits the number of events in each new Fetch or Beacon request.
-Fetch batches drain serially, including the final partial batch, even with
-`flushIntervalMs: 0`. Concurrent `flush()` calls wait for the active drain; new
-logs produced during that drain are included until the queue is empty. A failed
-batch returns to the front of the queue and stops that drain unless an offline
-queue accepts its encoded payload. Successful earlier batches are not requeued.
+`maxBatchSize` defaults to 50 and must be a positive safe integer. It both triggers flushing and limits the number of events in each new Fetch or Beacon request. Fetch batches drain serially, including the final partial batch, even with `flushIntervalMs: 0`. Concurrent `flush()` calls wait for the active drain; new logs produced during that drain are included until the queue is empty. A failed batch returns to the front of the queue and stops that drain unless an offline queue accepts its encoded payload. Successful earlier batches are not requeued.
 
-The limit counts events, not bytes. Beacon requests also respect `beaconMaxBytes`;
-Fetch has no strict payload byte budget. Smaller batches can increase request
-counts and codec/transform invocations. Offline storage capacity (`maxEntries`)
-counts encoded requests, not individual events. Already stored payloads replay
-unchanged, including older batches above the current limit. Offline replay and
-live delivery do not guarantee global ordering or exactly-once delivery.
+The limit counts events, not bytes. Beacon requests also respect `beaconMaxBytes`; Fetch has no strict payload byte budget. Smaller batches can increase request counts and codec/transform invocations. Offline storage capacity (`maxEntries`) counts encoded requests, not individual events. Already stored payloads replay unchanged, including older batches above the current limit. Offline replay and live delivery do not guarantee global ordering or exactly-once delivery.
 
-Pagehide, hidden visibility, and `close()` submit queued Beacon chunks
-synchronously, including while an earlier Fetch is pending. The in-flight Fetch
-batch is never also sent by Beacon; its completion is still awaited by `close()`.
-This best-effort exit path can reach the server out of order. Rejected Beacon
-chunks fall back to bounded Fetch batches. With `transformPayload`, lifecycle
-flushes use Fetch instead. A successful flush may mean acceptance by the offline
-queue or browser Beacon queue, rather than server acknowledgment.
+Pagehide, hidden visibility, and `close()` submit queued Beacon chunks synchronously, including while an earlier Fetch is pending. The in-flight Fetch batch is never also sent by Beacon; its completion is still awaited by `close()`. This best-effort exit path can reach the server out of order. Rejected Beacon chunks fall back to bounded Fetch batches. With `transformPayload`, lifecycle flushes use Fetch instead. A successful flush may mean acceptance by the offline queue or browser Beacon queue, rather than server acknowledgment.
 
 When the browser fires `online`, the transport replays stored payloads with retry and backoff. Page lifecycle integration should be enabled when logs matter during tab close or navigation:
 
@@ -2392,10 +2233,7 @@ import { pageLifecycleIntegration } from "@loggerjs/browser";
 const integrations = [pageLifecycleIntegration()];
 ```
 
-Browser storage and shutdown behavior are still best effort. `sendBeacon` can be
-size-limited or skipped during shutdown, in-memory queues disappear on reload,
-and IndexedDB can be unavailable, full, evicted, or blocked by an upgrade. For
-production browser delivery, combine:
+Browser storage and shutdown behavior are still best effort. `sendBeacon` can be size-limited or skipped during shutdown, in-memory queues disappear on reload, and IndexedDB can be unavailable, full, evicted, or blocked by an upgrade. For production browser delivery, combine:
 
 - `browserHttpTransport()` for normal remote delivery.
 - `indexedDbBrowserHttpOfflineQueue()` or `offlineFirstTransport()` for reload-surviving replay.
@@ -2431,9 +2269,7 @@ For `uncaughtException` with `exitOnUncaught: true`, the sequence is:
 3. Run a bounded async `flush()` race controlled by `flushTimeoutMs` (default `250` ms).
 4. Exit with code `1`.
 
-For signals with `exitOnSignal: true`, LoggerJS captures a fatal signal record,
-uses the same sync-plus-bounded-async flush sequence, then exits with the signal
-exit code when known (`SIGTERM` -> `143`, `SIGINT` -> `130`).
+For signals with `exitOnSignal: true`, LoggerJS captures a fatal signal record, uses the same sync-plus-bounded-async flush sequence, then exits with the signal exit code when known (`SIGTERM` -> `143`, `SIGINT` -> `130`).
 
 ## Remote Transport Reliability
 
@@ -2551,14 +2387,9 @@ Per-event network calls are the dominant real-world cost. `nodeHttpTransport()` 
 
 ## Import Boundaries
 
-The root `@loggerjs/browser` and `@loggerjs/node` entries are preset-style
-convenience imports: they re-export core plus every first-party runtime
-transport and integration. Use them when application simplicity matters more
-than the smallest possible module graph.
+The root `@loggerjs/browser` and `@loggerjs/node` entries are preset-style convenience imports: they re-export core plus every first-party runtime transport and integration. Use them when application simplicity matters more than the smallest possible module graph.
 
-For tighter bundles, import the documented subpaths. Browser and Node subpaths
-are built as physical entry bundles and verified by `pnpm verify:entry-boundaries`,
-so a focused import does not point back at the aggregate `dist/index` file:
+For tighter bundles, import the documented subpaths. Browser and Node subpaths are built as physical entry bundles and verified by `pnpm verify:entry-boundaries`, so a focused import does not point back at the aggregate `dist/index` file:
 
 ```ts
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
@@ -2566,9 +2397,7 @@ import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 ```
 
-Keep new runtime-specific features behind a subpath entry when they are not part
-of the common preset path. If a new feature makes the root browser/node bundle
-larger, the size-budget diff should explain why the preset entry needs it.
+Keep new runtime-specific features behind a subpath entry when they are not part of the common preset path. If a new feature makes the root browser/node bundle larger, the size-budget diff should explain why the preset entry needs it.
 
 ## Guardrails
 
@@ -2598,24 +2427,13 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 pnpm size:check
 ```
 
-`pnpm bench:gate` runs interleaved A/B suites and enforces regression limits as
-paired per-round ratios against the matching pino baseline. It uses the same
-drift-canceling method as `BENCH_AB`, so CPU frequency, scheduler placement, and
-GC pauses affect each contender in the same round. Limits live in
-`scripts/check-bench-regression.mjs` and are generous on purpose: they catch
-structural regressions, not noise. CI runs the gate on every pull request. Tune
-the gate with `BENCH_GATE_AB_ROUNDS`, `BENCH_GATE_AB_BATCH`, and
-`BENCH_GATE_AB_WARMUP`.
+`pnpm bench:gate` runs interleaved A/B suites and enforces regression limits as paired per-round ratios against the matching pino baseline. It uses the same drift-canceling method as `BENCH_AB`, so CPU frequency, scheduler placement, and GC pauses affect each contender in the same round. Limits live in `scripts/check-bench-regression.mjs` and are generous on purpose: they catch structural regressions, not noise. CI runs the gate on every pull request. Tune the gate with `BENCH_GATE_AB_ROUNDS`, `BENCH_GATE_AB_BATCH`, and `BENCH_GATE_AB_WARMUP`.
 
 `pnpm bench` builds the workspace first, then runs Node and browser benchmarks. Browser benchmarks use a local headless Chrome binary. Set `CHROME_BIN` when Chrome is not installed in a standard location.
 
 ### Apples-to-apples cross-logger ratios (`BENCH_AB`)
 
-The normal suite times each logger **once**, at a different point in the run, so
-its loggerjs-vs-pino ratio drifts with CPU frequency scaling and P/E-core
-scheduling — a single sequential run can make either logger look better purely
-by *when* it was measured. To compare two loggers fairly, use the interleaved
-A/B mode:
+The normal suite times each logger **once**, at a different point in the run, so its loggerjs-vs-pino ratio drifts with CPU frequency scaling and P/E-core scheduling — a single sequential run can make either logger look better purely by *when* it was measured. To compare two loggers fairly, use the interleaved A/B mode:
 
 ```bash
 BENCH_AB=1 node scripts/bench-node.mjs
@@ -2623,22 +2441,11 @@ BENCH_AB=1 node scripts/bench-node.mjs
 BENCH_AB=1 BENCH_JSON=1 node scripts/bench-node.mjs   # machine-readable
 ```
 
-Each round times every contender in the selected suite **back-to-back** and
-rotates the start position, so drift hits them equally and cancels in the
-**paired per-round ratio**. The default suite compares pino, lean, prepared, and
-the full-envelope record sink; `BENCH_AB_SUITE=disabled` and
-`BENCH_AB_SUITE=enqueue` are used by the CI gate. The report prints
-per-contender ns/op plus the median ratio with its min/max spread, and warns
-when the baseline spread exceeds 25% — the signal that the machine is too noisy
-to trust the absolute ns (the ratios stay fair regardless). Quote a cross-logger
-ratio only from this mode with a stable baseline, never from a single sequential
-run.
+Each round times every contender in the selected suite **back-to-back** and rotates the start position, so drift hits them equally and cancels in the **paired per-round ratio**. The default suite compares pino, lean, prepared, and the full-envelope record sink; `BENCH_AB_SUITE=disabled` and `BENCH_AB_SUITE=enqueue` are used by the CI gate. The report prints per-contender ns/op plus the median ratio with its min/max spread, and warns when the baseline spread exceeds 25% — the signal that the machine is too noisy to trust the absolute ns (the ratios stay fair regardless). Quote a cross-logger ratio only from this mode with a stable baseline, never from a single sequential run.
 
 ### Cross-machine benchmark matrix
 
-When you need to support a stronger statement such as "LoggerJS was faster than
-pino on every machine we tested," collect multiple local A/B artifacts and
-aggregate them:
+When you need to support a stronger statement such as "LoggerJS was faster than pino on every machine we tested," collect multiple local A/B artifacts and aggregate them:
 
 ```bash
 pnpm build
@@ -2648,22 +2455,11 @@ pnpm bench:matrix -- --runs=5 --rounds=120 --label="$(hostname)-node22"
 pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 ```
 
-`pnpm bench:matrix` wraps the `BENCH_AB=1 BENCH_JSON=1` harness, runs it several
-times, records CPU/OS/Node/dependency/Git metadata, and writes JSON plus
-Markdown artifacts under `benchmarks/matrix/` by default. That directory is
-ignored because it is local evidence. Commit only an intentionally curated
-aggregate such as [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md). The checked-in
-matrix is the evidence file to cite when making cross-machine performance
-statements.
+`pnpm bench:matrix` wraps the `BENCH_AB=1 BENCH_JSON=1` harness, runs it several times, records CPU/OS/Node/dependency/Git metadata, and writes JSON plus Markdown artifacts under `benchmarks/matrix/` by default. That directory is ignored because it is local evidence. Commit only an intentionally curated aggregate such as [BENCHMARK-MATRIX.md](BENCHMARK-MATRIX.md). The checked-in matrix is the evidence file to cite when making cross-machine performance statements.
 
-For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions
-workflow `Benchmark Matrix`. It collects Linux x64 rows for Node 20.19.0, 22,
-and 24, then uploads an aggregate Markdown artifact for review. Commit the
-aggregate only after verifying the JSON artifacts and runner metadata.
+For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions workflow `Benchmark Matrix`. It collects Linux x64 rows for Node 20.19.0, 22, and 24, then uploads an aggregate Markdown artifact for review. Commit the aggregate only after verifying the JSON artifacts and runner metadata.
 
-Use the matrix wording carefully: it can prove the listed
-machine/runtime/dependency combinations, not a universal result for every
-future CPU, Node/V8 version, or pino release.
+Use the matrix wording carefully: it can prove the listed machine/runtime/dependency combinations, not a universal result for every future CPU, Node/V8 version, or pino release.
 
 ## Node Scenarios
 
@@ -2679,22 +2475,13 @@ future CPU, Node/V8 version, or pino release.
 
 ## Competitor Comparison
 
-The full-path scenarios log one structured info call per iteration and hand the
-serialized line to a discarding sink, so they compare pipeline plus
-serialization without terminal or filesystem I/O noise. pino, winston, and
-LogTape are dev dependencies pinned in the root lockfile. The Node console
-scenario uses a real `Console` instance backed by a discarding stream.
+The full-path scenarios log one structured info call per iteration and hand the serialized line to a discarding sink, so they compare pipeline plus serialization without terminal or filesystem I/O noise. pino, winston, and LogTape are dev dependencies pinned in the root lockfile. The Node console scenario uses a real `Console` instance backed by a discarding stream.
 
-Reference machine: **Apple M1 Max (64 GB), Node v22.21.1**, pino 10.3.1,
-winston 3.19.0, LogTape 2.1.3. The loggerjs-vs-pino rows come from the
-drift-canceling paired A/B harness (`BENCH_AB`, 22 runs x 120 rounds); the
-broader landscape is a single `BENCH_ITERATIONS=1000000` sequential run.
+Reference machine: **Apple M1 Max (64 GB), Node v22.21.1**, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The loggerjs-vs-pino rows come from the drift-canceling paired A/B harness (`BENCH_AB`, 22 runs x 120 rounds); the broader landscape is a single `BENCH_ITERATIONS=1000000` sequential run.
 
 ### Cross-logger comparison (paired A/B — the trustworthy method)
 
-Each round times pino, lean, and prepared back-to-back, so CPU frequency and
-core scheduling hit them equally and cancel in the ratio (see the `BENCH_AB`
-note above). Medians over 22 runs:
+Each round times pino, lean, and prepared back-to-back, so CPU frequency and core scheduling hit them equally and cancel in the ratio (see the `BENCH_AB` note above). Medians over 22 runs:
 
 | Path | ns/op | Throughput vs pino | Paired latency ratio |
 | --- | ---: | --- | --- |
@@ -2702,24 +2489,13 @@ note above). Medians over 22 runs:
 | loggerjs lean record sink | 242 | **1.19x** | 0.84 (range 0.82-0.87) |
 | loggerjs prepared lean record sink | 224 | **1.28x** | 0.78 |
 
-On this machine loggerjs lean and prepared are **faster than pino** for
-equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02
-across all 22 runs, and held even on rounds where a GC pause pushed the absolute
-spread past 80%. The prepared encoder is ~8% faster than plain lean.
+On this machine loggerjs lean and prepared are **faster than pino** for equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02 across all 22 runs, and held even on rounds where a GC pause pushed the absolute spread past 80%. The prepared encoder is ~8% faster than plain lean.
 
-**This ranking is environment-dependent.** pino and loggerjs both use hand-tuned
-JSON hot paths, and small CPU, scheduler, and Node/V8 differences can change
-which one wins. The table above is an empirical result for the listed reference
-machine, not a mechanism claim or a universal ranking. Always reproduce on your
-own hardware: `BENCH_AB=1 pnpm bench:node`, then add durable rows with
-`pnpm bench:matrix`.
+**This ranking is environment-dependent.** pino and loggerjs both use hand-tuned JSON hot paths, and small CPU, scheduler, and Node/V8 differences can change which one wins. The table above is an empirical result for the listed reference machine, not a mechanism claim or a universal ranking. Always reproduce on your own hardware: `BENCH_AB=1 pnpm bench:node`, then add durable rows with `pnpm bench:matrix`.
 
 ### Sequential suite (single 1,000,000-iteration run, same machine)
 
-Absolute per-scenario throughput. Cross-logger ratios here are **not** reliable
-(each logger is timed at a different point in the run) — use the A/B table above
-for loggerjs-vs-pino. This table is for the order-of-magnitude landscape and the
-codec paths.
+Absolute per-scenario throughput. Cross-logger ratios here are **not** reliable (each logger is timed at a different point in the run) — use the A/B table above for loggerjs-vs-pino. This table is for the order-of-magnitude landscape and the codec paths.
 
 | Scenario | ns/op |
 | --- | ---: |
@@ -2735,36 +2511,17 @@ codec paths.
 | winston json noop sink | 2,726 |
 | logtape json lines noop sink | 6,584 |
 
-All loggerjs and pino full-path loggers carry the same base fields
-(`service`, `env`). The lean sink uses
-`fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`;
-the prepared lean sink wraps it with `createPreparedRecordEncoder(codec)` to
-reuse codec-owned logger/tags fragments without moving serialization into the
-logger; the full-envelope sink additionally emits `id`, `seq`, and `levelName`.
-The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate`
-(default 60 rounds x 5000 ops per contender). The gate covers disabled-level
-logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope
-record sinks.
+All loggerjs and pino full-path loggers carry the same base fields (`service`, `env`). The lean sink uses `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`; the prepared lean sink wraps it with `createPreparedRecordEncoder(codec)` to reuse codec-owned logger/tags fragments without moving serialization into the logger; the full-envelope sink additionally emits `id`, `seq`, and `levelName`. The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate` (default 60 rounds x 5000 ops per contender). The gate covers disabled-level logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope record sinks.
 
 How to read these numbers:
 
 - Disabled-level logging is at parity with pino (both single-digit ns).
-- For equivalent lean output, loggerjs is **faster than pino on the M1 Max
-  reference machine** (paired A/B, lean 1.19x / prepared 1.28x) — but the
-  ranking is CPU/V8-dependent, so treat it as "in pino's class, machine-
-  dependent winner," not a universal claim. The prepared encoder adds ~8%.
-- The full-envelope path costs ~13% more than lean to carry `id`, `seq`, and
-  `levelName`; choose the lean envelope when downstream does not need them.
-- loggerjs is roughly an order of magnitude faster than winston (~10x) and
-  LogTape (~24x), and ~3x faster than Node console; these multiples swing with
-  system load, so treat them as approximate.
-- Each scenario is warmed with a quarter of its measured iterations. A fixed,
-  small warmup (for example 10k iterations) leaves some loggers un-optimized
-  by the JIT and can inflate their numbers severalfold, so treat cross-logger
-  comparisons as invalid unless warmup is proportionate.
+- For equivalent lean output, loggerjs is **faster than pino on the M1 Max reference machine** (paired A/B, lean 1.19x / prepared 1.28x) — but the ranking is CPU/V8-dependent, so treat it as "in pino's class, machine- dependent winner," not a universal claim. The prepared encoder adds ~8%.
+- The full-envelope path costs ~13% more than lean to carry `id`, `seq`, and `levelName`; choose the lean envelope when downstream does not need them.
+- loggerjs is roughly an order of magnitude faster than winston (~10x) and LogTape (~24x), and ~3x faster than Node console; these multiples swing with system load, so treat them as approximate.
+- Each scenario is warmed with a quarter of its measured iterations. A fixed, small warmup (for example 10k iterations) leaves some loggers un-optimized by the JIT and can inflate their numbers severalfold, so treat cross-logger comparisons as invalid unless warmup is proportionate.
 
-Re-run `pnpm bench:node` after hot-path changes and update this snapshot when
-the numbers move materially.
+Re-run `pnpm bench:node` after hot-path changes and update this snapshot when the numbers move materially.
 
 Tune iteration counts with:
 
@@ -2776,8 +2533,7 @@ BENCH_BROWSER_IDB_ITERATIONS=5000 pnpm bench:browser
 
 ## Browser Scenarios
 
-`pnpm bench:browser` runs in a local headless Chrome and measures browser-facing
-paths from the built `dist` packages:
+`pnpm bench:browser` runs in a local headless Chrome and measures browser-facing paths from the built `dist` packages:
 
 - Enabled browser logger with no transports.
 - Browser HTTP transport enqueue with a no-op `fetchFn`.
@@ -2786,13 +2542,7 @@ paths from the built `dist` packages:
 - IndexedDB transport flush of a persisted batch.
 - IndexedDB HTTP offline queue enqueue.
 
-The IndexedDB scenarios use a separate iteration count because they exercise
-real browser storage I/O. Tune it with `BENCH_BROWSER_IDB_ITERATIONS`; the
-default is intentionally smaller than `BENCH_BROWSER_ITERATIONS` so routine
-browser benchmark runs remain fast. Browser storage numbers are sensitive to
-Chrome version, profile state, device storage, private browsing policy, quota,
-and Storage Buckets support, so cite them only with the measured browser and
-hardware context.
+The IndexedDB scenarios use a separate iteration count because they exercise real browser storage I/O. Tune it with `BENCH_BROWSER_IDB_ITERATIONS`; the default is intentionally smaller than `BENCH_BROWSER_ITERATIONS` so routine browser benchmark runs remain fast. Browser storage numbers are sensitive to Chrome version, profile state, device storage, private browsing policy, quota, and Storage Buckets support, so cite them only with the measured browser and hardware context.
 
 ## Size Budgets
 
@@ -2808,15 +2558,9 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/BENCHMARK-MATRIX.md
 
 Last updated: 2026-06-18
 
-This table aggregates artifacts produced by `pnpm bench:matrix`.
-Ratios are paired per-round latency medians from the interleaved A/B harness,
-not one-off sequential-run ratios. A ratio below `1.00x` means the LoggerJS
-path had lower latency than pino on that machine; the percentage in parentheses
-is LoggerJS throughput relative to pino.
+This table aggregates artifacts produced by `pnpm bench:matrix`. Ratios are paired per-round latency medians from the interleaved A/B harness, not one-off sequential-run ratios. A ratio below `1.00x` means the LoggerJS path had lower latency than pino on that machine; the percentage in parentheses is LoggerJS throughput relative to pino.
 
-The two rows disagree: LoggerJS is faster on the M1 Max and pino is faster on
-the M4 Pro. The ranking is CPU/V8-dependent, so the matrix does not support a
-universal "faster than pino" claim.
+The two rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The ranking is CPU/V8-dependent, so the matrix does not support a universal "faster than pino" claim.
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
@@ -2837,20 +2581,13 @@ universal "faster than pino" claim.
 | At least one non-Apple-Silicon runtime | Missing | darwin/arm64 |
 | At least two Node major versions | Missing | 22 |
 
-Both rows are Apple Silicon on Node 22, so neither requirement is covered yet.
-Within that one OS/arch/Node major, changing only the CPU (M1 Max to M4 Pro)
-flips the result. Until non-Apple and second-Node-major rows exist, describe
-these numbers as reference-machine results.
+Both rows are Apple Silicon on Node 22, so neither requirement is covered yet. Within that one OS/arch/Node major, changing only the CPU (M1 Max to M4 Pro) flips the result. Until non-Apple and second-Node-major rows exist, describe these numbers as reference-machine results.
 
 Notes:
 
-- The matrix proves only the listed machine/runtime combinations. Do not turn
-  it into a universal "always faster than pino" claim.
-- Keep README/BENCHMARKS wording scoped to the covered rows. If either evidence
-  requirement above is missing, describe the numbers as reference-machine
-  results.
-- A `*` after the LoggerJS version means the artifact was captured from a
-  working tree with local changes.
+- The matrix proves only the listed machine/runtime combinations. Do not turn it into a universal "always faster than pino" claim.
+- Keep README/BENCHMARKS wording scoped to the covered rows. If either evidence requirement above is missing, describe the numbers as reference-machine results.
+- A `*` after the LoggerJS version means the artifact was captured from a working tree with local changes.
 - Reproduce a row with:
 
 ```bash
@@ -2860,25 +2597,19 @@ pnpm bench:matrix -- --runs=5 --rounds=120 --label="<machine-node>"
 
 ## Adding Rows
 
-Per-machine JSON artifacts are written to the gitignored `benchmarks/matrix/`
-directory. To aggregate rows from several machines, copy their artifacts into
-that directory and run:
+Per-machine JSON artifacts are written to the gitignored `benchmarks/matrix/` directory. To aggregate rows from several machines, copy their artifacts into that directory and run:
 
 ```bash
 pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 ```
 
-For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions
-workflow:
+For non-Apple-Silicon and multi-Node evidence, run the manual GitHub Actions workflow:
 
 ```bash
 gh workflow run benchmark-matrix.yml -f runs=5 -f rounds=120 -f batch=5000 -f warmup=100000
 ```
 
-Download the `benchmark-matrix-aggregate` artifact, review the generated
-`benchmark-matrix-ci.md`, and merge its rows into this file only if they come
-from the intended machine/runtime combinations. Every row must come from a
-`pnpm bench:matrix` artifact; do not type in numbers by hand.
+Download the `benchmark-matrix-aggregate` artifact, review the generated `benchmark-matrix-ci.md`, and merge its rows into this file only if they come from the intended machine/runtime combinations. Every row must come from a `pnpm bench:matrix` artifact; do not type in numbers by hand.
 
 ---
 
@@ -2888,17 +2619,13 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/COMPARISON.md
 
 # LoggerJS Compared With Other JavaScript Loggers
 
-This page compares LoggerJS with common JavaScript logging libraries. It
-describes what the packages ship today, not planned features.
+This page compares LoggerJS with common JavaScript logging libraries. It describes what the packages ship today, not planned features.
 
 ## Scope
 
-The comparison uses first-party behavior unless a cell explicitly says
-"ecosystem". Sources were checked on 2026-06-12:
+The comparison uses first-party behavior unless a cell explicitly says "ecosystem". Sources were checked on 2026-06-12:
 
-- LoggerJS repository docs: [README](https://github.com/jskits/loggerjs/blob/main/README.md), [Concepts](CONCEPTS.md),
-  [Transports](TRANSPORTS.md), [Integrations](INTEGRATIONS.md),
-  [Processors](PROCESSORS.md), [Codecs](CODECS.md), [Benchmarks](BENCHMARKS.md).
+- LoggerJS repository docs: [README](https://github.com/jskits/loggerjs/blob/main/README.md), [Concepts](CONCEPTS.md), [Transports](TRANSPORTS.md), [Integrations](INTEGRATIONS.md), [Processors](PROCESSORS.md), [Codecs](CODECS.md), [Benchmarks](BENCHMARKS.md).
 - Pino official docs: <https://getpino.io/>,
   <https://github.com/pinojs/pino/blob/main/docs/api.md>,
   <https://github.com/pinojs/pino/blob/main/docs/transports.md>,
@@ -2913,33 +2640,17 @@ The comparison uses first-party behavior unless a cell explicitly says
   <https://github.com/pimterry/loglevel>, <https://github.com/debug-js/debug>,
   <https://github.com/unjs/consola>, <https://tslog.js.org/>.
 
-The benchmark numbers below are only for the scenarios in
-[BENCHMARKS.md](BENCHMARKS.md). They do not claim universal superiority across
-all sinks, runtimes, payload shapes, or third-party transports.
+The benchmark numbers below are only for the scenarios in [BENCHMARKS.md](BENCHMARKS.md). They do not claim universal superiority across all sinks, runtimes, payload shapes, or third-party transports.
 
 ## Short Answer
 
-LoggerJS is best when the logging problem spans browser and server collection:
-automatic integrations, structured middleware, reliable transport delivery,
-offline browser persistence, codec choice per destination, and vendor/DB/OTLP
-delivery from one mental model. Its most defensible niche is **vendor-neutral,
-self-hosted delivery** — logs go to destinations you own (HTTP, files, your DB,
-Loki/Elasticsearch, OTLP), from a zero-dependency core that runs under strict
-CSP, on edge/Workers, and offline — where a Node-only logger or a managed APM
-SaaS is a poorer fit.
+LoggerJS is best when the logging problem spans browser and server collection: automatic integrations, structured middleware, reliable transport delivery, offline browser persistence, codec choice per destination, and vendor/DB/OTLP delivery from one mental model. Its most defensible niche is **vendor-neutral, self-hosted delivery** — logs go to destinations you own (HTTP, files, your DB, Loki/Elasticsearch, OTLP), from a zero-dependency core that runs under strict CSP, on edge/Workers, and offline — where a Node-only logger or a managed APM SaaS is a poorer fit.
 
-Pino is still the mature default when the main requirement is a minimal,
-Node-first JSON logger with a large ecosystem. On the current M1 Max reference
-benchmark, LoggerJS's equivalent lean/prepared paths are faster, but the ranking
-is CPU/Node-V8 dependent. Winston is still the mature, flexible Node transport
-and format ecosystem. LogTape is the closest architectural peer for
-library-first usage and multi-runtime categories. Bunyan is a stable legacy JSON
-logger for Node services.
+Pino is still the mature default when the main requirement is a minimal, Node-first JSON logger with a large ecosystem. On the current M1 Max reference benchmark, LoggerJS's equivalent lean/prepared paths are faster, but the ranking is CPU/Node-V8 dependent. Winston is still the mature, flexible Node transport and format ecosystem. LogTape is the closest architectural peer for library-first usage and multi-runtime categories. Bunyan is a stable legacy JSON logger for Node services.
 
 ## At A Glance
 
-Legend: ✅ first-party fit, 🧩 ecosystem fit, ⚠️ partial or depends on the chosen
-configuration, ❌ no checked first-party equivalent, 📊 measured in this repo.
+Legend: ✅ first-party fit, 🧩 ecosystem fit, ⚠️ partial or depends on the chosen configuration, ❌ no checked first-party equivalent, 📊 measured in this repo.
 
 | Capability                      | LoggerJS                       | Pino                                                | Winston                  | LogTape               | Bunyan                |
 | ------------------------------- | ------------------------------ | --------------------------------------------------- | ------------------------ | --------------------- | --------------------- |
@@ -2978,11 +2689,7 @@ configuration, ❌ no checked first-party equivalent, 📊 measured in this repo
 
 ## Performance Snapshot
 
-Current measured snapshot from [BENCHMARKS.md](BENCHMARKS.md) and the
-checked-in [benchmark matrix](BENCHMARK-MATRIX.md) — reference machine Apple M1
-Max (64 GB), Node v22.21.1, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The
-loggerjs-vs-pino rows are the drift-canceling paired A/B (22 runs); competitor
-rows are the sequential suite:
+Current measured snapshot from [BENCHMARKS.md](BENCHMARKS.md) and the checked-in [benchmark matrix](BENCHMARK-MATRIX.md) — reference machine Apple M1 Max (64 GB), Node v22.21.1, pino 10.3.1, winston 3.19.0, LogTape 2.1.3. The loggerjs-vs-pino rows are the drift-canceling paired A/B (22 runs); competitor rows are the sequential suite:
 
 | Scenario                              | ns/op | Read                                                         |
 | ------------------------------------- | ----: | ------------------------------------------------------------ |
@@ -2998,99 +2705,52 @@ rows are the sequential suite:
 
 How to read these numbers:
 
-- On the M1 Max reference machine LoggerJS lean and prepared are **faster than
-  Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across
-  22 runs). This is **not** a universal "beats Pino" claim: the ranking is
-  CPU/Node-V8 dependent, and the docs treat the difference as an empirical
-  benchmark result rather than a proven mechanism. Reproduce on your hardware
-  with `BENCH_AB=1 pnpm bench:node` and use `pnpm bench:matrix` for durable
-  cross-machine evidence.
-- LoggerJS reaches Pino's class on equivalent output **without** giving up its
-  record pipeline — that pipeline is a deliberate design, not accidental
-  overhead.
-- The record pipeline buys first-class middleware, integrations, multi-transport
-  routing, codec selection, and browser/server symmetry.
-- These numbers do not compare every possible Pino transport, Winston format
-  chain, LogTape sink, or browser scenario.
+- On the M1 Max reference machine LoggerJS lean and prepared are **faster than Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across 22 runs). This is **not** a universal "beats Pino" claim: the ranking is CPU/Node-V8 dependent, and the docs treat the difference as an empirical benchmark result rather than a proven mechanism. Reproduce on your hardware with `BENCH_AB=1 pnpm bench:node` and use `pnpm bench:matrix` for durable cross-machine evidence.
+- LoggerJS reaches Pino's class on equivalent output **without** giving up its record pipeline — that pipeline is a deliberate design, not accidental overhead.
+- The record pipeline buys first-class middleware, integrations, multi-transport routing, codec selection, and browser/server symmetry.
+- These numbers do not compare every possible Pino transport, Winston format chain, LogTape sink, or browser scenario.
 
 ## Where LoggerJS Is Stronger
 
 ### Browser and Isomorphic Applications
 
-LoggerJS has first-party browser transports and integrations: console capture,
-script/resource errors, fetch/XHR failures, Web Vitals, page lifecycle flushing,
-router events, user actions, WebSocket lifecycle, service worker lifecycle,
-ReportingObserver, IndexedDB persistence, offline HTTP queues, and ZIP export.
+LoggerJS has first-party browser transports and integrations: console capture, script/resource errors, fetch/XHR failures, Web Vitals, page lifecycle flushing, router events, user actions, WebSocket lifecycle, service worker lifecycle, ReportingObserver, IndexedDB persistence, offline HTTP queues, and ZIP export.
 
-This is the biggest practical difference from Pino, Winston, and Bunyan. Those
-libraries can be used in browsers to varying degrees, but the checked docs do
-not show a first-party automatic browser collection and local persistence suite
-equivalent to LoggerJS.
+This is the biggest practical difference from Pino, Winston, and Bunyan. Those libraries can be used in browsers to varying degrees, but the checked docs do not show a first-party automatic browser collection and local persistence suite equivalent to LoggerJS.
 
 ### Transport-Owned Codecs
 
-LoggerJS keeps structured values raw until the transport boundary. Serialization
-is a transport concern, so stdout can use NDJSON, browser HTTP can use safe JSON
-or a lean fast codec, OTLP can use an OTLP shape, and a custom transport can use
-MessagePack or a domain-specific projection.
+LoggerJS keeps structured values raw until the transport boundary. Serialization is a transport concern, so stdout can use NDJSON, browser HTTP can use safe JSON or a lean fast codec, OTLP can use an OTLP shape, and a custom transport can use MessagePack or a domain-specific projection.
 
-This is different from the common logger-level formatter model. It makes
-multi-destination logging less surprising because each destination owns its wire
-contract.
+This is different from the common logger-level formatter model. It makes multi-destination logging less surprising because each destination owns its wire contract.
 
 ### Built-In Reliability Primitives
 
-LoggerJS ships common delivery controls as reusable pieces: batch transport,
-retry/backoff, byte limits, circuit breaker behavior, flush/close lifecycle,
-browser `sendBeacon`, IndexedDB offline queues, and transport stats where
-applicable. The goal is that writing a remote transport means implementing the
-destination, not rewriting the reliability layer.
+LoggerJS ships common delivery controls as reusable pieces: batch transport, retry/backoff, byte limits, circuit breaker behavior, flush/close lifecycle, browser `sendBeacon`, IndexedDB offline queues, and transport stats where applicable. The goal is that writing a remote transport means implementing the destination, not rewriting the reliability layer.
 
 ### Automatic Collection as a First-Class Concept
 
-LoggerJS integrations are explicit, reversible, and routed through the same
-pipeline as manual logs. Captured logs still pass through middleware,
-processors, routing, codecs, and transports. This matters for privacy because
-redaction and sampling stay centralized.
+LoggerJS integrations are explicit, reversible, and routed through the same pipeline as manual logs. Captured logs still pass through middleware, processors, routing, codecs, and transports. This matters for privacy because redaction and sampling stay centralized.
 
 ## Where Another Logger May Be Better
 
 ### Choose Pino When Minimal Node JSON Logging Is The Main Requirement
 
-Pino remains the reference point for low-overhead Node JSON logging and has a
-mature ecosystem for Node web services. Current LoggerJS paired A/B numbers put
-the lean/prepared equivalent-output paths ahead on the M1 Max reference machine,
-but that ranking is CPU/Node-V8 dependent. If the application only needs
-app-authored server logs to stdout or a Pino transport, Pino is still the
-simpler and more battle-tested choice.
+Pino remains the reference point for low-overhead Node JSON logging and has a mature ecosystem for Node web services. Current LoggerJS paired A/B numbers put the lean/prepared equivalent-output paths ahead on the M1 Max reference machine, but that ranking is CPU/Node-V8 dependent. If the application only needs app-authored server logs to stdout or a Pino transport, Pino is still the simpler and more battle-tested choice.
 
 ### Choose Winston When You Need Its Mature Transport/Format Ecosystem
 
-Winston is broad, stable, and flexible. Its `format` chain and transport model
-are familiar in many Node applications, and its README documents exception
-handling, rejection handling, profiling, querying, streaming, custom formats,
-and custom transports. Existing Winston deployments should migrate only when
-LoggerJS's isomorphic collection, middleware model, or measured performance
-benefit matters enough to justify the change.
+Winston is broad, stable, and flexible. Its `format` chain and transport model are familiar in many Node applications, and its README documents exception handling, rejection handling, profiling, querying, streaming, custom formats, and custom transports. Existing Winston deployments should migrate only when LoggerJS's isomorphic collection, middleware model, or measured performance benefit matters enough to justify the change.
 
 ### Choose LogTape For Multi-Runtime Library-First Logging
 
-LogTape is the closest conceptual peer to LoggerJS for library authors. Its
-official package page emphasizes zero dependencies, library-first design,
-structured logging, hierarchical categories, runtime diversity, redaction, and
-framework integration packages. If Deno/Bun/edge parity and zero dependencies in
-the core package are the top priority, LogTape is a strong fit.
+LogTape is the closest conceptual peer to LoggerJS for library authors. Its official package page emphasizes zero dependencies, library-first design, structured logging, hierarchical categories, runtime diversity, redaction, and framework integration packages. If Deno/Bun/edge parity and zero dependencies in the core package are the top priority, LogTape is a strong fit.
 
-Choose LoggerJS over LogTape when first-party browser telemetry capture,
-IndexedDB/offline workflows, Node process/client/server integrations,
-transport-owned codecs, and current pino-relative Node benchmarks are more
-important.
+Choose LoggerJS over LogTape when first-party browser telemetry capture, IndexedDB/offline workflows, Node process/client/server integrations, transport-owned codecs, and current pino-relative Node benchmarks are more important.
 
 ### Choose Bunyan For Legacy Node JSON Compatibility
 
-Bunyan remains relevant when an existing service already emits Bunyan-shaped
-JSON or relies on the Bunyan CLI/stream ecosystem. For new browser/server
-applications, LoggerJS covers a much wider built-in surface.
+Bunyan remains relevant when an existing service already emits Bunyan-shaped JSON or relies on the Bunyan CLI/stream ecosystem. For new browser/server applications, LoggerJS covers a much wider built-in surface.
 
 ## Other Common Tools
 
@@ -3106,33 +2766,20 @@ applications, LoggerJS covers a much wider built-in surface.
 
 LoggerJS intentionally differs from Pino and Winston in a few places:
 
-- LoggerJS takes `(message, data)` for normal logs; Pino commonly uses
-  `(object, message)`.
-- Stable metadata is split between `tags`, `bindings`, and ambient context
-  instead of one generic `defaultMeta` or `base` object.
-- Data shaping belongs in middleware/processors; serialization belongs in
-  codecs attached to transports.
-- Automatic capture is opt-in. Adding `captureConsoleIntegration()` or
-  `captureFetchIntegration()` is explicit and reversible.
+- LoggerJS takes `(message, data)` for normal logs; Pino commonly uses `(object, message)`.
+- Stable metadata is split between `tags`, `bindings`, and ambient context instead of one generic `defaultMeta` or `base` object.
+- Data shaping belongs in middleware/processors; serialization belongs in codecs attached to transports.
+- Automatic capture is opt-in. Adding `captureConsoleIntegration()` or `captureFetchIntegration()` is explicit and reversible.
 
 See [MIGRATION.md](MIGRATION.md) for examples.
 
 ## Limits of This Comparison
 
-- LoggerJS is not universally faster than Pino. The direct Node JSON ranking
-  is CPU and Node/V8 dependent; the [benchmark matrix](BENCHMARK-MATRIX.md)
-  lists the exact machines tested, and pino wins on some of them.
-- Runtime support beyond Node.js and browsers is covered by smoke tests of the
-  packed packages on Bun, Deno, and workerd/Miniflare, not by a full test suite
-  per runtime.
-- LoggerJS vendor transports speak the wire protocol of common destinations.
-  Mature vendor SDKs and ecosystem plugins may expose deeper platform-specific
-  features.
-- "No checked first-party equivalent" means no equivalent was found in the
-  official docs listed under [Scope](#scope) for Pino, Winston, LogTape, or
-  Bunyan. Other packages may offer similar browser collection.
-- Benchmark numbers are a snapshot. Re-run `pnpm bench:node` on your own
-  hardware before relying on them.
+- LoggerJS is not universally faster than Pino. The direct Node JSON ranking is CPU and Node/V8 dependent; the [benchmark matrix](BENCHMARK-MATRIX.md) lists the exact machines tested, and pino wins on some of them.
+- Runtime support beyond Node.js and browsers is covered by smoke tests of the packed packages on Bun, Deno, and workerd/Miniflare, not by a full test suite per runtime.
+- LoggerJS vendor transports speak the wire protocol of common destinations. Mature vendor SDKs and ecosystem plugins may expose deeper platform-specific features.
+- "No checked first-party equivalent" means no equivalent was found in the official docs listed under [Scope](#scope) for Pino, Winston, LogTape, or Bunyan. Other packages may offer similar browser collection.
+- Benchmark numbers are a snapshot. Re-run `pnpm bench:node` on your own hardware before relying on them.
 
 ---
 
@@ -3173,9 +2820,7 @@ Key differences:
 - pino `serializers` become processors (`normalizeErrorProcessor`, `redactProcessor`, custom `enrichProcessor`) — applied to structured data before serialization.
 - pino redaction maps to `redactProcessor({ paths, censor, remove })`; `replacement` is the LoggerJS-native name for `censor`, and exact key/path matching is preferred on hot loggers.
 - pino `transport`/`destination` becomes a transport: `stdoutTransport()`, `fileTransport()`, `nodeHttpTransport()`.
-- pino-pretty's role is `prettyStdoutTransport()` / `prettyStderrTransport()`
-  for terminals, or `prettyConsoleTransport()` for browser DevTools. The core
-  `consoleTransport()` remains a basic local console sink.
+- pino-pretty's role is `prettyStdoutTransport()` / `prettyStderrTransport()` for terminals, or `prettyConsoleTransport()` for browser DevTools. The core `consoleTransport()` remains a basic local console sink.
 - For Pino-shaped NDJSON, use `pinoCompatCodec()` from `@loggerjs/codecs`. Root data merging is opt-in (`mergeData: true`) and reserved key collisions are nested by default instead of overwriting `time`, `level`, `msg`, `pid`, `hostname`, or `err`.
 - For the fastest LoggerJS lean envelope, use `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`. Record-aware custom transports can wrap it with `createPreparedRecordEncoder(codec)` to reuse stable logger/tag fragments. On the M1 Max reference machine the plain lean path measures ~1.19× pino and the prepared lean path ~1.28× (paired A/B; ranking vs pino is CPU/V8-dependent — reproduce with `BENCH_AB`, see [BENCHMARKS.md](BENCHMARKS.md)); on top of that throughput you get middleware, integrations, multi-transport fan-out, and an isomorphic browser story.
 
@@ -3329,26 +2974,15 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/API-STABILITY.md
 
 # API Stability
 
-LoggerJS is still pre-1.0. The checked-in `api-reports/` files describe every
-exported TypeScript declaration, but they are not a promise that every exported
-symbol is already frozen for v1.
+LoggerJS is still pre-1.0. The checked-in `api-reports/` files describe every exported TypeScript declaration, but they are not a promise that every exported symbol is already frozen for v1.
 
-This page is the human contract. The machine-readable classification lives in
-[`docs/api-stability.policy.json`](api-stability.policy.json), and
-`pnpm verify:api-stability` fails when a package export is missing from that
-policy.
+This page is the human contract. The machine-readable classification lives in [`docs/api-stability.policy.json`](api-stability.policy.json), and `pnpm verify:api-stability` fails when a package export is missing from that policy.
 
 ## Current Policy
 
-Before v1, the project is narrowing the compatibility promise instead of
-freezing the whole repository. The stable set is intentionally limited to the
-core logger model, core pipeline contracts, primary browser and Node delivery
-paths, pretty output, processors, and codecs.
+Before v1, the project is narrowing the compatibility promise instead of freezing the whole repository. The stable set is intentionally limited to the core logger model, core pipeline contracts, primary browser and Node delivery paths, pretty output, processors, and codecs.
 
-Everything else may still be public, tested, and useful, but it is not all part
-of the v1 compatibility promise yet. In particular, vendor, observability, and
-database packages remain experimental until they have more real-world usage and
-failure-mode validation.
+Everything else may still be public, tested, and useful, but it is not all part of the v1 compatibility promise yet. In particular, vendor, observability, and database packages remain experimental until they have more real-world usage and failure-mode validation.
 
 ## Status Levels
 
@@ -3358,13 +2992,11 @@ failure-mode validation.
 | Compatible Public Surface | Public and tested, but minor releases before v1 may refine option names, captured fields, or runtime edge behavior with release notes. |
 | Experimental Before v1 | Public packages or subpaths that may change before v1. Use them when the current behavior fits, but do not treat them as frozen compatibility contracts. |
 
-Internal source paths, `dist` file paths, generated bundle layout, private class
-fields, and behavior inferred only from tests are not public API in any status.
+Internal source paths, `dist` file paths, generated bundle layout, private class fields, and behavior inferred only from tests are not public API in any status.
 
 ## Stable v1 Candidate
 
-Stable exports are tracked in `api-stability.policy.json`. The current stable
-packages and entry families are:
+Stable exports are tracked in `api-stability.policy.json`. The current stable packages and entry families are:
 
 | Package | Stable surface |
 | --- | --- |
@@ -3377,49 +3009,27 @@ packages and entry families are:
 
 Stable semantics include:
 
-- `createLogger(options)`, `getLogger(category)`, and `configure(...)` for
-  application and library-safe logging.
-- Logger instance methods: `trace`, `debug`, `info`, `warn`, `error`, `fatal`,
-  `log`, `capture`, `event`, `child`, `withTags`, `withType`, `setLevel`,
-  `getLevel`, `isEnabled`, `isLevelEnabled`, `addTransport`, `addProcessor`,
-  `addIntegration`, `ready`, `flush`, `flushSync`, and `close`.
-- Level names and numeric values: `trace=10`, `debug=20`, `info=30`,
-  `warn=40`, `error=50`, `fatal=60`, and `silent`.
-- The pipeline interfaces for `Middleware`, `Processor`, `Transport`,
-  `Integration`, and `Codec`, including `TransportContext.toEvent(record)`
-  memoized projection.
+- `createLogger(options)`, `getLogger(category)`, and `configure(...)` for application and library-safe logging.
+- Logger instance methods: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `log`, `capture`, `event`, `child`, `withTags`, `withType`, `setLevel`, `getLevel`, `isEnabled`, `isLevelEnabled`, `addTransport`, `addProcessor`, `addIntegration`, `ready`, `flush`, `flushSync`, and `close`.
+- Level names and numeric values: `trace=10`, `debug=20`, `info=30`, `warn=40`, `error=50`, `fatal=60`, and `silent`.
+- The pipeline interfaces for `Middleware`, `Processor`, `Transport`, `Integration`, and `Codec`, including `TransportContext.toEvent(record)` memoized projection.
 - Disabled levels return before record allocation and lazy message evaluation.
-- Middleware, processors, codecs, integrations, and transports are
-  error-isolated from application code.
-- Serialization remains transport-owned; middleware and processors keep values
-  structured.
+- Middleware, processors, codecs, integrations, and transports are error-isolated from application code.
+- Serialization remains transport-owned; middleware and processors keep values structured.
 
 ## Compatible Public Surface
 
-Compatible exports stay documented and tested, but they are not frozen enough to
-be stable v1 candidates yet. Current compatible areas include:
+Compatible exports stay documented and tested, but they are not frozen enough to be stable v1 candidates yet. Current compatible areas include:
 
-- Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are
-  compatible convenience aggregators because they re-export both stable and
-  compatible components. Use the stable subpaths above when you need a v1
-  candidate compatibility boundary.
-- Browser secondary transports and collectors: BroadcastChannel, service
-  worker, WebSocket, framework errors, framework routers, generic router
-  capture, ReportingObserver, runtime host, service worker messages, user
-  actions, and WebSocket capture.
-- Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi,
-  Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method
-  wrapping, and CLI capture.
+- Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Use the stable subpaths above when you need a v1 candidate compatibility boundary.
+- Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
+- Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi, Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method wrapping, and CLI capture.
 
-The public import paths should remain available during pre-v1, but exact
-captured fields, hook coverage, and edge behavior may be refined. These are the
-right places to tighten names or reduce claims before v1 if real usage shows the
-current API is too broad.
+The public import paths should remain available during pre-v1, but exact captured fields, hook coverage, and edge behavior may be refined. These are the right places to tighten names or reduce claims before v1 if real usage shows the current API is too broad.
 
 ## Experimental Before v1
 
-These packages are public because they are useful for integration testing and
-early adopters, but they are not v1 compatibility commitments yet:
+These packages are public because they are useful for integration testing and early adopters, but they are not v1 compatibility commitments yet:
 
 | Package family | Experimental exports |
 | --- | --- |
@@ -3427,34 +3037,24 @@ early adopters, but they are not v1 compatibility commitments yet:
 | Vendor wire transports | `@loggerjs/datadog/*`, `@loggerjs/elastic/*`, `@loggerjs/loki/*`, `@loggerjs/cloudwatch/*` |
 | Database transports | `@loggerjs/database/*` |
 
-Experimental does not mean untested. It means minor releases before v1 may
-change option names, payload mapping, retry expectations, batching guidance, or
-subpath layout if design partners or live endpoints expose a better shape.
+Experimental does not mean untested. It means minor releases before v1 may change option names, payload mapping, retry expectations, batching guidance, or subpath layout if design partners or live endpoints expose a better shape.
 
-Raw vendor transports are not durable by themselves. For production delivery,
-wrap them with `batchTransport()` and `retryTransport()` or use a collector
-endpoint that owns queueing, retry, authentication, and backoff.
+Raw vendor transports are not durable by themselves. For production delivery, wrap them with `batchTransport()` and `retryTransport()` or use a collector endpoint that owns queueing, retry, authentication, and backoff.
 
 ## Change Policy
 
 For Stable v1 Candidate APIs:
 
-- No intentional removals, renames, or signature breaks before v1 without a
-  deprecation note and migration path.
-- Additive changes are allowed: new options, fields, overloads, processors,
-  transports, integrations, and subpaths.
-- Defaults that affect delivery, privacy, or performance require documentation
-  and release notes.
-- Security fixes, data-loss fixes, and vendor wire-protocol correctness fixes
-  may change edge-case behavior. Release notes must call those out.
+- No intentional removals, renames, or signature breaks before v1 without a deprecation note and migration path.
+- Additive changes are allowed: new options, fields, overloads, processors, transports, integrations, and subpaths.
+- Defaults that affect delivery, privacy, or performance require documentation and release notes.
+- Security fixes, data-loss fixes, and vendor wire-protocol correctness fixes may change edge-case behavior. Release notes must call those out.
 
 For Compatible and Experimental APIs:
 
 - Public exports stay typechecked, tested, API-reported, and documented.
-- Minor releases may adjust names, options, field shape, or exact behavior
-  before v1.
-- Breaking changes should still include release notes and migration guidance,
-  because public does not mean disposable.
+- Minor releases may adjust names, options, field shape, or exact behavior before v1.
+- Breaking changes should still include release notes and migration guidance, because public does not mean disposable.
 
 ## Adding Public API
 
@@ -3465,20 +3065,15 @@ New package exports must:
 3. Add the export to `docs/api-stability.policy.json`.
 4. Run `pnpm verify:api-stability` and `pnpm api:check`.
 
-Prefer examples and composition over new exports when an existing stable API can
-solve the use case.
+Prefer examples and composition over new exports when an existing stable API can solve the use case.
 
 ## How to Evaluate a Future Upgrade
 
 1. Read the package changelog and release notes.
-2. Check this page and `api-stability.policy.json` for the export status you
-   depend on.
-3. Run `pnpm check` in this repository if you are contributing, or your
-   application test suite if you are consuming LoggerJS.
-4. For hot paths, reproduce your relevant benchmark with `pnpm bench:node` or
-   `pnpm bench:browser`.
-5. For remote delivery, test your actual collector/vendor endpoint and monitor
-   `transport.dropped.*`, `transport.retry.*`, and queue-depth metrics.
+2. Check this page and `api-stability.policy.json` for the export status you depend on.
+3. Run `pnpm check` in this repository if you are contributing, or your application test suite if you are consuming LoggerJS.
+4. For hot paths, reproduce your relevant benchmark with `pnpm bench:node` or `pnpm bench:browser`.
+5. For remote delivery, test your actual collector/vendor endpoint and monitor `transport.dropped.*`, `transport.retry.*`, and queue-depth metrics.
 
 ---
 
@@ -3895,14 +3490,9 @@ pnpm check     # the full gate — run before pushing
 
 ## Node Version Policy
 
-- **Repository development:** use Node `>=22.13.0`. The root `package.json`
-  `engines` field and local tooling are intentionally set to this floor.
-- **Full CI gate:** runs `pnpm check` on Node 22 and 24, with releases built on
-  Node 24.
-- **Published package runtime compatibility:** packed packages are smoke-tested
-  as consumers on Node 20.19.0, 22, and 24. Node 20.19.0 is the runtime
-  compatibility floor for Node consumers; it does not lower the repo development
-  toolchain requirement.
+- **Repository development:** use Node `>=22.13.0`. The root `package.json` `engines` field and local tooling are intentionally set to this floor.
+- **Full CI gate:** runs `pnpm check` on Node 22 and 24, with releases built on Node 24.
+- **Published package runtime compatibility:** packed packages are smoke-tested as consumers on Node 20.19.0, 22, and 24. Node 20.19.0 is the runtime compatibility floor for Node consumers; it does not lower the repo development toolchain requirement.
 
 ## Repository Layout
 
@@ -4002,19 +3592,13 @@ changeset publish --tag canary
 
 ## New Component Readiness
 
-Before a release that adds a public transport or integration subpath, verify the
-change includes:
+Before a release that adds a public transport or integration subpath, verify the change includes:
 
 - stability classification in `docs/TRANSPORTS.md` or `docs/INTEGRATIONS.md`;
 - import-boundary coverage checked by `pnpm verify:component-docs`;
-- runtime validation appropriate to the component: browser E2E for browser
-  lifecycle/storage behavior, runtime smoke for edge/runtime claims,
-  Docker-backed live tests for local services, or external-provider smoke for
-  hosted vendors;
-- size-budget evidence from `pnpm size:check`, with any budget increase justified
-  in the change;
-- production docs that spell out delivery, retry, privacy, and credential
-  placement caveats.
+- runtime validation appropriate to the component: browser E2E for browser lifecycle/storage behavior, runtime smoke for edge/runtime claims, Docker-backed live tests for local services, or external-provider smoke for hosted vendors;
+- size-budget evidence from `pnpm size:check`, with any budget increase justified in the change;
+- production docs that spell out delivery, retry, privacy, and credential placement caveats.
 
 ## NPM Publishing
 

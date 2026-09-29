@@ -16,9 +16,7 @@ interface Codec<TPayload = string | Uint8Array> {
 
 - `encode` accepts single items or batches, events or records. `normalizeCodecInput()` from core projects records to events for codecs that only understand events.
 - `decode` is optional; built-in codecs implement it with `JSON.parse` for symmetric round trips of their own output.
-- `prepareRecordEncoder` is optional. Record-aware transports can call
-  `createPreparedRecordEncoder(codec)` to let the codec cache stable
-  category/tags fragments while keeping serialization owned by the transport.
+- `prepareRecordEncoder` is optional. Record-aware transports can call `createPreparedRecordEncoder(codec)` to let the codec cache stable category/tags fragments while keeping serialization owned by the transport.
 
 ## Built-in Codecs
 
@@ -105,8 +103,6 @@ Guidelines:
 
 - **Never throw out of `encode`.** Wrap risky paths and fall back to `safeJsonStringify` from core; count fallbacks with `incrementLoggerMetaCounter("codec.fallback")`. A throwing codec turns into a transport failure and, inside a batch transport, a poison batch that burns retries.
 - Use `normalizeCodecInput()` unless you deliberately implement a record fast path.
-- If you implement `prepareRecordEncoder`, its output must be byte-for-byte
-  identical to `encode(record)` for the same record and must keep the same
-  fallback behavior.
+- If you implement `prepareRecordEncoder`, its output must be byte-for-byte identical to `encode(record)` for the same record and must keep the same fallback behavior.
 - For binary formats return `Uint8Array` and set an accurate `contentType` — HTTP transports send it.
 - Implement `decode` only when symmetric round trips are part of your feature (replay, local query); it is not required for delivery.
