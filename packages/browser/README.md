@@ -125,7 +125,9 @@ const frameworkErrors = captureFrameworkErrorsIntegration({ framework: "react" }
 
 ## Subpath exports
 
-Transports — `transport-http` · `transport-indexeddb` · `transport-websocket` · `transport-service-worker` · `transport-broadcast-channel` · `offline-first-transport` · `offline-indexeddb` · `export-zip` · `payload-transforms`
+Transports — `transport-http` · `transport-indexeddb` · `transport-websocket` · `transport-service-worker` · `transport-broadcast-channel` · `offline-first-transport`
+
+Utilities — `offline-indexeddb` · `export-zip` · `payload-transforms`
 
 Integrations — `integration-console` · `integration-errors` · `integration-framework-errors` · `integration-reporting` · `integration-fetch` · `integration-xhr` · `integration-websocket` · `integration-web-vitals` · `integration-performance` · `integration-router` · `integration-framework-routers` · `integration-page-lifecycle` · `integration-user-actions` · `integration-service-worker` · `integration-runtime-host` · `integration-context`
 

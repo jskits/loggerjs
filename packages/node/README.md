@@ -111,7 +111,9 @@ await withContext({ requestId: "req_123" }, async () => {
 
 ## Subpath exports
 
-Transports — `transport-stdout` · `transport-file` · `transport-rotating-file` · `transport-http` · `transport-syslog` · `transport-worker` · `payload-transforms` · `logger-diagnostics` · `context`
+Transports — `transport-stdout` · `transport-file` · `transport-rotating-file` · `transport-http` · `transport-syslog` · `transport-worker`
+
+Utilities — `payload-transforms` · `logger-diagnostics` · `context`
 
 Integrations — `integration-process` · `integration-cli` · `integration-diagnostics` · `integration-serverless` · `integration-express` · `integration-fastify` · `integration-koa` · `integration-nest` · `integration-hapi` · `integration-fetch` · `integration-http-client` · `integration-redis` · `integration-prisma` · `integration-database` · `integration-queue` · `integration-bullmq`
 
