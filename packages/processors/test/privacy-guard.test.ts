@@ -52,6 +52,27 @@ function cleanEvent(overrides: Partial<LogEvent> = {}): LogEvent {
 }
 
 describe("privacyGuardProcessor", () => {
+  it("scans the serialized form of URL and toJSON values", () => {
+    const url = new URL("https://shop.example/checkout?email=bob@example.com");
+    const clean = new URL("https://shop.example/checkout");
+    const owner = { toJSON: () => "owner alice@example.com" };
+    const throwing = {
+      toJSON() {
+        throw new Error("cannot serialize");
+      },
+    };
+    const output = requireEvent(
+      privacyGuardProcessor()({ ...event, data: { url, clean, owner, throwing } }, context),
+    );
+    const data = output.data as Record<string, unknown>;
+
+    expect(String(data.url)).not.toContain("bob@example.com");
+    expect(String(data.owner)).not.toContain("alice@example.com");
+    expect(data.clean).toBe(clean);
+    expect(data.throwing).not.toBe(throwing);
+    expect(typeof data.throwing).toBe("string");
+  });
+
   it("redacts sensitive keys and built-in value patterns", () => {
     const onRedact = vi.fn<(path: string, reason: string) => void>();
     const processor = privacyGuardProcessor({ allowKeys: ["publicToken"], onRedact });

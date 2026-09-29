@@ -34,7 +34,7 @@
 | Export | 功能 |
 | --- | --- |
 | `redactProcessor(options)` | 按键名、精确的点路径或正则，在 data/context/tags/结构化错误中遮盖或移除值。`censor` 是 `replacement` 的兼容别名。采用写时复制，异步 transport 不会看到只脱敏了一半的对象。 |
-| `privacyGuardProcessor(options)` | 广谱 PII 清洗，带内置 patterns（email、bearer token、类似银行卡号的数字）和自定义 patterns。 |
+| `privacyGuardProcessor(options)` | 广谱 PII 清洗，带内置 patterns（email、bearer token、类似银行卡号的数字）和自定义 patterns。 带有 `toJSON()` 的值（例如 `URL`）会按其序列化后的形态扫描。 |
 | `normalizeErrorProcessor(options)` | 强制 error shape：stack 截断、cause-chain 深度限制、可枚举属性捕获。 |
 | `stackParserProcessor(options)` / `parseStack(stack)` | 把堆栈解析为结构化的帧（文件、行、列、函数）。 |
 | `schemaDevCheckProcessor(options)` | 开发期的 event 结构校验，用于发现类型化事件与实际 payload 之间的偏差。 |

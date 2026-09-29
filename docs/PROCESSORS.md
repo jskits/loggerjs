@@ -34,7 +34,7 @@ All 27 processors and middleware are supported in browser/frontend and Node.js/s
 | Export | What it does |
 | --- | --- |
 | `redactProcessor(options)` | Mask or remove values by key name, exact dot path, or regex across data/context/tags/structured errors. `censor` is a non-breaking alias for `replacement`. Copy-on-write so async transports never see half-redacted objects. |
-| `privacyGuardProcessor(options)` | Blanket PII scrubbing with built-in patterns (emails, bearer tokens, card-like digits) plus custom patterns. |
+| `privacyGuardProcessor(options)` | Blanket PII scrubbing with built-in patterns (emails, bearer tokens, card-like digits) plus custom patterns. Values with `toJSON()` (such as `URL`) are scanned in their serialized form. |
 | `normalizeErrorProcessor(options)` | Force error shape: stack truncation, cause-chain depth limits, enumerable property capture. |
 | `stackParserProcessor(options)` / `parseStack(stack)` | Parse stacks into structured frames (file, line, column, function). |
 | `schemaDevCheckProcessor(options)` | Development-only event shape validation; flags drift between typed events and actual payloads. |

@@ -14,7 +14,8 @@ const budgets = [
   ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 18_500, 4_400],
-  ["@loggerjs/processors", "packages/processors/dist/index.js", 56_000, 13_000],
+  // Scanning and redacting toJSON() values measures 55,856 raw and 13,006 gzip bytes.
+  ["@loggerjs/processors", "packages/processors/dist/index.js", 56_500, 13_200],
   ["@loggerjs/otel", "packages/otel/dist/index.js", 10_000, 3_000],
   ["@loggerjs/sentry", "packages/sentry/dist/index.js", 4_000, 1_500],
   ["@loggerjs/loki", "packages/loki/dist/index.js", 8_000, 3_000],

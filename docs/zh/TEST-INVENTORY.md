@@ -25,8 +25,8 @@ pnpm test:inventory:check
 | 指标 | 数量 |
 | --- | ---: |
 | Test files | 99 |
-| Test cases | 744 |
-| Passed | 744 |
+| Test cases | 745 |
+| Passed | 745 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -47,7 +47,7 @@ pnpm test:inventory:check
 | @loggerjs/node | 21 | 91 |
 | @loggerjs/otel | 3 | 18 |
 | @loggerjs/pretty | 3 | 27 |
-| @loggerjs/processors | 20 | 119 |
+| @loggerjs/processors | 20 | 120 |
 | @loggerjs/sentry | 1 | 12 |
 
 ## 相关链接

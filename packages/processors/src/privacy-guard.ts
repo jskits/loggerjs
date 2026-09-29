@@ -303,6 +303,22 @@ function guardValue(
   if (seen.has(value)) return { value: seen.get(value), changed: true };
   if (value instanceof Date) return { value, changed: false };
 
+  // URL, Buffer, and domain classes serialize through toJSON(); their own
+  // enumerable fields are not what codecs emit, so scan the serialized form.
+  // Keep the original object when the serialized form needs no redaction.
+  const toJSON = (value as { toJSON?: unknown }).toJSON;
+  if (typeof toJSON === "function") {
+    let serialized: unknown;
+    try {
+      serialized = toJSON.call(value, "");
+    } catch {
+      return { value: redact(path, "serialize-error", options), changed: true };
+    }
+    if (serialized === value) return { value, changed: false };
+    const guarded = guardValue(serialized, path, key, depth, options, seen);
+    return guarded.changed ? guarded : { value, changed: false };
+  }
+
   if (value instanceof Error) {
     // Guard serialized Error strings as values: safe codecs expand name/message/
     // stack, so message/stack can carry PII even when they are non-enumerable.
