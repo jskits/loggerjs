@@ -5,12 +5,17 @@ Use these as starting points, then adjust names, tags, transports, and integrati
 ## Node Service
 
 ```ts
-import { captureProcessIntegration, createLogger, stdoutTransport } from "@loggerjs/node";
+import {
+  captureProcessIntegration,
+  createLogger,
+  stdoutTransport,
+  type LoggerLevel,
+} from "@loggerjs/node";
 import { redactProcessor, tagsProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
   name: "api",
-  level: process.env.LOG_LEVEL ?? "info",
+  level: (process.env.LOG_LEVEL as LoggerLevel | undefined) ?? "info",
   tags: { service: "api", env: process.env.NODE_ENV ?? "dev" },
   processors: [redactProcessor(), tagsProcessor({ runtime: "node" })],
   transports: [stdoutTransport()],
