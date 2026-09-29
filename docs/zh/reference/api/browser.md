@@ -254,6 +254,7 @@ export interface BrowserHttpTransportOptions {
     offlineReplayMaxRetries?: number;
     offlineReplayBaseDelayMs?: number;
     offlineReplayMaxDelayMs?: number;
+    offlineReplayOnStart?: boolean;
     random?: () => number;
     fetchFn?: typeof fetch;
     transformPayload?: PayloadTransform | readonly PayloadTransform[];

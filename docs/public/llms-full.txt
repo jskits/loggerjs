@@ -2225,7 +2225,7 @@ The limit counts events, not bytes. Beacon requests also respect `beaconMaxBytes
 
 Pagehide, hidden visibility, and `close()` submit queued Beacon chunks synchronously, including while an earlier Fetch is pending. The in-flight Fetch batch is never also sent by Beacon; its completion is still awaited by `close()`. This best-effort exit path can reach the server out of order. Rejected Beacon chunks fall back to bounded Fetch batches. With `transformPayload`, lifecycle flushes use Fetch instead. A successful flush may mean acceptance by the offline queue or browser Beacon queue, rather than server acknowledgment.
 
-When the browser fires `online`, the transport replays stored payloads with retry and backoff. Page lifecycle integration should be enabled when logs matter during tab close or navigation:
+The transport replays stored payloads with retry and backoff when the browser fires `online`, shortly after it is created (so payloads persisted by an earlier page load are sent; disable with `offlineReplayOnStart: false`), after a flush in which a live batch reached the collector, and on an explicit `flush()` with no live logs pending. A failed replay leaves the entries queued and is reported through `onInternalError` instead of failing the flush. Page lifecycle integration should be enabled when logs matter during tab close or navigation:
 
 ```ts
 import { pageLifecycleIntegration } from "@loggerjs/browser";

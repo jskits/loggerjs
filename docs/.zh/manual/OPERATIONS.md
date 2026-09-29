@@ -51,7 +51,7 @@ const transport = browserHttpTransport({
 });
 ```
 
-浏览器触发 `online` 时，transport 会带 retry 和 backoff 重放已存 payload。关闭 tab 或导航时日志很重要，就启用 page lifecycle integration：
+transport 会在以下时机带重试和退避地重放已存储的 payload：浏览器触发 `online` 时；transport 创建后不久（这样上一次页面加载持久化的 payload 也会被发送，可用 `offlineReplayOnStart: false` 关闭）；某次 flush 中有实时批次成功送达收集端之后；以及在没有待发送实时日志时显式调用 `flush()`。重放失败时条目会留在队列中，并通过 `onInternalError` 上报，而不会让 flush 失败。如果关闭标签页或页面跳转时的日志很重要，请启用页面生命周期 integration：
 
 ```ts
 import { pageLifecycleIntegration } from "@loggerjs/browser";

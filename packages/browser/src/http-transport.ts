@@ -61,6 +61,7 @@ export interface BrowserHttpTransportOptions {
   offlineReplayMaxRetries?: number;
   offlineReplayBaseDelayMs?: number;
   offlineReplayMaxDelayMs?: number;
+  offlineReplayOnStart?: boolean;
   random?: () => number;
   fetchFn?: typeof fetch;
   transformPayload?: PayloadTransform | readonly PayloadTransform[];
@@ -160,7 +161,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeFlush: Promise<void> | undefined;
   let flushingBeacon = false;
-  let replayingOffline = false;
+  let replayPromise: Promise<void> | undefined;
   let lastContext: TransportContext | undefined;
 
   const headers = (payloadHeaders?: Record<string, string>, contentType = codec.contentType) => ({
@@ -307,21 +308,25 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     return true;
   };
 
-  const sendFetchBatch = async (batch: LogEvent[]) => {
-    if (batch.length === 0) return;
+  const isOnline = () => typeof navigator === "undefined" || navigator.onLine !== false;
+
+  // Resolves to "sent" when the collector accepted the batch and "queued" when
+  // the offline queue took it instead.
+  const sendFetchBatch = async (batch: LogEvent[]): Promise<"sent" | "queued"> => {
     const transformed = await encodeTransformedPayload(batch);
-    if (offlineQueue && typeof navigator !== "undefined" && navigator.onLine === false) {
+    if (offlineQueue && !isOnline()) {
       await enqueueOfflinePayload(
         transformed.payload,
         transformed.headers,
         transformed.contentType,
       );
-      return;
+      return "queued";
     }
     try {
       await sendPayload(
         createOfflineEntry(transformed.payload, transformed.headers, transformed.contentType),
       );
+      return "sent";
     } catch (error) {
       if (
         await enqueueOfflinePayload(
@@ -330,7 +335,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           transformed.contentType,
         )
       ) {
-        return;
+        return "queued";
       }
       throw error;
     }
@@ -360,13 +365,26 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     }
   };
 
-  const replayOfflineQueue = async () => {
-    if (!offlineQueue || replayingOffline) return;
-    replayingOffline = true;
+  const replayOfflineQueue = (): Promise<void> => {
+    if (!offlineQueue) return Promise.resolve();
+    replayPromise ??= (async () => {
+      try {
+        await offlineQueue.replay(sendOfflineEntryWithRetry);
+      } finally {
+        replayPromise = undefined;
+      }
+    })();
+    return replayPromise;
+  };
+
+  // Stored entries stay in the offline queue when replay fails, so a failed
+  // replay is reported instead of failing the flush that triggered it.
+  const replayOfflineQueueSafely = async (operation: string) => {
+    if (!offlineQueue || !isOnline()) return;
     try {
-      await offlineQueue.replay(sendOfflineEntryWithRetry);
-    } finally {
-      replayingOffline = false;
+      await replayOfflineQueue();
+    } catch (error) {
+      reportInternalError(error, operation);
     }
   };
 
@@ -400,7 +418,11 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       }
       return activeFlush;
     }
-    if (queue.length === 0) return Promise.resolve();
+    if (queue.length === 0) {
+      // An explicit flush with nothing live still retries stored payloads, so
+      // entries queued during a server outage do not wait for an `online` event.
+      return preferBeacon ? Promise.resolve() : replayOfflineQueueSafely("replay");
+    }
     clearTimer();
 
     // Publish the task before invoking user codecs/transforms, which may reenter log().
@@ -414,16 +436,23 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     void (async () => {
       try {
         if (preferBeacon) flushBeaconQueue();
+        let sent = false;
+        let queued = false;
         while (queue.length > 0) {
           const batch = queue.splice(0, maxBatchSize);
           try {
             // oxlint-disable-next-line no-await-in-loop -- Preserve batch order and stop on the first unhandled failure.
-            await sendFetchBatch(batch);
+            const outcome = await sendFetchBatch(batch);
+            if (outcome === "sent") sent = true;
+            else queued = true;
           } catch (error) {
             queue.unshift(...batch);
             throw error;
           }
         }
+        // A live batch reached the collector and none fell back to the offline
+        // queue, so the collector is reachable again: replay stored payloads.
+        if (!preferBeacon && sent && !queued) await replayOfflineQueueSafely("replay");
         resolve();
       } catch (error) {
         reject(error);
@@ -459,7 +488,14 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     globalThis.addEventListener?.("pagehide", onPageHide);
     globalThis.addEventListener?.("visibilitychange", onVisibilityChange);
   }
-  if (offlineQueue) globalThis.addEventListener?.("online", onOnline);
+  if (offlineQueue) {
+    globalThis.addEventListener?.("online", onOnline);
+    // Payloads persisted by an earlier page load (for example in IndexedDB)
+    // would otherwise wait for an `online` event that may never fire.
+    if (options.offlineReplayOnStart ?? true) {
+      setTimeout(() => void replayOfflineQueueSafely("startup-replay"), 0);
+    }
+  }
 
   return {
     name: options.name ?? "browser-http",

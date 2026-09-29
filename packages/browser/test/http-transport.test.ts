@@ -1118,6 +1118,132 @@ describe("browserHttpTransport", () => {
     });
   });
 
+  it("replays payloads queued during a server outage once the collector recovers", async () => {
+    vi.stubGlobal("addEventListener", vi.fn<typeof globalThis.addEventListener>());
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    let fail = true;
+    const fetchFn = vi.fn<typeof fetch>(async () =>
+      fail ? new Response(null, { status: 503 }) : new Response(null, { status: 204 }),
+    );
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayOnStart: false,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("during-outage"), createTransportContext());
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(1);
+
+    fail = false;
+    transport.log?.(createEvent("after-recovery"), createTransportContext());
+    await transport.flush?.();
+
+    expect(offlineQueue.size()).toBe(0);
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual([
+      "during-outage",
+      "after-recovery",
+      "during-outage",
+    ]);
+  });
+
+  it("replays stored payloads on an explicit flush without live logs", async () => {
+    vi.stubGlobal("addEventListener", vi.fn<typeof globalThis.addEventListener>());
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    await offlineQueue.enqueue(offlineEntry("stored"));
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayOnStart: false,
+      fetchFn,
+    });
+
+    await transport.flush?.();
+
+    expect(offlineQueue.size()).toBe(0);
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["stored"]);
+  });
+
+  it("keeps stored payloads and reports when an explicit flush replay fails", async () => {
+    vi.stubGlobal("addEventListener", vi.fn<typeof globalThis.addEventListener>());
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    await offlineQueue.enqueue(offlineEntry("stored"));
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    const context = createTransportContext();
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayMaxRetries: 0,
+      offlineReplayOnStart: false,
+      fetchFn,
+    });
+    transport.log?.(createEvent("live"), context);
+    fetchFn.mockImplementationOnce(async () => new Response(null, { status: 204 }));
+
+    await expect(transport.flush?.()).resolves.toBeUndefined();
+
+    expect(offlineQueue.size()).toBe(1);
+    expect(context.reportInternalError).toHaveBeenCalledWith(expect.any(Error), {
+      phase: "transport",
+      transport: "browser-http",
+      operation: "replay",
+    });
+  });
+
+  it("replays payloads persisted by an earlier page load on startup", async () => {
+    vi.stubGlobal("addEventListener", vi.fn<typeof globalThis.addEventListener>());
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    await offlineQueue.enqueue(offlineEntry("previous-session"));
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      fetchFn,
+    });
+
+    await waitFor(() => offlineQueue.size() === 0);
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["previous-session"]);
+  });
+
+  it("skips the startup replay when offlineReplayOnStart is false or the browser is offline", async () => {
+    vi.stubGlobal("addEventListener", vi.fn<typeof globalThis.addEventListener>());
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    const disabledQueue = memoryBrowserHttpOfflineQueue();
+    await disabledQueue.enqueue(offlineEntry("disabled"));
+    browserHttpTransport({
+      url: "/logs",
+      useBeaconOnPageHide: false,
+      offlineQueue: disabledQueue,
+      offlineReplayOnStart: false,
+      fetchFn,
+    });
+    vi.stubGlobal("navigator", { onLine: false });
+    const offlineQueueWhileOffline = memoryBrowserHttpOfflineQueue();
+    await offlineQueueWhileOffline.enqueue(offlineEntry("offline"));
+    browserHttpTransport({
+      url: "/logs",
+      useBeaconOnPageHide: false,
+      offlineQueue: offlineQueueWhileOffline,
+      fetchFn,
+    });
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 5));
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(disabledQueue.size()).toBe(1);
+    expect(offlineQueueWhileOffline.size()).toBe(1);
+  });
+
   it("reports offline replay failure and leaves queued entries retryable", async () => {
     const addEventListener = vi.fn<typeof globalThis.addEventListener>();
     vi.stubGlobal("addEventListener", addEventListener);
@@ -1133,6 +1259,7 @@ describe("browserHttpTransport", () => {
       useBeaconOnPageHide: false,
       offlineQueue,
       offlineReplayMaxRetries: 0,
+      offlineReplayOnStart: false,
       fetchFn,
     });
 
