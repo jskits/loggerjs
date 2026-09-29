@@ -229,8 +229,12 @@ export function createNodeFileDestination(options: NodeFileDestinationOptions): 
   if (options.mkdir) mkdirSync(dirname(options.path), { recursive: true });
 
   let fd: number | undefined;
+  // In sync mode this fd is the only writer, so it honors the configured flags.
+  // In async stream mode the stream already opened (and, for "w", truncated)
+  // the file; the crash-path fd must append or it would erase earlier logs.
+  const syncFlags = options.sync ? flags : "a";
   const getFd = () => {
-    fd ??= openSync(options.path, flags);
+    fd ??= openSync(options.path, syncFlags);
     return fd;
   };
   const syncWrite = (payload: string | Uint8Array) => {

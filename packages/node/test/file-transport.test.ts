@@ -49,6 +49,29 @@ describe("fileTransport", () => {
     await transport.close?.();
   });
 
+  it("keeps earlier lines when flushSync runs with append disabled", async () => {
+    const path = tempFile();
+    writeFileSync(path, "previous run\n");
+    const transport = fileTransport({ path, append: false });
+
+    for (const message of ["first", "second"]) {
+      transport.log?.({ ...event, message }, context);
+    }
+    await transport.flush?.();
+    transport.log?.(event, context);
+    transport.flushSync();
+
+    const messages = readFileSync(path, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => (JSON.parse(line) as LogEvent).message);
+    // The async stream may also finish its pending write once the process
+    // keeps running, so the crash line can appear twice; earlier lines must stay.
+    expect(messages.slice(0, 3)).toEqual(["first", "second", "fatal crash"]);
+
+    await transport.close?.();
+  });
+
   it("creates parent directories when mkdir is enabled", async () => {
     const path = join(dirname(tempFile()), "nested", "app.log");
     const transport = fileTransport({ path, mkdir: true, sync: true });
