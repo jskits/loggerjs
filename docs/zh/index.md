@@ -6,7 +6,7 @@ hero:
   text: 更快、更强的同构日志库
   tagline: 采集、处理、投递。一条高速管线。
   image:
-    src: /logo.svg
+    src: /logo.png
     alt: LoggerJS logo
   actions:
     - theme: brand

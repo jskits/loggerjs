@@ -6,7 +6,7 @@ hero:
   text: A faster, more powerful isomorphic logger
   tagline: Collect, process, deliver. One fast pipeline.
   image:
-    src: /logo.svg
+    src: /logo.png
     alt: LoggerJS logo
   actions:
     - theme: brand

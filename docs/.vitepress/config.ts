@@ -142,7 +142,7 @@ const zhEditLink = {
 };
 
 const commonThemeConfig = {
-  logo: "/logo.svg",
+  logo: { src: "/logo.png", alt: "LoggerJS logo" },
   siteTitle: "LoggerJS",
   search: {
     provider: "local",
@@ -217,7 +217,21 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   head: [
-    ["link", { rel: "icon", href: "/loggerjs/logo.svg", type: "image/svg+xml" }],
+    ["link", { rel: "icon", href: "/loggerjs/favicon.ico", sizes: "any" }],
+    [
+      "link",
+      { rel: "icon", href: "/loggerjs/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+    ],
+    [
+      "link",
+      { rel: "icon", href: "/loggerjs/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+    ],
+    ["link", { rel: "apple-touch-icon", href: "/loggerjs/apple-touch-icon.png", sizes: "180x180" }],
+    ["link", { rel: "manifest", href: "/loggerjs/site.webmanifest" }],
+    ["meta", { name: "theme-color", content: "#eff2f8", media: "(prefers-color-scheme: light)" }],
+    ["meta", { name: "theme-color", content: "#1b1b1f", media: "(prefers-color-scheme: dark)" }],
+    ["meta", { name: "msapplication-TileColor", content: "#eff2f8" }],
+    ["meta", { name: "msapplication-TileImage", content: "/loggerjs/mstile-150x150.png" }],
     ["link", { rel: "alternate", hreflang: "en", href: siteUrl }],
     ["link", { rel: "alternate", hreflang: "zh-CN", href: `${siteUrl}zh/` }],
     ["meta", { property: "og:type", content: "website" }],
@@ -230,7 +244,12 @@ export default defineConfig({
       },
     ],
     ["meta", { property: "og:url", content: siteUrl }],
+    ["meta", { property: "og:image", content: `${siteUrl}android-chrome-512x512.png` }],
+    ["meta", { property: "og:image:width", content: "512" }],
+    ["meta", { property: "og:image:height", content: "512" }],
+    ["meta", { property: "og:image:alt", content: "LoggerJS logo" }],
     ["meta", { name: "twitter:card", content: "summary" }],
+    ["meta", { name: "twitter:image", content: `${siteUrl}android-chrome-512x512.png` }],
   ],
   markdown: {
     toc: { level: [2, 3] },
