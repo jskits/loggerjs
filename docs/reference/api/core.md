@@ -882,7 +882,7 @@ export interface Codec<TPayload = string | Uint8Array> {
     name: string;
     contentType: string;
     encode: (input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context?: EncodeContext) => TPayload;
-    decode?: (payload: TPayload) => LogEvent | LogEvent[];
+    decode?(payload: TPayload): LogEvent | LogEvent[];
     prepareRecordEncoder?: (hints: RecordEncoderHints) => PreparedRecordEncoder<TPayload>;
 }
 export type EncodedPayload = string | Uint8Array;

@@ -30,6 +30,16 @@ function decode(codec: Codec<string>, payload: string): LogEvent | LogEvent[] {
 }
 
 describe("core codecs", () => {
+  it("accepts string codecs where string or binary codecs are expected", () => {
+    const accept = (codec: Codec<string | Uint8Array>) => codec.name;
+
+    expect([jsonCodec(), safeJsonCodec(), ndjsonCodec()].map(accept)).toEqual([
+      "json",
+      "safe-json",
+      "ndjson",
+    ]);
+  });
+
   it("accepts LogRecord batches through the compatibility projection", () => {
     const record = createRecord({
       time: 1,

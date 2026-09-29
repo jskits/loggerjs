@@ -181,7 +181,9 @@ export interface Codec<TPayload = string | Uint8Array> {
     input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[],
     context?: EncodeContext,
   ) => TPayload;
-  decode?: (payload: TPayload) => LogEvent | LogEvent[];
+  // Method syntax keeps the payload parameter bivariant, so a Codec<string> can
+  // be passed where transports accept Codec<string | Uint8Array>.
+  decode?(payload: TPayload): LogEvent | LogEvent[];
   prepareRecordEncoder?: (hints: RecordEncoderHints) => PreparedRecordEncoder<TPayload>;
 }
 

@@ -25,8 +25,8 @@ pnpm test:inventory:check
 | 指标 | 数量 |
 | --- | ---: |
 | Test files | 99 |
-| Test cases | 746 |
-| Passed | 746 |
+| Test cases | 747 |
+| Passed | 747 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -39,7 +39,7 @@ pnpm test:inventory:check
 | @loggerjs/browser | 24 | 157 |
 | @loggerjs/cloudwatch | 1 | 11 |
 | @loggerjs/codecs | 2 | 39 |
-| @loggerjs/core | 20 | 241 |
+| @loggerjs/core | 20 | 242 |
 | @loggerjs/database | 1 | 6 |
 | @loggerjs/datadog | 1 | 7 |
 | @loggerjs/elastic | 1 | 10 |

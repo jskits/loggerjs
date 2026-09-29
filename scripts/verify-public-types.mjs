@@ -106,6 +106,9 @@ fastEventJsonCodec().encode([]);
 const msgpackOptions: MsgpackrCodecOptions = { useRecords: true };
 const msgpackPayload = msgpackrCodec(msgpackOptions).encode([]);
 msgpackrCodec().decode?.(msgpackPayload);
+// String codecs must be accepted where transports take string or binary codecs.
+nodeHttpTransport({ url: "https://collector.example/logs", codec: fastEventJsonCodec() });
+browserHttpTransport({ url: "/logs", codec: jsonCodec() });
 redact({ paths: ["password"] });
 browserBroadcastChannelTransport({
   channelName: "logs",
