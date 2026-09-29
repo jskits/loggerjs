@@ -21,29 +21,29 @@ hero:
 
 features:
   - title: 浏览器和服务端
-    details: 同一 logger 模型运行在浏览器、Node.js、workers 和 edge runtimes。
+    details: 同一套 logger 模型运行在浏览器、Node.js、worker 和 edge 运行时中。
   - title: 自动采集
-    details: 按需捕获 console、错误、网络失败、路由、process 事件、HTTP framework、队列和数据库边界。
+    details: 按需开启的 integration 可以捕获 console 调用、错误、网络失败、路由、进程事件、HTTP 框架、队列和数据库调用。
   - title: 可靠投递
-    details: transport 拥有 codec，并可组合 batching、retry、backoff、offline replay、crash-path flush 和 beacon delivery。
+    details: 由 transport 决定 codec，并可组合批量、重试、退避、离线重放、崩溃时 flush 和 Beacon 投递。
   - title: 组合式处理
-    details: middleware 和 processor 在投递前完成 enrich、redact、sample、dedupe、fingerprint、route 和 buffer。
+    details: middleware 和 processor 在投递前完成补充字段、脱敏、采样、去重、指纹、路由和缓冲。
   - title: 可度量热路径
-    details: benchmark 和 CI gate 覆盖 disabled levels、lean NDJSON、prepared encoders、batching、browser delivery 和 size budgets。
+    details: 基准测试和 CI 门禁覆盖禁用级别、lean NDJSON、prepared 编码器、批量、浏览器投递和体积预算。
   - title: 对库友好的默认值
-    details: library logger 在宿主应用配置前保持静默，依赖可以记录日志但不强制输出。
+    details: 库中的 logger 在宿主应用完成配置前保持静默，依赖包可以记录日志，而不会强制产生输出。
 ---
 
 > [!NOTE]
-> 中文站包含主要指南的完整中文译文；生成参考页中的包名、export subpaths、TypeScript 声明和源码链接保留原文，便于与发布产物逐项核对。
+> 各指南均为完整中文版。自动生成的参考页中，包名、导出子路径、TypeScript 声明和源码链接保留英文原文，方便与发布产物对照。
 
 ## LoggerJS 管线
 
 <div class="loggerjs-pipeline">
-  <span><strong>采集</strong>手写日志，加上浏览器和 Node integration。</span>
-  <span><strong>塑形</strong>middleware 保持 raw record 低成本且可组合。</span>
-  <span><strong>处理</strong>需要更丰富行为时，processor 再投影 event。</span>
-  <span><strong>投递</strong>transport 选择 codec、batching、retry 和目的地。</span>
+  <span><strong>采集</strong>手动记录的日志，以及浏览器和 Node 的 integration。</span>
+  <span><strong>整理</strong>middleware 直接处理原始 record，成本低且可组合。</span>
+  <span><strong>处理</strong>需要更丰富的行为时，才把 record 投影为 event 交给 processor。</span>
+  <span><strong>投递</strong>transport 决定 codec、批量、重试和目的地。</span>
 </div>
 
 ```ts
@@ -66,24 +66,24 @@ await logger.flush();
 <div class="loggerjs-home-grid">
   <div class="loggerjs-home-panel">
     <h2>新项目</h2>
-    <p>先看 Node 或浏览器 quick start，再按运行时补 processor 和 transport。</p>
+    <p>从 Node 或浏览器的快速开始入手，再按运行时添加 processor 和 transport。</p>
   </div>
   <div class="loggerjs-home-panel">
     <h2>生产上线</h2>
-    <p>生产配方和运维指南覆盖隐私、离线队列、崩溃路径和 vendor 投递。</p>
+    <p>生产配方和运维指南介绍隐私、离线队列、崩溃路径和厂商投递。</p>
   </div>
   <div class="loggerjs-home-panel">
     <h2>API 查询</h2>
-    <p>生成的包和 API 页面用于确认 exports、subpaths 和公共声明。</p>
+    <p>通过自动生成的包和 API 页面查询导出、子路径和公开声明。</p>
   </div>
 </div>
 
 ## 文档地图
 
-- [快速开始](/zh/GETTING-STARTED) 覆盖安装、第一个 logger、级别、lazy message、context 和 typed events。
-- [核心概念](/zh/CONCEPTS) 解释 records、events、middleware、processors、transports、codecs、integrations 和 routing。
-- [传输](/zh/TRANSPORTS)、[集成](/zh/INTEGRATIONS)、[处理器](/zh/PROCESSORS) 和 [编解码](/zh/CODECS) 是主要实现参考。
-- [生产配方](/zh/PRODUCTION-RECIPES)、[运维](/zh/OPERATIONS) 和 [性能](/zh/PERFORMANCE) 帮助做上线选择。
-- [基准](/zh/BENCHMARKS)、[基准矩阵](/zh/BENCHMARK-MATRIX) 和 [对比](/zh/COMPARISON) 把性能与定位绑定到仓库证据。
-- [包](/zh/reference/packages)、[API 报告](/zh/reference/api/) 和 [示例](/zh/examples) 由当前仓库生成。
-- [AI Skill](/zh/AI-SKILL)、[llms.txt](/zh/llms.txt) 和 [llms-full.txt](/zh/llms-full.txt) 帮助 coding agent 直接使用 LoggerJS。
+- [快速开始](/zh/GETTING-STARTED) 介绍安装、第一个 logger、级别、延迟消息、context 和类型化事件。
+- [核心概念](/zh/CONCEPTS) 解释 record、event、middleware、processor、transport、codec、integration 和路由。
+- [传输](/zh/TRANSPORTS)、[集成](/zh/INTEGRATIONS)、[处理器](/zh/PROCESSORS) 和 [编解码](/zh/CODECS) 是主要的功能参考。
+- [生产配方](/zh/PRODUCTION-RECIPES)、[运维](/zh/OPERATIONS) 和 [性能](/zh/PERFORMANCE) 帮助做上线决策。
+- [基准](/zh/BENCHMARKS)、[基准矩阵](/zh/BENCHMARK-MATRIX) 和 [对比](/zh/COMPARISON) 让性能数据和定位说明都有仓库内的证据支撑。
+- [包](/zh/reference/packages)、[API 报告](/zh/reference/api/) 和 [示例](/zh/examples) 根据当前仓库自动生成。
+- [AI Skill](/zh/AI-SKILL)、[llms.txt](/zh/llms.txt) 和 [llms-full.txt](/zh/llms-full.txt) 帮助编程 agent 直接使用 LoggerJS。
