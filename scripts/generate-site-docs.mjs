@@ -317,16 +317,6 @@ const zhDocsCatalog = [
     ],
   },
   {
-    title: "基线",
-    slug: "BASELINE",
-    description: "当前项目基线和质量状态摘要。",
-    bullets: [
-      "基线页面记录当前仓库质量、性能和发布状态的快照。",
-      "它不是 API 文档，主要用于判断后续变更是否偏离既定标准。",
-      "更新基线时应注明日期、命令和证据来源。",
-    ],
-  },
-  {
     title: "生产强化提案",
     slug: "PROPOSAL-PRODUCTION-HARDENING",
     description: "生产可靠性、观测和交付强化计划。",

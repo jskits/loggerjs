@@ -71,7 +71,6 @@ const sidebar = [
       { text: "Contributing", link: "/CONTRIBUTING" },
       { text: "Release", link: "/RELEASE" },
       { text: "Test Inventory", link: "/TEST-INVENTORY" },
-      { text: "Baseline", link: "/BASELINE" },
     ],
   },
 ];
@@ -126,7 +125,6 @@ const zhSidebar = [
       { text: "贡献", link: "/zh/CONTRIBUTING" },
       { text: "发布", link: "/zh/RELEASE" },
       { text: "测试清单", link: "/zh/TEST-INVENTORY" },
-      { text: "基线", link: "/zh/BASELINE" },
     ],
   },
 ];
