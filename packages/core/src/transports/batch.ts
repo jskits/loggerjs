@@ -177,6 +177,7 @@ export function batchTransport(
   let timer: RuntimeTimerHandle | undefined;
   let lastContext: TransportContext | undefined;
   let flushing = false;
+  let closed = false;
   let activeFlush: Promise<void> | undefined;
   let consecutiveFailures = 0;
   let circuitOpenUntil = 0;
@@ -220,7 +221,7 @@ export function batchTransport(
   };
 
   const schedule = (delayMs = flushIntervalMs) => {
-    if (timer !== undefined || delayMs <= 0) return;
+    if (closed || timer !== undefined || delayMs <= 0) return;
     timer = setRuntimeTimeout(() => {
       const context = lastContext;
       void flush().catch((error: unknown) => {
@@ -443,6 +444,10 @@ export function batchTransport(
 
   const enqueue = (item: QueueItem, context: TransportContext) => {
     lastContext = context;
+    if (closed) {
+      reportDrop(item, "closed", context);
+      return;
+    }
     if (item.estimatedBytes > maxBytes) {
       reportDrop(item, "record-too-large", context);
       return;
@@ -529,8 +534,22 @@ export function batchTransport(
       await inner.flush?.();
     },
     async close() {
-      await flush();
-      await inner.close?.();
+      if (closed) return;
+      try {
+        await flush();
+      } finally {
+        // Stop retrying after close and account for anything the final flush
+        // could not deliver, then always release the inner transport.
+        closed = true;
+        clearTimer();
+        const context = lastContext;
+        const undelivered = queue.splice(0);
+        updateQueueDepth();
+        if (context) {
+          for (const item of undelivered) reportDrop(item, "closed", context);
+        }
+        await inner.close?.();
+      }
     },
     stats() {
       return snapshotStats();

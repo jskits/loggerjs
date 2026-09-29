@@ -139,6 +139,7 @@ batchTransport(inner, {
 - 字节估算需要遍历 payload；只有 `maxBytes` 为有限值时才会执行。
 - 丢弃总会计入 logger meta（`transport.dropped.*`）；只有注册了 `onDrop` 回调时，才会为它把 record 转换成 event。
 - 失败的批次会重新放回队首；熔断器可以避免不断请求一个已经挂掉的端点。
+- `close()` 会最后尝试 flush 一次，然后停止 flush 定时器，并且无论成败都会关闭内部 transport。未能投递的记录以及关闭后写入的记录都计为 `transport.dropped.closed`；最后一次 flush 的错误仍会抛出。
 
 ## Pretty / 开发体验（`@loggerjs/pretty`）
 

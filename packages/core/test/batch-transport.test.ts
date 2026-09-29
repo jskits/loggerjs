@@ -339,4 +339,40 @@ describe("batchTransport", () => {
       "transport.circuit.open": 1,
     });
   });
+
+  it("stops retrying, releases the inner transport, and counts drops when close fails", async () => {
+    vi.useFakeTimers();
+    try {
+      resetLoggerMetaStats();
+      let attempts = 0;
+      const innerClose = vi.fn<() => void>();
+      const inner: Transport = {
+        name: "down",
+        async logBatch() {
+          attempts += 1;
+          throw new Error("503");
+        },
+        close: innerClose,
+      };
+      const transport = batchTransport(inner, { maxWaitMs: 50 });
+      const context = createContext();
+
+      transport.log?.(event, context);
+      await expect(transport.close?.()).rejects.toThrow("503");
+      const attemptsAtClose = attempts;
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(attempts).toBe(attemptsAtClose);
+      expect(innerClose).toHaveBeenCalledTimes(1);
+      expect(transport.stats().queueDepth).toBe(0);
+      expect(getLoggerMetaStats()).toMatchObject({ "transport.dropped.closed": 1 });
+
+      transport.log?.(event, context);
+      expect(getLoggerMetaStats()).toMatchObject({ "transport.dropped.closed": 2 });
+      await expect(transport.close?.()).resolves.toBeUndefined();
+      expect(innerClose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

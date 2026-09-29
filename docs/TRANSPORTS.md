@@ -133,6 +133,7 @@ Notes:
 - Byte estimation walks the payload; it is skipped entirely unless `maxBytes` is finite.
 - Drops are always counted in logger meta (`transport.dropped.*`); the `onDrop` event conversion only happens when a listener is registered.
 - A failed batch is re-queued at the head; the circuit breaker stops hammering a dead endpoint.
+- `close()` makes one final flush attempt, then stops the flush timer and always closes the inner transport. Records that could not be delivered, and records written after close, are counted as `transport.dropped.closed`; the final flush error is still thrown.
 
 ## Pretty / Developer UX (`@loggerjs/pretty`)
 
