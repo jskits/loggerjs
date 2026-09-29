@@ -1,7 +1,7 @@
 <div align="center">
 
 <a href="https://jskits.github.io/loggerjs/">
-  <img src="docs/public/logo.png" alt="LoggerJS logo" width="128" height="128" />
+  <img src="docs/public/logo.png" alt="LoggerJS logo" width="96" height="96" />
 </a>
 
 # LoggerJS

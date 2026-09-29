@@ -27,6 +27,14 @@
   filter: drop-shadow(0 18px 38px rgba(1, 91, 237, 0.22));
 }
 
+/* The logo is cropped to its edges, so cap it below VitePress's 320px hero size. */
+@media (min-width: 960px) {
+  .VPHome .VPHero .image-src {
+    max-width: 256px;
+    max-height: 256px;
+  }
+}
+
 .loggerjs-home-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
