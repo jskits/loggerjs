@@ -101,6 +101,8 @@ For `uncaughtException` with `exitOnUncaught: true`, the sequence is:
 3. Run a bounded async `flush()` race controlled by `flushTimeoutMs` (default `250` ms).
 4. Exit with code `1`.
 
+Unhandled promise rejections follow the same sequence by default and exit with code `1`, matching Node's default `--unhandled-rejections=throw` behavior that registering a listener would otherwise disable. When Node runs with `--unhandled-rejections=warn`, `none`, or `warn-with-error-code`, the rejection is only logged; set `exitOnUnhandledRejection` to override either way.
+
 For signals with `exitOnSignal: true`, LoggerJS captures a fatal signal record, uses the same sync-plus-bounded-async flush sequence, then exits with the signal exit code when known (`SIGTERM` -> `143`, `SIGINT` -> `130`).
 
 ## Remote Transport Reliability

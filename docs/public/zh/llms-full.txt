@@ -1164,7 +1164,7 @@ integration 的稳定性描述的是公开的 setup/选项契约和拆除行为�
 
 | Integration | 采集内容 | 说明 |
 | --- | --- | --- |
-| `captureProcessIntegration()` | `uncaughtException`（fatal）、`unhandledRejection`、warning、退出 | 启用 `exitOnUncaught` 后，先记录一条 fatal record，调用 `flushSync()`，最多等待 `flushTimeoutMs` 让异步 `flush()` 完成，然后以退出码 `1` 退出。 |
+| `captureProcessIntegration()` | `uncaughtException`（fatal）、`unhandledRejection`、warning、退出 | 启用 `exitOnUncaught` 后，先记录一条 fatal record，调用 `flushSync()`，最多等待 `flushTimeoutMs` 让异步 `flush()` 完成，然后以退出码 `1` 退出。 未处理的 rejection 遵循 Node 的 `--unhandled-rejections` 模式：默认会记录为 `fatal`，flush 后以退出码 `1` 退出（`exitOnUnhandledRejection`）。 |
 | `diagnosticsChannelIntegration()` | Node `diagnostics_channel` 消息（http、undici、自定义频道） | 默认不采集消息 payload。 |
 | `expressIntegration(logger)` | 请求完成，包含状态码、路由、耗时、request id | 返回一个 Express 中间件；可选地为每个请求绑定 `withContext`。 |
 | `fastifyIntegration(logger)` | 通过 onRequest/onError/onResponse 钩子采集请求生命周期 | 返回一个 Fastify 插件；状态保存在 WeakMap 中。 |
@@ -1962,6 +1962,8 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 2. 对支持同步的 transports 调用 `flushSync()`。
 3. 运行一次由 `flushTimeoutMs` 控制的有界 async `flush()` race（默认 `250` ms）。
 4. 以 code `1` 退出。
+
+未处理的 promise rejection 默认也走同样的流程并以退出码 `1` 退出，与 Node 默认的 `--unhandled-rejections=throw` 行为一致（注册监听器本来会让这个默认行为失效）。当 Node 以 `--unhandled-rejections=warn`、`none` 或 `warn-with-error-code` 运行时，只记录日志不退出；可以用 `exitOnUnhandledRejection` 显式覆盖。
 
 对于启用了 `exitOnSignal: true` 的信号，LoggerJS 会记录一条致命的信号日志，执行同样的“同步 flush + 有时限的异步 flush”流程，然后按已知的信号退出码退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
 
@@ -3453,8 +3455,8 @@ pnpm test:inventory:check
 | 指标 | 数量 |
 | --- | ---: |
 | Test files | 99 |
-| Test cases | 740 |
-| Passed | 740 |
+| Test cases | 742 |
+| Passed | 742 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -3472,7 +3474,7 @@ pnpm test:inventory:check
 | @loggerjs/datadog | 1 | 7 |
 | @loggerjs/elastic | 1 | 10 |
 | @loggerjs/loki | 1 | 7 |
-| @loggerjs/node | 21 | 89 |
+| @loggerjs/node | 21 | 91 |
 | @loggerjs/otel | 3 | 18 |
 | @loggerjs/pretty | 3 | 27 |
 | @loggerjs/processors | 20 | 117 |

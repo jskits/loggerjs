@@ -9,7 +9,8 @@ const budgets = [
   ["@loggerjs/core", "packages/core/dist/index.js", 88_000, 19_500],
   // Offline-queue replay on startup and after collector recovery measures 141,484 raw bytes.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 142_000, 30_000],
-  ["@loggerjs/node", "packages/node/dist/index.js", 74_500, 15_300],
+  // Unhandled-rejection exit handling that honors --unhandled-rejections measures 75,230 raw bytes.
+  ["@loggerjs/node", "packages/node/dist/index.js", 75_500, 15_600],
   ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 18_500, 4_400],

@@ -107,6 +107,8 @@ const integrations = [captureProcessIntegration({ exitOnUncaught: true })];
 3. 运行一次由 `flushTimeoutMs` 控制的有界 async `flush()` race（默认 `250` ms）。
 4. 以 code `1` 退出。
 
+未处理的 promise rejection 默认也走同样的流程并以退出码 `1` 退出，与 Node 默认的 `--unhandled-rejections=throw` 行为一致（注册监听器本来会让这个默认行为失效）。当 Node 以 `--unhandled-rejections=warn`、`none` 或 `warn-with-error-code` 运行时，只记录日志不退出；可以用 `exitOnUnhandledRejection` 显式覆盖。
+
 对于启用了 `exitOnSignal: true` 的信号，LoggerJS 会记录一条致命的信号日志，执行同样的“同步 flush + 有时限的异步 flush”流程，然后按已知的信号退出码退出（`SIGTERM` -> `143`，`SIGINT` -> `130`）。
 
 ## 远程 Transport 可靠性

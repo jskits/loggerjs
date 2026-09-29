@@ -17,6 +17,13 @@ export interface CaptureProcessOptions {
   signals?: ProcessSignal[];
   exitOnSignal?: boolean;
   exitOnUncaught?: boolean;
+  /**
+   * Exit with code 1 after capturing an unhandled rejection. Registering an
+   * `unhandledRejection` listener disables Node's default crash, so this
+   * defaults to Node's own `--unhandled-rejections` behavior: exit unless the
+   * mode is `warn`, `none`, or `warn-with-error-code`.
+   */
+  exitOnUnhandledRejection?: boolean;
   flushTimeoutMs?: number;
   exitFn?: (code: number) => void;
 }
@@ -25,6 +32,18 @@ const signalExitCodes: Partial<Record<ProcessSignal, number>> = {
   SIGINT: 130,
   SIGTERM: 143,
 };
+
+type UnhandledRejectionsMode = "throw" | "strict" | "warn" | "none" | "warn-with-error-code";
+
+function unhandledRejectionsMode(): UnhandledRejectionsMode {
+  const flags = [...process.execArgv, ...(process.env.NODE_OPTIONS ?? "").split(/\s+/)];
+  let mode: UnhandledRejectionsMode = "throw";
+  for (const flag of flags) {
+    const match = /^--unhandled-rejections=(.+)$/.exec(flag);
+    if (match?.[1]) mode = match[1] as UnhandledRejectionsMode;
+  }
+  return mode;
+}
 
 export function captureProcessIntegration(options: CaptureProcessOptions = {}): Integration {
   const uncaughtException = options.uncaughtException ?? true;
@@ -36,6 +55,9 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
   const signals = options.signals ?? (["SIGTERM"] satisfies ProcessSignal[]);
   const exitOnSignal = options.exitOnSignal ?? true;
   const exitOnUncaught = options.exitOnUncaught ?? true;
+  const rejectionsMode = unhandledRejectionsMode();
+  const exitOnUnhandledRejection =
+    options.exitOnUnhandledRejection ?? (rejectionsMode === "throw" || rejectionsMode === "strict");
   const flushTimeoutMs = options.flushTimeoutMs ?? 250;
   const exitFn = options.exitFn ?? ((code: number) => process.exit(code));
 
@@ -92,7 +114,7 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
       if (unhandledRejection) {
         const onUnhandledRejection = (reason: unknown) => {
           capture({
-            level: "error",
+            level: exitOnUnhandledRejection ? "fatal" : "error",
             message: reason instanceof Error ? reason.message : "Unhandled promise rejection",
             error: reason,
             props: {
@@ -100,6 +122,14 @@ export function captureProcessIntegration(options: CaptureProcessOptions = {}): 
               reason: normalizeValue(reason, { maxDepth: 5 }),
             },
           });
+          if (exitOnUnhandledRejection) {
+            flushSync();
+            void flushBounded().finally(() => exitFn(1));
+            return;
+          }
+          if (options.exitOnUnhandledRejection === undefined) {
+            if (rejectionsMode === "warn-with-error-code") process.exitCode = 1;
+          }
           flushBestEffort();
         };
         process.on("unhandledRejection", onUnhandledRejection);

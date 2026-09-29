@@ -10,6 +10,8 @@ declare const process: {
   stdout: LoggerjsWritableLike;
   stderr: LoggerjsWritableLike;
   env: Record<string, string | undefined>;
+  execArgv: string[];
+  exitCode?: number | string;
   on: (event: string, listener: (...args: any[]) => void) => void;
   off: (event: string, listener: (...args: any[]) => void) => void;
   exit: (code?: number) => never;

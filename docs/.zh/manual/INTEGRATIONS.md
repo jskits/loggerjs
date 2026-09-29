@@ -85,7 +85,7 @@ integration 的稳定性描述的是公开的 setup/选项契约和拆除行为�
 
 | Integration | 采集内容 | 说明 |
 | --- | --- | --- |
-| `captureProcessIntegration()` | `uncaughtException`（fatal）、`unhandledRejection`、warning、退出 | 启用 `exitOnUncaught` 后，先记录一条 fatal record，调用 `flushSync()`，最多等待 `flushTimeoutMs` 让异步 `flush()` 完成，然后以退出码 `1` 退出。 |
+| `captureProcessIntegration()` | `uncaughtException`（fatal）、`unhandledRejection`、warning、退出 | 启用 `exitOnUncaught` 后，先记录一条 fatal record，调用 `flushSync()`，最多等待 `flushTimeoutMs` 让异步 `flush()` 完成，然后以退出码 `1` 退出。 未处理的 rejection 遵循 Node 的 `--unhandled-rejections` 模式：默认会记录为 `fatal`，flush 后以退出码 `1` 退出（`exitOnUnhandledRejection`）。 |
 | `diagnosticsChannelIntegration()` | Node `diagnostics_channel` 消息（http、undici、自定义频道） | 默认不采集消息 payload。 |
 | `expressIntegration(logger)` | 请求完成，包含状态码、路由、耗时、request id | 返回一个 Express 中间件；可选地为每个请求绑定 `withContext`。 |
 | `fastifyIntegration(logger)` | 通过 onRequest/onError/onResponse 钩子采集请求生命周期 | 返回一个 Fastify 插件；状态保存在 WeakMap 中。 |

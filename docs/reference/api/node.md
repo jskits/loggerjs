@@ -586,6 +586,13 @@ export interface CaptureProcessOptions {
     signals?: ProcessSignal[];
     exitOnSignal?: boolean;
     exitOnUncaught?: boolean;
+    /**
+     * Exit with code 1 after capturing an unhandled rejection. Registering an
+     * `unhandledRejection` listener disables Node's default crash, so this
+     * defaults to Node's own `--unhandled-rejections` behavior: exit unless the
+     * mode is `warn`, `none`, or `warn-with-error-code`.
+     */
+    exitOnUnhandledRejection?: boolean;
     flushTimeoutMs?: number;
     exitFn?: (code: number) => void;
 }

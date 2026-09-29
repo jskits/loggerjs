@@ -1516,7 +1516,7 @@ Root package imports are convenience presets. Public integration subpaths are do
 
 | Integration                                                              | Captures                                                              | Notes                                                                                                                                            |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `captureProcessIntegration()`                                            | `uncaughtException` (fatal), `unhandledRejection`, warnings, exit     | With `exitOnUncaught`, captures a fatal record, calls `flushSync()`, waits up to `flushTimeoutMs` for async `flush()`, then exits with code `1`. |
+| `captureProcessIntegration()`                                            | `uncaughtException` (fatal), `unhandledRejection`, warnings, exit     | With `exitOnUncaught`, captures a fatal record, calls `flushSync()`, waits up to `flushTimeoutMs` for async `flush()`, then exits with code `1`. Unhandled rejections follow Node's `--unhandled-rejections` mode: by default they are captured as `fatal`, flushed, and exit with code `1` (`exitOnUnhandledRejection`). |
 | `diagnosticsChannelIntegration()`                                        | Node `diagnostics_channel` messages (http, undici, custom channels)   | Message payload capture off by default.                                                                                                          |
 | `expressIntegration(logger)`                                             | request completion with status, route, duration, request id           | Returns an Express middleware; optional `withContext` binding per request.                                                                       |
 | `fastifyIntegration(logger)`                                             | request lifecycle via onRequest/onError/onResponse hooks              | Returns a Fastify plugin; state keyed in a WeakMap.                                                                                              |
@@ -2270,6 +2270,8 @@ For `uncaughtException` with `exitOnUncaught: true`, the sequence is:
 2. Call `flushSync()` on sync-capable transports.
 3. Run a bounded async `flush()` race controlled by `flushTimeoutMs` (default `250` ms).
 4. Exit with code `1`.
+
+Unhandled promise rejections follow the same sequence by default and exit with code `1`, matching Node's default `--unhandled-rejections=throw` behavior that registering a listener would otherwise disable. When Node runs with `--unhandled-rejections=warn`, `none`, or `warn-with-error-code`, the rejection is only logged; set `exitOnUnhandledRejection` to override either way.
 
 For signals with `exitOnSignal: true`, LoggerJS captures a fatal signal record, uses the same sync-plus-bounded-async flush sequence, then exits with the signal exit code when known (`SIGTERM` -> `143`, `SIGINT` -> `130`).
 

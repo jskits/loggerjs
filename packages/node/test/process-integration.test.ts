@@ -196,6 +196,7 @@ describe("captureProcessIntegration", () => {
       beforeExitFlush: false,
       exitFlush: false,
       exitOnUncaught: false,
+      exitOnUnhandledRejection: false,
     }).setup(context);
     if (typeof teardown === "function") teardowns.push(teardown);
     const warning = Object.assign(new Error("deprecated"), {
@@ -233,6 +234,65 @@ describe("captureProcessIntegration", () => {
       },
       source: "integration:capture-process",
     });
+  });
+
+  it("captures an unhandled rejection as fatal, flushes, and exits by default", async () => {
+    const flush = vi.fn<LoggerLike["flush"]>(async () => {});
+    const logger = createLogger({ flush });
+    const { context, capture } = createIntegrationContext(logger);
+    const exitFn = vi.fn<(code: number) => void>();
+    const teardown = captureProcessIntegration({
+      uncaughtException: false,
+      warning: false,
+      beforeExitFlush: false,
+      exitFlush: false,
+      signalFlush: false,
+      exitFn,
+    }).setup(context);
+    if (typeof teardown === "function") teardowns.push(teardown);
+
+    lastListener<(reason: unknown) => void>("unhandledRejection")(new Error("db lost"));
+
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        level: "fatal",
+        message: "db lost",
+        props: expect.objectContaining({ process: { kind: "unhandledRejection" } }),
+      }),
+    );
+    await vi.waitFor(() => {
+      expect(flush).toHaveBeenCalled();
+      expect(exitFn).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it("keeps the process alive after an unhandled rejection when Node runs in warn mode", () => {
+    const originalExecArgv = process.execArgv;
+    Object.defineProperty(process, "execArgv", {
+      value: [...originalExecArgv, "--unhandled-rejections=warn"],
+      configurable: true,
+    });
+    try {
+      const logger = createLogger();
+      const { context, capture } = createIntegrationContext(logger);
+      const exitFn = vi.fn<(code: number) => void>();
+      const teardown = captureProcessIntegration({
+        uncaughtException: false,
+        warning: false,
+        beforeExitFlush: false,
+        exitFlush: false,
+        signalFlush: false,
+        exitFn,
+      }).setup(context);
+      if (typeof teardown === "function") teardowns.push(teardown);
+
+      lastListener<(reason: unknown) => void>("unhandledRejection")(new Error("ignored"));
+
+      expect(capture).toHaveBeenCalledWith(expect.objectContaining({ level: "error" }));
+      expect(exitFn).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, "execArgv", { value: originalExecArgv, configurable: true });
+    }
   });
 
   it("persists a fatal uncaught exception before process exit", () => {
