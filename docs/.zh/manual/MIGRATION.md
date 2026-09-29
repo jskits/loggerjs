@@ -1,6 +1,6 @@
 # 迁移说明
 
-LoggerJS 仍是 pre-1.0，但当前代码库已经从初始骨架走向 v1 架构。本页前半部分说明如何从其他 logger 迁移；后半部分说明 LoggerJS 内部词汇变化。
+本页说明如何从 pino、winston 和 `console.log` 迁移，并介绍从这些 logger 转过来时最容易让人意外的 LoggerJS 约定。
 
 ## 从 pino 迁移
 
@@ -95,37 +95,36 @@ logger.error(err, "payment failed");
 
 ---
 
-## Processor 到 Middleware 词汇
+## Middleware 与 Processor
 
-`@loggerjs/processors` 包继续为兼容性保留。新文档把这一层称为同步 middleware，因为行为范围比 event processors 更广：redaction、enrichment、sampling、tags、type、dedupe 和 trace attachment 都在 transport delivery 前运行。
+LoggerJS 有两层同步的数据处理，二者都是一等公民：
 
-现有代码可以继续使用：
+- **Middleware** 在计算 id、消息或错误之前运行在原始 `LogRecord` 上。它是补充字段、脱敏或丢弃日志成本最低的位置，并且不会破坏 record 快速路径。
+- **Processor** 运行在投影后的 `LogEvent` 上。需要解析后的 event 结构时使用它，例如路由、指纹或 fingers-crossed 缓冲。只要配置了任意 processor，该 logger 就不再走 record 快速路径。
 
-```ts
-import { redactProcessor } from "@loggerjs/processors";
-```
-
-新的 core middleware 可以使用：
+`@loggerjs/processors` 同时提供两种形式，例如 `tagsMiddleware()` 和 `tagsProcessor()`。自定义 middleware 使用 `createMiddleware()`：
 
 ```ts
 import { createMiddleware } from "@loggerjs/core/middleware";
+import { redactProcessor, tagsMiddleware } from "@loggerjs/processors";
+
+const logger = createLogger({
+  middleware: [tagsMiddleware({ service: "checkout" })],
+  processors: [redactProcessor()],
+});
 ```
 
-## LogEvent 和 LogRecord
-
-`LogEvent` 仍是面向 transport 的兼容形状。Core record helpers 现在内部使用 `LogRecord`，让热路径在投影成 transport events 前可以保留 lazy messages、raw errors、bound context 和稳定 record shape。
-
-Transport authors 应继续通过当前 public `Transport` interface 接收 `LogEvent`。Codec authors 应使用导出的 codec input helpers，而不是进入 logger internals。
+完整模型见 [核心概念](CONCEPTS.md)。
 
 ## Context
 
-显式 context 使用 child loggers：
+创建 logger 时就已知的 context 用 child logger 绑定：
 
 ```ts
-const requestLogger = logger.child({ requestId: "req_123" });
+const requestLogger = logger.child({ bindings: { requestId: "req_123" } });
 ```
 
-Request scopes 使用 ambient context：
+请求作用域使用环境 context：
 
 ```ts
 import { withContext } from "@loggerjs/core";
@@ -137,11 +136,11 @@ await withContext({ requestId: "req_123" }, async () => {
 });
 ```
 
-## Browser Integrations
+## 浏览器 Integration
 
-浏览器采集仍然是 opt-in。已有手动 logging 代码不会自动捕获 console、errors、fetch 或 XHR，除非配置了对应 integration。
+浏览器采集需要主动开启。在配置对应的 integration 之前，现有的手动日志代码不会捕获 console 调用、错误、fetch 或 XHR。
 
-优先使用：
+常见的起步组合：
 
 ```ts
 captureConsoleIntegration({ levels: ["warn", "error"] });
@@ -150,25 +149,25 @@ captureFetchIntegration();
 pageLifecycleIntegration();
 ```
 
-## Transports 和 Codecs
+## Transport 与 Codec
 
-序列化属于 transports。把 JSON/stringification 工作从 processors 移到 transport codec：
+序列化属于 transport。把 JSON 或字符串格式化从 middleware 和 processor 中移出，交给 transport 的 codec：
 
 ```ts
 browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 ```
 
-Batch-based transports 现在共享 queue、retry、byte-limit、concurrency 和 circuit-breaker options。
+编写自定义 transport 时，实现 `write`/`writeBatch` 可以在快速路径上接收 `LogRecord`，实现 `log`/`logBatch` 则接收投影后的 `LogEvent`。凡是涉及网络 I/O 的 transport，都应使用 `batchTransport()` 包装，以获得队列上限、重试、字节限制、并发和熔断能力。见 [传输](TRANSPORTS.md#编写自定义-transport)。
 
-## Package Imports
+## 包导入
 
-Root package imports 仍然可用：
+根入口在任何环境都可用：
 
 ```ts
 import { createLogger } from "@loggerjs/core";
 ```
 
-稳定 subpaths 可用于更窄 imports：
+子路径提供更窄的导入：
 
 ```ts
 import { createMiddleware } from "@loggerjs/core/middleware";
@@ -176,4 +175,4 @@ import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 ```
 
-当前 build 发布 ESM 和 CJS 入口。Type declarations 按 NodeNext-style package resolution 检查。
+每个包都发布 ESM 和 CJS 入口，类型声明按 NodeNext 包解析方式检查。

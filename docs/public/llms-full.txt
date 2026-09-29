@@ -3145,7 +3145,7 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/MIGRATION.md
 
 # Migration Notes
 
-LoggerJS is still pre-1.0, but the current codebase has moved from the initial skeleton toward the v1 architecture. The first half of this page covers migrating from other loggers; the second half covers vocabulary changes inside LoggerJS itself.
+This page covers migrating from pino, winston, and `console.log`, followed by the LoggerJS conventions that most often surprise people coming from those loggers.
 
 ## From pino
 
@@ -3242,34 +3242,33 @@ What you gain at each step: levels and level gating, structured data instead of 
 
 ---
 
-## Processor To Middleware Vocabulary
+## Middleware and Processors
 
-The `@loggerjs/processors` package remains supported for compatibility. New docs describe this layer as synchronous middleware because the behavior is broader than event processors: redaction, enrichment, sampling, tags, type, dedupe, and trace attachment all run before transport delivery.
+LoggerJS has two synchronous shaping layers, and both are first-class:
 
-Existing code can continue to use:
+- **Middleware** runs on the raw `LogRecord` before ids, messages, or errors are computed. It is the cheapest place to enrich, redact, or drop, and it keeps the record fast path.
+- **Processors** run on the projected `LogEvent`. Use them when you need the resolved event shape, for example routing, fingerprinting, or fingers-crossed buffering. Any processor disables the record fast path for that logger.
 
-```ts
-import { redactProcessor } from "@loggerjs/processors";
-```
-
-New core middleware can use:
+`@loggerjs/processors` ships both flavors, such as `tagsMiddleware()` and `tagsProcessor()`. Write your own middleware with `createMiddleware()`:
 
 ```ts
 import { createMiddleware } from "@loggerjs/core/middleware";
+import { redactProcessor, tagsMiddleware } from "@loggerjs/processors";
+
+const logger = createLogger({
+  middleware: [tagsMiddleware({ service: "checkout" })],
+  processors: [redactProcessor()],
+});
 ```
 
-## LogEvent And LogRecord
-
-`LogEvent` remains the transport-facing compatibility shape. Core record helpers now use `LogRecord` internally so the hot path can preserve lazy messages, raw errors, bound context, and stable record shape before projecting to transport events.
-
-Transport authors should keep accepting `LogEvent` through the current public `Transport` interface. Codec authors should use the exported codec input helpers rather than reaching into logger internals.
+See [CONCEPTS.md](CONCEPTS.md) for the full model.
 
 ## Context
 
-Use child loggers for explicit context:
+Use child loggers for context known when the logger is created:
 
 ```ts
-const requestLogger = logger.child({ requestId: "req_123" });
+const requestLogger = logger.child({ bindings: { requestId: "req_123" } });
 ```
 
 Use ambient context for request scopes:
@@ -3286,9 +3285,9 @@ await withContext({ requestId: "req_123" }, async () => {
 
 ## Browser Integrations
 
-Browser collection remains opt-in. Existing manual logging code does not automatically capture console, errors, fetch, or XHR until the matching integration is configured.
+Browser collection is opt-in. Existing manual logging code does not capture console calls, errors, fetch, or XHR until the matching integration is configured.
 
-Prefer:
+A typical starting set:
 
 ```ts
 captureConsoleIntegration({ levels: ["warn", "error"] });
@@ -3297,25 +3296,25 @@ captureFetchIntegration();
 pageLifecycleIntegration();
 ```
 
-## Transports And Codecs
+## Transports and Codecs
 
-Serialization belongs to transports. Move JSON/stringification work out of processors and into a transport codec:
+Serialization belongs to transports. Move JSON or string formatting out of middleware and processors and into a transport codec:
 
 ```ts
 browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 ```
 
-Batch-based transports now share queue, retry, byte-limit, concurrency, and circuit-breaker options.
+When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
 ## Package Imports
 
-Root package imports still work:
+Root package imports work everywhere:
 
 ```ts
 import { createLogger } from "@loggerjs/core";
 ```
 
-Stable subpaths are available for narrower imports:
+Subpaths give narrower imports:
 
 ```ts
 import { createMiddleware } from "@loggerjs/core/middleware";
@@ -3323,7 +3322,7 @@ import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 ```
 
-The current build publishes both ESM and CJS entry points. Type declarations are checked against NodeNext-style package resolution.
+Every package publishes ESM and CJS entry points, and the type declarations are checked against NodeNext package resolution.
 
 ---
 
