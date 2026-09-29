@@ -1077,116 +1077,116 @@ description: "浏览器和 Node.js 自动采集，以及 integration API。"
 
 # 集成
 
-Integrations 会从平台行为中自动采集日志。它们始终是 **opt-in**：除非你配置了对应 integration，否则不会捕获任何内容。每次捕获都会带上 `source: "integration:<name>"`，方便下游过滤和防循环。
+integration 从平台行为中自动采集日志。它们始终需要**主动开启**：只有配置了对应的 integration，才会采集相应内容。每条采集到的日志都带有 `source: "integration:<name>"`，便于下游过滤和防止回环。
 
-启用哪些采集、如何清洗数据的隐私建议见 [运维](OPERATIONS.md)。
+应该开启哪些采集、如何清洗数据等隐私建议，见 [运维](OPERATIONS.md)。
 
-## Runtime 支持
+## 运行时支持
 
-| Runtime | 支持 | 数量 | 说明 |
+| 运行时 | 支持 | 数量 | 说明 |
 | --- | --- | ---: | --- |
-| Browser / frontend | `@loggerjs/browser` 中的一方 automatic collectors | 19 | Console、script errors、fetch/XHR、WebSocket、Web Vitals、Performance API、routing、user actions、service worker、extension/Electron renderer hooks 和 browser context propagation。 |
-| Node.js / server | `@loggerjs/node` 中的一方 automatic collectors | 16 | Process crashes、diagnostics channels、HTTP frameworks、outgoing clients、CLI/serverless lifecycle、queues 和 database clients。 |
-| Runtime-neutral / core | `@loggerjs/core` 只提供 Integration API | - | core package 定义 integration contract 和 loop-prevention helpers；平台采集位于 browser 和 Node.js packages。 |
+| 浏览器 / 前端 | `@loggerjs/browser` 中的一方自动采集器 | 19 | console、脚本错误、fetch/XHR、WebSocket、Web Vitals、Performance API、路由、用户操作、service worker、浏览器扩展/Electron 渲染进程钩子，以及浏览器 context 传播。 |
+| Node.js / 服务端 | `@loggerjs/node` 中的一方自动采集器 | 16 | 进程崩溃、diagnostics channel、HTTP 框架、出站客户端、CLI/serverless 生命周期、队列和数据库客户端。 |
+| 与运行时无关 / core | `@loggerjs/core` 只提供 integration API | - | core 包定义 integration 契约和防回环辅助工具；具体的平台采集在 browser 和 Node.js 包中。 |
 
-自定义 integrations 应 feature-detect 平台表面，不可用时 no-op。
+自定义 integration 应先检测平台能力，不可用时什么也不做。
 
-## 稳定性级别
+## 稳定性分级
 
-Integration 稳定性描述 public setup/options contract 和 teardown behavior。它不表示底层平台在每个 runtime、浏览器版本、框架版本或部署模式中都会发出每个信号。
+integration 的稳定性描述的是公开的 setup/选项契约和拆除行为，并不表示底层平台在每个运行时、浏览器版本、框架版本或部署方式中都会产生每一种信号。
 
 | 级别 | 含义 |
 | --- | --- |
-| Stable | 计划用于 v1-compatible application use。Option names、setup/teardown behavior 和高层 captured fields 受保护。 |
-| Compatible | 公开且有测试，但 exact field shape 或 framework/runtime edge handling 在 v1 前仍可能细化。 |
-| Runtime-dependent | Public API 稳定，但信号本身依赖 platform support、browser policy、framework hooks 或 deployment lifecycle behavior。 |
+| Stable | 计划作为 v1 兼容的应用 API。选项名、setup/拆除行为以及采集字段的整体结构受保护。 |
+| Compatible | 公开且有测试，但在 v1 之前，具体字段结构或框架/运行时边界情况的处理仍可能细化。 |
+| Runtime-dependent | 公开 API 稳定，但信号本身取决于平台支持、浏览器策略、框架钩子或部署生命周期。 |
 
-| Integration | Stability | 原因 |
+| Integration | 稳定性 | 原因 |
 | --- | --- | --- |
-| `captureConsoleIntegration()` | Stable | 主要 browser capture primitive，带 loop prevention 和 teardown coverage。 |
-| `captureBrowserErrorsIntegration()` | Stable | 标准 browser error 和 rejection capture；CSP 细节因浏览器而异。 |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | Request/response capture contract 稳定，并有显式 sanitization hooks。 |
-| `pageLifecycleIntegration()` | Runtime-dependent | API 稳定，但 pagehide/visibility timing 由浏览器控制且 best effort。 |
-| `captureWebVitalsIntegration()` | Runtime-dependent | 依赖 PerformanceObserver 和浏览器 metric support。 |
-| `capturePerformanceIntegration()` | Runtime-dependent | Entry availability 因浏览器、permission policy 和 page lifecycle 不同。 |
-| `captureReportingIntegration()` | Runtime-dependent | ReportingObserver 和 report types 在浏览器间不同。 |
-| `captureRouterIntegration()` | Stable | generic browser routing 的 history/hash capture 稳定。 |
-| Framework router adapters | Compatible | Public adapters 有测试，但 framework-specific hook shapes 可能演进。 |
-| `captureFrameworkErrorsIntegration()` | Compatible | Public helper API 稳定；framework error hook payloads 仍由框架拥有。 |
-| `captureUserActionsIntegration()` | Compatible | Privacy-first defaults 稳定；element metadata heuristics 可能调整。 |
-| `captureWebSocketIntegration()` | Compatible | Constructor patching 和 event capture 公开；sampled message details 可能演进。 |
-| `captureServiceWorkerIntegration()` | Runtime-dependent | 依赖 service worker availability 和 lifecycle messages。 |
-| `captureRuntimeHostIntegration()` | Runtime-dependent | Extension 和 Electron surfaces 是 host-specific，并按 channel 显式 opt-in。 |
-| `browserContextPropagationIntegration()` | Stable | Ambient context binding contract 稳定。 |
-| `captureProcessIntegration()` | Stable | Node crash/warning/exit capture 和有界 flush 行为是生产承诺。 |
-| `diagnosticsChannelIntegration()` | Runtime-dependent | Node channel names 和 payloads 来自 Node 及已 instrumented libraries。 |
-| HTTP framework integrations | Compatible | Express/Fastify/Koa/Nest/Hapi adapters 公开；framework lifecycle details 可能调整。 |
-| `nodeFetchIntegration()` / `nodeHttpClientIntegration()` | Compatible | Outgoing HTTP capture 公开；Node/undici/http edge details 可能演进。 |
-| `captureCliIntegration()` / `serverlessIntegration()` | Compatible | Lifecycle contract 公开；platform-specific invocation metadata 可能细化。 |
-| `queueIntegration()` / `bullMqIntegration()` | Compatible | Generic 和 BullMQ operation capture 公开；queue payload metadata 有意可配置。 |
-| `databaseIntegration()` / `prismaIntegration()` / `redisIntegration()` | Compatible | Data-client method wrapping 公开；statement/command extraction heuristics 可能演进。 |
+| `captureConsoleIntegration()` | Stable | 核心的浏览器采集能力，具备防回环和拆除测试。 |
+| `captureBrowserErrorsIntegration()` | Stable | 标准的浏览器错误和 rejection 采集；CSP 细节因浏览器而异。 |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | 请求/响应采集契约稳定，并提供显式的数据清洗钩子。 |
+| `pageLifecycleIntegration()` | Runtime-dependent | API 稳定，但 pagehide/visibility 的触发时机由浏览器决定，只能尽力而为。 |
+| `captureWebVitalsIntegration()` | Runtime-dependent | 依赖 PerformanceObserver 和浏览器对各项指标的支持。 |
+| `capturePerformanceIntegration()` | Runtime-dependent | 能拿到哪些 entry 取决于浏览器、权限策略和页面生命周期。 |
+| `captureReportingIntegration()` | Runtime-dependent | ReportingObserver 及报告类型因浏览器而异。 |
+| `captureRouterIntegration()` | Stable | 通用浏览器路由的 history/hash 采集稳定。 |
+| 框架路由适配器 | Compatible | 公开的适配器有测试，但各框架的钩子形态可能变化。 |
+| `captureFrameworkErrorsIntegration()` | Compatible | 公开的辅助 API 稳定；框架错误钩子的 payload 仍由框架决定。 |
+| `captureUserActionsIntegration()` | Compatible | 隐私优先的默认值稳定；元素元数据的推断规则可能调整。 |
+| `captureWebSocketIntegration()` | Compatible | 构造函数 patch 和事件采集是公开的；采样消息的细节可能变化。 |
+| `captureServiceWorkerIntegration()` | Runtime-dependent | 取决于 service worker 是否可用以及其生命周期消息。 |
+| `captureRuntimeHostIntegration()` | Runtime-dependent | 浏览器扩展和 Electron 的能力与宿主相关，需要按频道显式开启。 |
+| `browserContextPropagationIntegration()` | Stable | 环境 context 绑定契约稳定。 |
+| `captureProcessIntegration()` | Stable | Node 崩溃/警告/退出采集以及有时限的 flush 行为属于生产承诺。 |
+| `diagnosticsChannelIntegration()` | Runtime-dependent | Node 频道名和 payload 来自 Node 以及已埋点的库。 |
+| HTTP 框架 integration | Compatible | Express/Fastify/Koa/Nest/Hapi 适配器是公开的；框架生命周期细节可能调整。 |
+| `nodeFetchIntegration()` / `nodeHttpClientIntegration()` | Compatible | 出站 HTTP 采集是公开的；Node/undici/http 的边界细节可能变化。 |
+| `captureCliIntegration()` / `serverlessIntegration()` | Compatible | 生命周期契约是公开的；平台相关的调用元数据可能细化。 |
+| `queueIntegration()` / `bullMqIntegration()` | Compatible | 通用队列和 BullMQ 操作采集是公开的；队列 payload 元数据有意设计为可配置。 |
+| `databaseIntegration()` / `prismaIntegration()` / `redisIntegration()` | Compatible | 数据客户端的方法包装是公开的；语句/命令的提取规则可能变化。 |
 
-## Import Boundaries
+## 导入边界
 
-Root package imports 是方便入口。Public integration subpaths 被明确记录，用户可以选择更窄 bundles，新内置 integrations 也不能在没有文档时悄悄扩大 surface。
+根入口是便捷预设。公开的 integration 子路径都列在这里，方便用户选择更小的 bundle，也防止新的内置 integration 在没有文档的情况下悄悄扩大 API。
 
-| Runtime | Public integration subpaths |
+| 运行时 | 公开的 integration 子路径 |
 | --- | --- |
 | Browser | `@loggerjs/browser/integration-console`, `@loggerjs/browser/integration-context`, `@loggerjs/browser/integration-errors`, `@loggerjs/browser/integration-fetch`, `@loggerjs/browser/integration-xhr`, `@loggerjs/browser/integration-framework-errors`, `@loggerjs/browser/integration-framework-routers`, `@loggerjs/browser/integration-reporting`, `@loggerjs/browser/integration-router`, `@loggerjs/browser/integration-runtime-host`, `@loggerjs/browser/integration-service-worker`, `@loggerjs/browser/integration-user-actions`, `@loggerjs/browser/integration-websocket`, `@loggerjs/browser/integration-web-vitals`, `@loggerjs/browser/integration-performance`, `@loggerjs/browser/integration-page-lifecycle` |
 | Node.js | `@loggerjs/node/integration-process`, `@loggerjs/node/integration-cli`, `@loggerjs/node/integration-koa`, `@loggerjs/node/integration-nest`, `@loggerjs/node/integration-hapi`, `@loggerjs/node/integration-prisma`, `@loggerjs/node/integration-redis`, `@loggerjs/node/integration-queue`, `@loggerjs/node/integration-bullmq`, `@loggerjs/node/integration-serverless`, `@loggerjs/node/integration-database`, `@loggerjs/node/integration-express`, `@loggerjs/node/integration-fastify`, `@loggerjs/node/integration-fetch`, `@loggerjs/node/integration-http-client`, `@loggerjs/node/integration-diagnostics` |
 
-当 public integration subpath 被导出但未列在这里时，`pnpm verify:component-docs` 会失败。新增 entries 也应更新上方稳定性表和该 integration family 的 runtime validation notes。
+如果某个公开的 integration 子路径被导出却没有列在这里，`pnpm verify:component-docs` 会失败。新增条目时也应同步更新上方的稳定性表，以及该类 integration 的运行时验证说明。
 
-## Browser / Frontend（`@loggerjs/browser`）
+## 浏览器 / 前端（`@loggerjs/browser`）
 
-| Integration | 捕获内容 | 说明 |
+| Integration | 采集内容 | 说明 |
 | --- | --- | --- |
-| `captureConsoleIntegration()` | `console.debug/info/log/warn/error/trace` calls | Level allowlist（`levels`）、rate limit（默认 100/s）。Teardown 时恢复 patched methods；console transport 通过 unpatched methods 写出，所以不会循环。 |
-| `captureBrowserErrorsIntegration()` | `window.onerror` script/resource errors、`unhandledrejection`、可选 CSP violations | 对快速重复的相同 script errors 做 dedupe。 |
-| `captureFetchIntegration()` | 失败（status >= `minStatus`，默认 400）和采样成功的 `fetch` calls | Header allowlists、URL sanitizer。捕获后仍把 errors re-throw 给应用。 |
-| `captureXHRIntegration()` | `XMLHttpRequest` lifecycle，带 status 和 duration | 与 fetch 相同的 sanitization options。 |
-| `pageLifecycleIntegration()` | 在 `pagehide` / `visibilitychange` 上 flush transports | 合并快速重复 flush；与 HTTP transport 的 beacon mode 搭配。 |
-| `captureWebVitalsIntegration()` | CLS、FCP、INP、LCP、TTFB | 通过 PerformanceObserver 发出 incremental 和 final values。 |
-| `capturePerformanceIntegration()` | navigation、resource、longtask、measure、mark entries | Deduplicated，并受 `maxEntries` 限制。 |
-| `captureUserActionsIntegration()` | clicks、inputs、submits | Per-element throttling；默认不捕获 text/value。 |
-| `captureRouterIntegration()` | route changes（`pushState`/`replaceState`/`popstate`/`hashchange`） | 可选 state normalization。 |
-| `captureReportingIntegration()` | ReportingObserver reports（CSP、deprecation、intervention、crash） | Teardown 时 drain pending reports。 |
-| `captureServiceWorkerIntegration()` | service worker lifecycle、messages、message errors | 默认不捕获 message data。 |
-| `captureWebSocketIntegration()` | WebSocket connect/open/close/error 和 sampled messages | 包装 constructor；setup 前创建的 sockets 不会被跟踪。 |
-| `captureFrameworkErrorsIntegration()` | React/Vue/Solid/Svelte error hooks | 暴露 `reactComponentDidCatch()`、`vueErrorHandler()` 等；buffer logger 存在前抛出的 errors（`maxPending`）。 |
-| `captureRuntimeHostIntegration()` | browser-extension messages、configured channels 上的 Electron IPC | 保守默认：不监控任何 channels。 |
-| `browserContextPropagationIntegration()` | session/request/action 和 trace context | 为 traceparent、baggage、session id、request id、recent user action 添加 ambient context providers。 |
-| `nextRouterIntegration()` / `reactRouterIntegration()` / `vueRouterIntegration()` / `nuxtRouterIntegration()` | framework router transitions | 常见 router APIs 的 thin adapters；记录前 sanitize URLs。 |
+| `captureConsoleIntegration()` | `console.debug/info/log/warn/error/trace` 调用 | 级别允许列表（`levels`）、限流（默认每秒 100 条）。拆除时恢复被 patch 的方法；console transport 通过未被 patch 的方法输出，因此不会形成回环。 |
+| `captureBrowserErrorsIntegration()` | `window.onerror` 的脚本/资源错误、`unhandledrejection`，以及可选的 CSP 违规 | 对短时间内重复出现的相同脚本错误去重。 |
+| `captureFetchIntegration()` | 失败的（状态码 >= `minStatus`，默认 400）以及按采样率记录的成功 `fetch` 调用 | header 允许列表、URL 清洗函数。采集后错误仍会重新抛给应用。 |
+| `captureXHRIntegration()` | `XMLHttpRequest` 生命周期，包含状态码和耗时 | 与 fetch 相同的清洗选项。 |
+| `pageLifecycleIntegration()` | 在 `pagehide` / `visibilitychange` 时 flush 各 transport | 合并短时间内的多次 flush；与 HTTP transport 的 Beacon 模式配合使用。 |
+| `captureWebVitalsIntegration()` | CLS、FCP、INP、LCP、TTFB | 通过 PerformanceObserver 输出中间值和最终值。 |
+| `capturePerformanceIntegration()` | navigation、resource、longtask、measure、mark 条目 | 去重，并受 `maxEntries` 限制。 |
+| `captureUserActionsIntegration()` | 点击、输入、提交 | 按元素节流；默认不采集文本和输入值。 |
+| `captureRouterIntegration()` | 路由变化（`pushState`/`replaceState`/`popstate`/`hashchange`） | 可选的 state 规范化。 |
+| `captureReportingIntegration()` | ReportingObserver 报告（CSP、deprecation、intervention、crash） | 拆除时取出尚未处理的报告。 |
+| `captureServiceWorkerIntegration()` | service worker 生命周期、消息、消息错误 | 默认不采集消息数据。 |
+| `captureWebSocketIntegration()` | WebSocket 连接/打开/关闭/错误，以及采样的消息 | 包装构造函数；setup 之前创建的 socket 不会被跟踪。 |
+| `captureFrameworkErrorsIntegration()` | React/Vue/Solid/Svelte 的错误钩子 | 提供 `reactComponentDidCatch()`、`vueErrorHandler()` 等方法；logger 创建前抛出的错误会先缓存（`maxPending`）。 |
+| `captureRuntimeHostIntegration()` | 浏览器扩展消息、指定频道上的 Electron IPC | 默认保守：不监听任何频道。 |
+| `browserContextPropagationIntegration()` | session/request/action 以及 trace context | 为 traceparent、baggage、session id、request id 和最近一次用户操作添加环境 context provider。 |
+| `nextRouterIntegration()` / `reactRouterIntegration()` / `vueRouterIntegration()` / `nuxtRouterIntegration()` | 框架路由跳转 | 对常见路由 API 的轻量适配；记录前请先清洗 URL。 |
 
-## Node.js / Server（`@loggerjs/node`）
+## Node.js / 服务端（`@loggerjs/node`）
 
-| Integration | 捕获内容 | 说明 |
+| Integration | 采集内容 | 说明 |
 | --- | --- | --- |
-| `captureProcessIntegration()` | `uncaughtException`（fatal）、`unhandledRejection`、warnings、exit | 配置 `exitOnUncaught` 后，捕获 fatal record，调用 `flushSync()`，最多等待 `flushTimeoutMs` 的 async `flush()`，然后以 code `1` 退出。 |
-| `diagnosticsChannelIntegration()` | Node `diagnostics_channel` messages（http、undici、custom channels） | 默认不捕获 message payload。 |
-| `expressIntegration(logger)` | request completion，带 status、route、duration、request id | 返回 Express middleware；可选 per-request `withContext` binding。 |
-| `fastifyIntegration(logger)` | 通过 onRequest/onError/onResponse hooks 捕获 request lifecycle | 返回 Fastify plugin；state 存在 WeakMap 中。 |
-| `nodeFetchIntegration()` | outgoing `fetch` calls，带 status 和 duration | 捕获后 errors 会 re-throw。 |
-| `nodeHttpClientIntegration()` | `http.request` / `http.get` calls | 捕获 Node http client 生命周期。 |
-| `captureCliIntegration()` | CLI start、exit code、SIGINT/SIGTERM | 按 token/password/secret patterns 清洗 argv。 |
-| `serverlessIntegration(logger, handler)` | 包装 serverless handler：invocation、duration、cold start、errors | 支持 promise、callback 和 sync handlers。 |
-| `queueIntegration()` | queue client operations（publish/consume/ack/nack），带 duration | 按 client 列表 patch 指定 methods。 |
-| `databaseIntegration()` | database client calls（query/execute/...），带 statement 和 duration | Statement 从第一个 string arg 或 `.sql`/`.text`/`.query` 属性提取。 |
-| `koaIntegration()` / `nestMiddlewareIntegration()` / `hapiIntegration()` | framework request lifecycle | Koa、Express-compatible Nest middleware、Hapi request hooks 的 thin adapters。Nest adapter 不 hook Nest exception filters、interceptors、guards 或原始 thrown `Error`。 |
-| `prismaIntegration()` | Prisma raw-query methods | 只包装 `$queryRaw` / `$executeRaw` raw-query variants。不订阅 `$on("query")`，也不捕获 `prisma.user.findMany()` 这类 typed model operations。 |
-| `redisIntegration()` | Redis command methods | 捕获 selected command methods、duration、errors 和可选 payload metadata。 |
-| `bullMqIntegration()` | BullMQ Queue method calls | 包装 `add`、`addBulk` 和存在时的 legacy `process` method。不 hook `Worker` 或 `QueueEvents` 的 `completed`、`failed`、`stalled` 等 lifecycle events。 |
+| `captureProcessIntegration()` | `uncaughtException`（fatal）、`unhandledRejection`、warning、退出 | 启用 `exitOnUncaught` 后，先记录一条 fatal record，调用 `flushSync()`，最多等待 `flushTimeoutMs` 让异步 `flush()` 完成，然后以退出码 `1` 退出。 |
+| `diagnosticsChannelIntegration()` | Node `diagnostics_channel` 消息（http、undici、自定义频道） | 默认不采集消息 payload。 |
+| `expressIntegration(logger)` | 请求完成，包含状态码、路由、耗时、request id | 返回一个 Express 中间件；可选地为每个请求绑定 `withContext`。 |
+| `fastifyIntegration(logger)` | 通过 onRequest/onError/onResponse 钩子采集请求生命周期 | 返回一个 Fastify 插件；状态保存在 WeakMap 中。 |
+| `nodeFetchIntegration()` | 出站 `fetch` 调用，包含状态码和耗时 | 采集后错误仍会重新抛出。 |
+| `nodeHttpClientIntegration()` | `http.request` / `http.get` 调用 | 采集 Node http 客户端的请求生命周期。 |
+| `captureCliIntegration()` | CLI 启动、退出码、SIGINT/SIGTERM | 按 token/password/secret 等模式清洗 argv。 |
+| `serverlessIntegration(logger, handler)` | 包装 serverless handler：调用、耗时、冷启动、错误 | 支持 promise、callback 和同步 handler。 |
+| `queueIntegration()` | 队列客户端操作（publish/consume/ack/nack），包含耗时 | 按客户端 patch 你列出的方法。 |
+| `databaseIntegration()` | 数据库客户端调用（query/execute/...），包含语句和耗时 | 语句取自第一个字符串参数，或 `.sql`/`.text`/`.query` 属性。 |
+| `koaIntegration()` / `nestMiddlewareIntegration()` / `hapiIntegration()` | 框架请求生命周期 | 分别是 Koa、兼容 Express 的 Nest 中间件和 Hapi 请求钩子的轻量适配。Nest 适配器不会接入 Nest 的 exception filter、interceptor、guard，也拿不到原始抛出的 `Error`。 |
+| `prismaIntegration()` | Prisma 原始查询方法 | 只包装 `$queryRaw` / `$executeRaw` 系列原始查询方法。不订阅 `$on("query")`，也不采集 `prisma.user.findMany()` 这类模型操作。 |
+| `redisIntegration()` | Redis 命令方法 | 采集选定的命令方法、耗时、错误和可选的 payload 元数据。 |
+| `bullMqIntegration()` | BullMQ Queue 方法调用 | 包装 `add`、`addBulk`，以及存在时的旧版 `process` 方法。不接入 `Worker` 或 `QueueEvents` 的 `completed`、`failed`、`stalled` 等生命周期事件。 |
 
-### Context manager
+### Context 管理器
 
-这不是 integration，但也是启动时安装一次：
+它不是 integration，但同样在启动时安装一次：
 
 ```ts
 import { installAsyncLocalStorageContext } from "@loggerjs/node";
 installAsyncLocalStorageContext();
 ```
 
-之后 `withContext()` 的值会跨 `await` 边界跟随 async execution。
+安装后，`withContext()` 设置的值会跨越 `await` 跟随异步执行流传递。
 
 ## 编写自定义 Integration
 
@@ -1219,20 +1219,20 @@ export function captureThingIntegration(): Integration {
 }
 ```
 
-setup context（`api`）提供：
+setup 上下文（`api`）提供：
 
-- `capture(input)`：主要入口；打上 `source: "integration:thing"`。
-- `log/trace/debug/info/warn/error/fatal/event/captureException`：当 capture semantics 不合适时使用的直接 logging methods。
-- `guard(fn)`：用 re-entrancy counter 包装 callback。如果 patched surface 本身被 logging pipeline 触发（典型情况：console capture + console transport），递归调用会被丢弃并计入 meta（`integration.dropped.reentrant`），而不是无限递归。
-- `unpatched`：原始 `console.*` / `fetch` / `XMLHttpRequest` 实现的注册表，在所有 integrations 间共享，让 double patching 可以组合。
-- `flush/flushSync/close`：供 page hide 等 lifecycle-driven integrations 使用。
+- `capture(input)`：主要入口，会自动打上 `source: "integration:thing"`。
+- `log/trace/debug/info/warn/error/fatal/event/captureException`：当 capture 语义不合适时，可以直接调用这些日志方法。
+- `guard(fn)`：为回调加上重入计数。如果被 patch 的对象本身会被日志管线触发（典型场景是 console 采集 + console transport），递归调用会被丢弃并计入 meta（`integration.dropped.reentrant`），而不会无限递归。
+- `unpatched`：原始 `console.*` / `fetch` / `XMLHttpRequest` 实现的注册表，在所有 integration 之间共享，因此多次 patch 可以正确叠加。
+- `flush/flushSync/close`：供页面隐藏等由生命周期驱动的 integration 使用。
 
-规则：
+注意事项：
 
-- 始终返回 teardown，恢复你 patch 的内容。Teardowns 在 `logger.close()` 时运行一次，并按 setup 反向顺序执行。
-- Setup 对每个 integration _instance_ 是幂等的；创建两个 instances 就会 patch 两次。导出 factory 并写清楚。
-- 优雅降级：feature-detect 平台表面，不存在时 no-op。
-- 捕获原始结构化数据，让 processors 负责 redact；不要提前格式化 messages。
+- 始终返回一个拆除函数，恢复你 patch 过的内容。拆除函数会在 `logger.close()` 时按 setup 的相反顺序各执行一次。
+- setup 对每个 integration _实例_ 只执行一次；创建两个实例就会 patch 两次。请导出工厂函数并在文档中说明。
+- 优雅降级：先检测平台能力，缺失时什么也不做。
+- 采集原始的结构化数据，让 processor 负责脱敏；不要提前格式化消息。
 
 ## 相关链接
 
