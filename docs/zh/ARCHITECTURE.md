@@ -6,93 +6,92 @@ description: "设计规则、管线内部和记录过的技术决策。"
 
 # LoggerJS 架构
 
-> 状态：当前面向 v1 的代码库实现架构。
-> 来源输入：`DESIGN.md`、`log.md` 和当前 monorepo skeleton。
+LoggerJS 是一个同构的结构化日志库，可运行在浏览器、Node.js、Bun、Deno、worker 和 edge 运行时中。本页说明当前各个包如何组织、实现遵守的规则，以及热路径背后的设计决策。精确类型以各包的声明文件和 [API 报告](reference/api/index.md) 为准。
 
-LoggerJS 是面向浏览器、Node、Bun、Deno 和 edge runtimes 的同构结构化 logger。产品架构围绕三个面向用户的概念构建：
+产品围绕三个面向用户的概念构建：
 
-- **Integration**：opt-in 自动采集，例如 browser console capture、global script errors、HTTP errors、page lifecycle flush、Node process errors 和 runtime diagnostics。
-- **Middleware**：同步 record transforms 和 filters，例如 redaction、sampling、tag/type enrichment、request correlation、dedupe 和 route-specific policies。
-- **Transport**：目的地边界，例如 console、stdout、file、HTTP batch、OTLP、Sentry、DB、worker-hosted delivery 或任意用户自定义 sink。
+- **Integration（集成）**：可选的自动采集，例如浏览器 console 捕获、全局脚本错误、fetch/XHR 失败、页面生命周期 flush、Node 进程错误、HTTP 框架、队列和数据库客户端。
+- **Middleware 与 processor**：同步的转换与过滤，例如脱敏、采样、补充字段、去重、指纹、路由和 fingers-crossed 缓冲。
+- **Transport（传输）**：投递边界，例如 console、stdout、文件、HTTP、IndexedDB、OTLP、Sentry、数据库、worker 线程或自定义 sink。
 
-还有一个必须保持一等地位的技术边界：**Codec**。Codec 属于 transport，并拥有 serialization/deserialization。Middleware 不得序列化 records。Console transport 应保留原始值。HTTP/file/OTLP transports 选择各自需要的 codec。
+另有一个同样重要的技术边界：**codec（编解码器）**。codec 属于 transport，负责序列化。middleware 和 processor 从不序列化；console transport 保留原始值；HTTP、文件和 OTLP transport 各自选择需要的 codec。
 
-## 当前仓库基线
+## 包结构
 
-当前仓库已经具备主要 v1 building blocks：
-
-```text
-packages/core        Logger, LogRecord helpers, LogEvent projection, context, typed events, codecs, console/memory/batch transports
-packages/browser     Browser HTTP transport, offline queue, beacon/page lifecycle flush, console/error/fetch/XHR integrations
-packages/node        stdout/stderr/file/http/worker transports, AsyncLocalStorage context, process and diagnostics-channel integrations
-packages/processors  redact/sample/tags/type/dedupe/trace processors
-packages/codecs      fixed-shape JSON, built-in msgpackr, projector codec
-packages/otel        OTLP JSON mapping, HTTP transport, active span trace processor
-packages/sentry      Sentry structured logs, breadcrumbs, exception/message transport
-examples/*           browser and node basic demos
+```txt
+packages/core        Logger、LogRecord/LogEvent 模型、registry、context、typed/semantic events、
+                     middleware 内核、integration API、console/memory/test/batch/retry/fallback
+                     transports、json/safe-json/ndjson/metrics codecs、payload transforms
+packages/browser     HTTP、IndexedDB、WebSocket、service worker、BroadcastChannel 和 offline-first
+                     transports，离线队列，ZIP 导出，19 个浏览器 integrations
+packages/node        stdout/stderr/file/rotating-file/HTTP/syslog/worker transports、
+                     AsyncLocalStorage context、diagnostics_channel 桥接、16 个 Node integrations
+packages/pretty      浏览器 DevTools 与终端显示 transports，以及共享 formatter
+packages/processors  与运行时无关的 middleware 与 processor 目录
+packages/codecs      fast-event-json、Pino 兼容、msgpackr 和 projector codecs
+packages/otel        OTLP JSON 映射、OTLP/HTTP transport、log bridge、活跃 span trace processor
+packages/sentry      Sentry 结构化日志、breadcrumbs、异常/消息捕获
+packages/datadog|elastic|loki|cloudwatch   厂商协议 transports
+packages/database    SQLite、Postgres 和自定义适配器的批量 transports
 ```
 
-剩余架构工作主要是打磨和 package topology：
+browser 和 node 包会重新导出 core。它们的根入口是便捷预设；每个 transport 和 integration 也都有独立的子路径导出（例如 `@loggerjs/browser/transport-http` 或 `@loggerjs/node/integration-process`），构建为独立的入口 bundle，并由 `pnpm verify:entry-boundaries` 检查。哪些入口属于稳定 API 见 [API 稳定性](API-STABILITY.md)。
 
-- `Processor` 仍作为兼容词汇支持，而 `Middleware` 是公开心智模型。
-- `LogEvent` 仍作为面向 transport 的兼容 envelope；热路径构造 `LogRecord`，只在需要时投影。
-- 粗粒度 browser/node packages 可以保留为 presets，但稳定 v1 packages 应把平台 transports 和 integrations 拆成更小的 installable units。
-- 当前双 ESM/CJS 输出保留用于兼容。Declaration output 兼容 NodeNext，并验证 public subpath exports。
-- Batch transports 已覆盖 bounded queues、byte limits、retry、drop counters、circuit breaking、pagehide/beacon behavior 和 runtime flush semantics。
+## 设计规则
 
-## 不可谈判的设计规则
-
-1. **Core 平台中立。** `@loggerjs/core` 不得 import browser、Node、Bun、Deno、worker、filesystem、fetch 或 diagnostics APIs。
-2. **禁用日志几乎免费。** 禁用级别调用必须只做一次数字 level 比较，并在 record allocation、message stringification、context merge 或 integration work 前返回。
-3. **序列化只发生在 transport 边界。** 管线保留原始引用。`resolveMessage(record)` 是唯一允许 middleware 触发的 lazy evaluation。
-4. **Middleware 同步。** 热路径中没有 promises、没有 Koa-style `next`、没有 async lookup。
-5. **Integrations 使用与手动日志相同的管线。** 自动 records 只是在 `source` 上不同；它们仍经过 middleware、routing、batching、codec 和 transport policy。
-6. **Integrations 显式且可逆。** 任何 monkey patch 都必须 opt-in、idempotent、防重入，并能完全 teardown。
-7. **Logger 错误永远不逃逸到应用代码。** 内部失败通过 rate-limited meta logger 计数和报告。
-8. **v1 不使用 object pool。** 短生命周期 records 应保持 young-generation GC objects，除非 benchmark 证明需要其他方案。
+1. **core 与平台无关。** `@loggerjs/core` 不导入浏览器、Node、Bun、Deno、worker、文件系统、fetch 或 diagnostics API，公开类型在没有 `lib.dom` 时也能编译。运行时能力通过 `globalThis` 检测。
+2. **禁用的日志几乎零成本。** 被禁用级别的调用只做一次数值比较，然后在分配 record、计算消息、查找 context 或执行 integration 之前返回。
+3. **序列化只发生在 transport 边界。** 管线内保留原始引用。`resolveMessage(record)` 是 middleware 唯一允许触发的延迟求值。
+4. **middleware 和 processor 是同步的。** 没有 promise，没有 Koa 风格的 `next`，热路径中也没有异步查找。
+5. **integration 与手动日志走同一条管线。** 采集到的 record 只在 `source` 上不同，仍然经过 middleware、processor、路由、codec 和 transport。
+6. **integration 显式且可撤销。** 每个 patch 都需要主动开启，带有重入保护，并在 `close()` 时拆除。
+7. **logger 错误永远不会抛到应用代码。** middleware、processor、codec、integration 和 transport 中的失败会计入 logger meta 计数，并通过 `onInternalError` 上报（未设置处理函数时，用未被 patch 的 console 输出 `console.error`）。
+8. **不使用对象池。** 短生命周期的 record 保持为新生代 GC 对象。
+9. **不生成代码。** 脱敏和 codec 都基于解释执行，不使用 `eval` 或 `new Function`。
 
 ## 端到端管线
 
-```text
-manual API / integration capture
+```txt
+手动 API / integration 采集
         |
         v
-  level gate
+  级别判断                        一次数值比较
         |
         v
-  create LogRecord
+  createRecord()                 包含原始消息、错误、props 和 context 的 LogRecord
         |
         v
-  global middleware
+  middleware                     同步、有序；可以替换字段或丢弃（返回 null）
+        |
+        +-- 没有 processor ------> record 快速路径：transport 直接收到 record
         |
         v
-  transport router / fan-out
+  投影为 LogEvent                 分配 id、解析消息、规范化错误
         |
-        +--> per-transport middleware
-        |          |
-        |          v
-        |     transport buffer
-        |          |
-        |          v
-        |     codec.encode(batch)
-        |          |
-        |          v
-        |     sink: console / stdout / file / HTTP / OTLP / worker / custom
+        v
+  processors                     同步、有序；可以返回新 event 或丢弃（返回 false）
         |
-        +--> ...
+        v
+  transport 分发                  按 transport 的 minLevel 和 processor 路由过滤
+        |
+        v
+  transport                      自行负责队列、批量、重试、codec 和投递
 ```
 
-在选定 transport 准备投递之前，record 绝不应被 stringify。这让 console 能保留可交互对象，HTTP 能选择 JSON 或 binary，file 能选择 NDJSON，OTLP 能选择自己的 wire mapping，而且不惩罚其他目的地。
+在选定的 transport 准备发送之前，record 不会被字符串化。正因如此，console 能保留可交互的对象，HTTP 可以选择 JSON 或二进制，文件写入 NDJSON，OTLP 使用自己的映射，而不会拖慢其他目的地。
 
-## Core Record Model
+## Record 模型
 
-目标内部 record 是 `LogRecord`，不是当前 `LogEvent` envelope。它为稳定 hidden class 和 transport-owned projection 优化：
+`LogRecord` 是热路径使用的结构。它只通过一个 `createRecord()` 入口构造，每个字段（包括 `null` 字段）都按相同顺序赋值，因此所有 record 共享同一个 hidden class：
 
 ```ts
-export interface LogRecord {
+interface LogRecord {
   time: number;
   level: number;
   category: readonly string[];
+  type: string | null;
+  tags: Tags | null;
+  trace: TraceContext | null;
   msg: string | null;
   lazy: (() => string) | null;
   props: Record<string, unknown> | null;
@@ -104,410 +103,296 @@ export interface LogRecord {
 }
 ```
 
-实现规则：
+- 不删除字段，也不附加临时属性；额外数据放在 `props` 或不可变的 `ctx` 中。
+- `time` 来自 logger 的时钟；时间戳相同时按 `seq` 排序。
+- `err` 与 `props` 分开存放，因为错误规范化、堆栈截断、cause 处理和去重都需要专门逻辑。
+- `ctx` 和 logger 级别的 `tags` 被冻结并共享。middleware 应替换它们（`record.tags = { ...record.tags, extra }`），而不是原地修改。
+- record 上没有 `id`。id 在 record 投影为 `LogEvent` 时分配；直接编码 record 的 codec 使用 `defaultRecordId`。
 
-- 通过单一 `createRecord()` 路径构造 records。
-- 以相同顺序分配每个字段，包括 `null` 字段。
-- 不 `delete` 字段，不向 record 附加 ad hoc properties。
-- Extra data 放在 `props` 或 immutable `ctx` 中。
-- `time` 是 `Date.now()`；同一 timestamp 内用 `seq` 排序。
-- `err` 与 `props` 分离，因为 error encoding、stack truncation、cause handling 和 dedupe 是专门逻辑。
-
-当前 `LogEvent` 形状可以暂时保留为 codec projection 或兼容类型，但 v1 rewrite 开始后不应驱动热路径。
+`LogEvent` 是面向 transport 的信封结构（`id`、`time`、`seq`、`level`、`levelName`、`logger`、`message`、`type`、`tags`、`data`、`error`、`context`、`trace`、`source`）。`recordToEvent()` 和 `eventToRecord()` 在两者之间转换；有损转换的情况见 [核心概念](CONCEPTS.md)。
 
 ## Logger API
 
-LoggerJS 支持两种 acquisition models：
+LoggerJS 支持两种获取 logger 的方式。应用直接创建 logger：
 
 ```ts
 const log = createLogger({
-  category: "app",
+  category: ["app"],
   level: "info",
-  transports: [consoleTransport()]
+  transports: [consoleTransport()],
 });
 ```
+
+库按 category 查找 logger，在应用配置 registry 之前保持静默：
 
 ```ts
 const log = getLogger(["library", "parser"]);
 
 await configure({
-  middleware: [redact({ paths: ["password", "*.token"] })],
+  processors: [redactProcessor({ keys: ["password", /token/i] })],
   transports: {
     console: consoleTransport(),
-    http: httpTransport({ url: "/v1/logs", codec: jsonCodec() })
+    http: browserHttpTransport({ url: "/v1/logs", codec: jsonCodec() }),
   },
   loggers: [
     { category: ["app"], level: "debug", transports: ["console", "http"] },
-    { category: ["library"], level: "warn", transports: ["http"] }
+    { category: ["library"], level: "warn", transports: ["http"] },
   ],
-  integrations: [consoleIntegration(), globalErrorsIntegration()]
+  integrations: [captureConsoleIntegration(), captureBrowserErrorsIntegration()],
 });
 ```
 
-必需调用形态：
+调用形式：
 
 ```ts
 log.info("user logged in", { userId: 42 });
 log.error(err, "save failed", { orderId });
 log.debug(() => expensiveDebugMessage());
 log.event(CheckoutCompleted, { orderId, amountCents });
-log.child({ requestId }).warn("retrying");
+log.child({ bindings: { requestId } }).warn("retrying");
 await log.flush();
 ```
 
-Overload 规则保持很小：
+重载规则保持简单：
 
-- 第一个参数是 `string`：message
-- 第一个参数是 `function`：lazy message
-- 其他情况：error slot，后面可选 message 和 props
+- 第一个参数是 `string`：消息
+- 第一个参数是 `function`：延迟消息
+- 其他情况：作为错误，后面可以跟可选的消息和 props
 
-Core 不包含 printf-style formatting。结构化字段是一等公民；formatting 属于显示层。
+core 不提供 printf 风格的格式化。结构化字段是一等公民；格式化属于展示层，由 `@loggerjs/pretty` 负责。
 
-## Registry 和 Configuration
+## Registry 与配置
 
-`getLogger(category)` 为库作者存在。配置前返回 void logger；`configure()` 后通过配置好的管线路由。
+`getLogger(category)` 返回 `RegistryLogger`。在 `configure()` 运行之前它不做任何事；之后每次调用都会解析到根据当前配置快照构建并缓存的运行时 logger。
 
-配置要求：
+- 路由按 category 前缀匹配，最具体的路由优先：`["app"]` 适用于 `["app", "checkout"]`，除非有更长的路由匹配。
+- transport 是具名的（传对象，或传数组并以各 transport 的 `name` 为键）；路由按名称选择 transport，没有指定时使用全部 transport。
+- 全局 processor 先于路由 processor 运行。
+- 通过 `configure()` 配置的 integration 只在一个内部宿主 logger 上安装一次。
+- `configure({ reset: true })` 会先关闭上一份快照中的 integration 和 transport，再安装新的配置。
+- 配置以快照形式保存，日志调用不需要遍历可变的配置结构。
 
-- 按 category 做 prefix matching，例如 `["app"]` 应用于 `["app", "checkout"]`
-- named transports 和 named middleware
-- 显式 integration lifecycle management
-- 可选 early ring buffer，用于 pre-config logs
-- `configure({ reset: true })` 替换旧 transports 并调用 async disposal hooks
-- immutable runtime snapshots，让热路径读取不遍历 mutable config structures
-
-这个 registry 是战略功能：第三方库可以记录日志，而不耦合到任何 backend，也不强迫应用配置。
+有了 registry，第三方库可以记录日志，而不必绑定某个后端，也不会强迫应用做配置。
 
 ## Context
 
-有两类 context：
+context 有两种模式：
 
-- **显式 context**：`logger.child(bindings)`。Child bindings 在 child 创建时 flatten 并 freeze。
-- **隐式 context**：`withContext(bindings, fn)`。Node/Bun/Deno 使用 AsyncLocalStorage 或等价 conditional exports。浏览器初期降级为 synchronous-scope context，直到 TC39 AsyncContext 可用。
+- **显式 context**：通过 `logger.child({ bindings })` 提供。bindings 在创建 child 时被展平并冻结。
+- **环境 context**：通过 `withContext(bindings, fn)` 提供。默认的 context 管理器覆盖同步作用域；`@loggerjs/node` 的 `installAsyncLocalStorageContext()` 让 context 在 Node 中跨越 `await`。浏览器在 TC39 AsyncContext 可用之前仍只支持同步作用域。
 
-Codec-level context optimization 替代 pino-style global chindings：
+`addContextProvider()` 让 integration 在不替换应用自身 provider 的前提下补充环境字段（trace、session、request id）。没有注册任何 context provider 时，`getContext()` 直接返回当前管理的 context，不做任何分配。
+
+## Middleware 与 Processor
 
 ```ts
-interface EncodeContext {
-  levelName(level: number): string;
-  ctxCache: WeakMap<object, unknown>;
-  schemaCache: WeakMap<object, unknown>;
+interface Middleware {
+  readonly name: string;
+  process(record: LogRecord, context: MiddlewareContext): LogRecord | null;
 }
+
+type Processor = (event: LogEvent, context: ProcessorContext) => LogEvent | false | void;
 ```
 
-每个 codec 可以缓存 immutable bound contexts 的 encoded fragments。这样保留性能收益，同时不让 JSON serialization 成为全局 logger concern。
+- middleware 在分配 id、解析消息或处理错误之前运行在 record 上。返回 `null` 即丢弃该 record。
+- processor 运行在投影后的 event 上。返回 `false` 丢弃 event；返回 event 则替换原 event。
+- 两者都做了错误隔离：异常会被上报并计数，管线继续运行。
+- 只要配置了任意 processor，该 logger 就不再走 record 快速路径，因为每条日志都必须投影成 event。
 
-## Middleware
+middleware 不得调用 `JSON.stringify`、`String(record.props)`，也不得递归规范化整个 record。如果需要消息，应显式调用 `resolveMessage(record)`。与运行时无关的目录位于 `@loggerjs/processors`，见 [处理器](PROCESSORS.md)。
 
-目标接口：
-
-```ts
-export interface Middleware {
-  readonly name: string;
-  process(record: LogRecord): LogRecord | null;
-}
-```
-
-执行模型：
-
-- global middleware 在 fan-out 前运行一次，可以原地修改单一 record
-- per-transport middleware 在 fan-out 后运行，必须把 record 视为共享值
-- per-transport changes 使用 `cloneRecord(record, patch)` 来保留形状并避免跨 transport 泄漏
-- 返回 `null` 表示丢弃 record
-- middleware exceptions 会被捕获和计数，不会阻止剩余管线，除非 middleware 明确丢弃
-
-内置能力应覆盖：
-
-- `redact`：安全 path/key redaction，在 matched branches 上 copy-on-write
-- `sample`：按 level/category/key sampling，error 和 fatal 默认完整保留
-- `rateLimit`：按 category/level/source 的 token bucket
-- `dedupe`：fingerprinted burst collapse
-- `fingersCrossed`：由 error trigger 释放的低级别 ring buffer
-- `enrich`：同步 props/context enrichment
-- `tags` 和 `type`：当前 processor 行为的 thin compatibility helpers
-- `traceContext`：OTel 或用户提供的 trace/span injection
-
-Middleware 不得调用 `JSON.stringify`、`String(record.props)` 或递归标准化整个 records。如果需要 message，必须有意调用 `resolveMessage(record)`。
-
-## Transports
-
-目标接口：
+## Transport
 
 ```ts
-export interface Transport {
-  readonly name: string;
-  write(record: LogRecord): void;
-  flush(): Promise<void>;
+interface Transport {
+  name?: string;
+  minLevel?: LoggerLevel;
+  ready?(): void | Promise<void>;
+  write?(record: LogRecord, context: TransportContext): void | Promise<void>;
+  writeBatch?(records: LogRecord[], context: TransportContext): void | Promise<void>;
+  log?(event: LogEvent, context: TransportContext): void | Promise<void>;
+  logBatch?(events: LogEvent[], context: TransportContext): void | Promise<void>;
+  flush?(): void | Promise<void>;
   flushSync?(): void;
-  dispose(): Promise<void>;
-  filter?(record: LogRecord): boolean;
-  middleware?: Middleware[];
+  close?(): void | Promise<void>;
 }
 ```
 
-Transport 职责：
+- 在 record 路径上，core 依次优先使用 `write`、`writeBatch`，否则用 `context.toEvent(record)` 转换一次后调用 `log`/`logBatch`。转换结果按 record 缓存，多个 transport 共享同一次投影和同一个 id。
+- 在 event 路径上（经过 processor 之后），core 优先使用 `log`/`logBatch`，只为仅支持 record 的 transport 派生 record。
+- `minLevel` 按 transport 过滤；processor 路由（`routeProcessor`、`withLogEventRoute`）把 event 固定到具名 transport。
+- 同步抛出的异常和被拒绝的 promise 都会上报到 logger meta；一个 transport 失败不会阻塞其他 transport。
+- `ready()` 需要显式调用。普通日志调用从不等待 transport 启动。
+- `close()` 自己负责尽力 flush。存在 `close()` 时 core 调用它，只有没有 `close()` 的 transport 才回退到调用 `flush()`。
 
-- final routing filters
-- queue 和 backpressure policy
-- batching
-- retry 和 circuit breaking
-- codec selection 和 serialization
-- destination-specific delivery
-- drop/error counters
-- flush 和 disposal semantics
+transport 负责队列与背压、批量、重试与熔断、codec 选择、目的地投递、丢弃与错误计数，以及 flush 和 close 的语义。
 
-### Batching Base
+### 批量
 
-共享 batching 实现应支持：
+`batchTransport(inner, options)` 是共享的可靠性层，HTTP 和 OTLP transport 都基于它，也推荐用它包装原始的厂商 transport。它提供：
 
-- `maxRecords`
-- `maxBytes`
-- `maxWaitMs`
-- `concurrency`
-- 带 exponential backoff 和 full jitter 的 retry
-- `drop-old` 和 `drop-new`
-- drop counters 和 hooks
-- 带 half-open recovery 的 circuit breaker
-- 队列为空时不保留 idle timer
-- ship 时做 encoded-size accounting
+- `maxRecords`（默认 50）、`maxBytes` 和 `maxWaitMs`（默认 1000 毫秒）三种 flush 触发条件
+- `maxQueueSize`，以及 `drop-oldest`、`drop-newest` 或 `throw` 三种丢弃策略
+- `concurrency`，控制并行发送的批次数
+- 带抖动的指数退避重试
+- 支持半开恢复的熔断器
+- `transport.dropped.<reason>` 计数器和可选的 `onDrop` 回调
+- 只有 `maxBytes` 为有限值时才估算字节数；队列为空时不保留空闲定时器
 
-当前 `batchTransport()` 可以作为 bootstrap utility，但不是完整 v1 reliability layer。
+`retryTransport()` 和 `fallbackTransport()` 适用于已经自带批量、或需要本地备份 sink 的 transport。每个内置 transport 的投递特性见 [传输](TRANSPORTS.md)。
 
-### Console Transport
+### Console
 
-Console transport 在 pretty mode 下不应序列化。它应把原始 `msg`、`props` 和 `err` 引用传给原始 console methods，让浏览器 devtools 保持对象检查能力。
+console transport 在 pretty 模式下不做序列化，而是把原始的消息、数据和错误引用传给原生 console 方法，让浏览器 DevTools 保留对象检查能力。它通过未被 patch 的 console 注册表写入，因此可以与 console 捕获同时启用而不会形成回环，并且默认过滤掉从 console 捕获来的 record。
 
-它必须使用 unpatched console registry，才能和 console capture 共存而不形成 feedback loops。
+### HTTP
 
-### HTTP Transport
+- **浏览器：** 使用带 `keepalive` 的 `fetch`，在 `pagehide` 或页面隐藏时使用 `sendBeacon`，可选内存或 IndexedDB 离线队列，并按条数和 Beacon 字节数限制每次请求（`maxBatchSize`、`beaconMaxBytes`）。
+- **Node：** 使用包装在 `batchTransport` 中的 `fetch`，支持重试和熔断选项。远程 HTTP 不是同步的崩溃 flush 路径。
 
-HTTP transport 是带平台实现的共享抽象：
+隐私默认值：fetch/XHR integration 不采集请求或响应 body，除非加入允许列表，否则也不采集 header；浏览器离线队列只有在显式传入时才启用。
 
-- Browser：`fetch`、`keepalive`、`pagehide`/`visibilitychange` 上的 `sendBeacon`、可选 IndexedDB offline queue，以及围绕 64 KiB beacon budget 的严格 payload limits。
-- Node：global `fetch`/undici、retry/circuit breaker，不宣称 sync crash flush。
-- Edge：`waitUntil` hook，用于 response-lifetime-safe delivery。
+### 文件与 stdout
 
-隐私默认值：
+Node 的 stdout、stderr 和文件 transport 通过一个共享的目的地实现写入 NDJSON：跟踪写入回调和 `drain`，支持可选的 `minLength` 缓冲，把 `EPIPE` 当作正常关闭，并用同步写入实现 `flushSync()` 以覆盖致命错误路径。`fileTransport({ sync: true })` 让每次写入都同步完成。
 
-- 不采集 request/response body
-- 不采集 headers，除非 allowlisted
-- 不启用 offline disk persistence，除非显式配置
+### Worker
 
-### File 和 Stdout Transports
+`workerTransport()` 把 I/O 移出主线程：用 codec 编码批次后发送给 worker，并可选择转移 buffer 所有权：
 
-Node stdout/stderr/file transports 默认应输出 NDJSON。File transport 需要真实 `flushSync()` 路径，使用 `fs.writeSync` 或等价 crash-safe primitive。仅 async stream writes 不足以覆盖 fatal process events。
-
-### Worker Transport
-
-Node worker transport 应把 IO 和 retry state 移出主线程。首选路径：
-
-```text
+```txt
 main thread batch -> codec.encode(batch) -> Uint8Array -> postMessage(buffer, [buffer])
 ```
 
-worker 失败时，transport 应降级到 inline mode 并发出 meta warning。跨 worker boundary 不提供 `flushSync`。
+可选的 ready 和 ack 协议让 worker 是否接收成功可以被观测；worker 失败时，待处理的批次会交给 fallback transport 或计为丢弃。`flushSync()` 无法跨越 worker 边界。
 
-### OTLP 和 Sentry
+### OTLP 与 Sentry
 
-OTLP/HTTP JSON 是第一方 transport，因为 LoggerJS 应接入现有 observability backends，而不是发明新的 logging backend protocol。
+OTLP/HTTP JSON 是一方 transport，因为 LoggerJS 选择接入现有的可观测性后端，而不是另造一套协议。Sentry 支持以适配包形式提供：使用应用已经初始化的 SDK，把 record 映射为 Sentry 结构化日志，并可把错误 record 捕获为 Sentry 事件。
 
-Sentry 支持应作为 adapter package。LoggerJS 把 records 映射成 Sentry structured logs，并可选择把 error records 捕获为 Sentry events。
-
-## Codecs
-
-目标接口：
+## Codec
 
 ```ts
-export interface Codec<Out extends string | Uint8Array = string | Uint8Array> {
-  readonly name: string;
-  readonly contentType: string;
-  encode(batch: readonly LogRecord[], ctx: EncodeContext): Out;
-  decode?(data: Out): unknown[];
+interface Codec<TPayload = string | Uint8Array> {
+  name: string;
+  contentType: string;
+  encode(input: LogEvent | LogRecord | readonly (LogEvent | LogRecord)[], context?: EncodeContext): TPayload;
+  decode?(payload: TPayload): LogEvent | LogEvent[];
+  prepareRecordEncoder?(hints: RecordEncoderHints): PreparedRecordEncoder<TPayload>;
 }
 ```
 
-必需 codecs：
+- `ndjsonCodec()` 和 `fastEventJsonCodec()` 在快速路径上使用原生 `JSON.stringify` 语义，只有原生序列化抛错时（循环引用、BigInt）才改用安全序列化重新编码，并计入 `codec.fallback`。
+- `safeJsonCodec()` 对每一条都做完整规范化。
+- `msgpackrCodec()` 通过 `msgpackr` 生成二进制批次；`projectorCodec()` 适配自定义线上格式；`pinoCompatCodec()` 输出 Pino 形状的 NDJSON；`otlpJsonCodec()` 输出 OTLP JSON。
+- `EncodeContext` 提供级别名查找和 `WeakMap` 缓存，codec 可以为不可变的 context 和 tags 缓存已编码的片段。
+- `createPreparedRecordEncoder(codec)` 让支持 record 的 transport 复用 codec 持有的 logger 和 tag 片段，而不必把序列化挪进 logger。
 
-- `jsonCodec`：默认 NDJSON/log JSON codec，固定 field ordering，对普通 props 使用 native `JSON.stringify`，只在失败 branches 上安全 fallback。
-- `structuredCodec`：保留丰富值的 codec，可对 Error、cause chains、AggregateError、circular/shared references、BigInt、Date、RegExp、URL、Map、Set、TypedArray、ArrayBuffer、`undefined`、`NaN`、infinities 和 `-0` 做对称 decode。
-- `msgpackCodec`：二进制 batch codec，可以是 benchmark-proven custom subset，也可以是 `msgpackr` 的小 adapter。
-- `projectorCodec`：自定义 wire schemas 的 utility adapter。
+完整契约见 [编解码](CODECS.md)。
 
-Structured codec 应使用 flat value-pool format，不使用 `eval`、`new Function` 或 recursive revivers。Decode 应是 `JSON.parse` 加确定性的 pointer restoration pass，使它 CSP-friendly，并适合 browser replay tools。
-
-## Integrations
-
-目标接口：
+## Integration
 
 ```ts
-export interface Integration {
-  readonly name: string;
-  setup(api: IntegrationAPI): Teardown;
+interface Integration {
+  name: string;
+  setup(api: IntegrationSetupContext): void | Teardown;
 }
 
-export interface IntegrationAPI {
+interface IntegrationAPI {
   capture(input: CaptureInput): void;
-  getLogger(category: string | readonly string[]): Logger;
-  unpatched: UnpatchedRegistry;
-  guard<T extends (...args: any[]) => any>(fn: T): T;
+  getLogger(category: LoggerCategory): LoggerLike;
+  readonly unpatched: UnpatchedRegistry;
+  guard<T extends (...args: never[]) => unknown>(fn: T): T;
 }
 ```
 
-Loop prevention 有三层：
+`IntegrationSetupContext` 把上面的 API 与 logger 方法（`info`、`error`、`flush` 等）合并在一起。
 
-1. patch 前注册原始 console/fetch/XHR functions。
-2. Guard 同步 logger execution，让 reentrant capture 被丢弃并计数。
-3. 保留 `record.source`，让 transports 过滤 self-generated records。
+防止回环分三层：
 
-必需 browser integrations：
+1. 在 patch 之前登记原始的 `console`、`fetch` 和 `XMLHttpRequest` 函数，transport 通过未被 patch 的注册表调用它们。
+2. `api.guard()` 同步丢弃重入的采集，并计入 `integration.dropped.reentrant`。
+3. 采集到的 record 保留 `source: "integration:<name>"`，transport 可以据此过滤自身产生的 record。
 
-- console capture for `log`, `info`, `warn`, `error`, `debug`, and `trace`
-- global script/resource errors
-- `unhandledrejection`
-- optional `securitypolicyviolation`
-- fetch 和 XHR HTTP error collection
-- page lifecycle flush hooks
-- optional offline replay hooks
+每个 integration 实例只 setup 一次，并在 `close()` 时按相反顺序拆除。Node 的崩溃处理如实执行：启用 `exitOnUncaught` 时，`captureProcessIntegration()` 先记录一条 fatal record，对支持同步 flush 的 transport 调用 `flushSync()`，在有限时间内等待异步 `flush()`，然后退出进程，而不是留下僵尸进程。
 
-必需 Node integrations：
+## 路由
 
-- `uncaughtException`
-- `unhandledRejection`
-- `warning`
-- `beforeExit`/`exit` flush handling
-- diagnostics_channel subscriptions for undici 和 Node HTTP where available
+路由依据 category、级别、source 和显式指定的 transport：
 
-Node crash behavior 必须诚实。启用 `exitOnUncaught` 时，fatal capture 应 flush sync-capable transports，对其余 transports 尝试有界 async flush，然后保留 process exit semantics。Integration 不得静默把 fatal crashes 变成 zombie processes。
+- registry 中按 category 前缀匹配的路由
+- 每个 transport 的 `minLevel`
+- 按 source 排除，例如 console transport 跳过 `integration:console` 的 record
+- processor 附加的路由，把 event 固定到具名 transport
 
-## Routing
-
-Routing 使用 category、level、source、tags/type 和显式 transport filters。
-
-配置应支持：
-
-- category prefix rules
-- per-transport minimum levels
-- source exclusions，例如从 console transport 排除 `integration:console`
-- per-transport middleware
-- 可在 presets 中复用的 named routes
-
-Routing 必须解析成 immutable runtime snapshots，避免每次 log call 做昂贵 dynamic config lookup。
-
-## 性能预算
-
-初始内部预算：
-
-| Path | Target |
-| --- | --- |
-| Disabled level call | 一次数值比较，零分配 |
-| Enabled record to queue, 3 middleware, no stack | 主流桌面 CPU 上 <= 1 microsecond per record |
-| JSON/NDJSON codec | 对普通对象达到 million-records-per-second 级别 |
-| Node NDJSON full path | v1 前在等价输出下至少达到 pino 的 80% |
-| Core size | <= 4 KB min+gzip（理想目标，尚未达到，见下方说明） |
-| Record allocation | 一个 record object；除非 middleware 显式 clone，否则不复制 data |
-
-截至 2026-06，上方 `<= 4 KB` core-size 行是尚未达到的 aspiration，不是当前状态。当前测量值（并由 `pnpm size:check` 强制）：完整 `@loggerjs/core` barrel 约 18 KB gzip；最小 tree-shaken import（`createLogger` + 一个 `consoleTransport`）约 6 KB min+gzip。在预算真正达到前，公开 size 表述应锚定这些测量数字。
-
-Benchmark 必须覆盖 Node 和真实浏览器，而不只是 synthetic Node loops。套件应比较 pino、winston、LogTape、native console、native `JSON.stringify`、当前 LoggerJS 和目标 LoggerJS paths。
-
-### 决策：保留 record pipeline，通过 codec-owned preparation 优化
-
-截至 2026-06，在参考机器（Apple M1 Max，Node v22.21.1）上，用 drift-canceling paired A/B harness 测得 lean Node NDJSON path 约为 pino 的 1.19x，codec-owned prepared lean path 约为 1.28x，即在等价输出下 **快于 pino**。Full-envelope path 约为 pino 的 0.9x，同时在 pino 字段外额外输出 `id`、`seq` 和 `levelName`（见 `docs/BENCHMARKS.md`）。这个排序 **依赖 CPU/Node-V8**：pino 和 loggerjs 都使用手调 JSON hot paths，当前文档把差异视为经验 benchmark 结果，而不归因于低层机制。不同芯片或 Node/V8 构建上 pino 可能领先。重点是 loggerjs 在 **不把序列化移入 logger** 的前提下达到 pino 同级别。
-
-达成这一点经历了 2026-06 的 profiling，也修正了早前“差距是结构性的，不是未优化代码”的过度表述。三个不改变架构的改动，把本机 lean ratio 从约 1.30x pino 推到约 0.84x：第一，未配置 ambient context 时，`getContext` 不再每次执行 `addedProviders.map()` + spread + `mergeContext({})`；第二，`fastEventJsonCodec` 在 codec 创建时 bake `includeX` toggles，并用单个 template 输出 header；第三，codec-owned prepared record encoders 让 transports 复用 logger/category/tags fragments，而不让 logger 拥有 JSON serialization。
-
-LoggerJS 仍然每条日志分配一个 `LogRecord`，让 middleware、processors、integrations 和多个 transports 观察同一个共享值；codec 仍拥有 never-throw safe-fallback contract，而且在已测硬件上已经追平或超过 pino。默认拒绝“当 logger 正好只有一个 sync transport 且没有 middleware 时绕过 record 的 fusion fast path”，理由更充分，因为它会：
-
-- 制造性能悬崖：新增第一个 middleware 会静默损失 30%+ 吞吐；
-- 把 serialization 移进 logger，破坏 codec-belongs-to-transport 边界；
-- 让每个语义变更都要维护两条 hot-path surface（2026-06 修复的 id-drift 和 source round-trip bugs 正是这种 dual-path 缺陷）。
-
-剩余性能预算投向默认路径（batch enqueue、默认 codecs、prepared codec contracts）和 regression gating，而不是 fusion-only 峰值。只有真实生产用例证明单独语义 hot path 有价值时才重新讨论。
+record 快速路径不做路由过滤：路由只能由 processor 附加，而 record 路径只在 logger 没有 processor 时运行。
 
 ## 可靠性
 
-默认语义是 **best-effort at-most-once**。LoggerJS 不会为了保证日志投递而无限期阻塞应用进度。
+默认的投递语义是**尽力而为、至多一次**。LoggerJS 不会为了保证投递而无限期阻塞应用。每一条丢失路径都可以通过 logger meta 计数（`getLoggerMetaStats()`、`getLoggerSelfMetrics()`）和 transport 统计观测到：
 
-每条损失路径都必须可观测：
+- 队列溢出
+- 批次过大
+- 重试耗尽
+- 熔断器打开
+- Beacon 被拒绝
+- 离线队列超出配额
+- 超过 flush 截止时间
+- integration 重入被丢弃
+- middleware、processor、codec 或 transport 抛出异常
 
-- queue overflow
-- batch too large
-- retry exhausted
-- circuit breaker open
-- beacon failed
-- offline queue quota exceeded
-- flush deadline exceeded
-- integration loop guard drop
-- middleware/transport exception
+## 隐私与安全
 
-这些 counters 应通过 meta logger 和可选 stats APIs 暴露。
+- `redactProcessor()` 默认遮盖常见敏感键：`password`、`passwd`、`secret`、`token`、`authorization`、`cookie`、`set-cookie`、`apiKey` 和 `api_key`。
+- fetch 和 XHR integration 不采集 body，除非加入允许列表也不采集 header。
+- 除非配置了离线队列或 IndexedDB transport，否则不会在浏览器中持久化日志。
+- 不使用 `eval` 或生成代码，core 没有运行时依赖。
 
-## 隐私和安全
+任何把日志写入浏览器持久存储的功能都必须显式开启，因为这会改变应用的隐私属性。另见 [运维](OPERATIONS.md) 和 [SECURITY.md](https://github.com/jskits/loggerjs/blob/main/SECURITY.md)。
 
-默认值：
+## 性能
 
-- redact 常见敏感 key：authorization、cookie、set-cookie、password、passwd、token、secret、apiKey、api_key 和 `*_key`
-- fetch/XHR integrations 不捕获 bodies
-- fetch/XHR integrations 不捕获 headers，除非 allowlisted
-- browser offline queue 默认关闭
-- 默认 builds 中无 `eval` 或 generated code
-- core 无 runtime dependencies
+### 预算
 
-任何把 logs 写入 durable browser storage 的功能都必须显式启用，因为它改变应用隐私姿态。
+| 路径 | 目标 | 当前 |
+| --- | --- | --- |
+| 禁用级别的调用 | 一次数值比较，零分配 | 参考机器上约 3 ns |
+| record 分配 | 每条日志一个 record 对象；除非 middleware 显式克隆，否则不复制数据 | 已达成 |
+| Node lean NDJSON 路径 | 等价输出下与 pino 同一量级 | M1 Max 参考机器上约为 pino 吞吐量的 1.19 倍，M4 Pro 行上慢于 pino |
+| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 约 19 KB gzip；tree-shaking 后只用 `createLogger` 和 `consoleTransport` 约 6 KB gzip |
+
+`pnpm size:check` 对每个包入口强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
+
+### 决策：保留 record 管线，通过 codec 持有的预处理来优化
+
+LoggerJS 为每条日志分配一个 `LogRecord`，让 middleware、processor、integration 和多个 transport 观察同一个共享值，codec 也保持“永不抛错、安全回退”的契约。在这一架构下，lean Node NDJSON 路径与 pino 处于同一量级：在 M1 Max 参考机器上，配对 A/B 测试框架测得 lean 路径约为 pino 吞吐量的 1.19 倍，codec 持有的 prepared 路径约为 1.28 倍，而额外输出 `id`、`seq` 和 `levelName` 的完整信封约为 0.93 倍。排名取决于 CPU 和 Node/V8 版本；在 M4 Pro 那一行上 pino 更快。
+
+热路径在不把序列化挪进 logger 的前提下做到了这一点：
+
+- 没有注册 context provider 时，`getContext()` 直接返回，不会在每次调用时合并空的 provider。
+- `fastEventJsonCodec` 在创建时一次性确定 `include*` 选项，并用单个模板输出头部字段。
+- prepared record encoder 让 transport 复用 codec 持有的 logger、category 和 tag 片段。
+
+“当 logger 只有一个同步 transport 且没有 middleware 时绕过 record”的融合快速路径不会作为默认方案，因为它会：
+
+- 形成性能断崖：加入第一个 middleware 就会悄悄损失一大截吞吐量；
+- 把序列化挪进 logger，破坏“codec 属于 transport”的边界；
+- 让每次语义变更都必须同步维护的热路径翻倍，而 id 漂移、source 往返转换这类缺陷正是出在这种双路径上。
+
+性能工作集中在默认路径（批量入队、默认 codec、prepared codec 契约）和回归门禁上。只有当生产场景证明单独的语义热路径确有必要时，才重新考虑融合路径。
 
 ## 测试策略
 
-必需测试层：
+- 单元测试覆盖 record 构造、级别判断、重载、child context、middleware、路由和 transport 错误
+- codec 测试覆盖安全 JSON 回退和往返转换
+- 同时启用 console transport 和 console 捕获的防回环测试
+- 在 Chromium、Firefox 和 WebKit 中运行的 Playwright 测试，覆盖 pagehide/Beacon flush、fetch/XHR 捕获、全局错误和离线队列
+- Node 子进程测试，覆盖未捕获异常时的 flush 和退出行为
+- 在 Node、Bun、Deno 和 workerd/Miniflare 上对打包产物做运行时冒烟测试
+- 每个包入口的体积预算和配对基准回归门禁
+- 针对 Elasticsearch、Loki、Datadog 和 CloudWatch 的真实服务测试
 
-- core record construction、level gate、overloads、child context、middleware、router 和 transport errors 的单元测试
-- safe JSON 和 structured round-trip behavior 的 codec property tests
-- 同时启用 console transport 和 console integration 的 loop prevention tests
-- pagehide/beacon flush、fetch/XHR capture、global errors 和 offline queue behavior 的浏览器 Playwright tests
-- uncaught exception flush 和 exit semantics 的 Node child-process tests
-- Node、Bun、Deno 和 workerd/miniflare runtime smoke tests
-- core 和 integration packages 的 size-limit checks
-- 带显式阈值的 benchmark regression checks
-
-任何 milestone 都不能在缺少 examples、tests，以及至少一个与变更层相关的 benchmark 或 size measurement 的情况下完成。
-
-## Package 方向
-
-v0 package layout 可以支撑开发，但 v1 public layout 应朝以下方向移动：
-
-```text
-@loggerjs/core
-@loggerjs/transport-http
-@loggerjs/transport-otlp
-@loggerjs/transport-file
-@loggerjs/transport-worker
-@loggerjs/codec-structured
-@loggerjs/codec-msgpack
-@loggerjs/integration-console
-@loggerjs/integration-global-errors
-@loggerjs/integration-fetch
-@loggerjs/integration-node
-@loggerjs/otel
-@loggerjs/sentry
-@loggerjs/pretty
-@loggerjs/browser    preset/meta package
-@loggerjs/node       preset/meta package
-```
-
-允许 preset packages，但平台 API 的 ownership 应位于小包中，让用户只安装需要的 collection 和 transport surface。
-
-## v1 完成标准
-
-LoggerJS 达到 v1 readiness 的条件：
-
-- core public API 由 API report 锁定
-- disabled hot path 和 enabled queue path 在 Node 与浏览器上达到预算
-- codec JSON、structured 和 msgpack paths 有 benchmark data
-- browser 和 Node integrations 有 loop 和 teardown tests
-- OTLP collector demo 能端到端工作
-- crash flush behavior 由 child process 测试覆盖
-- privacy defaults 被文档化并测试
-- examples 覆盖 browser、Node service、edge worker 和 OTLP collector
-- migration guide 覆盖 console.log、pino、winston 和 LogTape-style library logging
+每次修改某一层都要带上测试，修改热路径还要附带基准或体积数据。见 [贡献](CONTRIBUTING.md) 和 [测试清单](TEST-INVENTORY.md)。
 
 ## 相关链接
 
