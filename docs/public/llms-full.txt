@@ -2346,7 +2346,7 @@ it as a safety net, not as a replacement for capture allowlists.
 
 ## Browser Queue And Offline Replay
 
-`browserHttpTransport()` batches records in memory and can persist failed payloads into an offline queue adapter. The built-in memory queue is intentionally small and dependency-free; applications that need reload survival should provide an IndexedDB-backed adapter with the same interface.
+`browserHttpTransport()` batches records in memory and can persist failed payloads into an offline queue adapter. `memoryBrowserHttpOfflineQueue()` keeps payloads only while the page is alive; use the built-in `indexedDbBrowserHttpOfflineQueue()` when queued payloads must survive reloads, or pass your own adapter with the same interface.
 
 ```ts
 import { browserHttpTransport, memoryBrowserHttpOfflineQueue } from "@loggerjs/browser";

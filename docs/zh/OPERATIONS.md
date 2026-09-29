@@ -42,7 +42,7 @@ const integrations = [
 
 ## 浏览器队列和离线重放
 
-`browserHttpTransport()` 会在内存中批量 records，并能把失败 payload 持久化到 offline queue adapter。内置 memory queue 有意保持小而零依赖；需要 reload survival 的应用应提供遵循相同接口的 IndexedDB-backed adapter。
+`browserHttpTransport()` 会在内存中批量 records，并能把失败 payload 持久化到 offline queue adapter。`memoryBrowserHttpOfflineQueue()` 只在页面存活期间保留 payload；需要在刷新后仍保留队列时，使用内置的 `indexedDbBrowserHttpOfflineQueue()`，或传入实现相同接口的自定义适配器。
 
 ```ts
 import { browserHttpTransport, memoryBrowserHttpOfflineQueue } from "@loggerjs/browser";
