@@ -233,6 +233,7 @@ export declare class Logger implements LoggerLike {
     private closed;
     private transportContext?;
     private projectedEvents;
+    private pendingWrites;
     constructor(options?: LoggerOptions);
     setLevel(level: LoggerLevel): void;
     getLevel(): LoggerLevel;
@@ -260,6 +261,7 @@ export declare class Logger implements LoggerLike {
     flush(): Promise<void>;
     flushSync(): void;
     close(): Promise<void>;
+    private settlePendingWrites;
     private installIntegrations;
     private setupIntegration;
     private applyProcessors;

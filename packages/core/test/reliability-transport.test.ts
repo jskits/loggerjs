@@ -384,3 +384,38 @@ describe("retryTransport", () => {
     expect(batches).toEqual([["evt-1"]]);
   });
 });
+
+function slowInner(delivered: string[]): Transport {
+  return {
+    name: "slow",
+    async log(item) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+      delivered.push(item.message);
+    },
+  };
+}
+
+describe("reliability wrapper lifecycle", () => {
+  it.each([
+    ["retryTransport flush", (inner: Transport) => retryTransport(inner), "flush"],
+    ["retryTransport close", (inner: Transport) => retryTransport(inner), "close"],
+    [
+      "fallbackTransport flush",
+      (inner: Transport) => fallbackTransport(inner, { log() {} }),
+      "flush",
+    ],
+    [
+      "fallbackTransport close",
+      (inner: Transport) => fallbackTransport(inner, { log() {} }),
+      "close",
+    ],
+  ] as const)("%s waits for deliveries already in flight", async (_label, wrap, method) => {
+    const delivered: string[] = [];
+    const transport = wrap(slowInner(delivered));
+
+    void transport.log?.(event, createContext());
+    await transport[method]?.();
+
+    expect(delivered).toEqual(["created"]);
+  });
+});

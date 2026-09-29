@@ -89,6 +89,7 @@ interface Transport {
 - `context.toEvent(record)` converts on demand; the result is memoized per record, so several transports share one projection and ids stay stable across conversions.
 - Errors thrown by a transport (sync or async) are caught and reported to logger meta; one failing transport never blocks the others.
 - `ready()` is explicit and opt-in. Normal log calls do not wait for transport startup; callers that need startup confirmation call `logger.ready()`.
+- When `write`/`log` return a promise, `logger.flush()` and `logger.close()` wait for every such write started before them (including writes from child loggers) and then call the transports' own `flush()`/`close()`.
 - `close()` must include its own best-effort flush before resource release. Core calls `close()` when it exists and falls back to `flush()` only when a transport has no `close()`.
 
 ## Codecs Belong to Transports

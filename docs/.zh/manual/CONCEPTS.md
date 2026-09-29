@@ -94,6 +94,7 @@ interface Transport {
 - `context.toEvent(record)` 按需转换；结果按 record memoize，所以多个 transports 共享一次投影，id 在多次转换间保持稳定。
 - transport 抛出的同步或异步错误都会被捕获并上报到 logger meta；一个失败 transport 不会阻塞其他 transport。
 - `ready()` 是显式、可选的。普通日志调用不会等待 transport 启动；需要确认启动完成的调用方使用 `logger.ready()`。
+- 当 `write`/`log` 返回 promise 时，`logger.flush()` 和 `logger.close()` 会先等待在它们之前发起的所有此类写入（包括 child logger 发起的写入）完成，再调用各 transport 自己的 `flush()`/`close()`。
 - `close()` 必须在释放资源前自行尽力 flush。存在 `close()` 时 core 会调用它；只有 transport 没有 `close()` 时才回退到调用 `flush()`。
 
 ## Codecs 属于 Transports

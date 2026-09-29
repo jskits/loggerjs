@@ -25,6 +25,60 @@ function eventMessages(events: LogEvent[]): string[] {
   return events.map((event) => event.message);
 }
 
+function slowTransport(delivered: string[]): Transport {
+  return {
+    name: "slow",
+    async log(event) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+      delivered.push(event.message);
+    },
+  };
+}
+
+describe("logger lifecycle waits for async transport writes", () => {
+  it("flush waits for writes that returned a promise", async () => {
+    const delivered: string[] = [];
+    const logger = createLogger({ transports: [slowTransport(delivered)] });
+
+    logger.info("in flight");
+    await logger.flush();
+
+    expect(delivered).toEqual(["in flight"]);
+  });
+
+  it("flushing a parent waits for writes started by its children", async () => {
+    const delivered: string[] = [];
+    const logger = createLogger({ transports: [slowTransport(delivered)] });
+
+    logger.child({ bindings: { requestId: "r1" } }).info("from child");
+    await logger.flush();
+
+    expect(delivered).toEqual(["from child"]);
+  });
+
+  it("close waits for pending writes and still resolves when one rejects", async () => {
+    const delivered: string[] = [];
+    const onInternalError = vi.fn<(error: unknown, detail?: Record<string, unknown>) => void>();
+    const failing: Transport = {
+      name: "failing",
+      log: () => Promise.reject(new Error("collector down")),
+    };
+    const logger = createLogger({
+      transports: [slowTransport(delivered), failing],
+      onInternalError,
+    });
+
+    logger.info("before close");
+    await expect(logger.close()).resolves.toBeUndefined();
+
+    expect(delivered).toEqual(["before close"]);
+    expect(onInternalError).toHaveBeenCalledWith(expect.any(Error), {
+      phase: "transport",
+      transport: "failing",
+    });
+  });
+});
+
 describe("logger core skeleton", () => {
   afterEach(() => {
     resetLoggerMetaStats();

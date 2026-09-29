@@ -111,6 +111,26 @@ async function deliver(
   }
 }
 
+// Tracks deliveries that have started but not settled, so flush() and close()
+// on a wrapper wait for them even when called directly rather than through a
+// logger.
+function inFlightTracker() {
+  const pending = new Set<Promise<void>>();
+  return {
+    track(delivery: Promise<void>): Promise<void> {
+      pending.add(delivery);
+      const settle = () => {
+        pending.delete(delivery);
+      };
+      delivery.then(settle, settle);
+      return delivery;
+    },
+    async settle() {
+      if (pending.size > 0) await Promise.allSettled(pending);
+    },
+  };
+}
+
 function reportFallback(
   context: TransportContext,
   transportName: string,
@@ -133,6 +153,7 @@ export function fallbackTransport(
   options: FallbackTransportOptions = {},
 ): Transport {
   const transportName = options.name ?? `fallback(${primary.name ?? "primary"})`;
+  const inFlight = inFlightTracker();
 
   const deliverWithFallback = async (
     operation: TransportOperation,
@@ -152,18 +173,19 @@ export function fallbackTransport(
     name: transportName,
     minLevel: primary.minLevel,
     write(record, context) {
-      return deliverWithFallback("write", record, context);
+      return inFlight.track(deliverWithFallback("write", record, context));
     },
     writeBatch(records, context) {
-      return deliverWithFallback("writeBatch", records, context);
+      return inFlight.track(deliverWithFallback("writeBatch", records, context));
     },
     log(event, context) {
-      return deliverWithFallback("log", event, context);
+      return inFlight.track(deliverWithFallback("log", event, context));
     },
     logBatch(events, context) {
-      return deliverWithFallback("logBatch", events, context);
+      return inFlight.track(deliverWithFallback("logBatch", events, context));
     },
     async flush() {
+      await inFlight.settle();
       await primary.flush?.();
       await fallback.flush?.();
     },
@@ -172,6 +194,7 @@ export function fallbackTransport(
       fallback.flushSync?.();
     },
     async close() {
+      await inFlight.settle();
       await primary.close?.();
       await fallback.close?.();
     },
@@ -189,6 +212,7 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
   const transportName = options.name ?? `retry(${inner.name ?? "transport"})`;
   let consecutiveFailures = 0;
   let circuitOpenUntil = 0;
+  const inFlight = inFlightTracker();
 
   const deliverFallback = async (
     reason: RetryFallbackReason,
@@ -257,18 +281,19 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
     name: transportName,
     minLevel: inner.minLevel,
     write(record, context) {
-      return deliverWithRetry("write", record, context);
+      return inFlight.track(deliverWithRetry("write", record, context));
     },
     writeBatch(records, context) {
-      return deliverWithRetry("writeBatch", records, context);
+      return inFlight.track(deliverWithRetry("writeBatch", records, context));
     },
     log(event, context) {
-      return deliverWithRetry("log", event, context);
+      return inFlight.track(deliverWithRetry("log", event, context));
     },
     logBatch(events, context) {
-      return deliverWithRetry("logBatch", events, context);
+      return inFlight.track(deliverWithRetry("logBatch", events, context));
     },
     async flush() {
+      await inFlight.settle();
       await inner.flush?.();
       await fallback?.flush?.();
     },
@@ -277,6 +302,7 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
       fallback?.flushSync?.();
     },
     async close() {
+      await inFlight.settle();
       await inner.close?.();
       await fallback?.close?.();
     },

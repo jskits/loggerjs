@@ -217,6 +217,9 @@ export class Logger implements LoggerLike {
   private closed = false;
   private transportContext?: TransportContext;
   private projectedEvents = new WeakMap<LogRecord, LogEvent>();
+  // Async transport results that have not settled yet. Shared with child
+  // loggers so flushing a parent also waits for writes its children started.
+  private pendingWrites = new Set<Promise<void>>();
 
   constructor(options: LoggerOptions = {}) {
     this.name = categoryToName(options.category) ?? options.name ?? "app";
@@ -257,7 +260,7 @@ export class Logger implements LoggerLike {
   }
 
   child(options: ChildLoggerOptions = {}): Logger {
-    return new Logger({
+    const child = new Logger({
       category: options.category ?? this.category,
       name: categoryToName(options.category) ?? options.name ?? this.name,
       level: options.level ?? this.minimumLevel,
@@ -273,6 +276,8 @@ export class Logger implements LoggerLike {
       idFactory: this.idFactory,
       onInternalError: this.onInternalError,
     });
+    child.pendingWrites = this.pendingWrites;
+    return child;
   }
 
   withTags(tags: Tags): Logger {
@@ -493,6 +498,7 @@ export class Logger implements LoggerLike {
       emitLoggerDiagnostic({ stage: "flush", phase: "start", logger: this.name });
     }
     try {
+      await this.settlePendingWrites();
       await Promise.all(this.transports.map((transport) => transport.flush?.()));
       if (flushDiagnostics && start !== undefined) {
         emitLoggerDiagnostic({
@@ -569,12 +575,20 @@ export class Logger implements LoggerLike {
         this.reportInternalError(error, { phase: "dispose" });
       }
     }
+    await this.settlePendingWrites();
     await Promise.all(
       this.transports.map((transport) => {
         if (transport.close) return transport.close();
         return transport.flush?.();
       }),
     );
+  }
+
+  // Failures are already reported by settleTransport; flush and close only
+  // need to know that every write started before them has finished.
+  private async settlePendingWrites() {
+    if (this.pendingWrites.size === 0) return;
+    await Promise.allSettled(this.pendingWrites);
   }
 
   private installIntegrations() {
@@ -663,8 +677,9 @@ export class Logger implements LoggerLike {
     diagnosticStart?: number,
   ): boolean {
     if (result && typeof (result as Promise<void>).then === "function") {
-      void (result as Promise<void>).then(
+      const pending: Promise<void> = (result as Promise<void>).then(
         () => {
+          this.pendingWrites.delete(pending);
           if (diagnosticStart !== undefined) {
             emitLoggerDiagnostic({
               stage: "transport",
@@ -676,6 +691,7 @@ export class Logger implements LoggerLike {
           }
         },
         (error: unknown) => {
+          this.pendingWrites.delete(pending);
           if (diagnosticStart !== undefined) {
             emitLoggerDiagnostic({
               stage: "transport",
@@ -689,6 +705,7 @@ export class Logger implements LoggerLike {
           this.reportInternalError(error, { phase: "transport", transport: transport.name });
         },
       );
+      this.pendingWrites.add(pending);
       return true;
     }
     return false;
