@@ -2355,7 +2355,7 @@ description: "LoggerJS 与其他 JavaScript logger 的定位对比。"
 
 # LoggerJS 与其他 JavaScript Logger 对比
 
-本页比较当前 LoggerJS workspace 与常见 JavaScript logging libraries。它基于当前仓库状态，而不是目标路线图。
+本页比较 LoggerJS 与常见的 JavaScript 日志库，描述的是各个包当前实际提供的能力，而不是规划中的功能。
 
 ## 范围
 
@@ -2501,15 +2501,13 @@ LoggerJS 有意在几个地方与 Pino 和 Winston 不同：
 
 示例见 [迁移](MIGRATION.md)。
 
-## 我们不该宣称的话
+## 对比的局限
 
-除非新增证据，否则 marketing 和 README claims 应保持在这些边界内：
-
-- 不要宣称 LoggerJS 普遍快于 Pino。测得的 direct Node JSON 排序依赖 CPU/Node-V8；引用 benchmark matrix 中具体测试机器。
-- 不要在仓库还没有对应 runtime 测试和 package metadata 前宣称完整 Deno/Bun first-party support。
-- 不要宣称每个 vendor feature 都比 ecosystem plugins 更丰富。LoggerJS 有意提供常见目的地的 wire-protocol transports；成熟 vendor SDK 可能暴露更深的平台特定行为。
-- 不要宣称 browser automatic collection 在所有 packages 中唯一。可支持的说法是：在 Pino、Winston、LogTape、Bunyan 的 checked docs 中，没有找到等价 first-party suite。
-- 不要使用旧 benchmark snapshots。改变性能声明前重新运行 `pnpm bench:node`。
+- LoggerJS 并非在所有环境下都快于 Pino。Node 直接 JSON 路径的排名取决于 CPU 和 Node/V8 版本；[基准矩阵](BENCHMARK-MATRIX.md) 列出了实际测试过的机器，其中一些机器上 pino 更快。
+- Node.js 和浏览器之外的运行时，目前由打包产物在 Bun、Deno 和 workerd/Miniflare 上的冒烟测试覆盖，而不是每个运行时都有完整测试套件。
+- LoggerJS 的厂商 transport 直接使用常见目的地的线上协议。成熟的厂商 SDK 和生态插件可能提供更深入的平台特定功能。
+- “未发现一方等价实现”指的是在 [范围](#范围) 中列出的 Pino、Winston、LogTape 和 Bunyan 官方文档里没有找到等价功能，其他包可能提供类似的浏览器采集能力。
+- 基准数字只是某一时刻的快照。依赖这些数字之前，请在自己的硬件上重新运行 `pnpm bench:node`。
 
 ## 相关链接
 

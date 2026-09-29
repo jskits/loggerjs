@@ -2888,9 +2888,8 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/COMPARISON.md
 
 # LoggerJS Compared With Other JavaScript Loggers
 
-This page compares the current LoggerJS workspace with common JavaScript logging
-libraries. It is written from the current repository state, not from a target
-roadmap.
+This page compares LoggerJS with common JavaScript logging libraries. It
+describes what the packages ship today, not planned features.
 
 ## Scope
 
@@ -3118,24 +3117,22 @@ LoggerJS intentionally differs from Pino and Winston in a few places:
 
 See [MIGRATION.md](MIGRATION.md) for examples.
 
-## Claims We Should Not Make
+## Limits of This Comparison
 
-Keep marketing and README claims inside these boundaries unless new evidence is
-added:
-
-- Do not claim LoggerJS is universally faster than Pino. The measured direct
-  Node JSON ranking is CPU/Node-V8 dependent; cite the benchmark matrix for the
-  exact machines tested.
-- Do not claim full Deno/Bun first-party support until the repo has tests and
-  package metadata for those runtimes.
-- Do not claim every vendor feature is richer than ecosystem plugins. LoggerJS
-  intentionally ships wire-protocol transports for common destinations; mature
-  vendor SDKs may expose deeper platform-specific behavior.
-- Do not claim browser automatic collection is unique across all packages. The
-  supportable claim is that no equivalent first-party suite was found in the
-  checked docs for Pino, Winston, LogTape, or Bunyan.
-- Do not use old benchmark snapshots. Re-run `pnpm bench:node` before changing
-  performance claims.
+- LoggerJS is not universally faster than Pino. The direct Node JSON ranking
+  is CPU and Node/V8 dependent; the [benchmark matrix](BENCHMARK-MATRIX.md)
+  lists the exact machines tested, and pino wins on some of them.
+- Runtime support beyond Node.js and browsers is covered by smoke tests of the
+  packed packages on Bun, Deno, and workerd/Miniflare, not by a full test suite
+  per runtime.
+- LoggerJS vendor transports speak the wire protocol of common destinations.
+  Mature vendor SDKs and ecosystem plugins may expose deeper platform-specific
+  features.
+- "No checked first-party equivalent" means no equivalent was found in the
+  official docs listed under [Scope](#scope) for Pino, Winston, LogTape, or
+  Bunyan. Other packages may offer similar browser collection.
+- Benchmark numbers are a snapshot. Re-run `pnpm bench:node` on your own
+  hardware before relying on them.
 
 ---
 
