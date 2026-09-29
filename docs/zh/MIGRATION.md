@@ -68,7 +68,7 @@ const logger = createLogger({
 - `defaultMeta` -> `tags` 和/或 `bindings`。
 - Per-transport `level` 直接映射到任何 transport 的 `minLevel`。
 - Child loggers 替代 `winston.loggers` registries 做 per-module configuration；库作者优先使用 core 的 `getLogger()`。
-- 当前快照中最快可比路径约为 winston 的 11x（见 [基准](BENCHMARKS.md)）。
+- 在顺序基准套件中，LoggerJS lean 路径的吞吐量约为 winston 的 10 倍（见 [基准](BENCHMARKS.md)）。
 
 ## 从 console.log 迁移
 

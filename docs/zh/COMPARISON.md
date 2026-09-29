@@ -78,11 +78,11 @@ description: "LoggerJS 与其他 JavaScript logger 的定位对比。"
 | loggerjs lean record sink | 242 | `fastEventJsonCodec` lean JSON，paired A/B 下 1.19x pino |
 | pino NDJSON noop sink | 287 | Direct JSON path；baseline |
 | loggerjs full-envelope record sink | 307 | 额外 `id`、`seq` 和 `levelName`，约 0.9x pino |
-| node console info noop stream | 769 | 比 loggerjs lean sink 慢约 3x |
-| winston JSON noop sink | 2,726 | 比 loggerjs lean sink 慢约 11x |
-| LogTape JSON lines noop sink | 6,584 | 比 loggerjs lean sink 慢约 27x |
+| node console info noop stream | 769 | 比同一套件中的 loggerjs lean sink 慢约 3x |
+| winston JSON noop sink | 2,726 | 比同一套件中的 loggerjs lean sink 慢约 10x |
+| LogTape JSON lines noop sink | 6,584 | 比同一套件中的 loggerjs lean sink 慢约 24x |
 
-诚实解读：
+如何解读这些数字：
 
 - 在 M1 Max 参考机器上，LoggerJS lean 和 prepared 在等价输出下 **快于 Pino**（1.19x / 1.28x，paired A/B，22 runs 可复现）。这 **不是** 普遍“beats Pino”声明：排序依赖 CPU/Node-V8，文档把差异当成经验 benchmark 结果，而不是已证明机制。请在你的硬件上用 `BENCH_AB=1 pnpm bench:node` 复现，并用 `pnpm bench:matrix` 增加持久跨机器证据。
 - LoggerJS 在等价输出上达到 Pino 同级，**没有** 放弃自己的 record pipeline。这个 pipeline 是设计目标，不是意外 overhead。

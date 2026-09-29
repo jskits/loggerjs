@@ -302,8 +302,8 @@ Reference machine: Apple M1 Max (64 GB), Node v22.21.1, against pino 10.3.1 / wi
 | **loggerjs** — full envelope (`+id/seq/levelName`) | **307** | ~0.9× pino, 3 extra fields/line |
 | **loggerjs** — batch transport enqueue             | **172** | —                               |
 | Node `console` — noop stream                       |     769 | loggerjs ~3× faster             |
-| winston — JSON noop sink                           |   2,726 | loggerjs ~11× faster            |
-| LogTape — JSON lines noop sink                     |   6,584 | loggerjs ~27× faster            |
+| winston — JSON noop sink                           |   2,726 | loggerjs ~10× faster            |
+| LogTape — JSON lines noop sink                     |   6,584 | loggerjs ~24× faster            |
 
 The hot path is deliberate: level gating before any allocation, lazy message resolution, frozen shared tags, memoized ids, a record fast path that skips event projection, and fragment-cached serialization — all guarded by `pnpm bench:gate` in CI. On the M1 Max reference, loggerjs lean and prepared edge out pino in paired A/B runs, but the ranking is **CPU/V8-dependent**; reproduce it on your own machine with `BENCH_AB=1 pnpm bench:node` and add broader evidence through the benchmark matrix. LoggerJS keeps one record per log so middleware, integrations, and multiple transports can observe it, and reaches pino's class **without** giving that pipeline up — see the [architecture note](docs/ARCHITECTURE.md).
 

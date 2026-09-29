@@ -112,11 +112,11 @@ Each round times pino, lean, and prepared back-to-back, so CPU frequency and
 core scheduling hit them equally and cancel in the ratio (see the `BENCH_AB`
 note above). Medians over 22 runs:
 
-| Path | ns/op | vs pino |
-| --- | ---: | --- |
-| pino ndjson noop sink | 287 | 1.00x baseline |
-| loggerjs lean record sink | 242 | **1.19x pino** (paired ratio 0.84, range 0.82-0.87) |
-| loggerjs prepared lean record sink | 224 | **1.28x pino** (paired ratio 0.78) |
+| Path | ns/op | Throughput vs pino | Paired latency ratio |
+| --- | ---: | --- | --- |
+| pino ndjson noop sink | 287 | 1.00x (baseline) | 1.00 |
+| loggerjs lean record sink | 242 | **1.19x** | 0.84 (range 0.82-0.87) |
+| loggerjs prepared lean record sink | 224 | **1.28x** | 0.78 |
 
 On this machine loggerjs lean and prepared are **faster than pino** for
 equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02
@@ -162,7 +162,7 @@ The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate`
 logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope
 record sinks.
 
-Honest read:
+How to read these numbers:
 
 - Disabled-level logging is at parity with pino (both single-digit ns).
 - For equivalent lean output, loggerjs is **faster than pino on the M1 Max
@@ -174,10 +174,10 @@ Honest read:
 - loggerjs is roughly an order of magnitude faster than winston (~10x) and
   LogTape (~24x), and ~3x faster than Node console; these multiples swing with
   system load, so treat them as approximate.
-- An earlier snapshot showed pino at 442ns in the mixed suite; that was a JIT
-  warmup artifact (10k warmup iterations), fixed by warming each scenario with
-  a quarter of the measured iterations. Treat cross-logger comparisons as
-  invalid unless warmup is proportionate.
+- Each scenario is warmed with a quarter of its measured iterations. A fixed,
+  small warmup (for example 10k iterations) leaves some loggers un-optimized
+  by the JIT and can inflate their numbers severalfold, so treat cross-logger
+  comparisons as invalid unless warmup is proportionate.
 
 Re-run `pnpm bench:node` after hot-path changes and update this snapshot when
 the numbers move materially.

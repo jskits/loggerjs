@@ -105,11 +105,11 @@ rows are the sequential suite:
 | loggerjs lean record sink             |   242 | Lean JSON via `fastEventJsonCodec` — 1.19x pino (paired A/B) |
 | pino NDJSON noop sink                 |   287 | Direct JSON path; baseline                                   |
 | loggerjs full-envelope record sink    |   307 | Adds `id`, `seq`, and `levelName` (~0.9x pino)               |
-| node console info noop stream         |   769 | ~3x slower than the loggerjs lean sink                       |
-| winston JSON noop sink                | 2,726 | ~11x slower than the loggerjs lean sink                      |
-| LogTape JSON lines noop sink          | 6,584 | ~27x slower than the loggerjs lean sink                      |
+| node console info noop stream         |   769 | ~3x slower than the loggerjs lean sink (same suite)          |
+| winston JSON noop sink                | 2,726 | ~10x slower than the loggerjs lean sink (same suite)         |
+| LogTape JSON lines noop sink          | 6,584 | ~24x slower than the loggerjs lean sink (same suite)         |
 
-The honest interpretation:
+How to read these numbers:
 
 - On the M1 Max reference machine LoggerJS lean and prepared are **faster than
   Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across

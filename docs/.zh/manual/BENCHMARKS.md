@@ -70,11 +70,11 @@ Full-path 场景每次迭代记录一条 structured info call，并把序列化�
 
 每个 round 都背靠背测 pino、lean 和 prepared，因此 CPU frequency 与 core scheduling 平等影响它们并在 ratio 中抵消。22 runs 的 medians：
 
-| Path | ns/op | vs pino |
-| --- | ---: | --- |
-| pino ndjson noop sink | 287 | 1.00x baseline |
-| loggerjs lean record sink | 242 | **1.19x pino**（paired ratio 0.84，range 0.82-0.87） |
-| loggerjs prepared lean record sink | 224 | **1.28x pino**（paired ratio 0.78） |
+| 路径 | ns/op | 相对 pino 的吞吐量 | 配对延迟比值 |
+| --- | ---: | --- | --- |
+| pino ndjson noop sink | 287 | 1.00x（基线） | 1.00 |
+| loggerjs lean record sink | 242 | **1.19x** | 0.84（范围 0.82-0.87） |
+| loggerjs prepared lean record sink | 224 | **1.28x** | 0.78 |
 
 在这台机器上，loggerjs lean 和 prepared 在等价输出下 **快于 pino**，且可复现：22 次运行里 lean/pino paired ratio 都保持在 0.84 +/- 0.02，即使某些 round 的 GC pause 把 absolute spread 推到 80% 以上也成立。Prepared encoder 比 plain lean 快约 8%。
 
@@ -100,13 +100,13 @@ Full-path 场景每次迭代记录一条 structured info call，并把序列化�
 
 所有 loggerjs 和 pino full-path loggers 都带相同 base fields（`service`、`env`）。Lean sink 使用 `fastEventJsonCodec({ includeId: false, includeSeq: false, includeLevelName: false })`；prepared lean sink 用 `createPreparedRecordEncoder(codec)` 包装它，复用 codec-owned logger/tags fragments，而不把 serialization 移入 logger；full-envelope sink 额外输出 `id`、`seq` 和 `levelName`。CI 强制的是 `pnpm bench:gate` 中的 **paired A/B ratios**（默认每个 contender 60 rounds x 5000 ops），覆盖 disabled-level logging、record-write enqueue、batch enqueue、lean、prepared 和 full-envelope record sinks。
 
-诚实解读：
+如何解读这些数字：
 
 - Disabled-level logging 与 pino 同级（都是个位数 ns）。
 - 对等 lean output 下，loggerjs 在 M1 Max 参考机器上 **快于 pino**（paired A/B，lean 1.19x / prepared 1.28x），但排序依赖 CPU/V8；应表述为“pino 同级，机器相关胜者”，不是普遍声明。Prepared encoder 额外约 8%。
 - Full-envelope path 比 lean 多约 13% 成本，以携带 `id`、`seq` 和 `levelName`；下游不需要这些字段时选择 lean envelope。
 - loggerjs 大约比 winston 快一个数量级（约 10x）、比 LogTape 快约 24x、比 Node console 快约 3x；这些倍数会随系统负载摆动，作为近似理解。
-- 早期快照中 pino 在 mixed suite 里是 442ns，那是 JIT warmup artifact（10k warmup iterations），后来通过让每个场景 warmup 为 measured iterations 的四分之一修复。除非 warmup 与迭代数成比例，否则跨 logger 比较无效。
+- 每个场景的预热次数为其测量迭代次数的四分之一。固定的少量预热（例如 1 万次）会让部分 logger 尚未被 JIT 充分优化，数字可能被放大数倍；因此预热与迭代次数不成比例时，跨 logger 比较无效。
 
 热路径变更后重新运行 `pnpm bench:node`，数字有实质变化时更新快照。
 

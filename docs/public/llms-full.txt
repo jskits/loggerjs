@@ -310,8 +310,8 @@ Reference machine: Apple M1 Max (64 GB), Node v22.21.1, against pino 10.3.1 / wi
 | **loggerjs** — full envelope (`+id/seq/levelName`) | **307** | ~0.9× pino, 3 extra fields/line |
 | **loggerjs** — batch transport enqueue             | **172** | —                               |
 | Node `console` — noop stream                       |     769 | loggerjs ~3× faster             |
-| winston — JSON noop sink                           |   2,726 | loggerjs ~11× faster            |
-| LogTape — JSON lines noop sink                     |   6,584 | loggerjs ~27× faster            |
+| winston — JSON noop sink                           |   2,726 | loggerjs ~10× faster            |
+| LogTape — JSON lines noop sink                     |   6,584 | loggerjs ~24× faster            |
 
 The hot path is deliberate: level gating before any allocation, lazy message resolution, frozen shared tags, memoized ids, a record fast path that skips event projection, and fragment-cached serialization — all guarded by `pnpm bench:gate` in CI. On the M1 Max reference, loggerjs lean and prepared edge out pino in paired A/B runs, but the ranking is **CPU/V8-dependent**; reproduce it on your own machine with `BENCH_AB=1 pnpm bench:node` and add broader evidence through the benchmark matrix. LoggerJS keeps one record per log so middleware, integrations, and multiple transports can observe it, and reaches pino's class **without** giving that pipeline up — see the [architecture note](docs/ARCHITECTURE.md).
 
@@ -2696,11 +2696,11 @@ Each round times pino, lean, and prepared back-to-back, so CPU frequency and
 core scheduling hit them equally and cancel in the ratio (see the `BENCH_AB`
 note above). Medians over 22 runs:
 
-| Path | ns/op | vs pino |
-| --- | ---: | --- |
-| pino ndjson noop sink | 287 | 1.00x baseline |
-| loggerjs lean record sink | 242 | **1.19x pino** (paired ratio 0.84, range 0.82-0.87) |
-| loggerjs prepared lean record sink | 224 | **1.28x pino** (paired ratio 0.78) |
+| Path | ns/op | Throughput vs pino | Paired latency ratio |
+| --- | ---: | --- | --- |
+| pino ndjson noop sink | 287 | 1.00x (baseline) | 1.00 |
+| loggerjs lean record sink | 242 | **1.19x** | 0.84 (range 0.82-0.87) |
+| loggerjs prepared lean record sink | 224 | **1.28x** | 0.78 |
 
 On this machine loggerjs lean and prepared are **faster than pino** for
 equivalent output, reproducibly: the paired lean/pino ratio stayed 0.84 +/- 0.02
@@ -2746,7 +2746,7 @@ The CI-enforced figures are the **paired A/B ratios** in `pnpm bench:gate`
 logging, record-write enqueue, batch enqueue, lean, prepared, and full-envelope
 record sinks.
 
-Honest read:
+How to read these numbers:
 
 - Disabled-level logging is at parity with pino (both single-digit ns).
 - For equivalent lean output, loggerjs is **faster than pino on the M1 Max
@@ -2758,10 +2758,10 @@ Honest read:
 - loggerjs is roughly an order of magnitude faster than winston (~10x) and
   LogTape (~24x), and ~3x faster than Node console; these multiples swing with
   system load, so treat them as approximate.
-- An earlier snapshot showed pino at 442ns in the mixed suite; that was a JIT
-  warmup artifact (10k warmup iterations), fixed by warming each scenario with
-  a quarter of the measured iterations. Treat cross-logger comparisons as
-  invalid unless warmup is proportionate.
+- Each scenario is warmed with a quarter of its measured iterations. A fixed,
+  small warmup (for example 10k iterations) leaves some loggers un-optimized
+  by the JIT and can inflate their numbers severalfold, so treat cross-logger
+  comparisons as invalid unless warmup is proportionate.
 
 Re-run `pnpm bench:node` after hot-path changes and update this snapshot when
 the numbers move materially.
@@ -2993,11 +2993,11 @@ rows are the sequential suite:
 | loggerjs lean record sink             |   242 | Lean JSON via `fastEventJsonCodec` — 1.19x pino (paired A/B) |
 | pino NDJSON noop sink                 |   287 | Direct JSON path; baseline                                   |
 | loggerjs full-envelope record sink    |   307 | Adds `id`, `seq`, and `levelName` (~0.9x pino)               |
-| node console info noop stream         |   769 | ~3x slower than the loggerjs lean sink                       |
-| winston JSON noop sink                | 2,726 | ~11x slower than the loggerjs lean sink                      |
-| LogTape JSON lines noop sink          | 6,584 | ~27x slower than the loggerjs lean sink                      |
+| node console info noop stream         |   769 | ~3x slower than the loggerjs lean sink (same suite)          |
+| winston JSON noop sink                | 2,726 | ~10x slower than the loggerjs lean sink (same suite)         |
+| LogTape JSON lines noop sink          | 6,584 | ~24x slower than the loggerjs lean sink (same suite)         |
 
-The honest interpretation:
+How to read these numbers:
 
 - On the M1 Max reference machine LoggerJS lean and prepared are **faster than
   Pino** for equivalent output (1.19x / 1.28x, paired A/B, reproducible across
@@ -3209,7 +3209,7 @@ Key differences:
 - `defaultMeta` → `tags` and/or `bindings`.
 - Per-transport `level` maps directly to `minLevel` on any transport.
 - Child loggers replace `winston.loggers` registries for per-module configuration; library authors should prefer `getLogger()` from core.
-- Throughput on the fastest comparable path measures roughly 11x winston in the current snapshot ([BENCHMARKS.md](BENCHMARKS.md)).
+- In the sequential benchmark suite, the lean LoggerJS path measures roughly 10x winston's throughput ([BENCHMARKS.md](BENCHMARKS.md)).
 
 ## From console.log
 
@@ -3948,7 +3948,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 - **The pipeline never throws into the app.** Middleware, processors, codecs, and transports are error-isolated; failures report through `onInternalError` and meta counters. New code keeps that property.
 - **Codecs must not lose logs**: wrap risky encodes and fall back to `safeJsonStringify`; count fallbacks in meta.
 - **Shared objects are frozen, replaced not mutated** (`record.tags`, `record.ctx`).
-- **Hot-path changes need numbers.** Run `pnpm bench:node` before/after and put the relevant line in the commit message; update `docs/BENCHMARKS.md` when the snapshot moves materially. Benchmark warmup must stay proportionate to iterations — see the warmup note in BENCHMARKS.md for the time we got this wrong.
+- **Hot-path changes need numbers.** Run `pnpm bench:node` before/after and put the relevant line in the commit message; update `docs/BENCHMARKS.md` when the snapshot moves materially. Benchmark warmup must stay proportionate to iterations — see the warmup note in [BENCHMARKS.md](BENCHMARKS.md).
 - **Performance has a documented boundary**: read the record-pipeline decision in [ARCHITECTURE.md](ARCHITECTURE.md) before proposing a record-bypassing fast path.
 
 ## Tests

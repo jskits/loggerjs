@@ -64,7 +64,7 @@ Key differences:
 - `defaultMeta` → `tags` and/or `bindings`.
 - Per-transport `level` maps directly to `minLevel` on any transport.
 - Child loggers replace `winston.loggers` registries for per-module configuration; library authors should prefer `getLogger()` from core.
-- Throughput on the fastest comparable path measures roughly 11x winston in the current snapshot ([BENCHMARKS.md](BENCHMARKS.md)).
+- In the sequential benchmark suite, the lean LoggerJS path measures roughly 10x winston's throughput ([BENCHMARKS.md](BENCHMARKS.md)).
 
 ## From console.log
 

@@ -61,7 +61,7 @@ Turbo 用缓存编排 `build`/`test`/`typecheck`；可以用 `pnpm exec turbo ru
 - **管线永远不向应用抛错。** Middleware、processors、codecs 和 transports 都错误隔离；失败通过 `onInternalError` 和 meta counters 上报。新代码要保持这个性质。
 - **Codecs 不得丢日志**：包住风险 encode，并 fallback 到 `safeJsonStringify`；在 meta 中计数 fallback。
 - **共享对象冻结，替换而非修改**（`record.tags`、`record.ctx`）。
-- **热路径变更需要数字。** 前后运行 `pnpm bench:node`，把相关行写进 commit message；当快照有实质变化时更新 `docs/BENCHMARKS.md`。Benchmark warmup 必须与 iterations 成比例，详见 BENCHMARKS.md 中关于曾经做错 warmup 的说明。
+- **热路径变更需要数字。** 前后运行 `pnpm bench:node`，把相关行写进 commit message；当快照有实质变化时更新 `docs/BENCHMARKS.md`。Benchmark warmup 必须与 iterations 成比例，详见 [BENCHMARKS.md](BENCHMARKS.md) 中关于预热的说明。
 - **性能有文档化边界**：提出绕过 record 的 fast path 前，先阅读 [架构](ARCHITECTURE.md) 中 record-pipeline 决策。
 
 ## 测试
