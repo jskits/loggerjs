@@ -22,6 +22,40 @@ function event(data: unknown): LogEvent {
 }
 
 describe("redactProcessor", () => {
+  it("keeps URL and toJSON values in their serialized form", () => {
+    class Money {
+      constructor(readonly cents: number) {}
+      toJSON() {
+        return `$${this.cents / 100}`;
+      }
+    }
+    const input = {
+      url: new URL("https://api.example.com/orders?id=1"),
+      price: new Money(500),
+      password: "secret",
+    };
+    const output = redactProcessor()(event(input), context) as LogEvent;
+
+    expect(JSON.stringify(output.data)).toBe(
+      JSON.stringify({ url: input.url, price: input.price, password: "[REDACTED]" }),
+    );
+  });
+
+  it("redacts keys inside toJSON results and fails closed when toJSON throws", () => {
+    const withSecret = { toJSON: () => ({ user: "alice", token: "t" }) };
+    const throwing = {
+      toJSON() {
+        throw new Error("cannot serialize");
+      },
+    };
+    const output = redactProcessor()(event({ withSecret, throwing }), context) as LogEvent;
+
+    expect(output.data).toEqual({
+      withSecret: { user: "alice", token: "[REDACTED]" },
+      throwing: "[REDACTED]",
+    });
+  });
+
   it("masks matching keys without mutating the original data", () => {
     const input = { user: "alice", password: "secret" };
     const output = redactProcessor()(event(input), context) as LogEvent;

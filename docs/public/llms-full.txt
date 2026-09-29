@@ -1647,6 +1647,7 @@ Options:
 - `censor`: Pino-compatible alias for `replacement`; ignored when `replacement` is set.
 - `remove`: omit matched object properties instead of replacing them. Depth-limit truncation is not a key/path match; when `maxDepth` is reached, the too-deep subtree is still collapsed to `replacement`.
 - `maxDepth`: maximum traversal depth; default `8`. Reached depth fails closed by replacing the whole subtree instead of emitting unknown nested values.
+- Values with a `toJSON()` method (for example `URL`, `Buffer`, or your own classes) are redacted in the form they serialize to, so a `URL` stays its string. If `toJSON()` throws, the value is replaced. `Date` values are kept as-is.
 
 Cost is proportional to traversed object size times matcher count. Prefer exact keys and paths for hot loggers; reserve broad regexes and deep traversal for edge loggers or lower-volume error paths.
 

@@ -55,8 +55,9 @@ description: "middleware / processor 目录、顺序和使用场景。"
 - `paths`：相对于每个被脱敏 event field 的精确 dot paths，例如 `user.password` 或 `request.headers.authorization`；这些不是 glob patterns。
 - `replacement`：匹配时写入的值；默认 `"[REDACTED]"`。
 - `censor`：兼容 Pino 的 `replacement` 别名；设置了 `replacement` 时忽略。
-- `remove`：省略匹配的对象属性，而不是替换。深度限制截断不是 key/path match；到达 `maxDepth` 时，过深 subtree 仍然会折叠为 `replacement`。
-- `maxDepth`：最大遍历深度；默认 `8`。到达深度时 fail closed，替换整个 subtree，而不是输出未知嵌套值。
+- `remove`：直接省略匹配的对象属性，而不是替换。深度截断不属于键/路径匹配；到达 `maxDepth` 时，过深的子树仍会被折叠为 `replacement`。
+- `maxDepth`：最大遍历深度，默认 `8`。到达深度上限时采取保守策略，直接替换整个子树，而不是输出未经检查的嵌套值。
+- 带有 `toJSON()` 方法的值（例如 `URL`、`Buffer` 或自定义类）会按其序列化后的形态脱敏，因此 `URL` 仍保持为字符串。如果 `toJSON()` 抛错，该值会被替换。`Date` 值保持原样。
 
 成本与遍历对象大小乘以 matcher 数量成正比。热日志器优先使用精确 keys 和 paths；广泛 regex 和深层遍历适合 edge loggers 或低频错误路径。
 

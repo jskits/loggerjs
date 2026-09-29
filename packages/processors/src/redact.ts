@@ -92,6 +92,23 @@ function redactValue(
 
   if (value instanceof Date) return value;
 
+  // Objects such as URL, Buffer, or domain classes serialize through toJSON();
+  // rebuilding them from own enumerable properties turned a URL into {} and
+  // ignored custom serializers. Redact the value they will actually serialize
+  // to. If toJSON() throws, fail closed instead of letting the processor error
+  // pass the unredacted event through.
+  const toJSON = (value as { toJSON?: unknown }).toJSON;
+  if (typeof toJSON === "function") {
+    let serialized: unknown;
+    try {
+      serialized = toJSON.call(value, "");
+    } catch {
+      return options.replacement;
+    }
+    if (serialized === value) return value;
+    return redactValue(serialized, options, path, depth, seen);
+  }
+
   if (value instanceof Error) {
     // Redact configured keys carried as own-enumerable properties on an Error
     // (e.g. `err.password`). Returning the Error verbatim leaked them: errors
