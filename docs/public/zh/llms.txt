@@ -33,6 +33,7 @@
 - [贡献](https://jskits.github.io/loggerjs/zh/CONTRIBUTING): 仓库工作流、CI gate 和工程约定。
 - [发布](https://jskits.github.io/loggerjs/zh/RELEASE): 版本和发布流程。
 - [测试清单](https://jskits.github.io/loggerjs/zh/TEST-INVENTORY): 测试覆盖清单和验证入口。
+- [覆盖率棘轮](https://jskits.github.io/loggerjs/zh/COVERAGE-RATCHET): 覆盖率快照、薄弱环节和阈值调整规则。
 
 ## 参考
 

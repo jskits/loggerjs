@@ -1,10 +1,8 @@
 # Coverage Ratchet
 
-Coverage thresholds are regression floors, not quality goals. Raise them only
-after a measured run shows enough margin for normal V8 coverage noise and after
-the added tests exercise meaningful behavior rather than implementation trivia.
+Coverage thresholds are regression floors, not quality goals. Raise them only after a measured run shows enough margin for normal V8 coverage noise and after the added tests exercise meaningful behavior rather than implementation trivia.
 
-Regenerate the snapshot with:
+The thresholds live in `vitest.coverage.config.ts`. Regenerate the snapshot with:
 
 ```bash
 pnpm test:coverage
@@ -12,43 +10,38 @@ pnpm test:coverage
 
 ## Current Snapshot
 
-Measured on 2026-06-22 with `pnpm test:coverage`.
+Measured on 2026-09-29 with `pnpm test:coverage`.
 
 | Scope | Statements | Branches | Functions | Lines |
 | --- | ---: | ---: | ---: | ---: |
-| All files | 87.18 | 78.47 | 90.91 | 91.23 |
-| Browser package | 84.25 | 73.49 | 86.86 | 89.12 |
-| Browser HTTP transport | 95.90 | 91.09 | 92.50 | 99.46 |
-| Core package | 86.67 | 77.65 | 90.27 | 89.26 |
-| OTLP package | 95.78 | 85.05 | 100.00 | 98.68 |
-| Pretty package | 90.63 | 84.90 | 90.00 | 94.02 |
+| All files | 87.26 | 78.57 | 90.99 | 91.27 |
+| Browser package | 84.51 | 73.87 | 87.14 | 89.28 |
+| Browser HTTP transport | 96.90 | 93.83 | 95.45 | 99.55 |
+| Core package | 87.42 | 80.10 | 90.34 | 90.68 |
+| OTLP package | 95.79 | 85.06 | 100.00 | 98.68 |
+| Pretty package | 90.64 | 84.91 | 90.00 | 94.02 |
 
-## Current Weak Spots
+## Weak Spots
 
 | Area | Measured gap | Next action |
 | --- | --- | --- |
-| OTLP transport | Package coverage now matches the transport failure-path contract, but `log-bridge.ts` and `trace.ts` still carry untested fallback branches. | Keep the raised package floor and add targeted tests when those branches change. |
-| Pretty output | Package coverage is now close to the repo average after formatter, console fallback, and stream lifecycle tests. `console-transport.ts` branch coverage remains the next local floor. | Keep package floors near current measured coverage; avoid raising file floors until console auto-style branches are covered. |
-| Browser package | Browser API absence/fallback tests now cover BroadcastChannel, WebSocket, and ReportingObserver edges. `indexeddb-transport.ts` still pulls package averages down. | Keep package floors conservative, keep a file-level floor for `http-transport.ts`, and improve IndexedDB edge coverage incrementally. |
+| OTLP package | Package coverage meets the transport failure-path contract, but `log-bridge.ts` (74% branches) and `trace.ts` (78% branches) still carry untested fallback branches. | Keep the package floor and add targeted tests when those branches change. |
+| Pretty package | Package coverage is close to the repository average. `console-transport.ts` branch coverage (67%) is the lowest file in the package. | Keep package floors near measured coverage; do not raise file floors until console auto-style branches are covered. |
+| Browser package | `indexeddb-transport.ts` (64% branches) pulls the package average down. | Keep package floors conservative, keep the file-level floor for `http-transport.ts`, and improve IndexedDB edge coverage incrementally. |
 
 ## Ratchet Rules
 
-- Keep global thresholds at least two percentage points below the measured
-  total unless the gap is intentionally narrow and documented here.
-- Prefer file-level thresholds for high-risk files that already have mature
-  coverage, such as browser HTTP delivery and OTLP JSON mapping.
-- Do not raise a package threshold because another file compensates for an
-  uncovered risky branch.
-- Coverage-only tests must still assert externally observable behavior: errors,
-  retries, filtering, import boundaries, exported file names, lifecycle cleanup,
-  or captured payload shape.
+- Keep global thresholds at least two percentage points below the measured total unless the gap is intentionally narrow and documented here.
+- Prefer file-level thresholds for high-risk files that already have mature coverage, such as browser HTTP delivery and OTLP JSON mapping.
+- Do not raise a package threshold because another file compensates for an uncovered risky branch.
+- Coverage-only tests must still assert externally observable behavior: errors, retries, filtering, import boundaries, exported file names, lifecycle cleanup, or captured payload shape.
 - Lowering a threshold requires an explicit quality review in the same change.
 
-## Near-Term Targets
+## Current Floors
 
-| Scope | Target |
-| --- | --- |
-| Global | Current floor is statements 86, branches 76, functions 90, lines 90. The next branch increase should come from browser or node edge tests, not Pretty compensation. |
-| OTLP | Current floor is statements 94, branches 80, functions 100, lines 98 after transport failure-path tests. |
-| Pretty | Current floor is statements 88, branches 82, functions 88, lines 92 after formatter, console fallback, and stream lifecycle tests. |
-| Browser | Current package floor is statements 84, branches 73, functions 86, lines 89. `http-transport.ts` also has a file floor of statements 95, branches 91, functions 92, lines 99. |
+| Scope | Floor (statements / branches / functions / lines) | Notes |
+| --- | --- | --- |
+| Global | 86 / 76 / 90 / 90 | The next branch increase should come from browser or Node edge tests, not from Pretty compensation. |
+| OTLP | 94 / 80 / 100 / 98 | Set after the transport failure-path tests. |
+| Pretty | 88 / 82 / 88 / 92 | Set after the formatter, console fallback, and stream lifecycle tests. |
+| Browser | 84 / 73 / 86 / 89 | `http-transport.ts` also has a file floor of 95 / 91 / 92 / 99. |

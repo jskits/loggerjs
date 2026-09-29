@@ -174,6 +174,11 @@ const zhDocsCatalog = [
     slug: "TEST-INVENTORY",
     description: "测试覆盖清单和验证入口。",
   },
+  {
+    title: "覆盖率棘轮",
+    slug: "COVERAGE-RATCHET",
+    description: "覆盖率快照、薄弱环节和阈值调整规则。",
+  },
 ];
 
 const packageOrder = [

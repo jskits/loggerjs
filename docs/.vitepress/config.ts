@@ -71,6 +71,7 @@ const sidebar = [
       { text: "Contributing", link: "/CONTRIBUTING" },
       { text: "Release", link: "/RELEASE" },
       { text: "Test Inventory", link: "/TEST-INVENTORY" },
+      { text: "Coverage Ratchet", link: "/COVERAGE-RATCHET" },
     ],
   },
 ];
@@ -125,6 +126,7 @@ const zhSidebar = [
       { text: "贡献", link: "/zh/CONTRIBUTING" },
       { text: "发布", link: "/zh/RELEASE" },
       { text: "测试清单", link: "/zh/TEST-INVENTORY" },
+      { text: "覆盖率棘轮", link: "/zh/COVERAGE-RATCHET" },
     ],
   },
 ];
