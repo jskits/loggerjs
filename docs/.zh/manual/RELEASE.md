@@ -55,7 +55,7 @@ workflow 使用 npm Trusted Publisher/OIDC 发布到 npm；不读取 `NPM_AUTH_T
 
 npm 要求 package provenance 来自公开源码仓库，并且 package `repository` metadata 必须匹配该 source repo。
 
-Commits 不会触发发布。发布流程是：先用 `pnpm version-packages` 消费 pending changesets，提交版本化后的 package metadata，并让该 commit 通过正常 CI。版本 commit 到 `main` 后，创建并推送 release tag，例如 `v0.0.3`；`.github/workflows/release.yml` 只监听 `v*` tag pushes，并拒绝提交不在 `origin/main` 可达范围内的 tags。Release job 会在还有 pending changesets 时阻塞，为每个 unpublished package 验证 npm OIDC access，运行 `pnpm release:publish`，用 `pnpm publish --provenance` 发布每个尚未发布的 workspace package，然后用幂等的 `changeset tag` 命令创建 package release tags，再推送 `@loggerjs/*` package tags。
+Commits 不会触发发布。发布流程是：先用 `pnpm version-packages` 消费 pending changesets，提交版本化后的 package metadata，并让该 commit 通过正常 CI。版本 commit 到 `main` 后，创建并推送与新版本号一致的 release tag，例如 `v0.5.6`；`.github/workflows/release.yml` 只监听 `v*` tag pushes，并拒绝提交不在 `origin/main` 可达范围内的 tags。Release job 会在还有 pending changesets 时阻塞，为每个 unpublished package 验证 npm OIDC access，运行 `pnpm release:publish`，用 `pnpm publish --provenance` 发布每个尚未发布的 workspace package，然后用幂等的 `changeset tag` 命令创建 package release tags，再推送 `@loggerjs/*` package tags。
 
 如果 npm 在 publish 或 `pnpm release:publish:preflight` 期间返回认证错误，检查每个 package 的 Trusted Publisher 设置是否精确匹配 repository owner、repository name、workflow filename、可选 environment name 和 allowed action。npm 只在交换 OIDC access 或尝试 publish 时检查这些字段。Publish script 对重跑是幂等的：已发布的 package versions 会被跳过，再继续发布剩余包。
 

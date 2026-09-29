@@ -81,4 +81,4 @@ Additional CI gates cover the runtime and quality surface:
 
 ## Releasing
 
-See [RELEASE.md](RELEASE.md). Short version: changesets accumulate on `main`; the release workflow versions, builds, runs the full gate, and publishes with provenance.
+See [RELEASE.md](RELEASE.md). Short version: changesets accumulate on `main`; a maintainer runs `pnpm version-packages` and commits the result, then pushes a `v*` tag, and the release workflow runs the full gate and publishes with provenance.

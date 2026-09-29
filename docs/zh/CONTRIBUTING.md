@@ -82,7 +82,7 @@ Turbo 用缓存编排 `build`/`test`/`typecheck`；可以用 `pnpm exec turbo ru
 
 ## 发布
 
-见 [发布](RELEASE.md)。简版：changesets 在 `main` 上累计；release workflow 负责 version、build、运行完整门禁，并带 provenance 发布。
+见 [发布](RELEASE.md)。简要流程：changesets 在 `main` 上累积；维护者运行 `pnpm version-packages` 并提交结果，然后推送 `v*` tag，由 release workflow 运行完整门禁并带 provenance 发布。
 
 ## 相关链接
 
