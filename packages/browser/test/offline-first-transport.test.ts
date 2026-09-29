@@ -59,6 +59,19 @@ function memoryQueue(): OfflineFirstQueue & { events: LogEvent[] } {
 }
 
 describe("offlineFirstTransport", () => {
+  it("forwards ready() to the remote transport", async () => {
+    const ready = vi.fn<() => Promise<void>>(async () => {});
+    const remote: Transport = { name: "remote", log() {}, ready };
+    const transport = offlineFirstTransport(remote, {
+      queue: memoryQueue(),
+      replayOnOnline: false,
+    });
+
+    await transport.ready?.();
+
+    expect(ready).toHaveBeenCalledTimes(1);
+  });
+
   it("queues events when the remote transport fails and replays them later", async () => {
     resetLoggerMetaStats();
     const queue = memoryQueue();

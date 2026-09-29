@@ -182,6 +182,7 @@ export function offlineFirstTransport(
     name,
     minLevel: options.minLevel ?? remote.minLevel,
     queue,
+    ready: remote.ready && (() => remote.ready?.()),
     write(record, context) {
       return sendOrQueue(context.toEvent(record), context);
     },

@@ -513,6 +513,7 @@ export function batchTransport(
   return {
     name: transportName,
     minLevel: inner.minLevel,
+    ready: inner.ready && (() => inner.ready?.()),
     write(record, context) {
       enqueueRecord(record, context);
     },

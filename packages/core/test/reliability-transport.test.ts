@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  batchTransport,
+  createLogger,
   createRecord,
   fallbackTransport,
   getLoggerMetaStats,
@@ -417,5 +419,34 @@ describe("reliability wrapper lifecycle", () => {
     await transport[method]?.();
 
     expect(delivered).toEqual(["created"]);
+  });
+});
+
+describe("wrapper readiness", () => {
+  it("forwards ready() through batch, retry, and fallback wrappers", async () => {
+    const innerReady = vi.fn<() => Promise<void>>(async () => {});
+    const fallbackReady = vi.fn<() => Promise<void>>(async () => {});
+    const inner: Transport = { name: "worker", log() {}, ready: innerReady };
+    const backup: Transport = { name: "backup", log() {}, ready: fallbackReady };
+    const logger = createLogger({
+      transports: [
+        batchTransport(inner),
+        retryTransport(inner, { fallback: backup }),
+        fallbackTransport(inner, backup),
+      ],
+    });
+
+    await logger.ready();
+
+    expect(innerReady).toHaveBeenCalledTimes(3);
+    expect(fallbackReady).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not add ready() when no wrapped transport has one", () => {
+    const inner: Transport = { name: "plain", log() {} };
+
+    expect(batchTransport(inner).ready).toBeUndefined();
+    expect(retryTransport(inner).ready).toBeUndefined();
+    expect(fallbackTransport(inner, { log() {} }).ready).toBeUndefined();
   });
 });

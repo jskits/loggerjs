@@ -172,6 +172,12 @@ export function fallbackTransport(
   return {
     name: transportName,
     minLevel: primary.minLevel,
+    ready:
+      primary.ready || fallback.ready
+        ? async () => {
+            await Promise.all([primary.ready?.(), fallback.ready?.()]);
+          }
+        : undefined,
     write(record, context) {
       return inFlight.track(deliverWithFallback("write", record, context));
     },
@@ -280,6 +286,12 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
   return {
     name: transportName,
     minLevel: inner.minLevel,
+    ready:
+      inner.ready || fallback?.ready
+        ? async () => {
+            await Promise.all([inner.ready?.(), fallback?.ready?.()]);
+          }
+        : undefined,
     write(record, context) {
       return inFlight.track(deliverWithRetry("write", record, context));
     },
