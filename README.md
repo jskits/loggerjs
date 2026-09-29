@@ -230,7 +230,7 @@ Every log flows through one pipeline. The hot path is engineered to do as little
 ```
   logger.info("order created", { orderId })
         │
-        ▼  level gate ──── disabled levels stop here (~5ns, no allocation)
+        ▼  level gate ──── disabled levels stop here (~3ns, no allocation)
         │
   ┌─────────────┐   lazy message · raw error · shared ctx/tags · no id yet
   │  LogRecord  │
@@ -311,12 +311,12 @@ The hot path is deliberate: level gating before any allocation, lazy message res
 
 | Package                                       | Contents                                                                                                                                                                                                           |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [`@loggerjs/core`](packages/core)             | Logger, record/event model, registry, context, middleware kernel, integration API, console/memory/test/batch transports, json/safe-json/ndjson codecs. **Zero dependencies.**                                      |
+| [`@loggerjs/core`](packages/core)             | Logger, record/event model, registry, context, middleware kernel, integration API, console/memory/test/batch transports, json/safe-json/ndjson/metrics codecs. **Zero dependencies.**                              |
 | [`@loggerjs/browser`](packages/browser)       | HTTP / IndexedDB / WebSocket / service-worker / broadcast-channel transports, offline queues, ZIP export, **19 browser integrations**                                                                              |
 | [`@loggerjs/node`](packages/node)             | stdout / stderr / file / rotating-file / HTTP / syslog / worker transports, AsyncLocalStorage context, **16 Node integrations**                                                                                    |
 | [`@loggerjs/pretty`](packages/pretty)         | Browser DevTools and Node terminal pretty output: styled console transport, ANSI stdout/stderr transports, and shared formatter                                                                                    |
-| [`@loggerjs/processors`](packages/processors) | redact, privacy-guard, sample, dynamic-sampler, rate-limit, dedupe, fingerprint, filter, route, level-override, normalize-error, stack-parser, enrich, tags, trace, fingers-crossed, breadcrumbs, schema-dev-check |
-| [`@loggerjs/codecs`](packages/codecs)         | fast-event-json (the performance codec), msgpackr, projector                                                                                                                                                       |
+| [`@loggerjs/processors`](packages/processors) | redact, privacy-guard, sample, dynamic-sampler, rate-limit, dedupe, coalesce, fingerprint, filter, route, level-override, normalize-error, stack-parser, symbolicate-stack, enrich, tags, type, context, trace, fingers-crossed, breadcrumbs, schema-dev-check |
+| [`@loggerjs/codecs`](packages/codecs)         | fast-event-json (the performance codec), Pino-compatible NDJSON, msgpackr, projector                                                                                                                               |
 | [`@loggerjs/otel`](packages/otel)             | OTLP JSON mapping, OTLP/HTTP transport, OpenTelemetry log bridge, active-span trace processor                                                                                                                      |
 | [`@loggerjs/sentry`](packages/sentry)         | Sentry structured logs, breadcrumbs, exception/message capture                                                                                                                                                     |
 | [`@loggerjs/datadog`](packages/datadog)       | Datadog Logs intake transport                                                                                                                                                                                      |
@@ -487,7 +487,7 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 | [Contributing](docs/CONTRIBUTING.md)             | Repo workflow, CI gates, engineering conventions                                |
 | [Release](docs/RELEASE.md)                       | Versioning and publish workflow                                                 |
 
-Runnable examples live in [`examples/`](examples): [Node basics](examples/node-basic), [browser basics](examples/browser-basic), [OpenTelemetry](examples/otel-basic), [Sentry](examples/sentry-basic).
+Runnable examples live in [`examples/`](examples): [Node basics](examples/node-basic), [browser basics](examples/browser-basic), [browser support export](examples/browser-support-export), [pretty output](examples/pretty-output), [OpenTelemetry](examples/otel-basic), [Sentry](examples/sentry-basic).
 
 ## Development
 
