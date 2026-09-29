@@ -62,7 +62,7 @@ Logs batch over HTTP, queue while offline, replay with backoff when the network 
 | `browserWebSocketTransport` | a WebSocket (codec-encoded batches, queues while closed) |
 | `browserServiceWorkerTransport` | a service worker for centralized delivery; `ready()` waits for `serviceWorker.ready` with `target: "ready"` |
 | `browserBroadcastChannelTransport` | other tabs via `BroadcastChannel` |
-| `offlineFirstTransport` | a local store first, then forwards online |
+| `offlineFirstTransport` | your remote transport, queueing to IndexedDB while offline or when delivery fails and replaying later |
 
 ### Offline queues & export
 
