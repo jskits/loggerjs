@@ -1,11 +1,12 @@
 # @loggerjs/sentry
 
-## 0.5.7
+## 0.6.0
 
 ### Patch Changes
 
+- Version alignment for package release `0.6.0`. No Sentry source changes are included in this release.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 

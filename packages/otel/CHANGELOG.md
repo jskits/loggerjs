@@ -1,11 +1,12 @@
 # @loggerjs/otel
 
-## 0.5.7
+## 0.6.0
 
 ### Patch Changes
 
+- `otlpHttpTransport()` picks up the `@loggerjs/core` `batchTransport()` fix: when the collector is failing, `close()` now stops retrying, closes cleanly, and counts undelivered records as `transport.dropped.closed`. No OpenTelemetry source changes are included in this release.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 

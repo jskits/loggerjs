@@ -1,14 +1,17 @@
 # @loggerjs/node
 
-## 0.5.7
+## 0.6.0
+
+### Minor Changes
+
+- **Behavior change:** `captureProcessIntegration()` no longer keeps the process alive after an unhandled promise rejection. Registering an `unhandledRejection` listener disables Node's default crash, so the integration now follows Node's `--unhandled-rejections` mode: by default it captures the rejection as `fatal`, flushes, and exits with code `1`; with `warn`, `none`, or `warn-with-error-code` it only logs (the last also sets `process.exitCode = 1`). Set the new `exitOnUnhandledRejection` option to override.
 
 ### Patch Changes
 
 - Stop `fileTransport({ append: false })` from erasing the log file on the crash path. In async stream mode, `flushSync()` opened its synchronous file descriptor with the same `"w"` flag as the stream, which truncated everything already written before appending the fatal lines. The crash-path descriptor now always appends; `sync: true` mode still truncates once when the file is opened.
-
-- `captureProcessIntegration()` no longer keeps the process alive after an unhandled promise rejection. Registering an `unhandledRejection` listener disables Node's default crash, so the integration now follows Node's `--unhandled-rejections` mode: by default it captures the rejection as `fatal`, flushes, and exits with code `1`; with `warn`, `none`, or `warn-with-error-code` it only logs (the last also sets `process.exitCode = 1`). Use the new `exitOnUnhandledRejection` option to override.
+- `nodeHttpTransport()` picks up the `@loggerjs/core` `batchTransport()` fix: when the collector is failing, `close()` now stops retrying and releases resources instead of retrying after close.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 

@@ -1,6 +1,6 @@
 {
   "name": "@loggerjs/sentry",
-  "version": "0.5.7",
+  "version": "0.6.0",
   "description": "Sentry adapter transport for loggerjs.",
   "homepage": "https://github.com/jskits/loggerjs/tree/main/packages/sentry#readme",
   "bugs": {

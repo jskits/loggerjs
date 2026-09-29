@@ -1,11 +1,12 @@
 # @loggerjs/database
 
-## 0.5.7
+## 0.6.0
 
 ### Patch Changes
 
+- The database transports pick up the `@loggerjs/core` `batchTransport()` fix: when the database is failing, `close()` now stops retrying, still releases the adapter, and counts undelivered rows as `transport.dropped.closed`. No database source changes are included in this release.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 

@@ -1,11 +1,12 @@
 # @loggerjs/codecs
 
-## 0.5.7
+## 0.6.0
 
 ### Patch Changes
 
+- `fastEventJsonCodec()`, `pinoCompatCodec()`, and other string codecs can now be passed directly to transports such as `nodeHttpTransport()` and `stdoutTransport()` under strict TypeScript, thanks to the `Codec` type fix in `@loggerjs/core` 0.6.0. No codec source changes are included in this release.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 

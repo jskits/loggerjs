@@ -1,14 +1,16 @@
 # @loggerjs/processors
 
-## 0.5.7
+## 0.6.0
+
+### Minor Changes
+
+- `redactProcessor()` no longer destroys values that serialize through `toJSON()`. It rebuilt every object from its own enumerable properties, so a `URL` in log data became `{}` and custom `toJSON()` output was replaced by raw fields. Such values are now redacted in the form they serialize to, so a `URL` stays its string (`Date` values are still kept as-is). If `toJSON()` throws, the value is replaced so the event never passes through unredacted.
 
 ### Patch Changes
 
 - `privacyGuardProcessor()` now scans values that serialize through `toJSON()`. It only walked own enumerable properties, so a `URL` (which has none) was passed through unscanned and an email or token in its query string reached the transport; custom `toJSON()` output was not scanned either. The serialized form is now guarded, the original object is kept when nothing needs redaction, and a throwing `toJSON()` is replaced.
-
-- `redactProcessor()` no longer destroys values that serialize through `toJSON()`. It rebuilt every object from its own enumerable properties, so a `URL` in log data became `{}` and custom `toJSON()` output was replaced by raw fields. Such values are now redacted in the form they serialize to (a `URL` stays its string); if `toJSON()` throws, the value is replaced so the event never passes through unredacted.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 

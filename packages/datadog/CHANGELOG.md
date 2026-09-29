@@ -1,11 +1,12 @@
 # @loggerjs/datadog
 
-## 0.5.7
+## 0.6.0
 
 ### Patch Changes
 
+- `datadogLogsTransport()` returns its HTTP delivery as a promise, so with `@loggerjs/core` 0.6.0 `logger.flush()` and `logger.close()` now wait for requests that are still in flight, including when the transport is wrapped in `retryTransport()` or `fallbackTransport()`. Previously those logs could still be on the wire when `flush()` resolved and were lost on shutdown. No Datadog source changes are included in this release.
 - Updated dependencies:
-  - @loggerjs/core@0.5.7
+  - @loggerjs/core@0.6.0
 
 ## 0.5.6
 
