@@ -750,7 +750,15 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           "success",
           () => {
             statsState.databaseOpenCount += 1;
-            resolve(request.result);
+            const db = request.result;
+            // Another tab, typically a newer app version, needs to upgrade or
+            // delete this database. Holding the connection would block it
+            // indefinitely, so close now and reopen on next use.
+            db.onversionchange = () => {
+              db.close();
+              dbPromise = undefined;
+            };
+            resolve(db);
           },
           { once: true },
         );

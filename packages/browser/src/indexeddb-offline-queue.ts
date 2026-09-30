@@ -85,7 +85,20 @@ export function indexedDbBrowserHttpOfflineQueue(
           db.createObjectStore(storeName, { keyPath: "id" });
         }
       });
-      request.addEventListener("success", () => resolve(request.result), { once: true });
+      request.addEventListener(
+        "success",
+        () => {
+          const db = request.result;
+          // Another tab needs to upgrade or delete this database. Holding the
+          // connection would block it, so close now and reopen on next use.
+          db.onversionchange = () => {
+            db.close();
+            dbPromise = undefined;
+          };
+          resolve(db);
+        },
+        { once: true },
+      );
       request.addEventListener(
         "error",
         () => reject(request.error ?? new Error("IndexedDB open failed")),

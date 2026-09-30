@@ -579,6 +579,28 @@ describe("indexedDbTransport", () => {
     expect(getLoggerMetaStats()["transport.indexeddb.dropped.quota"]).toBe(2);
   });
 
+  it("closes its connection when another tab upgrades the database and reopens later", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    transport.log?.(event("before", 1), context);
+    await transport.flush?.();
+    const db = idb.db as unknown as { closed: boolean; onversionchange?: () => void };
+    db.onversionchange?.();
+    expect(db.closed).toBe(true);
+
+    db.closed = false;
+    transport.log?.(event("after", 2), context);
+    await transport.flush?.();
+
+    expect(transport.stats().databaseOpenCount).toBe(2);
+    expect((await collect(transport.query())).map((item) => item.id)).toEqual(["before", "after"]);
+  });
+
   it("persists buffered logs with micro-batch flush and queries them in order", async () => {
     vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const idb = new FakeIndexedDB();
