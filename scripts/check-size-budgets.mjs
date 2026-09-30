@@ -9,8 +9,8 @@ import { rolldown } from "rolldown";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  // Opt-in state sharing across core copies measures 96,850 raw and 21,306 gzip bytes with shared chunks.
-  ["@loggerjs/core", "packages/core/dist/index.js", 97_500, 21_400],
+  // Normalizing Error cause chains for native JSON codecs measures 97,248 raw and 21,437 gzip bytes.
+  ["@loggerjs/core", "packages/core/dist/index.js", 98_000, 21_600],
   // Entry plus shared chunks after splitting shared modules into chunks measures 148,718 raw and 30,850 gzip bytes.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 149_000, 31_000],
   // Entry plus shared chunks after splitting shared modules into chunks measures 81,039 raw and 16,041 gzip bytes.
@@ -32,14 +32,14 @@ const budgets = [
 // start with. Package-entry budgets above cannot see regressions here, because
 // they measure every export whether or not an app imports it.
 const minimalPaths = [
-  // createLogger() plus consoleTransport() measures 19,351 raw and 6,237 gzip bytes.
+  // createLogger() plus consoleTransport() measures 19,500 raw and 6,303 gzip bytes.
   [
     "core logger + console",
     `import { createLogger } from "@loggerjs/core";
 import { consoleTransport } from "@loggerjs/core/transport-console";
 createLogger({ transports: [consoleTransport()] }).info("ready", { ok: true });`,
-    19_800,
-    6_300,
+    19_900,
+    6_400,
   ],
   // createLogger() plus browserHttpTransport() measures 24,075 raw and 7,979 gzip bytes.
   [
