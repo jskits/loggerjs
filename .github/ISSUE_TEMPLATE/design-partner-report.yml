@@ -1,0 +1,65 @@
+name: Design partner report
+description: Periodic production report from a project running LoggerJS, used to decide what the v1 API keeps.
+title: "[design partner] <project> - <period>"
+labels: ["design-partner"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for running LoggerJS in production. These reports decide which APIs are frozen for v1 and which are removed, so please report what you actually use and what went wrong, not what you would like to have.
+
+        Remove anything confidential before submitting. Do not paste log payloads, tokens, or user data.
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Runtime
+      multiple: true
+      options:
+        - Browser app
+        - Node service
+        - Electron (main and renderer)
+        - Edge / serverless
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Package versions
+      description: For example "@loggerjs/core 0.6.1, @loggerjs/browser 0.6.1, Node 22.13 / Chrome 140".
+    validations:
+      required: true
+  - type: input
+    id: period
+    attributes:
+      label: Reporting period and volume
+      description: Dates covered and a rough event volume, for example "2026-10-01 to 2026-10-31, about 40M events".
+    validations:
+      required: true
+  - type: textarea
+    id: imports
+    attributes:
+      label: Imports you use
+      description: Every @loggerjs import path and exported function you call. APIs nobody reports using are candidates for removal before v1.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Delivery metrics
+      description: |
+        Paste `JSON.stringify(getLoggerSelfMetrics())` from `@loggerjs/core`, taken at the end of the period or aggregated across instances, plus `stats()` from any batch, HTTP, or IndexedDB transports. The v1 gate looks at `transport.dropped.*`, `transport.retry.*`, `transport.errors`, and queue-depth gauges.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: incidents
+    attributes:
+      label: Incidents and surprises
+      description: Lost or duplicated logs, hangs on shutdown, memory growth, bundle size problems, confusing APIs, and workarounds you had to write.
+  - type: textarea
+    id: unused
+    attributes:
+      label: APIs you tried and dropped
+      description: What you tried, why you stopped using it, and what you use instead.
