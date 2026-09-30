@@ -98,6 +98,17 @@ for (const packageDir of packageDirs()) {
     );
   }
 
+  // Internal dependencies publish as caret ranges so a consumer who upgrades
+  // @loggerjs/core alone can dedupe it instead of installing a second copy.
+  for (const [dependencyName, range] of Object.entries(manifest.dependencies ?? {})) {
+    if (!dependencyName.startsWith("@loggerjs/")) continue;
+    assert(
+      range === "workspace:^",
+      failures,
+      `${manifest.name}: dependency ${dependencyName} must use "workspace:^" (found "${range}")`,
+    );
+  }
+
   assert(manifest.exports?.["."], failures, `${manifest.name}: exports must include "."`);
   assert(
     manifest.exports?.["."]?.types,

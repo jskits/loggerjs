@@ -173,19 +173,19 @@ importers:
   packages/browser:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/cloudwatch:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/codecs:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       msgpackr:
         specifier: ^2.0.4
@@ -196,37 +196,37 @@ importers:
   packages/database:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/datadog:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/elastic:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/loki:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/node:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/otel:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@opentelemetry/api':
         specifier: '>=1 <2'
@@ -235,19 +235,19 @@ importers:
   packages/pretty:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/processors:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
 
   packages/sentry:
     dependencies:
       '@loggerjs/core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../core
       '@sentry/core':
         specifier: '>=8 <11'
@@ -552,36 +552,6 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
-
-  '@cloudflare/workerd-darwin-64@1.20260616.1':
-    resolution: {integrity: sha512-8QaDRQABkwkwoeviNiyScol7EQgXfGsPNSyUn52GiXObthY4XPiokoJsgDSDNcAelHjEvDLmdvQBHPK8YvGn4A==}
-    engines: {node: '>=16'}
-    cpu: [x64]
-    os: [darwin]
-
-  '@cloudflare/workerd-darwin-arm64@1.20260616.1':
-    resolution: {integrity: sha512-xEhiZQ62CBJ+vyKSmM13rkK/wB1kLP5sKFkF3+P+3R/c2bmnSG3Vcd5FfXUu9V0PdC+KlR02nByvZjqEw2N6Ag==}
-    engines: {node: '>=16'}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@cloudflare/workerd-linux-64@1.20260616.1':
-    resolution: {integrity: sha512-p5laSYPiRUMHaLkneaZ9ZfIkNpmEnGFwgYmXtfcHJutTfEd8o3IBnsUVRSbPL+phcshKqmapLsQSxDEX6WSFfA==}
-    engines: {node: '>=16'}
-    cpu: [x64]
-    os: [linux]
-
-  '@cloudflare/workerd-linux-arm64@1.20260616.1':
-    resolution: {integrity: sha512-XQ7GonEl8ORvbz5fhe8Eyw2t/j09Li0KbXJxaldA318E+syF+PPTc4IRQudgqPWzzdzkH5nF7PuMOGySLSjFFw==}
-    engines: {node: '>=16'}
-    cpu: [arm64]
-    os: [linux]
-
-  '@cloudflare/workerd-windows-64@1.20260616.1':
-    resolution: {integrity: sha512-RaDVF9bSbPiPTq6vHYrgnv1TcQEcYnOr0WB3hWJ4yg2fBfpi2ygU6cYPuFeDwyFE9aPW5S6FBAkNmpKYueK4DQ==}
-    engines: {node: '>=16'}
-    cpu: [x64]
-    os: [win32]
 
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
@@ -2878,6 +2848,7 @@ packages:
   git-raw-commits@5.0.1:
     resolution: {integrity: sha512-Y+csSm2GD/PCSh6Isd/WiMjNAydu0VBiG9J7EdQsNA5P9uXvLayqjmTsNlK5Gs9IhblFZqOU0yid5Il5JPoLiQ==}
     engines: {node: '>=18'}
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   glob-parent@5.1.2:
@@ -4718,21 +4689,6 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.2.0
       prettier: 2.8.8
-
-  '@cloudflare/workerd-darwin-64@1.20260616.1':
-    optional: true
-
-  '@cloudflare/workerd-darwin-arm64@1.20260616.1':
-    optional: true
-
-  '@cloudflare/workerd-linux-64@1.20260616.1':
-    optional: true
-
-  '@cloudflare/workerd-linux-arm64@1.20260616.1':
-    optional: true
-
-  '@cloudflare/workerd-windows-64@1.20260616.1':
-    optional: true
 
   '@colors/colors@1.6.0': {}
 
@@ -7975,13 +7931,7 @@ snapshots:
 
   word-wrap@1.2.5: {}
 
-  workerd@1.20260616.1:
-    optionalDependencies:
-      '@cloudflare/workerd-darwin-64': 1.20260616.1
-      '@cloudflare/workerd-darwin-arm64': 1.20260616.1
-      '@cloudflare/workerd-linux-64': 1.20260616.1
-      '@cloudflare/workerd-linux-arm64': 1.20260616.1
-      '@cloudflare/workerd-windows-64': 1.20260616.1
+  workerd@1.20260616.1: {}
 
   wrap-ansi@10.0.0:
     dependencies:

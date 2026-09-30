@@ -167,7 +167,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:*"
+    "@loggerjs/core": "workspace:^"
   },
   "loggerjsSubpathEntries": {
     "http-transport": "src/http-transport.ts",

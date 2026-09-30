@@ -62,7 +62,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:*"
+    "@loggerjs/core": "workspace:^"
   },
   "peerDependencies": {
     "@opentelemetry/api": ">=1 <2"

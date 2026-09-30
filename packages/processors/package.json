@@ -42,6 +42,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:*"
+    "@loggerjs/core": "workspace:^"
   }
 }
