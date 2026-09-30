@@ -6,6 +6,7 @@ import {
   type LogEvent,
   type LoggerLevel,
   type Transport,
+  type TransportContext,
 } from "@loggerjs/core";
 import { createNodeFileDestination } from "./node-destination";
 
@@ -72,6 +73,7 @@ export function rotatingFileTransport(
     sync: true,
   });
   let bytes = fileSize(options.path);
+  let rotateAt = maxBytes;
 
   const rotate = () => {
     destination.releaseSync?.();
@@ -79,6 +81,7 @@ export function rotatingFileTransport(
     if (maxFiles === 0) {
       if (existsSync(options.path)) unlinkSync(options.path);
       bytes = 0;
+      rotateAt = maxBytes;
       return;
     }
 
@@ -92,11 +95,27 @@ export function rotatingFileTransport(
 
     if (existsSync(options.path)) renameSync(options.path, archivePath(options.path, 1));
     bytes = 0;
+    rotateAt = maxBytes;
   };
 
-  const writePayload = (payload: string | Uint8Array) => {
+  const writePayload = (payload: string | Uint8Array, context: TransportContext | undefined) => {
     const size = payloadBytes(payload);
-    if (bytes > 0 && bytes + size > maxBytes) rotate();
+    if (bytes > 0 && bytes + size > rotateAt) {
+      try {
+        rotate();
+      } catch (error) {
+        // Renames fail while another process holds the file open (EBUSY or
+        // EPERM on Windows) or the archive location is unwritable. Keep
+        // appending to the current file and retry after another maxBytes
+        // instead of dropping this and every later event.
+        rotateAt = bytes + size + maxBytes;
+        context?.reportInternalError(error, {
+          phase: "transport",
+          transport: transport.name,
+          operation: "rotate",
+        });
+      }
+    }
     destination.write(payload);
     bytes += size;
   };
@@ -104,15 +123,15 @@ export function rotatingFileTransport(
   const transport: RotatingFileTransport = {
     name: options.name ?? "rotating-file",
     minLevel: options.minLevel,
-    log(event: LogEvent) {
+    log(event: LogEvent, context?: TransportContext) {
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
-      writePayload(codec.encode(event));
+      writePayload(codec.encode(event), context);
     },
-    logBatch(events: LogEvent[]) {
+    logBatch(events: LogEvent[], context?: TransportContext) {
       for (const event of events) {
         if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel))
           continue;
-        writePayload(codec.encode(event));
+        writePayload(codec.encode(event), context);
       }
     },
     flush() {
