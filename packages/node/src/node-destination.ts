@@ -111,15 +111,22 @@ export function createNodeStreamDestination(
     reportInternalError(lastError, operation);
   };
 
+  // A destroyed stream (for example after ENOSPC or EISDIR) never emits
+  // drain, so waiting for one would leave flush() and close() pending forever.
+  const releaseDrainsIfDestroyed = () => {
+    if (options.stream.destroyed) pendingDrains = 0;
+  };
+
   const onStreamError = (error: Error) => {
     recordError(error, "stream-error");
+    releaseDrainsIfDestroyed();
     settleWaitersIfIdle();
   };
   const offError = () => options.stream.off?.("error", onStreamError);
   options.stream.on?.("error", onStreamError);
 
   const waitForDrain = () => {
-    if (!options.stream.once) return;
+    if (!options.stream.once || options.stream.destroyed) return;
     pendingDrains += 1;
     options.stream.once("drain", () => {
       pendingDrains -= 1;
@@ -141,6 +148,7 @@ export function createNodeStreamDestination(
         removePending(payload);
         pendingWrites -= 1;
         if (error) recordError(error, options.reportOperation ?? "write");
+        releaseDrainsIfDestroyed();
         settleWaitersIfIdle();
       });
       if (result === false) waitForDrain();
@@ -173,6 +181,7 @@ export function createNodeStreamDestination(
     },
     flush() {
       flushBuffered();
+      releaseDrainsIfDestroyed();
       if (pendingWrites + pendingDrains === 0) {
         const error = lastError;
         lastError = undefined;
