@@ -553,6 +553,32 @@ describe("indexedDbTransport", () => {
     resetLoggerMetaStats();
   });
 
+  it("reports every event of a failed IndexedDB write as dropped", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const dropped: Array<[string, string]> = [];
+    const transport = indexedDbTransport({
+      batchSize: 10,
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+      onDrop: (dropEvent, reason) => dropped.push([dropEvent.id, reason]),
+    });
+    const put = vi.spyOn(FakeObjectStore.prototype, "put").mockImplementation(() => {
+      throw new DOMException("storage full", "QuotaExceededError");
+    });
+
+    transport.log?.(event("first", 1), context);
+    transport.log?.(event("second", 2), context);
+    await expect(transport.flush?.()).rejects.toMatchObject({ name: "QuotaExceededError" });
+    put.mockRestore();
+
+    expect(dropped).toEqual([
+      ["first", "quota"],
+      ["second", "quota"],
+    ]);
+    expect(getLoggerMetaStats()["transport.indexeddb.dropped.quota"]).toBe(2);
+  });
+
   it("persists buffered logs with micro-batch flush and queries them in order", async () => {
     vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const idb = new FakeIndexedDB();

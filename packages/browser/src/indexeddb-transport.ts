@@ -1206,6 +1206,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     const startedAt = nowMs();
     statsState.lastFlushBatchSize = events.length;
     const entries = events.map(eventToEntry);
+    let stored = false;
     try {
       await withLogAndSessionStores("readwrite", async (store, sessionStore) => {
         const rebuildSessionIds = new Set<string>();
@@ -1225,6 +1226,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           entries.filter((entry) => !entry.sessionId || !rebuildSessionIds.has(entry.sessionId)),
         );
       });
+      stored = true;
       statsState.persisted += entries.length;
       incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);
       markLocalStorageSpillPersisted(events);
@@ -1232,6 +1234,12 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       statsState.flushes += 1;
     } catch (error) {
       statsState.flushErrors += 1;
+      // The failed transaction stored none of the batch, and the batch has
+      // already left the buffer, so account for every event as dropped.
+      if (!stored) {
+        const reason = isQuotaExceededError(error) ? "quota" : "write-failed";
+        for (const event of events) dropEvent(event, reason);
+      }
       throw error;
     } finally {
       statsState.lastFlushDurationMs = nowMs() - startedAt;
