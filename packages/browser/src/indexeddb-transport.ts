@@ -1404,8 +1404,14 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     timer = undefined;
   };
 
-  const flushPending = async () => {
-    if (flushPromise) return flushPromise;
+  const flushPending = async (): Promise<void> => {
+    if (flushPromise) {
+      if (buffer.length === 0) return flushPromise;
+      // Events buffered while a flush is in flight need a flush of their own;
+      // returning the in-flight one let close() finish without writing them.
+      await flushPromise.catch(() => undefined);
+      return flushPending();
+    }
     clearTimer();
     const batch = buffer.splice(0, buffer.length);
     pendingFlushBatch = batch;
@@ -1417,7 +1423,12 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     })().finally(() => {
       if (pendingFlushBatch === batch) pendingFlushBatch = undefined;
       flushPromise = undefined;
-      if (buffer.length > 0 && !closed) schedule();
+      if (buffer.length === 0 || closed) return;
+      // With flushIntervalMs 0 there is no timer to pick up events logged
+      // during this flush, so write them now.
+      if (flushIntervalMs <= 0) {
+        void flushPending().catch((error: unknown) => reportInternalError(error, "flush"));
+      } else schedule();
     });
     return flushPromise;
   };
