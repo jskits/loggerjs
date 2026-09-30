@@ -678,6 +678,27 @@ describe("browserHttpTransport", () => {
     expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["1|2", "3|4", "5"]);
   });
 
+  it("aborts a stalled request after timeoutMs", async () => {
+    const fetchFn = vi.fn<typeof fetch>(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        }),
+    );
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      timeoutMs: 20,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("stalled"), createTransportContext());
+
+    await expect(transport.flush?.()).rejects.toMatchObject({ name: "TimeoutError" });
+  });
+
   it("flushes queued events on the scheduled timer", async () => {
     vi.useFakeTimers();
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));

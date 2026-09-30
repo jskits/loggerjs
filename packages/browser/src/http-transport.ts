@@ -66,6 +66,14 @@ export interface BrowserHttpTransportOptions {
   fetchFn?: typeof fetch;
   transformPayload?: PayloadTransform | readonly PayloadTransform[];
   onDrop?: (event: LogEvent, reason: string) => void;
+  /**
+   * Abort a Fetch delivery after this many milliseconds. Browsers never time
+   * out a request on their own, so one stalled request would otherwise hold
+   * every later flush and close(). A timed-out batch falls back to the
+   * offline queue when one is configured. Set to 0 to disable. Defaults to
+   * 10000.
+   */
+  timeoutMs?: number;
 }
 
 export function memoryBrowserHttpOfflineQueue(
@@ -157,6 +165,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const offlineReplayMaxDelayMs = options.offlineReplayMaxDelayMs ?? 5000;
   const random = options.random ?? Math.random;
   const fetchFn = options.fetchFn ?? globalThis.fetch?.bind(globalThis);
+  const timeoutMs = options.timeoutMs ?? 10_000;
   let offlineEntrySeq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeFlush: Promise<void> | undefined;
@@ -265,6 +274,10 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       body: payloadToBody(entry.body),
       credentials: entry.credentials,
       keepalive: entry.keepalive,
+      signal:
+        timeoutMs > 0 && typeof AbortSignal?.timeout === "function"
+          ? AbortSignal.timeout(timeoutMs)
+          : undefined,
     });
     if (!response.ok) throw new Error(`browserHttpTransport failed with status ${response.status}`);
   };
