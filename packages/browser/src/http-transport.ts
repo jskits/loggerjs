@@ -167,6 +167,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const fetchFn = options.fetchFn ?? globalThis.fetch?.bind(globalThis);
   const timeoutMs = options.timeoutMs ?? 10_000;
   let offlineEntrySeq = 0;
+  let closed = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeFlush: Promise<void> | undefined;
   let flushingBeacon = false;
@@ -478,7 +479,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   };
 
   const schedule = () => {
-    if (activeFlush || timer || flushIntervalMs <= 0) return;
+    if (closed || activeFlush || timer || flushIntervalMs <= 0) return;
     timer = setTimeout(() => {
       timer = undefined;
       void flush(false).catch((error: unknown) => reportInternalError(error, "flush"));
@@ -516,6 +517,10 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     log(event, context) {
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
       lastContext = context;
+      if (closed) {
+        reportDrop(event, "closed");
+        return;
+      }
       if (queue.length >= maxQueueSize) {
         if (dropPolicy === "drop-newest") {
           reportDrop(event, "queue-full");
@@ -537,7 +542,17 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       globalThis.removeEventListener?.("pagehide", onPageHide);
       globalThis.removeEventListener?.("visibilitychange", onVisibilityChange);
       globalThis.removeEventListener?.("online", onOnline);
-      return flush(true);
+      closed = true;
+      clearTimer();
+      // Events the final flush could not deliver or store are accounted for
+      // as dropped instead of disappearing with the transport.
+      const dropUndelivered = () => {
+        for (const event of queue.splice(0)) reportDrop(event, "closed");
+      };
+      return flush(true).then(dropUndelivered, (error: unknown) => {
+        dropUndelivered();
+        throw error;
+      });
     },
   };
 }
