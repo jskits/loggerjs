@@ -61,6 +61,17 @@ async function startCollector(plan: (request: number) => Fault): Promise<Collect
   };
 }
 
+// Deterministic PRNG so a failing chaos run can be replayed from its seed.
+function mulberry32(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 interface RunResult {
   emitted: string[];
   dropped: Map<string, string>;
@@ -116,7 +127,16 @@ async function emitAndClose(
   return { emitted, dropped, closeSettled };
 }
 
-describe("nodeHttpTransport request timeout", () => {
+// Conservation: each emitted event is acknowledged by the collector or
+// reported through onDrop, and the collector never sees an unknown event.
+function expectConserved(result: RunResult, collector: Collector): void {
+  const { emitted } = result;
+  const lost = emitted.filter((id) => !collector.acknowledged.has(id) && !result.dropped.has(id));
+  expect(lost).toEqual([]);
+  expect([...collector.acknowledged.keys()].filter((id) => !emitted.includes(id))).toEqual([]);
+}
+
+describe("nodeHttpTransport under injected network faults", () => {
   afterEach(async () => {
     resetLoggerMetaStats();
     await Promise.all(
@@ -128,6 +148,27 @@ describe("nodeHttpTransport request timeout", () => {
           }),
       ),
     );
+  });
+
+  it("delivers every event through transient 5xx and 429 responses", async () => {
+    const faults: Fault[] = ["server-error", "rate-limited", "server-error"];
+    const collector = await startCollector((request) => faults[request] ?? "ok");
+
+    const result = await emitAndClose(collector, 25);
+
+    expect(result.closeSettled).toBe(true);
+    expect(result.dropped.size).toBe(0);
+    expect(collector.acknowledged.size).toBe(25);
+    expect(getLoggerMetaStats()["transport.retry"]).toBeGreaterThanOrEqual(3);
+  });
+
+  it("retries after the collector resets the connection", async () => {
+    const collector = await startCollector((request) => (request < 2 ? "reset" : "ok"));
+
+    const result = await emitAndClose(collector, 10);
+
+    expect(result.closeSettled).toBe(true);
+    expect(collector.acknowledged.size).toBe(10);
   });
 
   it("times out a collector that never answers instead of hanging close()", async () => {
@@ -142,4 +183,22 @@ describe("nodeHttpTransport request timeout", () => {
     expect(result.dropped.size).toBe(5);
     expect(getLoggerMetaStats()["transport.dropped.closed"]).toBe(5);
   });
+
+  it.each([1, 2, 3, 4, 5])(
+    "conserves events under random faults (seed %i)",
+    async (seed) => {
+      const random = mulberry32(seed);
+      const faults: Fault[] = ["ok", "ok", "server-error", "rate-limited", "reset", "hang"];
+      const collector = await startCollector(
+        () => faults[Math.floor(random() * faults.length)] ?? "ok",
+      );
+
+      const result = await emitAndClose(collector, 200);
+
+      expect(result.closeSettled).toBe(true);
+      expect(result.emitted).toHaveLength(200);
+      expectConserved(result, collector);
+    },
+    20_000,
+  );
 });
