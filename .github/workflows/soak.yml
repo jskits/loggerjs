@@ -1,0 +1,43 @@
+name: Soak
+
+# Long runs of both soak tests. The CI quality gate runs them for 15 seconds;
+# leaks, slow drifts, and rare fault interleavings only show up over time.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: Minutes each soak runs
+        default: "20"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      LOGGERJS_SOAK_DURATION_MS: ${{ (inputs.duration_minutes || '20') }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Convert minutes to milliseconds
+        run: echo "LOGGERJS_SOAK_DURATION_MS=$(( LOGGERJS_SOAK_DURATION_MS * 60000 ))" >> "$GITHUB_ENV"
+      - name: Logger pipeline soak
+        run: node --expose-gc scripts/soak-logger.mjs
+      - name: Transport soak with injected collector faults
+        run: node --expose-gc scripts/soak-transports.mjs
