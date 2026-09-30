@@ -44,5 +44,8 @@
   "dependencies": {
     "@loggerjs/core": "workspace:^",
     "msgpackr": "^2.0.4"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }

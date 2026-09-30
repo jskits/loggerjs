@@ -14,6 +14,9 @@ const requiredPackedFiles = [
   "dist/index.js",
   "dist/index.d.ts",
 ];
+// Keep in sync with the lowest version in the ci.yml node-compat matrix, which
+// smoke-tests the packed packages on that runtime.
+const supportedNodeRange = ">=20.19.0";
 const forbiddenPackedPrefixes = ["src/", "test/", ".turbo/", "node_modules/"];
 
 function readJson(path) {
@@ -51,6 +54,14 @@ function assert(condition, failures, message) {
 const failures = [];
 const publishablePackages = [];
 
+const ciWorkflow = readFileSync(join(repoRoot, ".github/workflows/ci.yml"), "utf8");
+const nodeFloor = supportedNodeRange.slice(2);
+assert(
+  ciWorkflow.includes(`- ${nodeFloor}\n`),
+  failures,
+  `ci.yml node-compat matrix must smoke-test the engines floor ${nodeFloor}`,
+);
+
 for (const packageDir of packageDirs()) {
   const manifestPath = join(packageDir, "package.json");
   const manifest = readJson(manifestPath);
@@ -63,6 +74,11 @@ for (const packageDir of packageDirs()) {
   assert(manifest.license === "MIT", failures, `${manifest.name}: license must be MIT`);
   assert(manifest.type === "module", failures, `${manifest.name}: type must be module`);
   assert(manifest.sideEffects === false, failures, `${manifest.name}: sideEffects must be false`);
+  assert(
+    manifest.engines?.node === supportedNodeRange,
+    failures,
+    `${manifest.name}: engines.node must be "${supportedNodeRange}"`,
+  );
   assert(
     manifest.publishConfig?.access === "public",
     failures,

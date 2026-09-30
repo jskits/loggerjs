@@ -72,6 +72,9 @@
       "optional": true
     }
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "loggerjsSubpathEntries": {
     "transport-http": "src/transport.ts",
     "codec-otlp-json": "src/otlp-json.ts",

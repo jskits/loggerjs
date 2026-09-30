@@ -169,6 +169,9 @@
   "dependencies": {
     "@loggerjs/core": "workspace:^"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "loggerjsSubpathEntries": {
     "http-transport": "src/http-transport.ts",
     "payload-transforms": "src/payload-transforms.ts",
