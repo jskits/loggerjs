@@ -101,6 +101,28 @@ jobs:
       - run: pnpm build
       - run: node scripts/smoke-runtimes.mjs --runtime=${{ matrix.runtime }}
 
+  # File rotation, path handling, and process capture behave differently on
+  # Windows (for example EBUSY/EPERM when renaming a file another process holds
+  # open), so run the core and Node suites there as well.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      # Package scripts use POSIX commands such as rm -rf.
+      - run: pnpm --config.shell-emulator=true --filter @loggerjs/core --filter @loggerjs/node run build
+      - run: pnpm --filter @loggerjs/core --filter @loggerjs/node exec vitest run
+
   bench:
     runs-on: ubuntu-latest
     steps:
