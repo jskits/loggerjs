@@ -99,6 +99,32 @@ describe("file transports under injected failures", () => {
     );
   });
 
+  it("does not crash the process when the file stream fails after close()", async () => {
+    const transport = fileTransport({ path: join(tempDir(), "app.log") });
+    transport.log?.(
+      {
+        id: "late",
+        time: 1,
+        seq: 1,
+        level: 30,
+        levelName: "info",
+        logger: "test",
+        message: "late",
+      },
+      {
+        loggerName: "test",
+        now: () => 1,
+        toEvent: (record) => record as never,
+        reportInternalError() {},
+      },
+    );
+    await transport.close?.();
+
+    // A write error that surfaces after close() (as ENOSPC does on /dev/full)
+    // must not become an unhandled 'error' event.
+    expect(() => transport.stream?.emit("error", new Error("late write failure"))).not.toThrow();
+  });
+
   it("keeps rotated archives complete and ordered when the writer is killed", async () => {
     const path = join(tempDir(), "app.log");
     const child = spawn(nodeProcess.execPath, ["--import", "tsx", rotatingWriter, path], {

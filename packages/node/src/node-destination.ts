@@ -288,6 +288,11 @@ export function createNodeFileDestination(options: NodeFileDestinationOptions): 
   }
 
   const stream = createWriteStream(options.path, { flags });
+  // This destination owns the stream, so keep an error listener on it for its
+  // whole life. close() removes the reporting listener, and a write that fails
+  // afterwards (for example ENOSPC while the last buffered chunk is flushed)
+  // would otherwise be an unhandled 'error' event and crash the process.
+  stream.on("error", () => {});
   const destination = createNodeStreamDestination({
     name: options.name,
     stream,
