@@ -1,4 +1,5 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { builtinModules } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,12 +9,12 @@ import { rolldown } from "rolldown";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  // Pending-write tracking, batch close cleanup, and registry snapshot replacement measure 88,391 raw bytes.
-  ["@loggerjs/core", "packages/core/dist/index.js", 89_000, 19_800],
-  // The browser delivery hardening series (Fetch timeouts, close-time drop accounting, IndexedDB write-failure drops, versionchange handling) measures 142,434 raw and 30,137 gzip bytes once complete.
-  ["@loggerjs/browser", "packages/browser/dist/index.js", 143_000, 30_300],
-  // Destroyed-stream drain release and the nodeHttpTransport request timeout measure 75,953 raw and 15,604 gzip bytes.
-  ["@loggerjs/node", "packages/node/dist/index.js", 76_500, 15_700],
+  // Entry plus shared chunks after splitting shared modules into chunks measures 94,661 raw and 20,640 gzip bytes.
+  ["@loggerjs/core", "packages/core/dist/index.js", 95_000, 20_700],
+  // Entry plus shared chunks after splitting shared modules into chunks measures 148,718 raw and 30,850 gzip bytes.
+  ["@loggerjs/browser", "packages/browser/dist/index.js", 149_000, 31_000],
+  // Entry plus shared chunks after splitting shared modules into chunks measures 81,039 raw and 16,041 gzip bytes.
+  ["@loggerjs/node", "packages/node/dist/index.js", 81_500, 16_100],
   ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 18_500, 4_400],
@@ -31,16 +32,16 @@ const budgets = [
 // start with. Package-entry budgets above cannot see regressions here, because
 // they measure every export whether or not an app imports it.
 const minimalPaths = [
-  // createLogger() plus consoleTransport() measures 21,331 raw and 6,301 gzip bytes.
+  // createLogger() plus consoleTransport() measures 18,866 raw and 6,024 gzip bytes.
   [
     "core logger + console",
     `import { createLogger } from "@loggerjs/core";
 import { consoleTransport } from "@loggerjs/core/transport-console";
 createLogger({ transports: [consoleTransport()] }).info("ready", { ok: true });`,
-    21_800,
-    6_400,
+    19_300,
+    6_150,
   ],
-  // createLogger() plus browserHttpTransport() measures 23,467 raw and 7,723 gzip bytes.
+  // createLogger() plus browserHttpTransport() measures 23,586 raw and 7,774 gzip bytes.
   [
     "browser logger + http",
     `import { createLogger } from "@loggerjs/core";
@@ -49,7 +50,7 @@ createLogger({ transports: [browserHttpTransport({ url: "/logs" })] }).info("rea
     23_800,
     7_800,
   ],
-  // createLogger() plus stdoutTransport() measures 20,489 raw and 6,609 gzip bytes.
+  // createLogger() plus stdoutTransport() measures 20,580 raw and 6,662 gzip bytes.
   [
     "node logger + stdout",
     `import { createLogger } from "@loggerjs/core";
@@ -80,7 +81,7 @@ async function bundleMinimalPath(source) {
     const bundle = await rolldown({
       input,
       platform: "neutral",
-      external: (id) => id.startsWith("node:"),
+      external: (id) => id.startsWith("node:") || builtinModules.includes(id),
       plugins: [{ name: "loggerjs-workspace", resolveId: resolveWorkspaceImport }],
       treeshake: true,
     });
@@ -90,6 +91,25 @@ async function bundleMinimalPath(source) {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+// Package entries import shared chunks from dist/chunks/, so measure an entry
+// together with every chunk it loads.
+function entryWithChunks(entryPath) {
+  const seen = new Set();
+  const parts = [];
+  const visit = (path) => {
+    if (seen.has(path)) return;
+    seen.add(path);
+    const source = readFileSync(path);
+    parts.push(source);
+    const importPattern = /(?:\bfrom\s*|\bimport\s*)["'](\.{1,2}\/[^"']+)["']/g;
+    for (const [, specifier] of source.toString("utf8").matchAll(importPattern)) {
+      visit(join(dirname(path), specifier));
+    }
+  };
+  visit(entryPath);
+  return Buffer.concat(parts);
 }
 
 const failures = [];
@@ -102,8 +122,9 @@ for (const [name, relativePath, rawBudget, gzipBudget] of budgets) {
     continue;
   }
 
-  const rawSize = readFileSync(path).byteLength;
-  const gzipSize = gzipSync(readFileSync(path)).byteLength;
+  const code = entryWithChunks(path);
+  const rawSize = code.byteLength;
+  const gzipSize = gzipSync(code).byteLength;
   rows.push([name, rawSize, rawBudget, gzipSize, gzipBudget]);
 
   if (rawSize > rawBudget) {
