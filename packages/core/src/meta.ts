@@ -1,25 +1,28 @@
-import { runtimeHost } from "./host";
+import { runtimeHost, sharedState } from "./host";
 
 export type LoggerMetaStats = Record<string, number>;
 
-const counters = new Map<string, number>();
-const gauges = new Map<string, number>();
+const meta = /* @__PURE__ */ sharedState("meta", () => ({
+  counters: new Map<string, number>(),
+  gauges: new Map<string, number>(),
+}));
 const originalConsoleKey = "__LOGGERJS_ORIGINAL_CONSOLE__";
 
 export function incrementLoggerMetaCounter(name: string, amount = 1): void {
+  const { counters } = meta();
   counters.set(name, (counters.get(name) ?? 0) + amount);
 }
 
 export function setLoggerMetaGauge(name: string, value: number): void {
-  gauges.set(name, value);
+  meta().gauges.set(name, value);
 }
 
 export function getLoggerMetaStats(): LoggerMetaStats {
-  return Object.fromEntries(counters);
+  return Object.fromEntries(meta().counters);
 }
 
 export function getLoggerMetaGauges(): LoggerMetaStats {
-  return Object.fromEntries(gauges);
+  return Object.fromEntries(meta().gauges);
 }
 
 export interface LoggerSelfMetrics {
@@ -35,8 +38,8 @@ export function getLoggerSelfMetrics(): LoggerSelfMetrics {
 }
 
 export function resetLoggerMetaStats(): void {
-  counters.clear();
-  gauges.clear();
+  meta().counters.clear();
+  meta().gauges.clear();
 }
 
 function counterForDetail(detail: Record<string, unknown> | undefined): string {

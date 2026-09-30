@@ -132,6 +132,9 @@ interface RuntimeGlobal {
     TextEncoder?: new () => RuntimeTextEncoder;
 }
 export declare const runtimeHost: RuntimeGlobal;
+export declare function sharedState<T extends object>(name: string, init: () => T): () => T;
+export declare function setStateSharedAcrossCopies(shared: boolean): void;
+export declare function warnIfCoreCopiesUnshared(): void;
 export declare function encodeUtf8(input: string): Uint8Array;
 export declare function runtimeNow(): number;
 export declare function setRuntimeTimeout(callback: () => void, delayMs: number): RuntimeTimerHandle | undefined;
@@ -404,6 +407,16 @@ export interface ConfigureOptions {
     transports?: Record<string, Transport> | readonly Transport[];
     loggers?: LoggerRoute[];
     integrations?: Integration[];
+    /**
+     * Whether every copy of @loggerjs/core loaded into this process (for
+     * example an ESM app and a CJS library, or two installed versions) shares
+     * this registry, ambient context, and meta counters. `true` lets libraries
+     * in other copies log through this configuration; `false` keeps copies
+     * isolated, as independently bundled micro-frontends on one page need.
+     * Left unset, copies stay isolated and configure() warns once when more
+     * than one copy is loaded.
+     */
+    shareAcrossCopies?: boolean;
 }
 export declare function resetLoggerRegistry(): Promise<void>;
 export declare function configure(options?: ConfigureOptions): Promise<void>;

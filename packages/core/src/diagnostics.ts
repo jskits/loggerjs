@@ -22,6 +22,10 @@ export interface LoggerDiagnosticSink {
   enabled?: (stage: LoggerDiagnosticStage) => boolean;
 }
 
+// Unlike the registry and context, the sink stays module-local: when nothing
+// installs one, bundlers fold loggerDiagnosticsEnabled() to false and drop the
+// instrumentation from Logger. A sink installed through a different copy of
+// core only misses diagnostics, never log events.
 let sink: LoggerDiagnosticSink | undefined;
 
 export function setLoggerDiagnosticSink(

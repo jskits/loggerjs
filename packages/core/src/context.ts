@@ -1,4 +1,5 @@
 import type { BoundContext } from "./types";
+import { sharedState } from "./host";
 import { createBoundContext } from "./record";
 
 export type ContextProvider = () => Record<string, unknown> | undefined;
@@ -7,9 +8,6 @@ export interface ContextManager {
   get: () => BoundContext | undefined;
   with: <T>(context: Record<string, unknown>, fn: () => T) => T;
 }
-
-let provider: ContextProvider | undefined;
-const addedProviders: Array<{ provider: ContextProvider }> = [];
 
 function mergeContext(
   ...items: Array<Record<string, unknown> | undefined | null>
@@ -39,15 +37,21 @@ function createStackContextManager(): ContextManager {
   };
 }
 
-let manager = createStackContextManager();
+const state = /* @__PURE__ */ sharedState("context", () => ({
+  provider: undefined as ContextProvider | undefined,
+  addedProviders: [] as Array<{ provider: ContextProvider }>,
+  manager: createStackContextManager(),
+}));
 
 export function setContextProvider(nextProvider: ContextProvider | undefined): void {
-  provider = nextProvider;
-  addedProviders.length = 0;
+  const current = state();
+  current.provider = nextProvider;
+  current.addedProviders.length = 0;
 }
 
 export function addContextProvider(nextProvider: ContextProvider): () => void {
   const entry = { provider: nextProvider };
+  const { addedProviders } = state();
   addedProviders.push(entry);
   return () => {
     const index = addedProviders.indexOf(entry);
@@ -56,14 +60,15 @@ export function addContextProvider(nextProvider: ContextProvider): () => void {
 }
 
 export function setContextManager(nextManager: ContextManager): void {
-  manager = nextManager;
+  state().manager = nextManager;
 }
 
 export function resetContextManager(): void {
-  manager = createStackContextManager();
+  state().manager = createStackContextManager();
 }
 
 export function getContext(): BoundContext | undefined {
+  const { provider, addedProviders, manager } = state();
   const managed = manager.get();
   // True fast path: with no global provider and no added providers (the common
   // case) there is nothing to merge, so skip the .map() array allocation, the
@@ -79,5 +84,5 @@ export function getContext(): BoundContext | undefined {
 }
 
 export function withContext<T>(context: Record<string, unknown>, fn: () => T): T {
-  return manager.with(context, fn);
+  return state().manager.with(context, fn);
 }

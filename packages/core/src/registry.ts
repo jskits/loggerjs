@@ -1,3 +1,4 @@
+import { setStateSharedAcrossCopies, sharedState, warnIfCoreCopiesUnshared } from "./host";
 import { Logger } from "./logger";
 import type { LoggerLevel } from "./levels";
 import { normalizeCategory } from "./record";
@@ -28,6 +29,16 @@ export interface ConfigureOptions {
   transports?: Record<string, Transport> | readonly Transport[];
   loggers?: LoggerRoute[];
   integrations?: Integration[];
+  /**
+   * Whether every copy of @loggerjs/core loaded into this process (for
+   * example an ESM app and a CJS library, or two installed versions) shares
+   * this registry, ambient context, and meta counters. `true` lets libraries
+   * in other copies log through this configuration; `false` keeps copies
+   * isolated, as independently bundled micro-frontends on one page need.
+   * Left unset, copies stay isolated and configure() warns once when more
+   * than one copy is loaded.
+   */
+  shareAcrossCopies?: boolean;
 }
 
 interface RuntimeRoute {
@@ -47,7 +58,9 @@ interface RuntimeSnapshot {
   integrationHost: Logger | null;
 }
 
-let runtime: RuntimeSnapshot | null = null;
+const registry = /* @__PURE__ */ sharedState("registry", () => ({
+  runtime: null as RuntimeSnapshot | null,
+}));
 
 function categoryKey(category: readonly string[]): string {
   return category.join(".");
@@ -118,6 +131,7 @@ function createRuntimeLogger(snapshot: RuntimeSnapshot, category: readonly strin
 }
 
 function getRuntimeLogger(category: readonly string[]): Logger | undefined {
+  const runtime = registry().runtime;
   if (!runtime) return undefined;
   const key = categoryKey(category);
   const existing = runtime.cache.get(key);
@@ -159,13 +173,15 @@ async function closeSnapshot(snapshot: RuntimeSnapshot | null): Promise<void> {
 }
 
 export async function resetLoggerRegistry(): Promise<void> {
-  const previous = runtime;
-  runtime = null;
+  const previous = registry().runtime;
+  registry().runtime = null;
   await closeSnapshot(previous);
 }
 
 export async function configure(options: ConfigureOptions = {}): Promise<void> {
-  const previous = options.reset ? null : runtime;
+  if (options.shareAcrossCopies === undefined) warnIfCoreCopiesUnshared();
+  else setStateSharedAcrossCopies(options.shareAcrossCopies);
+  const previous = options.reset ? null : registry().runtime;
   if (options.reset) await resetLoggerRegistry();
   // Reconfiguring replaces the previous snapshot: remove its integrations
   // before installing new ones so platform hooks are never patched twice.
@@ -199,7 +215,7 @@ export async function configure(options: ConfigureOptions = {}): Promise<void> {
     });
   }
 
-  runtime = snapshot;
+  registry().runtime = snapshot;
 
   if (previous) {
     // Close transports the new configuration no longer references; transports

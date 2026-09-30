@@ -176,10 +176,39 @@ process.exit(0);
 `,
   );
 
+  // An ESM app and a CJS library in one process load both core builds; with
+  // shareAcrossCopies the library's getLogger() must reach the app's configure().
+  writeFileSync(
+    join(consumerRoot, "dual-library.cjs"),
+    `
+const { getLogger } = require("@loggerjs/core");
+module.exports = () => getLogger("library").info("from cjs library");
+`,
+  );
+  writeFileSync(
+    join(consumerRoot, "dual.mjs"),
+    `
+import { createRequire } from "node:module";
+import { configure } from "@loggerjs/core";
+
+const require = createRequire(import.meta.url);
+const messages = [];
+await configure({
+  shareAcrossCopies: true,
+  transports: [{ name: "dual", log: (event) => messages.push(event.message) }],
+});
+require("./dual-library.cjs")();
+if (messages.join() !== "from cjs library") {
+  throw new Error("CJS getLogger() missed the ESM configure(): " + JSON.stringify(messages));
+}
+`,
+  );
+
   run("node", ["esm.mjs"], consumerRoot);
   run("node", ["subpath-state.mjs"], consumerRoot);
   run("node", ["subpath-state.cjs"], consumerRoot);
   run("node", ["cjs.cjs"], consumerRoot);
+  run("node", ["dual.mjs"], consumerRoot);
 
   writeFileSync(
     join(consumerRoot, "typed-consumer.ts"),

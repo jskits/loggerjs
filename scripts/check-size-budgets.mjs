@@ -9,8 +9,8 @@ import { rolldown } from "rolldown";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  // Entry plus shared chunks after splitting shared modules into chunks measures 94,661 raw and 20,640 gzip bytes.
-  ["@loggerjs/core", "packages/core/dist/index.js", 95_000, 20_700],
+  // Opt-in state sharing across core copies measures 96,850 raw and 21,306 gzip bytes with shared chunks.
+  ["@loggerjs/core", "packages/core/dist/index.js", 97_500, 21_400],
   // Entry plus shared chunks after splitting shared modules into chunks measures 148,718 raw and 30,850 gzip bytes.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 149_000, 31_000],
   // Entry plus shared chunks after splitting shared modules into chunks measures 81,039 raw and 16,041 gzip bytes.
@@ -32,32 +32,32 @@ const budgets = [
 // start with. Package-entry budgets above cannot see regressions here, because
 // they measure every export whether or not an app imports it.
 const minimalPaths = [
-  // createLogger() plus consoleTransport() measures 18,866 raw and 6,024 gzip bytes.
+  // createLogger() plus consoleTransport() measures 19,351 raw and 6,237 gzip bytes.
   [
     "core logger + console",
     `import { createLogger } from "@loggerjs/core";
 import { consoleTransport } from "@loggerjs/core/transport-console";
 createLogger({ transports: [consoleTransport()] }).info("ready", { ok: true });`,
-    19_300,
-    6_150,
+    19_800,
+    6_300,
   ],
-  // createLogger() plus browserHttpTransport() measures 23,586 raw and 7,774 gzip bytes.
+  // createLogger() plus browserHttpTransport() measures 24,075 raw and 7,979 gzip bytes.
   [
     "browser logger + http",
     `import { createLogger } from "@loggerjs/core";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 createLogger({ transports: [browserHttpTransport({ url: "/logs" })] }).info("ready");`,
-    23_800,
-    7_800,
+    24_500,
+    8_100,
   ],
-  // createLogger() plus stdoutTransport() measures 20,580 raw and 6,662 gzip bytes.
+  // createLogger() plus stdoutTransport() measures 21,065 raw and 6,872 gzip bytes.
   [
     "node logger + stdout",
     `import { createLogger } from "@loggerjs/core";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 createLogger({ transports: [stdoutTransport()] }).info("ready");`,
-    20_900,
-    6_700,
+    21_500,
+    7_000,
   ],
 ];
 
