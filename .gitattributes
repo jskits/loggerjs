@@ -1,0 +1,2 @@
+# Wire-format golden files hold exact codec output; never convert line endings.
+packages/*/test/golden/** -text
