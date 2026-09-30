@@ -1,10 +1,20 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { createLogger, getLoggerMetaStats, resetLoggerMetaStats } from "@loggerjs/core";
 import { fileTransport } from "../src";
 
+const nodeProcess = (
+  globalThis as typeof globalThis & {
+    process: { execPath: string };
+  }
+).process;
+const testDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(testDir, "../../..");
+const rotatingWriter = join(testDir, "fixtures", "rotating-writer.ts");
 const tempDirs: string[] = [];
 
 function tempDir(): string {
@@ -26,6 +36,17 @@ async function settlesWithin<T>(promise: Promise<T> | T, ms = 2_000): Promise<"s
   clearTimeout(timer);
   if (result === "timeout") throw new Error(`did not settle within ${ms}ms`);
   return result;
+}
+
+function waitUntil(condition: () => boolean, timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((done) => {
+    const poll = () => {
+      if (condition() || Date.now() >= deadline) done();
+      else setTimeout(poll, 20);
+    };
+    poll();
+  });
 }
 
 interface UnwritableTarget {
@@ -77,4 +98,43 @@ describe("file transports under injected failures", () => {
       },
     );
   });
+
+  it("keeps rotated archives complete and ordered when the writer is killed", async () => {
+    const path = join(tempDir(), "app.log");
+    const child = spawn(nodeProcess.execPath, ["--import", "tsx", rotatingWriter, path], {
+      cwd: repoRoot,
+      stdio: "ignore",
+    });
+    const exited = new Promise<void>((done) => child.once("exit", () => done()));
+
+    // Kill without warning once a few rotations have happened.
+    await waitUntil(() => existsSync(`${path}.3`), 15_000);
+    child.kill("SIGKILL");
+    await exited;
+    expect(existsSync(`${path}.3`)).toBe(true);
+
+    const files: string[] = [];
+    for (let index = 200; index >= 1; index -= 1) {
+      if (existsSync(`${path}.${index}`)) files.push(`${path}.${index}`);
+    }
+    if (existsSync(path)) files.push(path);
+
+    const numbers: number[] = [];
+    const archiveTails: Array<string | undefined> = [];
+    for (const [fileIndex, file] of files.entries()) {
+      const lines = readFileSync(file, "utf8").split("\n");
+      const tail = lines.pop();
+      // Archives were closed at a record boundary; only the file being
+      // written at the kill may end in a partial line.
+      if (fileIndex < files.length - 1) archiveTails.push(tail);
+      for (const line of lines) {
+        numbers.push((JSON.parse(line) as { data: { n: number } }).data.n);
+      }
+    }
+
+    expect(archiveTails.length).toBeGreaterThanOrEqual(3);
+    expect(archiveTails.every((tail) => tail === "")).toBe(true);
+    expect(numbers.length).toBeGreaterThan(0);
+    expect(numbers).toEqual(numbers.map((_, index) => index));
+  }, 30_000);
 });
