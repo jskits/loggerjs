@@ -1478,8 +1478,11 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     name: options.name ?? "indexeddb",
     minLevel: options.minLevel,
     log(event, context) {
-      if (closed) return;
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
+      if (closed) {
+        dropEvent(event, "closed");
+        return;
+      }
       lastContext = context;
       if (maxBufferSize === 0 || buffer.length >= maxBufferSize) {
         if (dropPolicy === "drop-newest") {

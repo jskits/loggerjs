@@ -670,6 +670,22 @@ describe("indexedDbTransport", () => {
     expect((await collect(reader.query())).map((item) => item.id)).toEqual(["first", "second"]);
   });
 
+  it("reports events logged after close as dropped", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const dropped: Array<[string, string]> = [];
+    const transport = indexedDbTransport({
+      indexedDB: idb as unknown as IDBFactory,
+      onDrop: (dropEvent, reason) => dropped.push([dropEvent.id, reason]),
+    });
+
+    await transport.close?.();
+    transport.log?.(event("late", 1), context);
+
+    expect(dropped).toEqual([["late", "closed"]]);
+    expect(getLoggerMetaStats()["transport.indexeddb.dropped.closed"]).toBe(1);
+  });
+
   it("persists buffered logs with micro-batch flush and queries them in order", async () => {
     vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const idb = new FakeIndexedDB();
