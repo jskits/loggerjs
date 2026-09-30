@@ -232,9 +232,15 @@ export function createNodeFileDestination(options: NodeFileDestinationOptions): 
   // In sync mode this fd is the only writer, so it honors the configured flags.
   // In async stream mode the stream already opened (and, for "w", truncated)
   // the file; the crash-path fd must append or it would erase earlier logs.
-  const syncFlags = options.sync ? flags : "a";
+  // Only the first open may truncate: the sync fd is reopened after a
+  // rotation releases it, and if that rotation failed the file still holds
+  // earlier logs that "w" would erase.
+  let syncFlags = options.sync ? flags : "a";
   const getFd = () => {
-    fd ??= openSync(options.path, syncFlags);
+    if (fd === undefined) {
+      fd = openSync(options.path, syncFlags);
+      syncFlags = "a";
+    }
     return fd;
   };
   const syncWrite = (payload: string | Uint8Array) => {

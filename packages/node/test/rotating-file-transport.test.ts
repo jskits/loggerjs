@@ -165,6 +165,23 @@ describe("rotatingFileTransport", () => {
       expect(failing.errors.length).toBeLessThanOrEqual(6);
     });
 
+    it("does not truncate the current file when append is disabled", async () => {
+      const path = tempFile();
+      const transport = rotatingFileTransport({
+        path,
+        append: false,
+        maxBytes: 1,
+        archivePath: unwritableArchive(path),
+      });
+
+      transport.log?.(event("kept"), context);
+      transport.log?.(event("after failed rotation"), context);
+      await transport.close?.();
+
+      expect(read(path)).toContain("kept");
+      expect(read(path)).toContain("after failed rotation");
+    });
+
     it("rotates again once the archive location becomes writable", async () => {
       const path = tempFile();
       const failing = recordingContext();
