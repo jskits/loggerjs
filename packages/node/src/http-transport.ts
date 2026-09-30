@@ -20,6 +20,13 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
   minLevel?: LoggerLevel;
   fetchFn?: typeof fetch;
   transformPayload?: PayloadTransform | readonly PayloadTransform[];
+  /**
+   * Abort a delivery attempt after this many milliseconds so a collector that
+   * accepts the connection but never answers cannot stall flush() and close().
+   * A timed-out attempt fails like any other and follows the retry settings.
+   * Set to 0 to disable. Defaults to 10000.
+   */
+  timeoutMs?: number;
 }
 
 function payloadToBody(payload: EncodedPayload): BodyInit {
@@ -30,6 +37,7 @@ function payloadToBody(payload: EncodedPayload): BodyInit {
 export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport {
   const codec = options.codec ?? safeJsonCodec();
   const fetchFn = options.fetchFn ?? globalThis.fetch?.bind(globalThis);
+  const timeoutMs = options.timeoutMs ?? 10_000;
   const inner: Transport = {
     name: options.name ?? "node-http-inner",
     minLevel: options.minLevel,
@@ -53,6 +61,7 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
           ...options.headers,
         },
         body: payloadToBody(transformed.payload),
+        signal: timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined,
       });
       if (!response.ok) throw new Error(`nodeHttpTransport failed with status ${response.status}`);
     },
