@@ -158,10 +158,12 @@ pretty transport 是显示用的 sink，不做批量、不重试、不持久化�
 | --- | --- |
 | `stdoutTransport()` / `stderrTransport()` | 输出 NDJSON 行，跟踪写入背压，妥善处理 `EPIPE`，可选 `minLength` 缓冲；`flush()` 会等待未完成的写入。 |
 | `fileTransport({ path })` | 默认以追加方式把 NDJSON 写入文件；支持 `mkdir`、`append: false`、异步 `minLength` 缓冲、`sync: true` 和崩溃路径的 `flushSync()`。 |
-| `rotatingFileTransport({ path, maxBytes, maxFiles })` | 通过同一个文件目的地按大小轮转，生成带编号的归档文件。同步写入；每个文件只应由一个 logger 进程写入。 |
-| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。 |
+| `rotatingFileTransport({ path, maxBytes, maxFiles })` | 通过同一个文件目的地按大小轮转，生成带编号的归档文件。同步写入；每个文件只应由一个 logger 进程写入。如果轮转失败（例如 Windows 上另一个进程占用文件导致 `EBUSY`/`EPERM`），错误会以 `operation: "rotate"` 报告，日志继续写入当前文件，并在再写入一个 `maxBytes` 后重试轮转。 |
+| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。`timeoutMs`（默认 `10000`，设为 `0` 关闭）会中止收集端接受连接却一直不响应的请求，避免 `flush()` 和 `close()` 卡住停机流程；超时的尝试按重试设置处理。收集端可能已经处理了超时的请求，因此重试可能导致重复投递；如有需要，请按事件 `id` 去重。 |
 | `nodeSyslogTransport()` | 通过 UDP/TCP 发送 RFC 格式的 syslog 消息；`formatSyslogMessage()` 也单独导出。 |
 | `workerTransport({ workerScript })` | 用 codec 编码批次并发送到 worker 线程，可选转移 buffer；支持 ready 超时、等待批次 ack、回退和 `autoEnd`。 |
+
+当写入错误（`ENOSPC`、`EACCES`、`EISDIR`）已经销毁了底层流时，文件和流目的地会以该流错误结束 `flush()` 和 `close()`，而不是一直等待永远不会到来的 `drain` 事件。
 
 `nodeHttpTransport()` 接受 `transformPayload`，在 codec 编码之后对线上 payload 做转换。gzip、brotli 或 deflate 压缩使用 `nodeCompressionPayloadTransform()`：
 

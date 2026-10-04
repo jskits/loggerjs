@@ -35,6 +35,9 @@ changeset publish --tag canary
 - `pnpm size:check` 的体积预算数据，任何预算上调都要在变更中说明理由；
 - 生产文档中写清投递、重试、隐私和凭据存放方面的注意事项。
 
+## 每次发版
+
+- 在发版提交上手动运行 `Soak` workflow，设置更长时长（例如 60 分钟），确认两个浸泡测试都通过。
 ## npm 发布
 
 发布 workflow 是 `.github/workflows/release.yml`。每个可发布的 `@loggerjs/*` 包都应在 npmjs.com 上配置 Trusted Publisher：

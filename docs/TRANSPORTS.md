@@ -152,10 +152,12 @@ Pretty transports are display sinks. They do not batch, retry, persist, or speak
 | --- | --- |
 | `stdoutTransport()` / `stderrTransport()` | NDJSON lines with write backpressure tracking, clean `EPIPE` handling, and optional `minLength` buffering; `flush()` waits for pending writes. |
 | `fileTransport({ path })` | Append NDJSON to a file by default; supports `mkdir`, `append: false`, async `minLength` buffering, `sync: true`, and `flushSync()` for crash paths. |
-| `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. |
-| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. |
+| `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. If a rotation fails (for example `EBUSY`/`EPERM` while another process holds the file on Windows), the error is reported with `operation: "rotate"`, logging continues in the current file, and rotation is retried after another `maxBytes`. |
+| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. `timeoutMs` (default `10000`, `0` disables) aborts an attempt whose collector accepts the connection but never answers, so `flush()` and `close()` cannot stall shutdown; a timed-out attempt follows the retry settings. The collector may have processed a request that timed out, so retries can deliver duplicates; deduplicate on event `id` if that matters. |
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
+
+File and stream destinations settle `flush()` and `close()` with the stream error once a write error (`ENOSPC`, `EACCES`, `EISDIR`) has destroyed the stream, instead of waiting for a `drain` event that never comes.
 
 `nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
 

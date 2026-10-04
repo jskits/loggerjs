@@ -1050,10 +1050,12 @@ Pretty transports are display sinks. They do not batch, retry, persist, or speak
 | --- | --- |
 | `stdoutTransport()` / `stderrTransport()` | NDJSON lines with write backpressure tracking, clean `EPIPE` handling, and optional `minLength` buffering; `flush()` waits for pending writes. |
 | `fileTransport({ path })` | Append NDJSON to a file by default; supports `mkdir`, `append: false`, async `minLength` buffering, `sync: true`, and `flushSync()` for crash paths. |
-| `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. |
-| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. |
+| `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. If a rotation fails (for example `EBUSY`/`EPERM` while another process holds the file on Windows), the error is reported with `operation: "rotate"`, logging continues in the current file, and rotation is retried after another `maxBytes`. |
+| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. `timeoutMs` (default `10000`, `0` disables) aborts an attempt whose collector accepts the connection but never answers, so `flush()` and `close()` cannot stall shutdown; a timed-out attempt follows the retry settings. The collector may have processed a request that timed out, so retries can deliver duplicates; deduplicate on event `id` if that matters. |
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
+
+File and stream destinations settle `flush()` and `close()` with the stream error once a write error (`ENOSPC`, `EACCES`, `EISDIR`) has destroyed the stream, instead of waiting for a `drain` event that never comes.
 
 `nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
 
@@ -3563,7 +3565,7 @@ Additional CI gates cover the runtime and quality surface:
 
 - `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
-- `pnpm test:quality` runs coverage thresholds, mutation testing, and the concurrent soak runner.
+- `pnpm test:quality` runs coverage thresholds, mutation testing, the concurrent pipeline soak, and the transport soak (`pnpm test:soak:transports`: file, rotating-file, and HTTP delivery against a collector that injects 503s, resets, and hung requests). The nightly `Soak` workflow runs both for 20 minutes; dispatch it manually with a longer duration before a release.
 - The `windows` CI job runs the core and Node suites on Windows.
 - `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
 - `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.
@@ -3615,6 +3617,9 @@ Before a release that adds a public transport or integration subpath, verify the
 - size-budget evidence from `pnpm size:check`, with any budget increase justified in the change;
 - production docs that spell out delivery, retry, privacy, and credential placement caveats.
 
+## Every Release
+
+- Run the `Soak` workflow manually with a longer duration (for example 60 minutes) on the release commit and check both soaks pass.
 ## NPM Publishing
 
 The release workflow is `.github/workflows/release.yml`. Each publishable `@loggerjs/*` package should be configured on npmjs.com with a Trusted Publisher entry for:

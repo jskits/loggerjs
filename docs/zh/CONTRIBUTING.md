@@ -79,7 +79,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 
 - `pnpm test:e2e:browser` 在 Chromium、Firefox 和 WebKit 中运行浏览器 E2E 测试。
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` 在 Bun、Deno 和 workerd/Miniflare 中对打包产物做冒烟测试。
-- `pnpm test:quality` 运行覆盖率阈值检查、变异测试和并发浸泡测试。
+- `pnpm test:quality` 运行覆盖率阈值检查、变异测试、并发管线浸泡测试，以及 transport 浸泡测试（`pnpm test:soak:transports`：file、rotating-file 和 HTTP 投递，收集端会注入 503、连接重置和挂起请求）。每晚的 `Soak` workflow 会把两者各运行 20 分钟；发版前可手动触发并设置更长时长。
 - CI 中的 `windows` job 会在 Windows 上运行 core 和 Node 测试。
 - `pnpm test:live:local` 启动基于 Docker 的 Elasticsearch 和 Loki 实例，通过 transport 写入真实日志，再从服务中查询确认。
 - `pnpm test:live:external` 向 Datadog Logs 和 CloudWatch Logs 写入并查询日志，需要 `DATADOG_API_KEY`、`DATADOG_APP_KEY`、`AWS_REGION`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` 和 `CLOUDWATCH_LOG_GROUP`；`pnpm test:live:config` 可以在不打印密钥值的情况下检查哪些变量已设置。
