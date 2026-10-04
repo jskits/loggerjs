@@ -35,6 +35,9 @@ Before a release that adds a public transport or integration subpath, verify the
 - size-budget evidence from `pnpm size:check`, with any budget increase justified in the change;
 - production docs that spell out delivery, retry, privacy, and credential placement caveats.
 
+## Every Release
+
+- Run the `Soak` workflow manually with a longer duration (for example 60 minutes) on the release commit and check both soaks pass.
 ## NPM Publishing
 
 The release workflow is `.github/workflows/release.yml`. Each publishable `@loggerjs/*` package should be configured on npmjs.com with a Trusted Publisher entry for:

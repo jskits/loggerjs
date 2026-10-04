@@ -306,6 +306,13 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
     minLevel?: LoggerLevel;
     fetchFn?: typeof fetch;
     transformPayload?: PayloadTransform | readonly PayloadTransform[];
+    /**
+     * Abort a delivery attempt after this many milliseconds so a collector that
+     * accepts the connection but never answers cannot stall flush() and close().
+     * A timed-out attempt fails like any other and follows the retry settings.
+     * Set to 0 to disable. Defaults to 10000.
+     */
+    timeoutMs?: number;
 }
 export declare function nodeHttpTransport(options: NodeHttpTransportOptions): Transport;
 ```
@@ -350,6 +357,7 @@ export interface WritableLike {
     off?: (event: "error", listener: (error: Error) => void) => unknown;
     once?: (event: "drain", listener: () => void) => unknown;
     end?: (callback?: (error?: Error | null) => void) => unknown;
+    readonly destroyed?: boolean;
 }
 ```
 

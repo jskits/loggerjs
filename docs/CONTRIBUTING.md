@@ -74,7 +74,7 @@ Additional CI gates cover the runtime and quality surface:
 
 - `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
-- `pnpm test:quality` runs coverage thresholds, mutation testing, and the concurrent soak runner.
+- `pnpm test:quality` runs coverage thresholds, mutation testing, the concurrent pipeline soak, and the transport soak (`pnpm test:soak:transports`: file, rotating-file, and HTTP delivery against a collector that injects 503s, resets, and hung requests). The nightly `Soak` workflow runs both for 20 minutes; dispatch it manually with a longer duration before a release.
 - The `windows` CI job runs the core and Node suites on Windows.
 - `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
 - `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.

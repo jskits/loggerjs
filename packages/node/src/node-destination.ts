@@ -111,15 +111,22 @@ export function createNodeStreamDestination(
     reportInternalError(lastError, operation);
   };
 
+  // A destroyed stream (for example after ENOSPC or EISDIR) never emits
+  // drain, so waiting for one would leave flush() and close() pending forever.
+  const releaseDrainsIfDestroyed = () => {
+    if (options.stream.destroyed) pendingDrains = 0;
+  };
+
   const onStreamError = (error: Error) => {
     recordError(error, "stream-error");
+    releaseDrainsIfDestroyed();
     settleWaitersIfIdle();
   };
   const offError = () => options.stream.off?.("error", onStreamError);
   options.stream.on?.("error", onStreamError);
 
   const waitForDrain = () => {
-    if (!options.stream.once) return;
+    if (!options.stream.once || options.stream.destroyed) return;
     pendingDrains += 1;
     options.stream.once("drain", () => {
       pendingDrains -= 1;
@@ -141,6 +148,7 @@ export function createNodeStreamDestination(
         removePending(payload);
         pendingWrites -= 1;
         if (error) recordError(error, options.reportOperation ?? "write");
+        releaseDrainsIfDestroyed();
         settleWaitersIfIdle();
       });
       if (result === false) waitForDrain();
@@ -173,6 +181,7 @@ export function createNodeStreamDestination(
     },
     flush() {
       flushBuffered();
+      releaseDrainsIfDestroyed();
       if (pendingWrites + pendingDrains === 0) {
         const error = lastError;
         lastError = undefined;
@@ -232,9 +241,15 @@ export function createNodeFileDestination(options: NodeFileDestinationOptions): 
   // In sync mode this fd is the only writer, so it honors the configured flags.
   // In async stream mode the stream already opened (and, for "w", truncated)
   // the file; the crash-path fd must append or it would erase earlier logs.
-  const syncFlags = options.sync ? flags : "a";
+  // Only the first open may truncate: the sync fd is reopened after a
+  // rotation releases it, and if that rotation failed the file still holds
+  // earlier logs that "w" would erase.
+  let syncFlags = options.sync ? flags : "a";
   const getFd = () => {
-    fd ??= openSync(options.path, syncFlags);
+    if (fd === undefined) {
+      fd = openSync(options.path, syncFlags);
+      syncFlags = "a";
+    }
     return fd;
   };
   const syncWrite = (payload: string | Uint8Array) => {
@@ -273,6 +288,11 @@ export function createNodeFileDestination(options: NodeFileDestinationOptions): 
   }
 
   const stream = createWriteStream(options.path, { flags });
+  // This destination owns the stream, so keep an error listener on it for its
+  // whole life. close() removes the reporting listener, and a write that fails
+  // afterwards (for example ENOSPC while the last buffered chunk is flushed)
+  // would otherwise be an unhandled 'error' event and crash the process.
+  stream.on("error", () => {});
   const destination = createNodeStreamDestination({
     name: options.name,
     stream,

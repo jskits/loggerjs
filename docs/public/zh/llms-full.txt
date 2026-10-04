@@ -665,10 +665,12 @@ pretty transport 是显示用的 sink，不做批量、不重试、不持久化�
 | --- | --- |
 | `stdoutTransport()` / `stderrTransport()` | 输出 NDJSON 行，跟踪写入背压，妥善处理 `EPIPE`，可选 `minLength` 缓冲；`flush()` 会等待未完成的写入。 |
 | `fileTransport({ path })` | 默认以追加方式把 NDJSON 写入文件；支持 `mkdir`、`append: false`、异步 `minLength` 缓冲、`sync: true` 和崩溃路径的 `flushSync()`。 |
-| `rotatingFileTransport({ path, maxBytes, maxFiles })` | 通过同一个文件目的地按大小轮转，生成带编号的归档文件。同步写入；每个文件只应由一个 logger 进程写入。 |
-| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。 |
+| `rotatingFileTransport({ path, maxBytes, maxFiles })` | 通过同一个文件目的地按大小轮转，生成带编号的归档文件。同步写入；每个文件只应由一个 logger 进程写入。如果轮转失败（例如 Windows 上另一个进程占用文件导致 `EBUSY`/`EPERM`），错误会以 `operation: "rotate"` 报告，日志继续写入当前文件，并在再写入一个 `maxBytes` 后重试轮转。 |
+| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。`timeoutMs`（默认 `10000`，设为 `0` 关闭）会中止收集端接受连接却一直不响应的请求，避免 `flush()` 和 `close()` 卡住停机流程；超时的尝试按重试设置处理。收集端可能已经处理了超时的请求，因此重试可能导致重复投递；如有需要，请按事件 `id` 去重。 |
 | `nodeSyslogTransport()` | 通过 UDP/TCP 发送 RFC 格式的 syslog 消息；`formatSyslogMessage()` 也单独导出。 |
 | `workerTransport({ workerScript })` | 用 codec 编码批次并发送到 worker 线程，可选转移 buffer；支持 ready 超时、等待批次 ack、回退和 `autoEnd`。 |
+
+当写入错误（`ENOSPC`、`EACCES`、`EISDIR`）已经销毁了底层流时，文件和流目的地会以该流错误结束 `flush()` 和 `close()`，而不是一直等待永远不会到来的 `drain` 事件。
 
 `nodeHttpTransport()` 接受 `transformPayload`，在 codec 编码之后对线上 payload 做转换。gzip、brotli 或 deflate 压缩使用 `nodeCompressionPayloadTransform()`：
 
@@ -3334,7 +3336,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 
 - `pnpm test:e2e:browser` 在 Chromium、Firefox 和 WebKit 中运行浏览器 E2E 测试。
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` 在 Bun、Deno 和 workerd/Miniflare 中对打包产物做冒烟测试。
-- `pnpm test:quality` 运行覆盖率阈值检查、变异测试和并发浸泡测试。
+- `pnpm test:quality` 运行覆盖率阈值检查、变异测试、并发管线浸泡测试，以及 transport 浸泡测试（`pnpm test:soak:transports`：file、rotating-file 和 HTTP 投递，收集端会注入 503、连接重置和挂起请求）。每晚的 `Soak` workflow 会把两者各运行 20 分钟；发版前可手动触发并设置更长时长。
 - CI 中的 `windows` job 会在 Windows 上运行 core 和 Node 测试。
 - `pnpm test:live:local` 启动基于 Docker 的 Elasticsearch 和 Loki 实例，通过 transport 写入真实日志，再从服务中查询确认。
 - `pnpm test:live:external` 向 Datadog Logs 和 CloudWatch Logs 写入并查询日志，需要 `DATADOG_API_KEY`、`DATADOG_APP_KEY`、`AWS_REGION`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` 和 `CLOUDWATCH_LOG_GROUP`；`pnpm test:live:config` 可以在不打印密钥值的情况下检查哪些变量已设置。
@@ -3397,6 +3399,9 @@ changeset publish --tag canary
 - `pnpm size:check` 的体积预算数据，任何预算上调都要在变更中说明理由；
 - 生产文档中写清投递、重试、隐私和凭据存放方面的注意事项。
 
+## 每次发版
+
+- 在发版提交上手动运行 `Soak` workflow，设置更长时长（例如 60 分钟），确认两个浸泡测试都通过。
 ## npm 发布
 
 发布 workflow 是 `.github/workflows/release.yml`。每个可发布的 `@loggerjs/*` 包都应在 npmjs.com 上配置 Trusted Publisher：
@@ -3463,9 +3468,9 @@ pnpm test:inventory:check
 
 | 指标 | 数量 |
 | --- | ---: |
-| Test files | 99 |
-| Test cases | 750 |
-| Passed | 750 |
+| Test files | 101 |
+| Test cases | 766 |
+| Passed | 766 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -3483,7 +3488,7 @@ pnpm test:inventory:check
 | @loggerjs/datadog | 1 | 7 |
 | @loggerjs/elastic | 1 | 10 |
 | @loggerjs/loki | 1 | 7 |
-| @loggerjs/node | 21 | 91 |
+| @loggerjs/node | 23 | 107 |
 | @loggerjs/otel | 3 | 18 |
 | @loggerjs/pretty | 3 | 27 |
 | @loggerjs/processors | 20 | 120 |

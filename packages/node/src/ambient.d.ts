@@ -4,6 +4,7 @@ type LoggerjsWritableLike = {
   off?: (event: "error", listener: (error: Error) => void) => unknown;
   once?: (event: "drain", listener: () => void) => unknown;
   end?: (callback?: (error?: Error | null) => void) => unknown;
+  readonly destroyed?: boolean;
 };
 
 declare const process: {
