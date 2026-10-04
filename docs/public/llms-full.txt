@@ -862,6 +862,15 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 
 Routes are attached as non-enumerable event metadata and consulted at dispatch. The record fast path performs no route filtering — routes can only be attached by processors, and the record path only runs when a logger has zero processors.
 
+## More Than One Copy of Core
+
+`getLogger()` resolves through the registry of the `@loggerjs/core` copy it was imported from. A process can load more than one copy: an ESM application with a CJS library, or two installed versions. By default each copy keeps its own registry, ambient context, and meta counters, and `configure()` warns once when it sees more than one copy loaded.
+
+- `configure({ shareAcrossCopies: true })` lets every copy use one process-wide store, so libraries in other copies log through the application's configuration.
+- `configure({ shareAcrossCopies: false })` keeps copies isolated and silences the warning. Independently bundled micro-frontends on one page want this, so one app's `configure()` cannot replace another's or close its transports.
+
+Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state.
+
 ## Levels, Categories, Sources
 
 - Levels are numbers (`trace` 10 … `fatal` 60) with names; custom numeric levels work everywhere.
@@ -3057,6 +3066,15 @@ Experimental does not mean untested. It means minor releases before v1 may chang
 
 Raw vendor transports are not durable by themselves. For production delivery, wrap them with `batchTransport()` and `retryTransport()` or use a collector endpoint that owns queueing, retry, authentication, and backoff.
 
+## Contracts Beyond TypeScript Signatures
+
+`api-reports/` only sees TypeScript declarations. These contracts are protected by tests instead:
+
+- **Wire formats.** Codec output, the event shape the logger produces, and the exact HTTP requests the Node and browser transports send are pinned byte for byte by golden files under `packages/*/test/golden/`. Changing them is a wire-protocol change and follows the same policy as a signature change of the owning API.
+- **Persisted browser data.** The IndexedDB schemas of `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` must stay readable by the next release. `tests/e2e/browser-upgrade.spec.ts` writes data with the previous published release and reads it with the current code.
+- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change.
+- **Delivery accounting.** Every event handed to a first-party transport is delivered or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle even when the destination fails. Failure-injection, model-based, and soak tests assert this invariant.
+
 ## Change Policy
 
 For Stable v1 Candidate APIs:
@@ -3453,9 +3471,9 @@ Any feature that writes logs to durable browser storage is explicit, because it 
 | Disabled level call | one numeric comparison, zero allocation | ~3 ns on the reference machine |
 | Record allocation | one record object; no data copy unless middleware clones | met |
 | Node lean NDJSON path | same class as pino for equivalent output | ~1.19x pino throughput on the M1 Max reference, slower than pino on the M4 Pro row |
-| Core size | as small as the platform-neutral feature set allows | ~19 KB gzip for the full barrel; ~6 KB gzip for `createLogger` plus `consoleTransport` after tree-shaking |
+| Core size | as small as the platform-neutral feature set allows | ~21 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 6.3 KB gzip for `createLogger` plus `consoleTransport`, 8.1 KB with `browserHttpTransport`, and 7 KB with `stdoutTransport` |
 
-`pnpm size:check` enforces raw and gzip budgets for every package entry, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
+`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
 
 ### Decision: keep the record pipeline; optimize through codec-owned preparation
 
@@ -3539,6 +3557,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **Size budgets** (`scripts/check-size-budgets.mjs`): every package entry has raw + gzip ceilings checked after build, and so do the tree-shaken, minified minimal apps most users start with (`createLogger()` plus `consoleTransport()`, `browserHttpTransport()`, or `stdoutTransport()`). Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the measured size and the reason in the message.
 
+**Wire-format golden files** (`packages/*/test/golden/`): codec output, the logger's event shape, and the exact HTTP requests the Node and browser transports send are pinned byte for byte. A diff there is a wire-protocol change for everyone parsing the logs: review it, then update with `pnpm exec vitest run -u` in the package. The golden directories are excluded from formatting and line-ending conversion.
 
 **Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
 
@@ -3566,6 +3585,7 @@ Vitest per package, `test/*.test.ts`. House style:
 - Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
 - Delivery code is tested against injected failures, not only the happy path, and asserts the conservation invariant: every emitted event is delivered, or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle. Prefer real failures (a directory or `/dev/full` as a file target, a real HTTP collector that answers 503, resets, or never answers, `context.setOffline()`, a CDP quota override) over mocked streams. See `packages/node/test/failure-injection.test.ts`, `packages/node/test/http-failure-injection.test.ts`, and `tests/e2e/browser-failures.spec.ts`.
+- Lifecycle changes (flush, close, configure, retries) should keep `packages/core/test/lifecycle-model.test.ts` green; it runs seeded random operation sequences against flaky transports. When it fails, the seed in the test name replays the run.
 
 Additional CI gates cover the runtime and quality surface:
 
@@ -3627,6 +3647,7 @@ Before a release that adds a public transport or integration subpath, verify the
 ## Every Release
 
 - Run the `Soak` workflow manually with a longer duration (for example 60 minutes) on the release commit and check both soaks pass.
+- Review any diff under `packages/*/test/golden/`: it changes what collectors receive and belongs in the release notes.
 - After publishing, point `@loggerjs/browser-previous` in `examples/browser-basic/package.json` at the version just released, so the upgrade tests keep opening data written by the last published release, and replace the exact versions under `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` with the ones the alias now installs.
 
 ## NPM Publishing

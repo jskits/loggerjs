@@ -354,9 +354,9 @@ record 快速路径不做路由过滤：路由只能由 processor 附加，而 r
 | 禁用级别的调用 | 一次数值比较，零分配 | 参考机器上约 3 ns |
 | record 分配 | 每条日志一个 record 对象；除非 middleware 显式克隆，否则不复制数据 | 已达成 |
 | Node lean NDJSON 路径 | 等价输出下与 pino 同一量级 | M1 Max 参考机器上约为 pino 吞吐量的 1.19 倍，M4 Pro 行上慢于 pino |
-| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 约 19 KB gzip；tree-shaking 后只用 `createLogger` 和 `consoleTransport` 约 6 KB gzip |
+| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 连同共享 chunk 约 21 KB gzip；经过 tree-shaking 和压缩后，`createLogger` 加 `consoleTransport` 约 6.3 KB gzip，加 `browserHttpTransport` 约 8.1 KB，加 `stdoutTransport` 约 7 KB |
 
-`pnpm size:check` 对每个包入口强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
+`pnpm size:check` 对每个包入口以及上述三个最小应用 bundle 强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
 
 ### 决策：保留 record 管线，通过 codec 持有的预处理来优化
 

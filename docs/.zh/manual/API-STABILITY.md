@@ -68,6 +68,15 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 原始的厂商 transport 本身不具备持久性。生产投递应使用 `batchTransport()` 和 `retryTransport()` 包装，或者投递到一个自己负责排队、重试、认证和退避的收集端点。
 
+## TypeScript 签名之外的契约
+
+`api-reports/` 只能看到 TypeScript 声明。以下契约改由测试保护：
+
+- **线上格式。** codec 输出、logger 产出的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求，都由 `packages/*/test/golden/` 下的 golden 文件逐字节固定。改动它们就是线上协议变更，适用与所属 API 签名变更相同的策略。
+- **浏览器持久化数据。** `indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 的 IndexedDB 结构必须能被下一个版本读取。`tests/e2e/browser-upgrade.spec.ts` 用上一个已发布版本写入数据，再用当前代码读取。
+- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。
+- **投递计数。** 交给第一方 transport 的每个事件，要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告；即使目标端出错，`flush()`/`close()` 也必须结束。故障注入测试、基于模型的测试和浸泡测试都会断言这一不变量。
+
 ## 变更策略
 
 对于 Stable v1 Candidate API：

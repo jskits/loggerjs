@@ -145,6 +145,15 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 
 路由信息以不可枚举的 event 元数据形式附加，并在分发时使用。record 快速路径不做路由过滤：路由只能由 processor 附加，而 record 路径只在 logger 没有 processor 时才会运行。
 
+## 同时存在多个 core 副本
+
+`getLogger()` 通过它所导入的那个 `@loggerjs/core` 副本的 registry 解析。一个进程可能加载多个副本：ESM 应用加 CJS 库，或者安装了两个版本。默认情况下每个副本都有自己的 registry、环境 context 和 meta 计数器，`configure()` 发现加载了多个副本时会警告一次。
+
+- `configure({ shareAcrossCopies: true })` 让所有副本使用同一个进程级存储，其他副本中的库也会走应用的配置。
+- `configure({ shareAcrossCopies: false })` 保持各副本隔离，并关闭警告。同一页面上各自打包的微前端需要这样，避免一个应用的 `configure()` 替换另一个应用的配置或关闭它的 transport。
+
+同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。
+
 ## Levels、Categories、Sources
 
 - Levels 是数字（`trace` 10 到 `fatal` 60）并带名称；自定义数字级别在各处可用。

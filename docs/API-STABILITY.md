@@ -68,6 +68,15 @@ Experimental does not mean untested. It means minor releases before v1 may chang
 
 Raw vendor transports are not durable by themselves. For production delivery, wrap them with `batchTransport()` and `retryTransport()` or use a collector endpoint that owns queueing, retry, authentication, and backoff.
 
+## Contracts Beyond TypeScript Signatures
+
+`api-reports/` only sees TypeScript declarations. These contracts are protected by tests instead:
+
+- **Wire formats.** Codec output, the event shape the logger produces, and the exact HTTP requests the Node and browser transports send are pinned byte for byte by golden files under `packages/*/test/golden/`. Changing them is a wire-protocol change and follows the same policy as a signature change of the owning API.
+- **Persisted browser data.** The IndexedDB schemas of `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` must stay readable by the next release. `tests/e2e/browser-upgrade.spec.ts` writes data with the previous published release and reads it with the current code.
+- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change.
+- **Delivery accounting.** Every event handed to a first-party transport is delivered or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle even when the destination fails. Failure-injection, model-based, and soak tests assert this invariant.
+
 ## Change Policy
 
 For Stable v1 Candidate APIs:
