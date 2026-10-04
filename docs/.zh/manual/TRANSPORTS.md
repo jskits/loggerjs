@@ -198,6 +198,10 @@ worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 
 | `browserBroadcastChannelTransport({ channel })` | 把日志分发到其他标签页（本身就可能丢失；接收方必须正在监听）。 |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把日志（例如来自 `indexedDbTransport().query()`）打包成 ZIP，包含 manifest、可选的按 session 拆分文件、可选的 `recent.ndjson`/`recent.json` 和 CRC，用于技术支持流程。 |
 
+`browserHttpTransport()` 会在 `timeoutMs`（默认 `10000`，设为 `0` 关闭）后中止 Fetch 投递。浏览器自身永远不会让请求超时，没有它时一个卡住的请求会挡住之后所有的 flush 和 `close()`；配置了离线队列时，超时的批次会被存下来以便重放。`close()` 是终态：它无法投递或存储的事件，以及之后再记录的事件，都会通过 `onDrop` 和 `transport.dropped.closed` 报告。
+
+`indexedDbTransport()` 在某个批次的 IndexedDB 写入失败时，会通过 `onDrop` 报告其中每个事件：`QuotaExceededError` 的原因为 `quota`，其他情况为 `write-failed`。`indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 在另一个标签页需要升级或删除数据库（例如新版本应用）时会关闭连接，并在下次使用时重新打开。`close()` 之后再写入 `indexedDbTransport()` 的事件会以 `closed` 原因报告为丢弃。与 Node 一样，超时的请求可能已经被处理，因此超时的批次可能到达两次；如有需要，请按事件 `id` 去重。
+
 `browserHttpTransport()` 在普通 Fetch 投递中使用 `codec`。如果 pagehide 或页面隐藏时的 Beacon 请求需要不同的编码或 content type，可以设置 `beaconCodec`；未设置时回退到 `codec`。配置了 `transformPayload` 时会跳过 Beacon 投递，生命周期 flush 改走普通 Fetch 路径，`beaconCodec` 也就不会生效。
 
 `browserHttpTransport()` 同样接受 `transformPayload`。在支持 `CompressionStream` 的浏览器中使用 `browserCompressionPayloadTransform()`：

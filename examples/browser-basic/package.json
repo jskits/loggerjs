@@ -13,6 +13,7 @@
     "@loggerjs/processors": "workspace:*"
   },
   "devDependencies": {
+    "@loggerjs/browser-previous": "npm:@loggerjs/browser@0.6.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
   }

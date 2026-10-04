@@ -750,7 +750,15 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           "success",
           () => {
             statsState.databaseOpenCount += 1;
-            resolve(request.result);
+            const db = request.result;
+            // Another tab, typically a newer app version, needs to upgrade or
+            // delete this database. Holding the connection would block it
+            // indefinitely, so close now and reopen on next use.
+            db.onversionchange = () => {
+              db.close();
+              dbPromise = undefined;
+            };
+            resolve(db);
           },
           { once: true },
         );
@@ -1206,6 +1214,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     const startedAt = nowMs();
     statsState.lastFlushBatchSize = events.length;
     const entries = events.map(eventToEntry);
+    let stored = false;
     try {
       await withLogAndSessionStores("readwrite", async (store, sessionStore) => {
         const rebuildSessionIds = new Set<string>();
@@ -1225,6 +1234,7 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
           entries.filter((entry) => !entry.sessionId || !rebuildSessionIds.has(entry.sessionId)),
         );
       });
+      stored = true;
       statsState.persisted += entries.length;
       incrementLoggerMetaCounter("transport.indexeddb.persisted", entries.length);
       markLocalStorageSpillPersisted(events);
@@ -1232,6 +1242,12 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
       statsState.flushes += 1;
     } catch (error) {
       statsState.flushErrors += 1;
+      // The failed transaction stored none of the batch, and the batch has
+      // already left the buffer, so account for every event as dropped.
+      if (!stored) {
+        const reason = isQuotaExceededError(error) ? "quota" : "write-failed";
+        for (const event of events) dropEvent(event, reason);
+      }
       throw error;
     } finally {
       statsState.lastFlushDurationMs = nowMs() - startedAt;
@@ -1388,8 +1404,14 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     timer = undefined;
   };
 
-  const flushPending = async () => {
-    if (flushPromise) return flushPromise;
+  const flushPending = async (): Promise<void> => {
+    if (flushPromise) {
+      if (buffer.length === 0) return flushPromise;
+      // Events buffered while a flush is in flight need a flush of their own;
+      // returning the in-flight one let close() finish without writing them.
+      await flushPromise.catch(() => undefined);
+      return flushPending();
+    }
     clearTimer();
     const batch = buffer.splice(0, buffer.length);
     pendingFlushBatch = batch;
@@ -1401,7 +1423,12 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     })().finally(() => {
       if (pendingFlushBatch === batch) pendingFlushBatch = undefined;
       flushPromise = undefined;
-      if (buffer.length > 0 && !closed) schedule();
+      if (buffer.length === 0 || closed) return;
+      // With flushIntervalMs 0 there is no timer to pick up events logged
+      // during this flush, so write them now.
+      if (flushIntervalMs <= 0) {
+        void flushPending().catch((error: unknown) => reportInternalError(error, "flush"));
+      } else schedule();
     });
     return flushPromise;
   };
@@ -1451,8 +1478,11 @@ export function indexedDbTransport(options: IndexedDbTransportOptions = {}): Ind
     name: options.name ?? "indexeddb",
     minLevel: options.minLevel,
     log(event, context) {
-      if (closed) return;
       if (options.minLevel !== undefined && event.level < toLevelValue(options.minLevel)) return;
+      if (closed) {
+        dropEvent(event, "closed");
+        return;
+      }
       lastContext = context;
       if (maxBufferSize === 0 || buffer.length >= maxBufferSize) {
         if (dropPolicy === "drop-newest") {

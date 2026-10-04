@@ -7,6 +7,12 @@ allowBuilds:
   sharp: true
   simple-git-hooks: false
   workerd: true
+# The previous release installed as @loggerjs/browser-previous for upgrade
+# tests. List exact versions so the release-age gate still covers every other
+# @loggerjs version; update these when bumping the alias.
+minimumReleaseAgeExclude:
+  - "@loggerjs/browser@0.6.0"
+  - "@loggerjs/core@0.6.0"
 overrides:
   "@vitejs/plugin-vue>vite": 6.4.3
   "miniflare>ws": 8.21.0

@@ -553,6 +553,139 @@ describe("indexedDbTransport", () => {
     resetLoggerMetaStats();
   });
 
+  it("reports every event of a failed IndexedDB write as dropped", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const dropped: Array<[string, string]> = [];
+    const transport = indexedDbTransport({
+      batchSize: 10,
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+      onDrop: (dropEvent, reason) => dropped.push([dropEvent.id, reason]),
+    });
+    const put = vi.spyOn(FakeObjectStore.prototype, "put").mockImplementation(() => {
+      throw new DOMException("storage full", "QuotaExceededError");
+    });
+
+    transport.log?.(event("first", 1), context);
+    transport.log?.(event("second", 2), context);
+    await expect(transport.flush?.()).rejects.toMatchObject({ name: "QuotaExceededError" });
+    put.mockRestore();
+
+    expect(dropped).toEqual([
+      ["first", "quota"],
+      ["second", "quota"],
+    ]);
+    expect(getLoggerMetaStats()["transport.indexeddb.dropped.quota"]).toBe(2);
+  });
+
+  it("closes its connection when another tab upgrades the database and reopens later", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    transport.log?.(event("before", 1), context);
+    await transport.flush?.();
+    const db = idb.db as unknown as { closed: boolean; onversionchange?: () => void };
+    db.onversionchange?.();
+    expect(db.closed).toBe(true);
+
+    db.closed = false;
+    transport.log?.(event("after", 2), context);
+    await transport.flush?.();
+
+    expect(transport.stats().databaseOpenCount).toBe(2);
+    expect((await collect(transport.query())).map((item) => item.id)).toEqual(["before", "after"]);
+  });
+
+  it("persists events logged while a flush is in flight when flushIntervalMs is 0", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const transport = indexedDbTransport({
+      flushIntervalMs: 0,
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    transport.log?.(event("first", 1), context);
+    transport.log?.(event("second", 2), context);
+    transport.log?.(event("third", 3), context);
+    await transport.flush?.();
+
+    expect((await collect(transport.query())).map((item) => item.id)).toEqual([
+      "first",
+      "second",
+      "third",
+    ]);
+  });
+
+  it("resolves flush() while new events keep arriving", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    // Every write takes a couple of milliseconds, like a real disk, so the
+    // producer below outpaces IndexedDB.
+    Object.defineProperty(idb.db.state, "putGate", {
+      get: () => new Promise((resolve) => setTimeout(resolve, 2)),
+    });
+    const transport = indexedDbTransport({
+      flushIntervalMs: 0,
+      indexedDB: idb as unknown as IDBFactory,
+    });
+    let produced = 0;
+    let flushed = false;
+    const produce = () => {
+      if (flushed || produced >= 500) return;
+      transport.log?.(event(`steady-${produced}`, produced), context);
+      produced += 1;
+      setTimeout(produce, 0);
+    };
+
+    transport.log?.(event("before", 0), context);
+    produce();
+    await transport.flush?.();
+    flushed = true;
+
+    // flush() covers what was buffered when it was called. Waiting for the
+    // in-flight write and the follow-up flush that takes the buffer is
+    // bounded; it must not chase the producer until the producer gives up.
+    expect(produced).toBeLessThan(500);
+    await transport.close?.();
+  });
+
+  it("persists every buffered event on close while a flush is in flight", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const writer = indexedDbTransport({
+      flushIntervalMs: 0,
+      indexedDB: idb as unknown as IDBFactory,
+    });
+
+    writer.log?.(event("first", 1), context);
+    writer.log?.(event("second", 2), context);
+    await writer.close?.();
+
+    const reader = indexedDbTransport({ indexedDB: idb as unknown as IDBFactory });
+    expect((await collect(reader.query())).map((item) => item.id)).toEqual(["first", "second"]);
+  });
+
+  it("reports events logged after close as dropped", async () => {
+    vi.stubGlobal("IDBKeyRange", FakeKeyRange);
+    const idb = new FakeIndexedDB();
+    const dropped: Array<[string, string]> = [];
+    const transport = indexedDbTransport({
+      indexedDB: idb as unknown as IDBFactory,
+      onDrop: (dropEvent, reason) => dropped.push([dropEvent.id, reason]),
+    });
+
+    await transport.close?.();
+    transport.log?.(event("late", 1), context);
+
+    expect(dropped).toEqual([["late", "closed"]]);
+    expect(getLoggerMetaStats()["transport.indexeddb.dropped.closed"]).toBe(1);
+  });
+
   it("persists buffered logs with micro-batch flush and queries them in order", async () => {
     vi.stubGlobal("IDBKeyRange", FakeKeyRange);
     const idb = new FakeIndexedDB();
@@ -1003,8 +1136,9 @@ describe("indexedDbTransport", () => {
     const namespace = "spill-unpersisted-buffer";
     const idb = new FakeIndexedDB();
     const transport = indexedDbTransport({
-      batchSize: 1,
+      batchSize: 10,
       flushIntervalMs: 10_000,
+      flushOnPageHide: false,
       indexedDB: idb as unknown as IDBFactory,
       localStorageSpill: {
         namespace,
@@ -1012,7 +1146,9 @@ describe("indexedDbTransport", () => {
       },
     });
 
+    // "persisting" is in flight; "buffered" waits for the 10s flush timer.
     transport.log?.(event("persisting", 1), context);
+    void transport.flush?.();
     transport.log?.(event("buffered", 2), context);
     lifecycle.dispatch("pagehide");
 

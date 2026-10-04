@@ -254,6 +254,14 @@ export interface BrowserHttpTransportOptions {
     fetchFn?: typeof fetch;
     transformPayload?: PayloadTransform | readonly PayloadTransform[];
     onDrop?: (event: LogEvent, reason: string) => void;
+    /**
+     * Abort a Fetch delivery after this many milliseconds. Browsers never time
+     * out a request on their own, so one stalled request would otherwise hold
+     * every later flush and close(). A timed-out batch falls back to the
+     * offline queue when one is configured. Set to 0 to disable. Defaults to
+     * 10000.
+     */
+    timeoutMs?: number;
 }
 export declare function memoryBrowserHttpOfflineQueue(options?: MemoryBrowserHttpOfflineQueueOptions): BrowserHttpOfflineQueue & {
     size: () => number;

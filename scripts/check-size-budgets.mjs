@@ -10,8 +10,8 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const budgets = [
   // Pending-write tracking, batch close cleanup, and registry snapshot replacement measure 88,391 raw bytes.
   ["@loggerjs/core", "packages/core/dist/index.js", 89_000, 19_800],
-  // Offline-queue replay on startup and after collector recovery measures 141,484 raw bytes.
-  ["@loggerjs/browser", "packages/browser/dist/index.js", 142_000, 30_000],
+  // The browser delivery hardening series (Fetch timeouts, close-time drop accounting, IndexedDB write-failure drops, versionchange handling) measures 142,434 raw and 30,137 gzip bytes once complete.
+  ["@loggerjs/browser", "packages/browser/dist/index.js", 143_000, 30_300],
   // Destroyed-stream drain release and the nodeHttpTransport request timeout measure 75,953 raw and 15,604 gzip bytes.
   ["@loggerjs/node", "packages/node/dist/index.js", 76_500, 15_700],
   ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
@@ -40,7 +40,7 @@ createLogger({ transports: [consoleTransport()] }).info("ready", { ok: true });`
     21_800,
     6_400,
   ],
-  // createLogger() plus browserHttpTransport() measures 23,365 raw and 7,685 gzip bytes.
+  // createLogger() plus browserHttpTransport() measures 23,467 raw and 7,723 gzip bytes.
   [
     "browser logger + http",
     `import { createLogger } from "@loggerjs/core";

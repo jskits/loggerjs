@@ -38,6 +38,8 @@ changeset publish --tag canary
 ## 每次发版
 
 - 在发版提交上手动运行 `Soak` workflow，设置更长时长（例如 60 分钟），确认两个浸泡测试都通过。
+- 发布之后，把 `examples/browser-basic/package.json` 中的 `@loggerjs/browser-previous` 指向刚发布的版本，让升级测试始终打开上一个已发布版本写入的数据，并把 `pnpm-workspace.yaml` 中 `minimumReleaseAgeExclude` 的精确版本替换为该别名现在安装的版本。
+
 ## npm 发布
 
 发布 workflow 是 `.github/workflows/release.yml`。每个可发布的 `@loggerjs/*` 包都应在 npmjs.com 上配置 Trusted Publisher：

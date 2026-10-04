@@ -38,6 +38,8 @@ Before a release that adds a public transport or integration subpath, verify the
 ## Every Release
 
 - Run the `Soak` workflow manually with a longer duration (for example 60 minutes) on the release commit and check both soaks pass.
+- After publishing, point `@loggerjs/browser-previous` in `examples/browser-basic/package.json` at the version just released, so the upgrade tests keep opening data written by the last published release, and replace the exact versions under `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` with the ones the alias now installs.
+
 ## NPM Publishing
 
 The release workflow is `.github/workflows/release.yml`. Each publishable `@loggerjs/*` package should be configured on npmjs.com with a Trusted Publisher entry for:

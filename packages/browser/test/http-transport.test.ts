@@ -660,6 +660,7 @@ describe("browserHttpTransport", () => {
       throw new Error("beacon failed");
     });
     vi.stubGlobal("navigator", { sendBeacon });
+    const dropped: string[] = [];
     const transport = browserHttpTransport({
       url: "/logs",
       codec: textCodec,
@@ -667,6 +668,7 @@ describe("browserHttpTransport", () => {
       flushIntervalMs: 0,
       useBeaconOnPageHide: false,
       fetchFn,
+      onDrop: (event) => dropped.push(event.message),
     });
     for (const message of ["1", "2", "3", "4", "5"]) {
       transport.log?.(createEvent(message), createTransportContext());
@@ -675,7 +677,53 @@ describe("browserHttpTransport", () => {
     await expect(transport.close?.()).rejects.toThrow("beacon failed");
     failFetch = false;
     await transport.flush?.();
-    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["1|2", "3|4", "5"]);
+    // The Beacon accepted "1|2"; only the chunks it did not take remain, and
+    // close() reports them as dropped instead of keeping them for later.
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["1|2"]);
+    expect(dropped).toEqual(["3", "4", "5"]);
+  });
+
+  it("aborts a stalled request after timeoutMs", async () => {
+    const fetchFn = vi.fn<typeof fetch>(
+      (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        }),
+    );
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      timeoutMs: 20,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("stalled"), createTransportContext());
+
+    await expect(transport.flush?.()).rejects.toMatchObject({ name: "TimeoutError" });
+  });
+
+  it("reports events left undelivered at close as dropped, and drops later events", async () => {
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 503 }));
+    const dropped: Array<[string, string]> = [];
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      onDrop: (event, reason) => dropped.push([event.message, reason]),
+    });
+
+    transport.log?.(createEvent("undelivered"), createTransportContext());
+    await expect(transport.close?.()).rejects.toThrow("status 503");
+    transport.log?.(createEvent("after close"), createTransportContext());
+
+    expect(dropped).toEqual([
+      ["undelivered", "closed"],
+      ["after close", "closed"],
+    ]);
   });
 
   it("flushes queued events on the scheduled timer", async () => {
