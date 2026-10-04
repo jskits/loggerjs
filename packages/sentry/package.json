@@ -47,7 +47,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:*"
+    "@loggerjs/core": "workspace:^"
   },
   "peerDependencies": {
     "@sentry/core": ">=8 <11"
@@ -56,5 +56,8 @@
     "@sentry/core": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }

@@ -42,6 +42,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:*"
+    "@loggerjs/core": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }

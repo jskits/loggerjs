@@ -139,7 +139,7 @@ IndexedDB 场景使用单独的迭代次数，因为它们会执行真实的浏�
 
 ## 体积预算
 
-`pnpm size:check` 在构建后运行，对每个包入口 bundle 强制执行原始体积和 gzip 体积预算。预算保存在 `scripts/check-size-budgets.mjs` 中，只有在有意改变公开 API 或实现体积时才应随之更新。
+`pnpm size:check` 在构建后运行，对每个包入口 bundle 强制执行原始体积和 gzip 体积预算，同时也检查三个经过 tree-shaking 和压缩的最小应用（`createLogger()` 分别搭配 `consoleTransport()`、`browserHttpTransport()` 或 `stdoutTransport()`），它们由 rolldown 基于构建产物打包。预算保存在 `scripts/check-size-budgets.mjs` 中，只有在有意改变公开 API 或实现体积时才应随之更新。
 
 ## 相关链接
 

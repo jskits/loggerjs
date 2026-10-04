@@ -102,6 +102,9 @@
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "loggerjsSubpathEntries": {
     "middleware": "src/middleware.ts",
     "codec-json": "src/codecs/json.ts",

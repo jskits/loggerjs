@@ -15,16 +15,10 @@ import { captureProcessIntegration } from "../src";
 const nodeProcess = process as typeof process & {
   listenerCount: (event: string) => number;
   listeners: (event: string) => Array<(...args: unknown[]) => void>;
-  platform: string;
+  execPath: string;
 };
 const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, "../../..");
-const tsxBin = join(
-  repoRoot,
-  "node_modules",
-  ".bin",
-  nodeProcess.platform === "win32" ? "tsx.cmd" : "tsx",
-);
 const crashFixture = join(testDir, "fixtures", "crash-child.ts");
 
 function createLogger(overrides: Partial<LoggerLike> = {}): LoggerLike {
@@ -300,7 +294,9 @@ describe("captureProcessIntegration", () => {
     tempDirs.push(dir);
     const outputPath = join(dir, "logs", "fatal.ndjson");
 
-    const result = spawnSync(tsxBin, [crashFixture, outputPath], {
+    // node --import tsx avoids the tsx.cmd shim, which Node refuses to spawn
+    // without a shell on Windows.
+    const result = spawnSync(nodeProcess.execPath, ["--import", "tsx", crashFixture, outputPath], {
       cwd: repoRoot,
       encoding: "utf8",
       timeout: 15_000,

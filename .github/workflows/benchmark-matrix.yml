@@ -40,17 +40,23 @@ jobs:
         with:
           run_install: false
 
+      # pnpm 11 needs Node >=22.13, so install and build on Node 22 and switch
+      # to the matrix version only to run the benchmark itself.
       - uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
       - name: Run benchmark matrix sample
         run: >
-          pnpm bench:matrix --
+          node scripts/bench-matrix.mjs run
           --runs="${{ inputs.runs }}"
           --rounds="${{ inputs.rounds }}"
           --batch="${{ inputs.batch }}"
@@ -65,6 +71,8 @@ jobs:
   aggregate:
     runs-on: ubuntu-latest
     needs: collect
+    # Aggregate whichever runtimes succeeded instead of discarding them all.
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v6
 

@@ -62,7 +62,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:*"
+    "@loggerjs/core": "workspace:^"
   },
   "peerDependencies": {
     "@opentelemetry/api": ">=1 <2"
@@ -71,6 +71,9 @@
     "@opentelemetry/api": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": ">=20.19.0"
   },
   "loggerjsSubpathEntries": {
     "transport-http": "src/transport.ts",
