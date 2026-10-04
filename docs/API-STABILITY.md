@@ -6,7 +6,7 @@ This page is the human contract. The machine-readable classification lives in [`
 
 ## Current Policy
 
-Before v1, the project is narrowing the compatibility promise instead of freezing the whole repository. The stable set is intentionally limited to the core logger model, core pipeline contracts, primary browser and Node delivery paths, pretty output, processors, and codecs.
+Before v1, the project is narrowing the compatibility promise instead of freezing the whole repository. The stable set is intentionally limited to a kernel: the core logger model and pipeline contracts, the primary browser and Node delivery paths, the primary browser capture integrations, Node process capture and context, and pretty output. The v1 freeze should happen after design partners have run that kernel in production and the remaining surface has been pruned based on what they actually used, not before.
 
 Everything else may still be public, tested, and useful, but it is not all part of the v1 compatibility promise yet. In particular, vendor, observability, and database packages remain experimental until they have more real-world usage and failure-mode validation.
 
@@ -27,11 +27,9 @@ Stable exports are tracked in `api-stability.policy.json`. The current stable pa
 | Package | Stable surface |
 | --- | --- |
 | `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
-| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, support ZIP export, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
-| `@loggerjs/node` | Documented stable subpaths for stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
+| `@loggerjs/browser` | `transport-http`, `offline-indexeddb`, `transport-indexeddb`, `offline-first-transport`, and the console, error, context, and page-lifecycle integrations. |
+| `@loggerjs/node` | `transport-stdout`, `transport-file`, `transport-rotating-file`, `transport-http`, `integration-process`, and AsyncLocalStorage `context`. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
-| `@loggerjs/processors` | Root package processor and middleware catalog. |
-| `@loggerjs/codecs` | Root package codec catalog. |
 
 Stable semantics include:
 
@@ -49,7 +47,10 @@ Compatible exports stay documented and tested, but they are not frozen enough to
 
 - Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Use the stable subpaths above when you need a v1 candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
+- Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.
+- Node syslog and worker transports, compression payload transforms, outgoing fetch/HTTP client capture, diagnostics_channel capture, and logger diagnostics.
 - Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi, Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method wrapping, and CLI capture.
+- The `@loggerjs/processors` and `@loggerjs/codecs` catalogs. Individual processors and codecs are small and useful, but freezing about a hundred exports before real usage shows which ones matter would lock in the wrong ones.
 
 The public import paths should remain available during pre-v1, but exact captured fields, hook coverage, and edge behavior may be refined. These are the right places to tighten names or reduce claims before v1 if real usage shows the current API is too broad.
 

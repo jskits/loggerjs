@@ -38,7 +38,7 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `rotatingFileTransport()` | Stable | 本地按大小轮转；每个文件只应有一个写入进程。 |
 | `nodeHttpTransport()` | Stable | 内置批量包装的 HTTP 投递，使用共享的可靠性选项。 |
 | `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包在 v1 之前不冻结。 |
-| `nodeSyslogTransport()` | Stable | 消息格式稳定；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
+| `nodeSyslogTransport()` | Compatible | 消息格式有测试覆盖，但在更多部署验证之前不属于 v1 内核；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
 | `workerTransport()` | Compatible | 消息协议公开，但 ready/ack/回退等生命周期细节可能继续调整。 |
 | `browserHttpTransport()` | Stable | 主要的浏览器远程 transport；pagehide 时的 Beacon 仍是尽力而为。 |
 | `memoryBrowserHttpOfflineQueue()` | Stable | 用于短暂离线的稳定 API；刷新页面后不保留。 |

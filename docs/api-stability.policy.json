@@ -17,38 +17,23 @@
     ],
     "@loggerjs/browser": [
       "./transport-http",
-      "./payload-transforms",
       "./offline-indexeddb",
       "./transport-indexeddb",
-      "./export-zip",
       "./offline-first-transport",
       "./integration-console",
       "./integration-context",
       "./integration-errors",
-      "./integration-fetch",
-      "./integration-xhr",
-      "./integration-web-vitals",
-      "./integration-performance",
       "./integration-page-lifecycle"
     ],
     "@loggerjs/node": [
       "./transport-http",
-      "./payload-transforms",
       "./transport-file",
       "./transport-rotating-file",
       "./transport-stdout",
-      "./transport-syslog",
-      "./transport-worker",
       "./integration-process",
-      "./integration-fetch",
-      "./integration-http-client",
-      "./integration-diagnostics",
-      "./logger-diagnostics",
       "./context"
     ],
-    "@loggerjs/pretty": [".", "./formatter", "./transport-console", "./transport-stream"],
-    "@loggerjs/processors": ["."],
-    "@loggerjs/codecs": ["."]
+    "@loggerjs/pretty": [".", "./formatter", "./transport-console", "./transport-stream"]
   },
   "compatible": {
     "@loggerjs/browser": [
@@ -63,7 +48,13 @@
       "./integration-runtime-host",
       "./integration-service-worker",
       "./integration-user-actions",
-      "./integration-websocket"
+      "./integration-websocket",
+      "./payload-transforms",
+      "./export-zip",
+      "./integration-fetch",
+      "./integration-xhr",
+      "./integration-web-vitals",
+      "./integration-performance"
     ],
     "@loggerjs/node": [
       ".",
@@ -78,8 +69,17 @@
       "./integration-serverless",
       "./integration-database",
       "./integration-express",
-      "./integration-fastify"
-    ]
+      "./integration-fastify",
+      "./payload-transforms",
+      "./transport-syslog",
+      "./transport-worker",
+      "./integration-fetch",
+      "./integration-http-client",
+      "./integration-diagnostics",
+      "./logger-diagnostics"
+    ],
+    "@loggerjs/processors": ["."],
+    "@loggerjs/codecs": ["."]
   },
   "experimental": {
     "@loggerjs/otel": [".", "./transport-http", "./codec-otlp-json", "./trace", "./log-bridge"],

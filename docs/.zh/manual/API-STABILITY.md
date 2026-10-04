@@ -6,7 +6,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 ## 当前策略
 
-在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定在 core 的 logger 模型、core 管线契约、主要的浏览器和 Node 投递路径、pretty 输出、processor 以及 codec。
+在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定为一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。v1 冻结应当在早期合作用户把这个内核真正跑在生产环境、并根据实际使用情况裁剪其余部分之后进行，而不是之前。
 
 其他部分同样可能是公开的、经过测试且可用的，但并非都属于 v1 兼容承诺。尤其是厂商、可观测性和数据库相关的包，在获得更多真实使用和故障场景验证之前，仍保持实验状态。
 
@@ -27,11 +27,9 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 | 包 | 稳定范围 |
 | --- | --- |
 | `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
-| `@loggerjs/browser` | 文档中列出的稳定子路径：HTTP 投递、IndexedDB/offline-first 存储、支持日志 ZIP 导出、payload 转换，以及主要的 console/error/fetch/XHR/context/performance/page-lifecycle integration。 |
-| `@loggerjs/node` | 文档中列出的稳定子路径：stdout/stderr/file/rotating-file/HTTP/syslog/worker transport、payload 转换、进程采集、出站 HTTP 采集、诊断，以及 AsyncLocalStorage context。 |
+| `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
+| `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
-| `@loggerjs/processors` | 根入口导出的 processor 和 middleware 目录。 |
-| `@loggerjs/codecs` | 根入口导出的 codec 目录。 |
 
 稳定的语义包括：
 
@@ -49,7 +47,10 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 - browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
+- 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。
+- Node 的 syslog 和 worker transport、压缩 payload 转换、出站 fetch/HTTP client 采集、diagnostics_channel 采集和 logger 诊断。
 - Node 的框架和数据类 integration：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、通用队列、BullMQ、serverless 生命周期、数据库方法包装和 CLI 采集。
+- `@loggerjs/processors` 和 `@loggerjs/codecs` 目录。单个 processor 和 codec 都很小也很有用，但在真实使用表明哪些真正重要之前冻结约一百个导出，只会锁定错误的那部分。
 
 在 1.0 之前，这些公开的导入路径会继续保留，但具体的采集字段、钩子覆盖范围和边界行为仍可能调整。如果真实使用表明当前 API 过于宽泛，这些部分也是 v1 之前收窄命名或降低承诺的合适位置。
 

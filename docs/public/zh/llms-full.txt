@@ -551,7 +551,7 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `rotatingFileTransport()` | Stable | 本地按大小轮转；每个文件只应有一个写入进程。 |
 | `nodeHttpTransport()` | Stable | 内置批量包装的 HTTP 投递，使用共享的可靠性选项。 |
 | `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包在 v1 之前不冻结。 |
-| `nodeSyslogTransport()` | Stable | 消息格式稳定；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
+| `nodeSyslogTransport()` | Compatible | 消息格式有测试覆盖，但在更多部署验证之前不属于 v1 内核；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
 | `workerTransport()` | Compatible | 消息协议公开，但 ready/ack/回退等生命周期细节可能继续调整。 |
 | `browserHttpTransport()` | Stable | 主要的浏览器远程 transport；pagehide 时的 Beacon 仍是尽力而为。 |
 | `memoryBrowserHttpOfflineQueue()` | Stable | 用于短暂离线的稳定 API；刷新页面后不保留。 |
@@ -1113,7 +1113,7 @@ integration 的稳定性描述的是公开的 setup/选项契约和拆除行为�
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | 核心的浏览器采集能力，具备防回环和拆除测试。 |
 | `captureBrowserErrorsIntegration()` | Stable | 标准的浏览器错误和 rejection 采集；CSP 细节因浏览器而异。 |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | 请求/响应采集契约稳定，并提供显式的数据清洗钩子。 |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | 请求/响应采集提供显式的数据清洗钩子，但 v1 之前采集字段仍可能调整。 |
 | `pageLifecycleIntegration()` | Runtime-dependent | API 稳定，但 pagehide/visibility 的触发时机由浏览器决定，只能尽力而为。 |
 | `captureWebVitalsIntegration()` | Runtime-dependent | 依赖 PerformanceObserver 和浏览器对各项指标的支持。 |
 | `capturePerformanceIntegration()` | Runtime-dependent | 能拿到哪些 entry 取决于浏览器、权限策略和页面生命周期。 |
@@ -2745,7 +2745,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 ## 当前策略
 
-在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定在 core 的 logger 模型、core 管线契约、主要的浏览器和 Node 投递路径、pretty 输出、processor 以及 codec。
+在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定为一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。v1 冻结应当在早期合作用户把这个内核真正跑在生产环境、并根据实际使用情况裁剪其余部分之后进行，而不是之前。
 
 其他部分同样可能是公开的、经过测试且可用的，但并非都属于 v1 兼容承诺。尤其是厂商、可观测性和数据库相关的包，在获得更多真实使用和故障场景验证之前，仍保持实验状态。
 
@@ -2766,11 +2766,9 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 | 包 | 稳定范围 |
 | --- | --- |
 | `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
-| `@loggerjs/browser` | 文档中列出的稳定子路径：HTTP 投递、IndexedDB/offline-first 存储、支持日志 ZIP 导出、payload 转换，以及主要的 console/error/fetch/XHR/context/performance/page-lifecycle integration。 |
-| `@loggerjs/node` | 文档中列出的稳定子路径：stdout/stderr/file/rotating-file/HTTP/syslog/worker transport、payload 转换、进程采集、出站 HTTP 采集、诊断，以及 AsyncLocalStorage context。 |
+| `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
+| `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
-| `@loggerjs/processors` | 根入口导出的 processor 和 middleware 目录。 |
-| `@loggerjs/codecs` | 根入口导出的 codec 目录。 |
 
 稳定的语义包括：
 
@@ -2788,7 +2786,10 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 - browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
+- 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。
+- Node 的 syslog 和 worker transport、压缩 payload 转换、出站 fetch/HTTP client 采集、diagnostics_channel 采集和 logger 诊断。
 - Node 的框架和数据类 integration：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、通用队列、BullMQ、serverless 生命周期、数据库方法包装和 CLI 采集。
+- `@loggerjs/processors` 和 `@loggerjs/codecs` 目录。单个 processor 和 codec 都很小也很有用，但在真实使用表明哪些真正重要之前冻结约一百个导出，只会锁定错误的那部分。
 
 在 1.0 之前，这些公开的导入路径会继续保留，但具体的采集字段、钩子覆盖范围和边界行为仍可能调整。如果真实使用表明当前 API 过于宽泛，这些部分也是 v1 之前收窄命名或降低承诺的合适位置。
 
