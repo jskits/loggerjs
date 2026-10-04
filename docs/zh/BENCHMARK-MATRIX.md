@@ -6,16 +6,18 @@ description: "跨机器基准证据和记录方式。"
 
 # LoggerJS 基准矩阵
 
-最后更新：2026-06-18
+最后更新：2026-09-30
 
 本表汇总 `pnpm bench:matrix` 产出的基准产物。比值取自交错 A/B 测试框架的逐轮配对延迟中位数，而不是单次顺序运行得出的比值。比值低于 `1.00x` 表示在该机器上 LoggerJS 路径的延迟低于 pino；括号中的百分比是 LoggerJS 相对 pino 的吞吐量。
 
-两行结果方向相反：M1 Max 上 LoggerJS 更快，M4 Pro 上 pino 更快。排名取决于 CPU 和 V8 版本，因此这份矩阵不支持“普遍快于 pino”的说法。
+两行 Apple Silicon 结果方向相反：M1 Max 上 LoggerJS 更快，M4 Pro 上 pino 更快。两行 GitHub 托管的 Linux x64 结果（Node 22 和 Node 24，共享 runner）中 LoggerJS lean 和 prepared 都快于 pino。排名取决于 CPU 和 V8 版本，而且共享 runner 的数据噪声较大（基线离散度最高达 115%），因此这份矩阵仍不支持“普遍快于 pino”的说法。
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 0.3.1 | 5 | 286 | 244 | 223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
 | m4pro-node22 | darwin/arm64 | Apple M4 Pro | v22.22.2 | 0.5.1 | 6 | 197 | 223 | 211 | 1.137x (87.9%) | 1.054x (94.9%) | pino faster in this row |
+| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 9V45 96-Core Processor | v22.23.2 | 0.6.0 | 5 | 240 | 218 | 194 | 0.902x (110.9%) | 0.810x (123.4%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 495 | 489 | 429 | 0.968x (103.4%) | 0.865x (115.6%) | LoggerJS lean + prepared faster |
 
 ## 行详情
 
@@ -23,15 +25,17 @@ description: "跨机器基准证据和记录方式。"
 | --- | ---: | --- | --- | ---: | ---: |
 | macbookpro-node22 | 64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 21.2% | 0.919x (108.8%) |
 | m4pro-node22 | 24 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 6 runs, 120 rounds x 5000 ops, 100000 warmup | 41.9% | 0.942x (106.1%) |
+| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 115.2% | 0.854x (117.1%) |
+| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 70.0% | 0.887x (112.7%) |
 
 ## 证据覆盖
 
 | 要求 | 状态 | 已有行 |
 | --- | --- | --- |
-| 至少一个非 Apple Silicon 运行环境 | 缺失 | darwin/arm64 |
-| 至少两个 Node 主版本 | 缺失 | 22 |
+| 至少一个非 Apple Silicon 运行环境 | 已覆盖 | linux/x64 |
+| 至少两个 Node 主版本 | 已覆盖 | 22, 24 |
 
-两行都是 Node 22 上的 Apple Silicon，因此两项要求都还没有满足。在同一操作系统、架构和 Node 主版本内，仅把 CPU 从 M1 Max 换成 M4 Pro，结论就会反转。在补齐非 Apple 和第二个 Node 主版本的数据之前，请把这些数字表述为参考机器上的结果。
+GitHub 托管的 Linux 行已经覆盖这两项要求。Node 20.19.0 行仍然缺失：由于 pnpm 11 需要 Node >=22.13，该 job 在跑基准之前就失败了；workflow 现在改为在 Node 22 上安装、在矩阵 Node 上运行基准，下一次触发即可采集到这一行。
 
 说明：
 

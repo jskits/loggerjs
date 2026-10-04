@@ -41,7 +41,9 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 
 **API 报告**：任何公开 API 的变更（包括导出符号上的 JSDoc）都需要运行 `pnpm build && pnpm api:report` 重新生成报告并提交差异。报告与代码不一致时 `pnpm api:check` 会失败。
 
-**体积预算**（`scripts/check-size-budgets.mjs`）：每个包在构建后都会检查原始体积和 gzip 体积上限。只有在同一个或相邻的提交中附上理由时，才能上调预算。
+**体积预算**（`scripts/check-size-budgets.mjs`）：每个包入口在构建后都会检查原始体积和 gzip 体积上限，大多数用户起步用的最小应用（`createLogger()` 搭配 `consoleTransport()`、`browserHttpTransport()` 或 `stdoutTransport()`，经过 tree-shaking 和压缩）也一样。只有在同一个或相邻的提交中写明实测体积和理由时，才能上调预算。
+
+**包清单**（`pnpm pack:check`）：内部依赖使用 `workspace:^`，每个包声明的 `engines.node` 必须与 `ci.yml` 中 node-compat 矩阵的最低 Node 版本一致。
 
 **组件文档**（`scripts/verify-component-docs.mjs`）：每个公开的 `transport-*`、`*-transport` 或 `integration-*` 子路径都必须出现在对应的 transport/integration 导入边界文档中。新组件还需要在同一次变更中补充稳定性和可靠性说明。
 
@@ -72,6 +74,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 - `pnpm test:e2e:browser` 在 Chromium、Firefox 和 WebKit 中运行浏览器 E2E 测试。
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` 在 Bun、Deno 和 workerd/Miniflare 中对打包产物做冒烟测试。
 - `pnpm test:quality` 运行覆盖率阈值检查、变异测试和并发浸泡测试。
+- CI 中的 `windows` job 会在 Windows 上运行 core 和 Node 测试。
 - `pnpm test:live:local` 启动基于 Docker 的 Elasticsearch 和 Loki 实例，通过 transport 写入真实日志，再从服务中查询确认。
 - `pnpm test:live:external` 向 Datadog Logs 和 CloudWatch Logs 写入并查询日志，需要 `DATADOG_API_KEY`、`DATADOG_APP_KEY`、`AWS_REGION`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` 和 `CLOUDWATCH_LOG_GROUP`；`pnpm test:live:config` 可以在不打印密钥值的情况下检查哪些变量已设置。
 

@@ -41,13 +41,16 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **API reports**: any public-surface change (including JSDoc on exported symbols) requires regenerating reports — `pnpm build && pnpm api:report` — and committing the diff. `pnpm api:check` fails on drift.
 
-**Size budgets** (`scripts/check-size-budgets.mjs`): every package has raw + gzip ceilings checked after build. Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the reason in the message.
+**Size budgets** (`scripts/check-size-budgets.mjs`): every package entry has raw + gzip ceilings checked after build, and so do the tree-shaken, minified minimal apps most users start with (`createLogger()` plus `consoleTransport()`, `browserHttpTransport()`, or `stdoutTransport()`). Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the measured size and the reason in the message.
+
 
 **Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
 
 **Benchmark gate** (`pnpm bench:gate`): hot-path scenarios are limited as paired A/B ratios against the matching pino baseline. Limits are generous — they catch structural regressions (an accidental allocation per log, a dropped fast path), not noise. If your change legitimately shifts a ratio, update the limits in `scripts/check-bench-regression.mjs` with justification.
 
 **Changesets**: user-facing changes to published packages need a changeset (`pnpm changeset`); pure repo tooling does not.
+
+**Package manifests** (`pnpm pack:check`): internal dependencies use `workspace:^`, and every package declares `engines.node` matching the lowest Node version in the `ci.yml` node-compat matrix.
 
 ## Engineering Conventions
 
@@ -72,6 +75,7 @@ Additional CI gates cover the runtime and quality surface:
 - `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
 - `pnpm test:quality` runs coverage thresholds, mutation testing, and the concurrent soak runner.
+- The `windows` CI job runs the core and Node suites on Windows.
 - `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
 - `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.
 

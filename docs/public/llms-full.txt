@@ -2551,7 +2551,7 @@ The IndexedDB scenarios use a separate iteration count because they exercise rea
 
 ## Size Budgets
 
-`pnpm size:check` runs after build and enforces raw plus gzip budgets for each package entry bundle. Budgets are stored in `scripts/check-size-budgets.mjs` and should be updated only with an intentional public surface or implementation-size change.
+`pnpm size:check` runs after build and enforces raw plus gzip budgets for each package entry bundle, and for three tree-shaken, minified minimal apps (`createLogger()` with `consoleTransport()`, `browserHttpTransport()`, or `stdoutTransport()`) bundled with rolldown against the built packages. Budgets are stored in `scripts/check-size-budgets.mjs` and should be updated only with an intentional public surface or implementation-size change.
 
 ---
 
@@ -2561,16 +2561,18 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/BENCHMARK-MATRIX.md
 
 # LoggerJS Benchmark Matrix
 
-Last updated: 2026-06-18
+Last updated: 2026-09-30
 
 This table aggregates artifacts produced by `pnpm bench:matrix`. Ratios are paired per-round latency medians from the interleaved A/B harness, not one-off sequential-run ratios. A ratio below `1.00x` means the LoggerJS path had lower latency than pino on that machine; the percentage in parentheses is LoggerJS throughput relative to pino.
 
-The two rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The ranking is CPU/V8-dependent, so the matrix does not support a universal "faster than pino" claim.
+The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The two GitHub-hosted Linux x64 rows (Node 22 and Node 24, shared runners) have LoggerJS lean and prepared ahead of pino. The ranking is CPU/V8-dependent and shared-runner rows are noisy (baseline spread up to 115%), so the matrix still does not support a universal "faster than pino" claim.
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 0.3.1 | 5 | 286 | 244 | 223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
 | m4pro-node22 | darwin/arm64 | Apple M4 Pro | v22.22.2 | 0.5.1 | 6 | 197 | 223 | 211 | 1.137x (87.9%) | 1.054x (94.9%) | pino faster in this row |
+| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 9V45 96-Core Processor | v22.23.2 | 0.6.0 | 5 | 240 | 218 | 194 | 0.902x (110.9%) | 0.810x (123.4%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 495 | 489 | 429 | 0.968x (103.4%) | 0.865x (115.6%) | LoggerJS lean + prepared faster |
 
 ## Row Details
 
@@ -2578,15 +2580,17 @@ The two rows disagree: LoggerJS is faster on the M1 Max and pino is faster on th
 | --- | ---: | --- | --- | ---: | ---: |
 | macbookpro-node22 | 64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 21.2% | 0.919x (108.8%) |
 | m4pro-node22 | 24 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 6 runs, 120 rounds x 5000 ops, 100000 warmup | 41.9% | 0.942x (106.1%) |
+| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 115.2% | 0.854x (117.1%) |
+| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 70.0% | 0.887x (112.7%) |
 
 ## Evidence Coverage
 
 | Requirement | Status | Rows |
 | --- | --- | --- |
-| At least one non-Apple-Silicon runtime | Missing | darwin/arm64 |
-| At least two Node major versions | Missing | 22 |
+| At least one non-Apple-Silicon runtime | Covered | linux/x64 |
+| At least two Node major versions | Covered | 22, 24 |
 
-Both rows are Apple Silicon on Node 22, so neither requirement is covered yet. Within that one OS/arch/Node major, changing only the CPU (M1 Max to M4 Pro) flips the result. Until non-Apple and second-Node-major rows exist, describe these numbers as reference-machine results.
+Both requirements are now covered by the GitHub-hosted Linux rows. The Node 20.19.0 row is still missing: the workflow failed that job before benchmarking because pnpm 11 needs Node >=22.13; the workflow now installs on Node 22 and runs the benchmark on the matrix Node, so the next dispatch collects it.
 
 Notes:
 
@@ -3526,13 +3530,16 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **API reports**: any public-surface change (including JSDoc on exported symbols) requires regenerating reports — `pnpm build && pnpm api:report` — and committing the diff. `pnpm api:check` fails on drift.
 
-**Size budgets** (`scripts/check-size-budgets.mjs`): every package has raw + gzip ceilings checked after build. Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the reason in the message.
+**Size budgets** (`scripts/check-size-budgets.mjs`): every package entry has raw + gzip ceilings checked after build, and so do the tree-shaken, minified minimal apps most users start with (`createLogger()` plus `consoleTransport()`, `browserHttpTransport()`, or `stdoutTransport()`). Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the measured size and the reason in the message.
+
 
 **Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
 
 **Benchmark gate** (`pnpm bench:gate`): hot-path scenarios are limited as paired A/B ratios against the matching pino baseline. Limits are generous — they catch structural regressions (an accidental allocation per log, a dropped fast path), not noise. If your change legitimately shifts a ratio, update the limits in `scripts/check-bench-regression.mjs` with justification.
 
 **Changesets**: user-facing changes to published packages need a changeset (`pnpm changeset`); pure repo tooling does not.
+
+**Package manifests** (`pnpm pack:check`): internal dependencies use `workspace:^`, and every package declares `engines.node` matching the lowest Node version in the `ci.yml` node-compat matrix.
 
 ## Engineering Conventions
 
@@ -3557,6 +3564,7 @@ Additional CI gates cover the runtime and quality surface:
 - `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
 - `pnpm test:quality` runs coverage thresholds, mutation testing, and the concurrent soak runner.
+- The `windows` CI job runs the core and Node suites on Windows.
 - `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
 - `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.
 

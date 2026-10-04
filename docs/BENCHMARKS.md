@@ -133,4 +133,4 @@ The IndexedDB scenarios use a separate iteration count because they exercise rea
 
 ## Size Budgets
 
-`pnpm size:check` runs after build and enforces raw plus gzip budgets for each package entry bundle. Budgets are stored in `scripts/check-size-budgets.mjs` and should be updated only with an intentional public surface or implementation-size change.
+`pnpm size:check` runs after build and enforces raw plus gzip budgets for each package entry bundle, and for three tree-shaken, minified minimal apps (`createLogger()` with `consoleTransport()`, `browserHttpTransport()`, or `stdoutTransport()`) bundled with rolldown against the built packages. Budgets are stored in `scripts/check-size-budgets.mjs` and should be updated only with an intentional public surface or implementation-size change.
