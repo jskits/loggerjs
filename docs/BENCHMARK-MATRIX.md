@@ -1,17 +1,18 @@
 # LoggerJS Benchmark Matrix
 
-Last updated: 2026-09-30
+Last updated: 2026-10-04
 
 This table aggregates artifacts produced by `pnpm bench:matrix`. Ratios are paired per-round latency medians from the interleaved A/B harness, not one-off sequential-run ratios. A ratio below `1.00x` means the LoggerJS path had lower latency than pino on that machine; the percentage in parentheses is LoggerJS throughput relative to pino.
 
-The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The two GitHub-hosted Linux x64 rows (Node 22 and Node 24, shared runners) have LoggerJS lean and prepared ahead of pino. The ranking is CPU/V8-dependent and shared-runner rows are noisy (baseline spread up to 115%), so the matrix still does not support a universal "faster than pino" claim.
+The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The three GitHub-hosted Linux x64 rows share one CPU model (AMD EPYC 7763) across Node 20, 22, and 24: the prepared path is ahead of pino on all three, and the lean path is ahead on Node 22 and 24 but behind on Node 20. The ranking depends on CPU and V8 version, and shared-runner rows are noisy (baseline spread up to 91%), so the matrix does not support a universal "faster than pino" claim.
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 0.3.1 | 5 | 286 | 244 | 223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
 | m4pro-node22 | darwin/arm64 | Apple M4 Pro | v22.22.2 | 0.5.1 | 6 | 197 | 223 | 211 | 1.137x (87.9%) | 1.054x (94.9%) | pino faster in this row |
-| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 9V45 96-Core Processor | v22.23.2 | 0.6.0 | 5 | 240 | 218 | 194 | 0.902x (110.9%) | 0.810x (123.4%) | LoggerJS lean + prepared faster |
-| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 495 | 489 | 429 | 0.968x (103.4%) | 0.865x (115.6%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node20.19.0 | linux/x64 | AMD EPYC 7763 64-Core Processor | v20.19.0 | 0.6.0 | 5 | 469 | 494 | 443 | 1.064x (94.0%) | 0.945x (105.8%) | LoggerJS prepared faster |
+| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 7763 64-Core Processor | v22.23.3 | 0.6.0 | 5 | 511 | 483 | 423 | 0.956x (104.6%) | 0.845x (118.4%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 508 | 485 | 427 | 0.961x (104.0%) | 0.873x (114.5%) | LoggerJS lean + prepared faster |
 
 ## Row Details
 
@@ -19,17 +20,18 @@ The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is fa
 | --- | ---: | --- | --- | ---: | ---: |
 | macbookpro-node22 | 64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 21.2% | 0.919x (108.8%) |
 | m4pro-node22 | 24 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 6 runs, 120 rounds x 5000 ops, 100000 warmup | 41.9% | 0.942x (106.1%) |
-| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 115.2% | 0.854x (117.1%) |
-| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 70.0% | 0.887x (112.7%) |
+| github-ubuntu-x64-node20.19.0 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 32.3% | 0.906x (110.4%) |
+| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 71.5% | 0.878x (113.9%) |
+| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 91.3% | 0.890x (112.4%) |
 
 ## Evidence Coverage
 
 | Requirement | Status | Rows |
 | --- | --- | --- |
 | At least one non-Apple-Silicon runtime | Covered | linux/x64 |
-| At least two Node major versions | Covered | 22, 24 |
+| At least two Node major versions | Covered | 20, 22, 24 |
 
-Both requirements are now covered by the GitHub-hosted Linux rows. The Node 20.19.0 row is still missing: the workflow failed that job before benchmarking because pnpm 11 needs Node >=22.13; the workflow now installs on Node 22 and runs the benchmark on the matrix Node, so the next dispatch collects it.
+Both requirements are covered by the GitHub-hosted Linux rows, collected in one Benchmark Matrix run on the same CPU model.
 
 Notes:
 
