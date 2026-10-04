@@ -38,7 +38,7 @@ Transport stability describes the public API promise, not an absolute delivery g
 | `rotatingFileTransport()` | Stable | Local size rotation; use one writer process per file. |
 | `nodeHttpTransport()` | Stable | Self-wrapped batched HTTP delivery with shared reliability options. |
 | `otlpHttpTransport()` | Experimental | OTLP mapping is public and tested, but observability adapter packages are not frozen before v1. |
-| `nodeSyslogTransport()` | Stable | Wire formatting is stable; UDP/TCP reliability follows syslog transport semantics. |
+| `nodeSyslogTransport()` | Compatible | Wire formatting is tested, but the transport is outside the v1 kernel until more deployments validate it; UDP/TCP reliability follows syslog transport semantics. |
 | `workerTransport()` | Compatible | Message protocol is public, but ready/ack/fallback lifecycle tuning may evolve. |
 | `browserHttpTransport()` | Stable | Primary browser remote transport; pagehide beacon remains best effort. |
 | `memoryBrowserHttpOfflineQueue()` | Stable | Stable API for temporary offline periods; not reload-durable. |

@@ -862,6 +862,15 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 
 Routes are attached as non-enumerable event metadata and consulted at dispatch. The record fast path performs no route filtering — routes can only be attached by processors, and the record path only runs when a logger has zero processors.
 
+## More Than One Copy of Core
+
+`getLogger()` resolves through the registry of the `@loggerjs/core` copy it was imported from. A process can load more than one copy: an ESM application with a CJS library, or two installed versions. By default each copy keeps its own registry, ambient context, and meta counters, and `configure()` warns once when it sees more than one copy loaded.
+
+- `configure({ shareAcrossCopies: true })` lets every copy use one process-wide store, so libraries in other copies log through the application's configuration.
+- `configure({ shareAcrossCopies: false })` keeps copies isolated and silences the warning. Independently bundled micro-frontends on one page want this, so one app's `configure()` cannot replace another's or close its transports.
+
+Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state.
+
 ## Levels, Categories, Sources
 
 - Levels are numbers (`trace` 10 … `fatal` 60) with names; custom numeric levels work everywhere.
@@ -936,7 +945,7 @@ Transport stability describes the public API promise, not an absolute delivery g
 | `rotatingFileTransport()` | Stable | Local size rotation; use one writer process per file. |
 | `nodeHttpTransport()` | Stable | Self-wrapped batched HTTP delivery with shared reliability options. |
 | `otlpHttpTransport()` | Experimental | OTLP mapping is public and tested, but observability adapter packages are not frozen before v1. |
-| `nodeSyslogTransport()` | Stable | Wire formatting is stable; UDP/TCP reliability follows syslog transport semantics. |
+| `nodeSyslogTransport()` | Compatible | Wire formatting is tested, but the transport is outside the v1 kernel until more deployments validate it; UDP/TCP reliability follows syslog transport semantics. |
 | `workerTransport()` | Compatible | Message protocol is public, but ready/ack/fallback lifecycle tuning may evolve. |
 | `browserHttpTransport()` | Stable | Primary browser remote transport; pagehide beacon remains best effort. |
 | `memoryBrowserHttpOfflineQueue()` | Stable | Stable API for temporary offline periods; not reload-durable. |
@@ -1465,7 +1474,7 @@ Integration stability describes the public setup/options contract and teardown b
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | Core browser capture primitive with loop prevention and teardown coverage. |
 | `captureBrowserErrorsIntegration()` | Stable | Standard browser error and rejection capture; CSP details vary by browser. |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | Request/response capture contract is stable with explicit sanitization hooks. |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | Request/response capture has explicit sanitization hooks, but the captured fields may still be refined before v1. |
 | `pageLifecycleIntegration()` | Runtime-dependent | API is stable, but pagehide/visibility timing is browser-controlled and best effort. |
 | `captureWebVitalsIntegration()` | Runtime-dependent | Depends on PerformanceObserver and browser metric support. |
 | `capturePerformanceIntegration()` | Runtime-dependent | Entry availability differs by browser, permission policy, and page lifecycle. |
@@ -2567,18 +2576,19 @@ Source: https://github.com/jskits/loggerjs/blob/main/docs/BENCHMARK-MATRIX.md
 
 # LoggerJS Benchmark Matrix
 
-Last updated: 2026-09-30
+Last updated: 2026-10-04
 
 This table aggregates artifacts produced by `pnpm bench:matrix`. Ratios are paired per-round latency medians from the interleaved A/B harness, not one-off sequential-run ratios. A ratio below `1.00x` means the LoggerJS path had lower latency than pino on that machine; the percentage in parentheses is LoggerJS throughput relative to pino.
 
-The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The two GitHub-hosted Linux x64 rows (Node 22 and Node 24, shared runners) have LoggerJS lean and prepared ahead of pino. The ranking is CPU/V8-dependent and shared-runner rows are noisy (baseline spread up to 115%), so the matrix still does not support a universal "faster than pino" claim.
+The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is faster on the M4 Pro. The three GitHub-hosted Linux x64 rows share one CPU model (AMD EPYC 7763) across Node 20, 22, and 24: the prepared path is ahead of pino on all three, and the lean path is ahead on Node 22 and 24 but behind on Node 20. The ranking depends on CPU and V8 version, and shared-runner rows are noisy (baseline spread up to 91%), so the matrix does not support a universal "faster than pino" claim.
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 0.3.1 | 5 | 286 | 244 | 223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
 | m4pro-node22 | darwin/arm64 | Apple M4 Pro | v22.22.2 | 0.5.1 | 6 | 197 | 223 | 211 | 1.137x (87.9%) | 1.054x (94.9%) | pino faster in this row |
-| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 9V45 96-Core Processor | v22.23.2 | 0.6.0 | 5 | 240 | 218 | 194 | 0.902x (110.9%) | 0.810x (123.4%) | LoggerJS lean + prepared faster |
-| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 495 | 489 | 429 | 0.968x (103.4%) | 0.865x (115.6%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node20.19.0 | linux/x64 | AMD EPYC 7763 64-Core Processor | v20.19.0 | 0.6.0 | 5 | 469 | 494 | 443 | 1.064x (94.0%) | 0.945x (105.8%) | LoggerJS prepared faster |
+| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 7763 64-Core Processor | v22.23.3 | 0.6.0 | 5 | 511 | 483 | 423 | 0.956x (104.6%) | 0.845x (118.4%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 508 | 485 | 427 | 0.961x (104.0%) | 0.873x (114.5%) | LoggerJS lean + prepared faster |
 
 ## Row Details
 
@@ -2586,17 +2596,18 @@ The Apple Silicon rows disagree: LoggerJS is faster on the M1 Max and pino is fa
 | --- | ---: | --- | --- | ---: | ---: |
 | macbookpro-node22 | 64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 21.2% | 0.919x (108.8%) |
 | m4pro-node22 | 24 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 6 runs, 120 rounds x 5000 ops, 100000 warmup | 41.9% | 0.942x (106.1%) |
-| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 115.2% | 0.854x (117.1%) |
-| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 70.0% | 0.887x (112.7%) |
+| github-ubuntu-x64-node20.19.0 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 32.3% | 0.906x (110.4%) |
+| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 71.5% | 0.878x (113.9%) |
+| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 91.3% | 0.890x (112.4%) |
 
 ## Evidence Coverage
 
 | Requirement | Status | Rows |
 | --- | --- | --- |
 | At least one non-Apple-Silicon runtime | Covered | linux/x64 |
-| At least two Node major versions | Covered | 22, 24 |
+| At least two Node major versions | Covered | 20, 22, 24 |
 
-Both requirements are now covered by the GitHub-hosted Linux rows. The Node 20.19.0 row is still missing: the workflow failed that job before benchmarking because pnpm 11 needs Node >=22.13; the workflow now installs on Node 22 and runs the benchmark on the matrix Node, so the next dispatch collects it.
+Both requirements are covered by the GitHub-hosted Linux rows, collected in one Benchmark Matrix run on the same CPU model.
 
 Notes:
 
@@ -2995,7 +3006,7 @@ This page is the human contract. The machine-readable classification lives in [`
 
 ## Current Policy
 
-Before v1, the project is narrowing the compatibility promise instead of freezing the whole repository. The stable set is intentionally limited to the core logger model, core pipeline contracts, primary browser and Node delivery paths, pretty output, processors, and codecs.
+Before v1, the project is narrowing the compatibility promise instead of freezing the whole repository. The stable set is intentionally limited to a kernel: the core logger model and pipeline contracts, the primary browser and Node delivery paths, the primary browser capture integrations, Node process capture and context, and pretty output. The v1 freeze should happen after design partners have run that kernel in production and the remaining surface has been pruned based on what they actually used, not before.
 
 Everything else may still be public, tested, and useful, but it is not all part of the v1 compatibility promise yet. In particular, vendor, observability, and database packages remain experimental until they have more real-world usage and failure-mode validation.
 
@@ -3016,11 +3027,9 @@ Stable exports are tracked in `api-stability.policy.json`. The current stable pa
 | Package | Stable surface |
 | --- | --- |
 | `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
-| `@loggerjs/browser` | Documented stable subpaths for HTTP delivery, IndexedDB/offline-first storage, support ZIP export, payload transforms, and the primary console/error/fetch/XHR/context/performance/page-lifecycle integrations. |
-| `@loggerjs/node` | Documented stable subpaths for stdout/stderr/file/rotating-file/HTTP/syslog/worker transports, payload transforms, process capture, outgoing HTTP capture, diagnostics, and AsyncLocalStorage context. |
+| `@loggerjs/browser` | `transport-http`, `offline-indexeddb`, `transport-indexeddb`, `offline-first-transport`, and the console, error, context, and page-lifecycle integrations. |
+| `@loggerjs/node` | `transport-stdout`, `transport-file`, `transport-rotating-file`, `transport-http`, `integration-process`, and AsyncLocalStorage `context`. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
-| `@loggerjs/processors` | Root package processor and middleware catalog. |
-| `@loggerjs/codecs` | Root package codec catalog. |
 
 Stable semantics include:
 
@@ -3038,7 +3047,10 @@ Compatible exports stay documented and tested, but they are not frozen enough to
 
 - Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Use the stable subpaths above when you need a v1 candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
+- Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.
+- Node syslog and worker transports, compression payload transforms, outgoing fetch/HTTP client capture, diagnostics_channel capture, and logger diagnostics.
 - Node framework and data integrations: Express, Fastify, Koa, Nest, Hapi, Prisma, Redis, generic queues, BullMQ, serverless lifecycle, database method wrapping, and CLI capture.
+- The `@loggerjs/processors` and `@loggerjs/codecs` catalogs. Individual processors and codecs are small and useful, but freezing about a hundred exports before real usage shows which ones matter would lock in the wrong ones.
 
 The public import paths should remain available during pre-v1, but exact captured fields, hook coverage, and edge behavior may be refined. These are the right places to tighten names or reduce claims before v1 if real usage shows the current API is too broad.
 
@@ -3055,6 +3067,15 @@ These packages are public because they are useful for integration testing and ea
 Experimental does not mean untested. It means minor releases before v1 may change option names, payload mapping, retry expectations, batching guidance, or subpath layout if design partners or live endpoints expose a better shape.
 
 Raw vendor transports are not durable by themselves. For production delivery, wrap them with `batchTransport()` and `retryTransport()` or use a collector endpoint that owns queueing, retry, authentication, and backoff.
+
+## Contracts Beyond TypeScript Signatures
+
+`api-reports/` only sees TypeScript declarations. These contracts are protected by tests instead:
+
+- **Wire formats.** Codec output, the event shape the logger produces, and the exact HTTP requests the Node and browser transports send are pinned byte for byte by golden files under `packages/*/test/golden/`. Changing them is a wire-protocol change and follows the same policy as a signature change of the owning API.
+- **Persisted browser data.** The IndexedDB schemas of `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` must stay readable by the next release. `tests/e2e/browser-upgrade.spec.ts` writes data with the previous published release and reads it with the current code.
+- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change.
+- **Delivery accounting.** Every event handed to a first-party transport is delivered or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle even when the destination fails. Failure-injection, model-based, and soak tests assert this invariant.
 
 ## Change Policy
 
@@ -3452,9 +3473,9 @@ Any feature that writes logs to durable browser storage is explicit, because it 
 | Disabled level call | one numeric comparison, zero allocation | ~3 ns on the reference machine |
 | Record allocation | one record object; no data copy unless middleware clones | met |
 | Node lean NDJSON path | same class as pino for equivalent output | ~1.19x pino throughput on the M1 Max reference, slower than pino on the M4 Pro row |
-| Core size | as small as the platform-neutral feature set allows | ~19 KB gzip for the full barrel; ~6 KB gzip for `createLogger` plus `consoleTransport` after tree-shaking |
+| Core size | as small as the platform-neutral feature set allows | ~21 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 6.3 KB gzip for `createLogger` plus `consoleTransport`, 8.1 KB with `browserHttpTransport`, and 7 KB with `stdoutTransport` |
 
-`pnpm size:check` enforces raw and gzip budgets for every package entry, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
+`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
 
 ### Decision: keep the record pipeline; optimize through codec-owned preparation
 
@@ -3538,6 +3559,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 
 **Size budgets** (`scripts/check-size-budgets.mjs`): every package entry has raw + gzip ceilings checked after build, and so do the tree-shaken, minified minimal apps most users start with (`createLogger()` plus `consoleTransport()`, `browserHttpTransport()`, or `stdoutTransport()`). Raise a budget only together with the change that justifies it, in the same or an adjacent commit, with the measured size and the reason in the message.
 
+**Wire-format golden files** (`packages/*/test/golden/`): codec output, the logger's event shape, and the exact HTTP requests the Node and browser transports send are pinned byte for byte. A diff there is a wire-protocol change for everyone parsing the logs: review it, then update with `pnpm exec vitest run -u` in the package. The golden directories are excluded from formatting and line-ending conversion.
 
 **Component docs** (`scripts/verify-component-docs.mjs`): every public `transport-*`, `*-transport`, or `integration-*` subpath must be listed in the matching transport/integration import-boundary docs. New components also need stability and reliability notes in the same change.
 
@@ -3565,6 +3587,7 @@ Vitest per package, `test/*.test.ts`. House style:
 - Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
 - Delivery code is tested against injected failures, not only the happy path, and asserts the conservation invariant: every emitted event is delivered, or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle. Prefer real failures (a directory or `/dev/full` as a file target, a real HTTP collector that answers 503, resets, or never answers, `context.setOffline()`, a CDP quota override) over mocked streams. See `packages/node/test/failure-injection.test.ts`, `packages/node/test/http-failure-injection.test.ts`, and `tests/e2e/browser-failures.spec.ts`.
+- Lifecycle changes (flush, close, configure, retries) should keep `packages/core/test/lifecycle-model.test.ts` green; it runs seeded random operation sequences against flaky transports. When it fails, the seed in the test name replays the run.
 
 Additional CI gates cover the runtime and quality surface:
 
@@ -3626,6 +3649,7 @@ Before a release that adds a public transport or integration subpath, verify the
 ## Every Release
 
 - Run the `Soak` workflow manually with a longer duration (for example 60 minutes) on the release commit and check both soaks pass.
+- Review any diff under `packages/*/test/golden/`: it changes what collectors receive and belongs in the release notes.
 - After publishing, point `@loggerjs/browser-previous` in `examples/browser-basic/package.json` at the version just released, so the upgrade tests keep opening data written by the last published release, and replace the exact versions under `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` with the ones the alias now installs.
 
 ## NPM Publishing

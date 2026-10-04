@@ -139,8 +139,76 @@ datadogLogsTransport({ apiKey: "test", fetchFn: async () => new Response(null, {
 `,
   );
 
+  // Subpath entries must share the root entry's state: context set through
+  // @loggerjs/core/context and drops counted by @loggerjs/core/transport-batch
+  // have to be visible to loggers and stats from @loggerjs/core, in both builds.
+  writeFileSync(
+    join(consumerRoot, "subpath-state.mjs"),
+    `
+import { createLogger, getLoggerMetaStats, memoryTransport } from "@loggerjs/core";
+import { withContext } from "@loggerjs/core/context";
+import { batchTransport } from "@loggerjs/core/transport-batch";
+
+const memory = memoryTransport({ name: "memory" });
+const batch = batchTransport({ log() {} }, { maxQueueSize: 1, dropPolicy: "drop-newest", flushIntervalMs: 60_000 });
+const logger = createLogger({ transports: [memory, batch], onInternalError() {} });
+withContext({ requestId: "r-1" }, () => logger.info("first"));
+logger.info("second");
+if (memory.events[0]?.context?.requestId !== "r-1") throw new Error("ESM @loggerjs/core/context did not reach the root logger");
+if (getLoggerMetaStats()["transport.dropped.queue-full"] !== 1) throw new Error("ESM transport-batch drops are missing from root stats");
+`,
+  );
+  writeFileSync(
+    join(consumerRoot, "subpath-state.cjs"),
+    `
+const { createLogger, getLoggerMetaStats, memoryTransport } = require("@loggerjs/core");
+const { withContext } = require("@loggerjs/core/context");
+const { batchTransport } = require("@loggerjs/core/transport-batch");
+
+const memory = memoryTransport({ name: "memory" });
+const batch = batchTransport({ log() {} }, { maxQueueSize: 1, dropPolicy: "drop-newest", flushIntervalMs: 60_000 });
+const logger = createLogger({ transports: [memory, batch], onInternalError() {} });
+withContext({ requestId: "r-1" }, () => logger.info("first"));
+logger.info("second");
+if (memory.events[0]?.context?.requestId !== "r-1") throw new Error("CJS @loggerjs/core/context did not reach the root logger");
+if (getLoggerMetaStats()["transport.dropped.queue-full"] !== 1) throw new Error("CJS transport-batch drops are missing from root stats");
+process.exit(0);
+`,
+  );
+
+  // An ESM app and a CJS library in one process load both core builds; with
+  // shareAcrossCopies the library's getLogger() must reach the app's configure().
+  writeFileSync(
+    join(consumerRoot, "dual-library.cjs"),
+    `
+const { getLogger } = require("@loggerjs/core");
+module.exports = () => getLogger("library").info("from cjs library");
+`,
+  );
+  writeFileSync(
+    join(consumerRoot, "dual.mjs"),
+    `
+import { createRequire } from "node:module";
+import { configure } from "@loggerjs/core";
+
+const require = createRequire(import.meta.url);
+const messages = [];
+await configure({
+  shareAcrossCopies: true,
+  transports: [{ name: "dual", log: (event) => messages.push(event.message) }],
+});
+require("./dual-library.cjs")();
+if (messages.join() !== "from cjs library") {
+  throw new Error("CJS getLogger() missed the ESM configure(): " + JSON.stringify(messages));
+}
+`,
+  );
+
   run("node", ["esm.mjs"], consumerRoot);
+  run("node", ["subpath-state.mjs"], consumerRoot);
+  run("node", ["subpath-state.cjs"], consumerRoot);
   run("node", ["cjs.cjs"], consumerRoot);
+  run("node", ["dual.mjs"], consumerRoot);
 
   writeFileSync(
     join(consumerRoot, "typed-consumer.ts"),

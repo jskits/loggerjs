@@ -11,9 +11,20 @@ function stackWithLimit(stack: string | undefined, maxStackLines: number): strin
   return stack.split("\n").slice(0, maxStackLines).join("\n");
 }
 
+// Deep enough for real cause chains while bounding work on pathological ones.
+const MAX_CAUSE_DEPTH = 8;
+
 export function normalizeError(
   error: unknown,
   options: NormalizeErrorOptions = {},
+): SerializedError {
+  return normalizeErrorInChain(error, options, []);
+}
+
+function normalizeErrorInChain(
+  error: unknown,
+  options: NormalizeErrorOptions,
+  outer: unknown[],
 ): SerializedError {
   const maxStackLines = options.maxStackLines ?? 80;
   const includeEnumerableProperties = options.includeEnumerableProperties ?? true;
@@ -26,7 +37,19 @@ export function normalizeError(
     };
 
     const maybeError = error as Error & { cause?: unknown; code?: string | number };
-    if (maybeError.cause !== undefined) out.cause = maybeError.cause;
+    const cause = maybeError.cause;
+    if (cause !== undefined) {
+      // Normalize Error causes too: fast codecs use native JSON.stringify,
+      // which turns an Error into {} and silently drops the cause chain.
+      const chain = [...outer, error];
+      out.cause = !(cause instanceof Error)
+        ? cause
+        : chain.includes(cause)
+          ? "[Circular]"
+          : chain.length > MAX_CAUSE_DEPTH
+            ? { name: cause.name, message: cause.message }
+            : normalizeErrorInChain(cause, options, chain);
+    }
     if (maybeError.code !== undefined) out.code = maybeError.code;
 
     if (includeEnumerableProperties) {

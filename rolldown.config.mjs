@@ -42,32 +42,39 @@ const entryInputs = {
   ),
 };
 
-export default defineConfig(
-  Object.entries(entryInputs).flatMap(([name, input]) => [
-    {
-      input,
-      external: isExternal,
-      platform,
-      tsconfig: join(packageDir, "tsconfig.json"),
-      treeshake: true,
-      output: {
-        file: join(packageDir, `dist/${name}.js`),
-        format: "esm",
-        sourcemap: true,
-      },
+// All entries of a package build together so modules they share, including
+// module-level state such as the logger registry, context manager, and meta
+// counters, land in shared chunks with a single instance. Building each entry
+// on its own gave every subpath (for example @loggerjs/core/context) a private
+// copy of that state, invisible to loggers created from the root entry.
+const shared = {
+  input: entryInputs,
+  external: isExternal,
+  platform,
+  tsconfig: join(packageDir, "tsconfig.json"),
+  treeshake: true,
+};
+
+export default defineConfig([
+  {
+    ...shared,
+    output: {
+      dir: join(packageDir, "dist"),
+      format: "esm",
+      entryFileNames: "[name].js",
+      chunkFileNames: "chunks/[name]-[hash].js",
+      sourcemap: true,
     },
-    {
-      input,
-      external: isExternal,
-      platform,
-      tsconfig: join(packageDir, "tsconfig.json"),
-      treeshake: true,
-      output: {
-        exports: "named",
-        file: join(packageDir, `dist/${name}.cjs`),
-        format: "cjs",
-        sourcemap: true,
-      },
+  },
+  {
+    ...shared,
+    output: {
+      dir: join(packageDir, "dist"),
+      exports: "named",
+      format: "cjs",
+      entryFileNames: "[name].cjs",
+      chunkFileNames: "chunks/[name]-[hash].cjs",
+      sourcemap: true,
     },
-  ]),
-);
+  },
+]);

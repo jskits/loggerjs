@@ -12,5 +12,7 @@
     "dist/**",
     "node_modules/**",
     "pnpm-lock.yaml",
+    // Wire-format golden files hold exact codec output and must stay byte-for-byte.
+    "packages/*/test/golden/**",
   ],
 }

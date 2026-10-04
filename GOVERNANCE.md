@@ -41,3 +41,19 @@ A new maintainer should have a visible history of scoped reviews or patches in a
 - security/privacy processing.
 
 Maintainer changes should be reflected in `CODEOWNERS` and this file.
+
+## v1 Readiness
+
+A 1.0.0 release is a maintenance promise, not a feature milestone. Before tagging it, the maintainer should be able to check every item below. The support windows are proposals for the maintainer to confirm or adjust; once confirmed, `SECURITY.md` should state the same windows.
+
+- **Real usage.** At least three design-partner projects, covering a browser app, a Node service, and an Electron app, have run the stable kernel in production for eight weeks or more and shared `transport.dropped.*`, `transport.retry.*`, and queue-depth metrics. API that none of them used is moved out of the stable set or removed before the freeze.
+- **Second maintainer.** At least one more maintainer with review history (see Adding Maintainers) and npm publish access, so releases and security fixes do not depend on one person.
+- **Failure evidence.** The failure-injection suites, the lifecycle model tests, the browser upgrade tests, and a 60-minute run of the `Soak` workflow pass on the release commit, and the Windows CI job is green.
+- **Node support.** `engines.node` and the lowest `ci.yml` node-compat version name a Node line that is still maintained upstream at release time.
+
+Proposed support commitments after 1.0.0:
+
+- The latest 1.x minor receives all fixes. The previous minor receives security and data-loss fixes for six months after the next minor ships.
+- The 0.x line receives security fixes for three months after 1.0.0.
+- Dropping a Node major from `engines.node` is a major release, even when that Node line is already end-of-life.
+- Security response targets stay as stated in `SECURITY.md`: acknowledgement within 7 days and triage within 14 days.

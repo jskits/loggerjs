@@ -1,0 +1,5 @@
+{"level":30,"time":1767323045678,"msg":"server started"}
+{"level":20,"time":1767323045679,"data":{"orderId":"ord_123","amount":-1.5,"zero":0,"items":[{"sku":"A-1","qty":2},null],"nested":{"deep":{"flag":false}},"unicode":"naïve café ✓ 日本","tricky":"quote \" backslash \\ newline \n separator   end"},"msg":"order created"}
+{"level":50,"time":1767323045680,"err":{"type":"PaymentError","message":"card declined","stack":"PaymentError: card declined\n    at charge (payments.ts:10:5)","code":"E_DECLINED","cause":{"name":"Error","message":"gateway timeout"}},"msg":"charge failed"}
+{"level":40,"time":1767323045681,"msg":"slow request"}
+{"level":60,"time":1767323045682,"data":[1,"two",{"three":3}],"msg":""}

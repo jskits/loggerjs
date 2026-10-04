@@ -5,7 +5,49 @@ This changelog is organized by git tag. Package-specific changelogs live in
 
 ## Unreleased
 
-Source range: `v0.5.0..HEAD`.
+Source range: `v0.6.0..HEAD`.
+
+### Fixed
+
+- Subpath entries of a package share state with its root entry: context set
+  through `@loggerjs/core/context` reaches root loggers, and
+  `@loggerjs/core/transport-batch` drops appear in root stats.
+- `configure({ shareAcrossCopies: true })` lets a CJS library's `getLogger()`
+  reach an ESM application's configuration; copies stay isolated by default,
+  and `configure()` warns once when several copies are loaded.
+- Error `cause` chains survive native-JSON codecs instead of encoding as `{}`.
+- Node file and stream destinations settle `flush()`/`close()` after a write
+  error destroys the stream; `rotatingFileTransport()` keeps logging when a
+  rotation fails and no longer truncates the current file.
+- `nodeHttpTransport()` and `browserHttpTransport()` gain `timeoutMs` (default
+  10 seconds) so a collector that never answers cannot stall shutdown. A
+  timed-out request may still have been processed, so retries can duplicate.
+- Browser transports account for every event: `browserHttpTransport().close()`
+  is terminal and reports drops, failed IndexedDB writes and events logged
+  after `indexedDbTransport().close()` are reported as dropped,
+  `indexedDbTransport()` no longer loses events logged during an in-flight
+  write, and open IndexedDB connections no longer block a newer version in
+  another tab.
+
+### Changed
+
+- Internal `@loggerjs/core` dependencies publish as caret ranges, and every
+  package declares `engines.node: ">=20.19.0"`.
+- The stable v1 candidate set is narrowed to a kernel; processors, codecs, and
+  secondary browser/Node subpaths move to the compatible surface.
+
+### Tests
+
+- Failure injection for file, rotating-file, and HTTP delivery (Node and
+  real browsers), model-based lifecycle tests, a transport soak with a nightly
+  workflow, wire-format golden files, browser upgrade tests against the
+  previous release, a Windows CI job, and size budgets for tree-shaken minimal
+  bundles.
+
+## v0.5.1 - v0.6.0 (2026-06-18 - 2026-09-29)
+
+Source range: `v0.5.0..v0.6.0`. See `packages/*/CHANGELOG.md` for the
+per-release details of `0.5.1` through `0.6.0`.
 
 ### Changed
 

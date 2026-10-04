@@ -43,6 +43,8 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 
 **体积预算**（`scripts/check-size-budgets.mjs`）：每个包入口在构建后都会检查原始体积和 gzip 体积上限，大多数用户起步用的最小应用（`createLogger()` 搭配 `consoleTransport()`、`browserHttpTransport()` 或 `stdoutTransport()`，经过 tree-shaking 和压缩）也一样。只有在同一个或相邻的提交中写明实测体积和理由时，才能上调预算。
 
+**线上格式 golden 文件**（`packages/*/test/golden/`）：codec 输出、logger 的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求都被逐字节固定。这里出现 diff，就意味着所有解析这些日志的人都会受到线上协议变更的影响：先审查，再在对应包里用 `pnpm exec vitest run -u` 更新。golden 目录不参与格式化和换行符转换。
+
 **包清单**（`pnpm pack:check`）：内部依赖使用 `workspace:^`，每个包声明的 `engines.node` 必须与 `ci.yml` 中 node-compat 矩阵的最低 Node 版本一致。
 
 **组件文档**（`scripts/verify-component-docs.mjs`）：每个公开的 `transport-*`、`*-transport` 或 `integration-*` 子路径都必须出现在对应的 transport/integration 导入边界文档中。新组件还需要在同一次变更中补充稳定性和可靠性说明。
@@ -75,6 +77,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` 在 Bun、Deno 和 workerd/Miniflare 中对打包产物做冒烟测试。
 - `pnpm test:quality` 运行覆盖率阈值检查、变异测试、并发管线浸泡测试，以及 transport 浸泡测试（`pnpm test:soak:transports`：file、rotating-file 和 HTTP 投递，收集端会注入 503、连接重置和挂起请求）。每晚的 `Soak` workflow 会把两者各运行 20 分钟；发版前可手动触发并设置更长时长。
 - 投递相关代码要在注入故障的情况下测试，而不只是正常路径，并断言守恒不变量：每个发出的事件要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告，且 `flush()`/`close()` 必须结束。优先使用真实故障（把目录或 `/dev/full` 当作文件目标、会返回 503/重置连接/永不响应的真实 HTTP 收集端、`context.setOffline()`、CDP 配额覆盖），而不是模拟的流。
+- 生命周期相关改动（flush、close、configure、重试）需要保持 `packages/core/test/lifecycle-model.test.ts` 通过；它用带种子的随机操作序列驱动不稳定的 transport，失败时测试名里的种子可以复现。
 - `tests/e2e/browser-upgrade.spec.ts` 用当前代码打开上一个已发布版本（`examples/browser-basic` 中的 `@loggerjs/browser-previous`）写入的 IndexedDB 数据。
 - CI 中的 `windows` job 会在 Windows 上运行 core 和 Node 测试。
 - `pnpm test:live:local` 启动基于 Docker 的 Elasticsearch 和 Loki 实例，通过 transport 写入真实日志，再从服务中查询确认。

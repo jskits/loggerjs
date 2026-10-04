@@ -354,9 +354,9 @@ Any feature that writes logs to durable browser storage is explicit, because it 
 | Disabled level call | one numeric comparison, zero allocation | ~3 ns on the reference machine |
 | Record allocation | one record object; no data copy unless middleware clones | met |
 | Node lean NDJSON path | same class as pino for equivalent output | ~1.19x pino throughput on the M1 Max reference, slower than pino on the M4 Pro row |
-| Core size | as small as the platform-neutral feature set allows | ~19 KB gzip for the full barrel; ~6 KB gzip for `createLogger` plus `consoleTransport` after tree-shaking |
+| Core size | as small as the platform-neutral feature set allows | ~21 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 6.3 KB gzip for `createLogger` plus `consoleTransport`, 8.1 KB with `browserHttpTransport`, and 7 KB with `stdoutTransport` |
 
-`pnpm size:check` enforces raw and gzip budgets for every package entry, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
+`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
 
 ### Decision: keep the record pipeline; optimize through codec-owned preparation
 

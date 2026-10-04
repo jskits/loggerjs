@@ -28,7 +28,7 @@ Integration stability describes the public setup/options contract and teardown b
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | Core browser capture primitive with loop prevention and teardown coverage. |
 | `captureBrowserErrorsIntegration()` | Stable | Standard browser error and rejection capture; CSP details vary by browser. |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | Request/response capture contract is stable with explicit sanitization hooks. |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | Request/response capture has explicit sanitization hooks, but the captured fields may still be refined before v1. |
 | `pageLifecycleIntegration()` | Runtime-dependent | API is stable, but pagehide/visibility timing is browser-controlled and best effort. |
 | `captureWebVitalsIntegration()` | Runtime-dependent | Depends on PerformanceObserver and browser metric support. |
 | `capturePerformanceIntegration()` | Runtime-dependent | Entry availability differs by browser, permission policy, and page lifecycle. |

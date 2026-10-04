@@ -466,6 +466,15 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 
 路由信息以不可枚举的 event 元数据形式附加，并在分发时使用。record 快速路径不做路由过滤：路由只能由 processor 附加，而 record 路径只在 logger 没有 processor 时才会运行。
 
+## 同时存在多个 core 副本
+
+`getLogger()` 通过它所导入的那个 `@loggerjs/core` 副本的 registry 解析。一个进程可能加载多个副本：ESM 应用加 CJS 库，或者安装了两个版本。默认情况下每个副本都有自己的 registry、环境 context 和 meta 计数器，`configure()` 发现加载了多个副本时会警告一次。
+
+- `configure({ shareAcrossCopies: true })` 让所有副本使用同一个进程级存储，其他副本中的库也会走应用的配置。
+- `configure({ shareAcrossCopies: false })` 保持各副本隔离，并关闭警告。同一页面上各自打包的微前端需要这样，避免一个应用的 `configure()` 替换另一个应用的配置或关闭它的 transport。
+
+同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。
+
 ## Levels、Categories、Sources
 
 - Levels 是数字（`trace` 10 到 `fatal` 60）并带名称；自定义数字级别在各处可用。
@@ -551,7 +560,7 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `rotatingFileTransport()` | Stable | 本地按大小轮转；每个文件只应有一个写入进程。 |
 | `nodeHttpTransport()` | Stable | 内置批量包装的 HTTP 投递，使用共享的可靠性选项。 |
 | `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包在 v1 之前不冻结。 |
-| `nodeSyslogTransport()` | Stable | 消息格式稳定；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
+| `nodeSyslogTransport()` | Compatible | 消息格式有测试覆盖，但在更多部署验证之前不属于 v1 内核；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
 | `workerTransport()` | Compatible | 消息协议公开，但 ready/ack/回退等生命周期细节可能继续调整。 |
 | `browserHttpTransport()` | Stable | 主要的浏览器远程 transport；pagehide 时的 Beacon 仍是尽力而为。 |
 | `memoryBrowserHttpOfflineQueue()` | Stable | 用于短暂离线的稳定 API；刷新页面后不保留。 |
@@ -1113,7 +1122,7 @@ integration 的稳定性描述的是公开的 setup/选项契约和拆除行为�
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | 核心的浏览器采集能力，具备防回环和拆除测试。 |
 | `captureBrowserErrorsIntegration()` | Stable | 标准的浏览器错误和 rejection 采集；CSP 细节因浏览器而异。 |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | 请求/响应采集契约稳定，并提供显式的数据清洗钩子。 |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | 请求/响应采集提供显式的数据清洗钩子，但 v1 之前采集字段仍可能调整。 |
 | `pageLifecycleIntegration()` | Runtime-dependent | API 稳定，但 pagehide/visibility 的触发时机由浏览器决定，只能尽力而为。 |
 | `captureWebVitalsIntegration()` | Runtime-dependent | 依赖 PerformanceObserver 和浏览器对各项指标的支持。 |
 | `capturePerformanceIntegration()` | Runtime-dependent | 能拿到哪些 entry 取决于浏览器、权限策略和页面生命周期。 |
@@ -2292,18 +2301,19 @@ description: "跨机器基准证据和记录方式。"
 
 # LoggerJS 基准矩阵
 
-最后更新：2026-09-30
+最后更新：2026-10-04
 
 本表汇总 `pnpm bench:matrix` 产出的基准产物。比值取自交错 A/B 测试框架的逐轮配对延迟中位数，而不是单次顺序运行得出的比值。比值低于 `1.00x` 表示在该机器上 LoggerJS 路径的延迟低于 pino；括号中的百分比是 LoggerJS 相对 pino 的吞吐量。
 
-两行 Apple Silicon 结果方向相反：M1 Max 上 LoggerJS 更快，M4 Pro 上 pino 更快。两行 GitHub 托管的 Linux x64 结果（Node 22 和 Node 24，共享 runner）中 LoggerJS lean 和 prepared 都快于 pino。排名取决于 CPU 和 V8 版本，而且共享 runner 的数据噪声较大（基线离散度最高达 115%），因此这份矩阵仍不支持“普遍快于 pino”的说法。
+两行 Apple Silicon 结果方向相反：M1 Max 上 LoggerJS 更快，M4 Pro 上 pino 更快。三行 GitHub 托管的 Linux x64 结果使用同一型号的 CPU（AMD EPYC 7763），分别对应 Node 20、22 和 24：prepared 路径在三行中都快于 pino，lean 路径在 Node 22 和 24 上快于 pino，在 Node 20 上慢于 pino。排名取决于 CPU 和 V8 版本，而且共享 runner 的数据噪声较大（基线离散度最高达 91%），因此这份矩阵不支持“普遍快于 pino”的说法。
 
 | Label | Platform | CPU | Node | LoggerJS | Runs | Pino ns | Lean ns | Prepared ns | Lean / pino | Prepared / pino | Result |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | macbookpro-node22 | darwin/arm64 | Apple M1 Max | v22.21.1 | 0.3.1 | 5 | 286 | 244 | 223 | 0.843x (118.6%) | 0.773x (129.3%) | LoggerJS lean + prepared faster |
 | m4pro-node22 | darwin/arm64 | Apple M4 Pro | v22.22.2 | 0.5.1 | 6 | 197 | 223 | 211 | 1.137x (87.9%) | 1.054x (94.9%) | pino faster in this row |
-| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 9V45 96-Core Processor | v22.23.2 | 0.6.0 | 5 | 240 | 218 | 194 | 0.902x (110.9%) | 0.810x (123.4%) | LoggerJS lean + prepared faster |
-| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 495 | 489 | 429 | 0.968x (103.4%) | 0.865x (115.6%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node20.19.0 | linux/x64 | AMD EPYC 7763 64-Core Processor | v20.19.0 | 0.6.0 | 5 | 469 | 494 | 443 | 1.064x (94.0%) | 0.945x (105.8%) | LoggerJS prepared faster |
+| github-ubuntu-x64-node22 | linux/x64 | AMD EPYC 7763 64-Core Processor | v22.23.3 | 0.6.0 | 5 | 511 | 483 | 423 | 0.956x (104.6%) | 0.845x (118.4%) | LoggerJS lean + prepared faster |
+| github-ubuntu-x64-node24 | linux/x64 | AMD EPYC 7763 64-Core Processor | v24.21.0 | 0.6.0 | 5 | 508 | 485 | 427 | 0.961x (104.0%) | 0.873x (114.5%) | LoggerJS lean + prepared faster |
 
 ## 行详情
 
@@ -2311,17 +2321,18 @@ description: "跨机器基准证据和记录方式。"
 | --- | ---: | --- | --- | ---: | ---: |
 | macbookpro-node22 | 64 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.3 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 21.2% | 0.919x (108.8%) |
 | m4pro-node22 | 24 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 6 runs, 120 rounds x 5000 ops, 100000 warmup | 41.9% | 0.942x (106.1%) |
-| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 115.2% | 0.854x (117.1%) |
-| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 70.0% | 0.887x (112.7%) |
+| github-ubuntu-x64-node20.19.0 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 32.3% | 0.906x (110.4%) |
+| github-ubuntu-x64-node22 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 71.5% | 0.878x (113.9%) |
+| github-ubuntu-x64-node24 | 15.6 GB | pino 10.3.1, winston 3.19.0, LogTape 2.1.5 | 5 runs, 120 rounds x 5000 ops, 100000 warmup | 91.3% | 0.890x (112.4%) |
 
 ## 证据覆盖
 
 | 要求 | 状态 | 已有行 |
 | --- | --- | --- |
 | 至少一个非 Apple Silicon 运行环境 | 已覆盖 | linux/x64 |
-| 至少两个 Node 主版本 | 已覆盖 | 22, 24 |
+| 至少两个 Node 主版本 | 已覆盖 | 20, 22, 24 |
 
-GitHub 托管的 Linux 行已经覆盖这两项要求。Node 20.19.0 行仍然缺失：由于 pnpm 11 需要 Node >=22.13，该 job 在跑基准之前就失败了；workflow 现在改为在 Node 22 上安装、在矩阵 Node 上运行基准，下一次触发即可采集到这一行。
+这两项要求都由 GitHub 托管的 Linux 行覆盖，它们来自同一次 Benchmark Matrix 运行、同一型号的 CPU。
 
 说明：
 
@@ -2745,7 +2756,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 ## 当前策略
 
-在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定在 core 的 logger 模型、core 管线契约、主要的浏览器和 Node 投递路径、pretty 输出、processor 以及 codec。
+在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定为一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。v1 冻结应当在早期合作用户把这个内核真正跑在生产环境、并根据实际使用情况裁剪其余部分之后进行，而不是之前。
 
 其他部分同样可能是公开的、经过测试且可用的，但并非都属于 v1 兼容承诺。尤其是厂商、可观测性和数据库相关的包，在获得更多真实使用和故障场景验证之前，仍保持实验状态。
 
@@ -2766,11 +2777,9 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 | 包 | 稳定范围 |
 | --- | --- |
 | `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
-| `@loggerjs/browser` | 文档中列出的稳定子路径：HTTP 投递、IndexedDB/offline-first 存储、支持日志 ZIP 导出、payload 转换，以及主要的 console/error/fetch/XHR/context/performance/page-lifecycle integration。 |
-| `@loggerjs/node` | 文档中列出的稳定子路径：stdout/stderr/file/rotating-file/HTTP/syslog/worker transport、payload 转换、进程采集、出站 HTTP 采集、诊断，以及 AsyncLocalStorage context。 |
+| `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
+| `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
-| `@loggerjs/processors` | 根入口导出的 processor 和 middleware 目录。 |
-| `@loggerjs/codecs` | 根入口导出的 codec 目录。 |
 
 稳定的语义包括：
 
@@ -2788,7 +2797,10 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 - browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
+- 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。
+- Node 的 syslog 和 worker transport、压缩 payload 转换、出站 fetch/HTTP client 采集、diagnostics_channel 采集和 logger 诊断。
 - Node 的框架和数据类 integration：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、通用队列、BullMQ、serverless 生命周期、数据库方法包装和 CLI 采集。
+- `@loggerjs/processors` 和 `@loggerjs/codecs` 目录。单个 processor 和 codec 都很小也很有用，但在真实使用表明哪些真正重要之前冻结约一百个导出，只会锁定错误的那部分。
 
 在 1.0 之前，这些公开的导入路径会继续保留，但具体的采集字段、钩子覆盖范围和边界行为仍可能调整。如果真实使用表明当前 API 过于宽泛，这些部分也是 v1 之前收窄命名或降低承诺的合适位置。
 
@@ -2805,6 +2817,15 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 实验性不等于没有测试。它的意思是：如果早期合作用户或真实端点表明有更好的设计，v1 之前的 minor 版本可能调整选项名、payload 映射、重试预期、批量建议或子路径结构。
 
 原始的厂商 transport 本身不具备持久性。生产投递应使用 `batchTransport()` 和 `retryTransport()` 包装，或者投递到一个自己负责排队、重试、认证和退避的收集端点。
+
+## TypeScript 签名之外的契约
+
+`api-reports/` 只能看到 TypeScript 声明。以下契约改由测试保护：
+
+- **线上格式。** codec 输出、logger 产出的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求，都由 `packages/*/test/golden/` 下的 golden 文件逐字节固定。改动它们就是线上协议变更，适用与所属 API 签名变更相同的策略。
+- **浏览器持久化数据。** `indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 的 IndexedDB 结构必须能被下一个版本读取。`tests/e2e/browser-upgrade.spec.ts` 用上一个已发布版本写入数据，再用当前代码读取。
+- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。
+- **投递计数。** 交给第一方 transport 的每个事件，要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告；即使目标端出错，`flush()`/`close()` 也必须结束。故障注入测试、基于模型的测试和浸泡测试都会断言这一不变量。
 
 ## 变更策略
 
@@ -3213,9 +3234,9 @@ record 快速路径不做路由过滤：路由只能由 processor 附加，而 r
 | 禁用级别的调用 | 一次数值比较，零分配 | 参考机器上约 3 ns |
 | record 分配 | 每条日志一个 record 对象；除非 middleware 显式克隆，否则不复制数据 | 已达成 |
 | Node lean NDJSON 路径 | 等价输出下与 pino 同一量级 | M1 Max 参考机器上约为 pino 吞吐量的 1.19 倍，M4 Pro 行上慢于 pino |
-| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 约 19 KB gzip；tree-shaking 后只用 `createLogger` 和 `consoleTransport` 约 6 KB gzip |
+| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 连同共享 chunk 约 21 KB gzip；经过 tree-shaking 和压缩后，`createLogger` 加 `consoleTransport` 约 6.3 KB gzip，加 `browserHttpTransport` 约 8.1 KB，加 `stdoutTransport` 约 7 KB |
 
-`pnpm size:check` 对每个包入口强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
+`pnpm size:check` 对每个包入口以及上述三个最小应用 bundle 强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
 
 ### 决策：保留 record 管线，通过 codec 持有的预处理来优化
 
@@ -3310,6 +3331,8 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 
 **体积预算**（`scripts/check-size-budgets.mjs`）：每个包入口在构建后都会检查原始体积和 gzip 体积上限，大多数用户起步用的最小应用（`createLogger()` 搭配 `consoleTransport()`、`browserHttpTransport()` 或 `stdoutTransport()`，经过 tree-shaking 和压缩）也一样。只有在同一个或相邻的提交中写明实测体积和理由时，才能上调预算。
 
+**线上格式 golden 文件**（`packages/*/test/golden/`）：codec 输出、logger 的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求都被逐字节固定。这里出现 diff，就意味着所有解析这些日志的人都会受到线上协议变更的影响：先审查，再在对应包里用 `pnpm exec vitest run -u` 更新。golden 目录不参与格式化和换行符转换。
+
 **包清单**（`pnpm pack:check`）：内部依赖使用 `workspace:^`，每个包声明的 `engines.node` 必须与 `ci.yml` 中 node-compat 矩阵的最低 Node 版本一致。
 
 **组件文档**（`scripts/verify-component-docs.mjs`）：每个公开的 `transport-*`、`*-transport` 或 `integration-*` 子路径都必须出现在对应的 transport/integration 导入边界文档中。新组件还需要在同一次变更中补充稳定性和可靠性说明。
@@ -3342,6 +3365,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` 在 Bun、Deno 和 workerd/Miniflare 中对打包产物做冒烟测试。
 - `pnpm test:quality` 运行覆盖率阈值检查、变异测试、并发管线浸泡测试，以及 transport 浸泡测试（`pnpm test:soak:transports`：file、rotating-file 和 HTTP 投递，收集端会注入 503、连接重置和挂起请求）。每晚的 `Soak` workflow 会把两者各运行 20 分钟；发版前可手动触发并设置更长时长。
 - 投递相关代码要在注入故障的情况下测试，而不只是正常路径，并断言守恒不变量：每个发出的事件要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告，且 `flush()`/`close()` 必须结束。优先使用真实故障（把目录或 `/dev/full` 当作文件目标、会返回 503/重置连接/永不响应的真实 HTTP 收集端、`context.setOffline()`、CDP 配额覆盖），而不是模拟的流。
+- 生命周期相关改动（flush、close、configure、重试）需要保持 `packages/core/test/lifecycle-model.test.ts` 通过；它用带种子的随机操作序列驱动不稳定的 transport，失败时测试名里的种子可以复现。
 - `tests/e2e/browser-upgrade.spec.ts` 用当前代码打开上一个已发布版本（`examples/browser-basic` 中的 `@loggerjs/browser-previous`）写入的 IndexedDB 数据。
 - CI 中的 `windows` job 会在 Windows 上运行 core 和 Node 测试。
 - `pnpm test:live:local` 启动基于 Docker 的 Elasticsearch 和 Loki 实例，通过 transport 写入真实日志，再从服务中查询确认。
@@ -3408,6 +3432,7 @@ changeset publish --tag canary
 ## 每次发版
 
 - 在发版提交上手动运行 `Soak` workflow，设置更长时长（例如 60 分钟），确认两个浸泡测试都通过。
+- 审查 `packages/*/test/golden/` 下的任何 diff：它会改变收集端收到的内容，需要写进发版说明。
 - 发布之后，把 `examples/browser-basic/package.json` 中的 `@loggerjs/browser-previous` 指向刚发布的版本，让升级测试始终打开上一个已发布版本写入的数据，并把 `pnpm-workspace.yaml` 中 `minimumReleaseAgeExclude` 的精确版本替换为该别名现在安装的版本。
 
 ## npm 发布
@@ -3476,9 +3501,9 @@ pnpm test:inventory:check
 
 | 指标 | 数量 |
 | --- | ---: |
-| Test files | 101 |
-| Test cases | 774 |
-| Passed | 774 |
+| Test files | 107 |
+| Test cases | 953 |
+| Passed | 953 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -3488,15 +3513,15 @@ pnpm test:inventory:check
 
 | Package | Test files | Test cases |
 | --- | ---: | ---: |
-| @loggerjs/browser | 24 | 166 |
+| @loggerjs/browser | 25 | 168 |
 | @loggerjs/cloudwatch | 1 | 11 |
-| @loggerjs/codecs | 2 | 39 |
-| @loggerjs/core | 20 | 244 |
+| @loggerjs/codecs | 3 | 42 |
+| @loggerjs/core | 23 | 417 |
 | @loggerjs/database | 1 | 6 |
 | @loggerjs/datadog | 1 | 7 |
 | @loggerjs/elastic | 1 | 10 |
 | @loggerjs/loki | 1 | 7 |
-| @loggerjs/node | 23 | 107 |
+| @loggerjs/node | 24 | 108 |
 | @loggerjs/otel | 3 | 18 |
 | @loggerjs/pretty | 3 | 27 |
 | @loggerjs/processors | 20 | 120 |

@@ -134,6 +134,15 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 
 Routes are attached as non-enumerable event metadata and consulted at dispatch. The record fast path performs no route filtering — routes can only be attached by processors, and the record path only runs when a logger has zero processors.
 
+## More Than One Copy of Core
+
+`getLogger()` resolves through the registry of the `@loggerjs/core` copy it was imported from. A process can load more than one copy: an ESM application with a CJS library, or two installed versions. By default each copy keeps its own registry, ambient context, and meta counters, and `configure()` warns once when it sees more than one copy loaded.
+
+- `configure({ shareAcrossCopies: true })` lets every copy use one process-wide store, so libraries in other copies log through the application's configuration.
+- `configure({ shareAcrossCopies: false })` keeps copies isolated and silences the warning. Independently bundled micro-frontends on one page want this, so one app's `configure()` cannot replace another's or close its transports.
+
+Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state.
+
 ## Levels, Categories, Sources
 
 - Levels are numbers (`trace` 10 … `fatal` 60) with names; custom numeric levels work everywhere.

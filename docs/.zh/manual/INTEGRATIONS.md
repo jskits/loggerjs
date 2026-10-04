@@ -28,7 +28,7 @@ integration 的稳定性描述的是公开的 setup/选项契约和拆除行为�
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | 核心的浏览器采集能力，具备防回环和拆除测试。 |
 | `captureBrowserErrorsIntegration()` | Stable | 标准的浏览器错误和 rejection 采集；CSP 细节因浏览器而异。 |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Stable | 请求/响应采集契约稳定，并提供显式的数据清洗钩子。 |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | 请求/响应采集提供显式的数据清洗钩子，但 v1 之前采集字段仍可能调整。 |
 | `pageLifecycleIntegration()` | Runtime-dependent | API 稳定，但 pagehide/visibility 的触发时机由浏览器决定，只能尽力而为。 |
 | `captureWebVitalsIntegration()` | Runtime-dependent | 依赖 PerformanceObserver 和浏览器对各项指标的支持。 |
 | `capturePerformanceIntegration()` | Runtime-dependent | 能拿到哪些 entry 取决于浏览器、权限策略和页面生命周期。 |

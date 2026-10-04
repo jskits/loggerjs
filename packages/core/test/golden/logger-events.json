@@ -1,0 +1,82 @@
+[
+  {
+    "id": "id-trace-0",
+    "time": 1767323045678,
+    "seq": 0,
+    "level": 10,
+    "levelName": "trace",
+    "logger": "app",
+    "message": "trace line"
+  },
+  {
+    "id": "id-info-1",
+    "time": 1767323045679,
+    "seq": 1,
+    "level": 30,
+    "levelName": "info",
+    "logger": "app",
+    "message": "with data",
+    "data": {
+      "count": 2,
+      "nested": {
+        "ok": true
+      }
+    }
+  },
+  {
+    "id": "id-error-2",
+    "time": 1767323045680,
+    "seq": 2,
+    "level": 50,
+    "levelName": "error",
+    "logger": "app",
+    "message": "with error",
+    "error": {
+      "name": "TypeError",
+      "message": "boom",
+      "stack": "<stack>",
+      "cause": {
+        "name": "Error",
+        "message": "root cause",
+        "stack": "<stack>"
+      }
+    }
+  },
+  {
+    "id": "id-warn-3",
+    "time": 1767323045681,
+    "seq": 3,
+    "level": 40,
+    "levelName": "warn",
+    "logger": "child",
+    "message": "child warning",
+    "tags": {
+      "region": "eu"
+    }
+  },
+  {
+    "id": "id-info-4",
+    "time": 1767323045682,
+    "seq": 4,
+    "level": 30,
+    "levelName": "info",
+    "logger": "app",
+    "message": "in context",
+    "context": {
+      "requestId": "req-1"
+    }
+  },
+  {
+    "id": "id-info-5",
+    "time": 1767323045683,
+    "seq": 5,
+    "level": 30,
+    "levelName": "info",
+    "logger": "app",
+    "message": "order ord_1",
+    "type": "order.created",
+    "data": {
+      "orderId": "ord_1"
+    }
+  }
+]
