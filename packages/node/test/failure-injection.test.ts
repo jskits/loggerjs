@@ -54,8 +54,10 @@ interface UnwritableTarget {
   path: () => string;
 }
 
-// Real filesystem failures rather than mocked streams: a directory fails every
-// write with EISDIR everywhere, and /dev/full fails with ENOSPC on Linux.
+// A real filesystem failure rather than a mocked stream: a directory fails
+// every write with EISDIR on every platform. Platform-only targets such as
+// /dev/full would register different tests per OS and break the test
+// inventory, so late write errors are covered by the close() test below.
 const unwritableTargets: UnwritableTarget[] = [
   {
     name: "a directory (EISDIR)",
@@ -65,7 +67,6 @@ const unwritableTargets: UnwritableTarget[] = [
       return dir;
     },
   },
-  ...(existsSync("/dev/full") ? [{ name: "a full disk (ENOSPC)", path: () => "/dev/full" }] : []),
 ];
 
 describe("file transports under injected failures", () => {
@@ -120,7 +121,7 @@ describe("file transports under injected failures", () => {
     );
     await transport.close?.();
 
-    // A write error that surfaces after close() (as ENOSPC does on /dev/full)
+    // A write error that surfaces after close() (as ENOSPC does on a full disk)
     // must not become an unhandled 'error' event.
     expect(() => transport.stream?.emit("error", new Error("late write failure"))).not.toThrow();
   });
@@ -134,10 +135,10 @@ describe("file transports under injected failures", () => {
     const exited = new Promise<void>((done) => child.once("exit", () => done()));
 
     // Kill without warning once a few rotations have happened.
-    await waitUntil(() => existsSync(`${path}.3`), 15_000);
+    await waitUntil(() => existsSync(`${path}.4`), 15_000);
     child.kill("SIGKILL");
     await exited;
-    expect(existsSync(`${path}.3`)).toBe(true);
+    expect(existsSync(`${path}.4`)).toBe(true);
 
     const files: string[] = [];
     for (let index = 200; index >= 1; index -= 1) {
@@ -158,6 +159,8 @@ describe("file transports under injected failures", () => {
       }
     }
 
+    // A kill in the middle of a rotation can leave one archive number unused
+    // (for example .2 already moved to .3 but .1 not yet moved to .2).
     expect(archiveTails.length).toBeGreaterThanOrEqual(3);
     expect(archiveTails.every((tail) => tail === "")).toBe(true);
     expect(numbers.length).toBeGreaterThan(0);
