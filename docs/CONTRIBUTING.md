@@ -69,12 +69,14 @@ Vitest per package, `test/*.test.ts`. House style:
 - Pin behavior with hostile inputs (circular refs, BigInt, frozen objects, throwing callbacks) — most past regressions were caught by exactly these.
 - Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
+- Delivery code is tested against injected failures, not only the happy path, and asserts the conservation invariant: every emitted event is delivered, or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle. Prefer real failures (a directory or `/dev/full` as a file target, a real HTTP collector that answers 503, resets, or never answers, `context.setOffline()`, a CDP quota override) over mocked streams. See `packages/node/test/failure-injection.test.ts`, `packages/node/test/http-failure-injection.test.ts`, and `tests/e2e/browser-failures.spec.ts`.
 
 Additional CI gates cover the runtime and quality surface:
 
 - `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
 - `pnpm test:quality` runs coverage thresholds, mutation testing, the concurrent pipeline soak, and the transport soak (`pnpm test:soak:transports`: file, rotating-file, and HTTP delivery against a collector that injects 503s, resets, and hung requests). The nightly `Soak` workflow runs both for 20 minutes; dispatch it manually with a longer duration before a release.
+- `tests/e2e/browser-upgrade.spec.ts` opens IndexedDB data written by the previous published release (`@loggerjs/browser-previous` in `examples/browser-basic`) with the current code.
 - The `windows` CI job runs the core and Node suites on Windows.
 - `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
 - `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.

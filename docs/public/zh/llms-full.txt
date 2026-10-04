@@ -711,6 +711,10 @@ worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 
 | `browserBroadcastChannelTransport({ channel })` | 把日志分发到其他标签页（本身就可能丢失；接收方必须正在监听）。 |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把日志（例如来自 `indexedDbTransport().query()`）打包成 ZIP，包含 manifest、可选的按 session 拆分文件、可选的 `recent.ndjson`/`recent.json` 和 CRC，用于技术支持流程。 |
 
+`browserHttpTransport()` 会在 `timeoutMs`（默认 `10000`，设为 `0` 关闭）后中止 Fetch 投递。浏览器自身永远不会让请求超时，没有它时一个卡住的请求会挡住之后所有的 flush 和 `close()`；配置了离线队列时，超时的批次会被存下来以便重放。`close()` 是终态：它无法投递或存储的事件，以及之后再记录的事件，都会通过 `onDrop` 和 `transport.dropped.closed` 报告。
+
+`indexedDbTransport()` 在某个批次的 IndexedDB 写入失败时，会通过 `onDrop` 报告其中每个事件：`QuotaExceededError` 的原因为 `quota`，其他情况为 `write-failed`。`indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 在另一个标签页需要升级或删除数据库（例如新版本应用）时会关闭连接，并在下次使用时重新打开。`close()` 之后再写入 `indexedDbTransport()` 的事件会以 `closed` 原因报告为丢弃。与 Node 一样，超时的请求可能已经被处理，因此超时的批次可能到达两次；如有需要，请按事件 `id` 去重。
+
 `browserHttpTransport()` 在普通 Fetch 投递中使用 `codec`。如果 pagehide 或页面隐藏时的 Beacon 请求需要不同的编码或 content type，可以设置 `beaconCodec`；未设置时回退到 `codec`。配置了 `transformPayload` 时会跳过 Beacon 投递，生命周期 flush 改走普通 Fetch 路径，`beaconCodec` 也就不会生效。
 
 `browserHttpTransport()` 同样接受 `transformPayload`。在支持 `CompressionStream` 的浏览器中使用 `browserCompressionPayloadTransform()`：
@@ -3337,6 +3341,8 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 - `pnpm test:e2e:browser` 在 Chromium、Firefox 和 WebKit 中运行浏览器 E2E 测试。
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` 在 Bun、Deno 和 workerd/Miniflare 中对打包产物做冒烟测试。
 - `pnpm test:quality` 运行覆盖率阈值检查、变异测试、并发管线浸泡测试，以及 transport 浸泡测试（`pnpm test:soak:transports`：file、rotating-file 和 HTTP 投递，收集端会注入 503、连接重置和挂起请求）。每晚的 `Soak` workflow 会把两者各运行 20 分钟；发版前可手动触发并设置更长时长。
+- 投递相关代码要在注入故障的情况下测试，而不只是正常路径，并断言守恒不变量：每个发出的事件要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告，且 `flush()`/`close()` 必须结束。优先使用真实故障（把目录或 `/dev/full` 当作文件目标、会返回 503/重置连接/永不响应的真实 HTTP 收集端、`context.setOffline()`、CDP 配额覆盖），而不是模拟的流。
+- `tests/e2e/browser-upgrade.spec.ts` 用当前代码打开上一个已发布版本（`examples/browser-basic` 中的 `@loggerjs/browser-previous`）写入的 IndexedDB 数据。
 - CI 中的 `windows` job 会在 Windows 上运行 core 和 Node 测试。
 - `pnpm test:live:local` 启动基于 Docker 的 Elasticsearch 和 Loki 实例，通过 transport 写入真实日志，再从服务中查询确认。
 - `pnpm test:live:external` 向 Datadog Logs 和 CloudWatch Logs 写入并查询日志，需要 `DATADOG_API_KEY`、`DATADOG_APP_KEY`、`AWS_REGION`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` 和 `CLOUDWATCH_LOG_GROUP`；`pnpm test:live:config` 可以在不打印密钥值的情况下检查哪些变量已设置。
@@ -3402,6 +3408,8 @@ changeset publish --tag canary
 ## 每次发版
 
 - 在发版提交上手动运行 `Soak` workflow，设置更长时长（例如 60 分钟），确认两个浸泡测试都通过。
+- 发布之后，把 `examples/browser-basic/package.json` 中的 `@loggerjs/browser-previous` 指向刚发布的版本，让升级测试始终打开上一个已发布版本写入的数据，并把 `pnpm-workspace.yaml` 中 `minimumReleaseAgeExclude` 的精确版本替换为该别名现在安装的版本。
+
 ## npm 发布
 
 发布 workflow 是 `.github/workflows/release.yml`。每个可发布的 `@loggerjs/*` 包都应在 npmjs.com 上配置 Trusted Publisher：
@@ -3469,8 +3477,8 @@ pnpm test:inventory:check
 | 指标 | 数量 |
 | --- | ---: |
 | Test files | 101 |
-| Test cases | 766 |
-| Passed | 766 |
+| Test cases | 774 |
+| Passed | 774 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -3480,7 +3488,7 @@ pnpm test:inventory:check
 
 | Package | Test files | Test cases |
 | --- | ---: | ---: |
-| @loggerjs/browser | 24 | 158 |
+| @loggerjs/browser | 24 | 166 |
 | @loggerjs/cloudwatch | 1 | 11 |
 | @loggerjs/codecs | 2 | 39 |
 | @loggerjs/core | 20 | 244 |

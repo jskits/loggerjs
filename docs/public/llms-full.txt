@@ -1096,6 +1096,10 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@lo
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
+`browserHttpTransport()` aborts a Fetch delivery after `timeoutMs` (default `10000`, `0` disables). Browsers never time out a request themselves, so without it one stalled request would hold every later flush and `close()`; with an offline queue configured, a timed-out batch is stored for replay. `close()` is terminal: events it could not deliver or store, and events logged after it, are reported through `onDrop` and `transport.dropped.closed`.
+
+`indexedDbTransport()` reports every event of a batch whose IndexedDB write fails through `onDrop`, with reason `quota` for `QuotaExceededError` and `write-failed` otherwise. Both `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` close their connection when another tab needs to upgrade or delete the database (for example a newer app version) and reopen it on next use. Events logged to `indexedDbTransport()` after `close()` are reported as dropped with reason `closed`. As with Node, a request that timed out may still have been processed, so a timed-out batch can arrive twice; deduplicate on event `id` if that matters.
+
 `browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec` when pagehide or hidden-page Beacon requests need a different encoding or content type; it falls back to `codec` when omitted. Beacon delivery is skipped when `transformPayload` is configured, so lifecycle flushes use the normal Fetch path and `beaconCodec` does not apply.
 
 `browserHttpTransport()` also accepts `transformPayload`. Use `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
@@ -1136,12 +1140,12 @@ Browser delivery is best effort unless the log has already been acknowledged by 
 
 | Path | Failure boundary / loss window | Production guidance |
 | --- | --- | --- |
-| `browserHttpTransport()` | In-memory batches are lost on reload, tab close, process kill, or if the queue bound drops records before delivery. Fetch can be aborted by navigation. | Use bounded queues, retry options, and an IndexedDB offline queue when reload survival matters. |
+| `browserHttpTransport()` | In-memory batches are lost on reload, tab close, process kill, or if the queue bound drops records before delivery. Fetch can be aborted by navigation or by `timeoutMs`. Events still undelivered at `close()` are reported as dropped with reason `closed`. | Use bounded queues, retry options, and an IndexedDB offline queue when reload survival matters. |
 | `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` is fire-and-forget. Browsers cap payload size and can reject, truncate, or skip delivery under shutdown pressure. | Keep `beaconMaxBytes` conservative, treat pagehide flush as a last chance, and do not use it as the only durability path. |
 | `memoryBrowserHttpOfflineQueue()` | Survives temporary offline periods only while the page process stays alive. | Use for lightweight apps or tests; switch to IndexedDB for support/debug logs that must survive reload. |
 | `indexedDbBrowserHttpOfflineQueue()` | Stores replay payloads across reloads, but quota, private browsing mode, storage eviction, blocked upgrades, or unavailable IndexedDB can still prevent persistence. | Monitor queue/drop counters and keep payloads bounded; pair with HTTP replay and page lifecycle flush. |
 | `offlineFirstTransport(remote)` | Queues when remote delivery fails, then replays later. Replay is not a guarantee if local storage fails or is evicted. | Prefer a persistent queue adapter and call `flush()` during controlled shutdown/navigation when possible. |
-| `indexedDbTransport()` | Local persistence depends on IndexedDB availability, quota, eviction policy, durability hints, and browser support for Storage Buckets. Logs still in the memory buffer can be lost before the async IndexedDB write finishes. | Use `durability: "relaxed"` for throughput when acceptable; use TTL/count/byte pruning to stay below quota. Enable bounded `localStorageSpill` when support logs should survive ordinary reloads more reliably. |
+| `indexedDbTransport()` | Local persistence depends on IndexedDB availability, quota, eviction policy, durability hints, and browser support for Storage Buckets. Logs still in the memory buffer can be lost before the async IndexedDB write finishes. A write that fails (including over quota) reports its events as dropped with reason `quota` or `write-failed`. | Use `durability: "relaxed"` for throughput when acceptable; use TTL/count/byte pruning to stay below quota. Enable bounded `localStorageSpill` when support logs should survive ordinary reloads more reliably. |
 | `browserWebSocketTransport()` | Queued events can be lost when the page exits, the queue bound is exceeded, or the caller never reconnects the socket. | Own reconnection outside the transport and use queue bounds/drop counters to detect backpressure. |
 | `browserServiceWorkerTransport()` | Delivery depends on service worker registration, activation, message delivery, and worker lifetime. A terminating worker can drop in-flight work unless it persists its own queue. | Treat it as centralization, not durability, unless the service worker also writes to durable storage. |
 | `browserBroadcastChannelTransport()` | BroadcastChannel only reaches currently open, same-origin listeners. Messages are not durable and receivers can miss them during startup. | Use for multi-tab aggregation and debugging, not as a primary remote delivery guarantee. |
@@ -3560,12 +3564,14 @@ Vitest per package, `test/*.test.ts`. House style:
 - Pin behavior with hostile inputs (circular refs, BigInt, frozen objects, throwing callbacks) — most past regressions were caught by exactly these.
 - Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
+- Delivery code is tested against injected failures, not only the happy path, and asserts the conservation invariant: every emitted event is delivered, or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle. Prefer real failures (a directory or `/dev/full` as a file target, a real HTTP collector that answers 503, resets, or never answers, `context.setOffline()`, a CDP quota override) over mocked streams. See `packages/node/test/failure-injection.test.ts`, `packages/node/test/http-failure-injection.test.ts`, and `tests/e2e/browser-failures.spec.ts`.
 
 Additional CI gates cover the runtime and quality surface:
 
 - `pnpm test:e2e:browser` runs the browser E2E suite in Chromium, Firefox, and WebKit.
 - `pnpm compat:runtimes -- --runtime=bun|deno|workers` smoke-tests the packed packages in Bun, Deno, and a workerd/Miniflare runtime.
 - `pnpm test:quality` runs coverage thresholds, mutation testing, the concurrent pipeline soak, and the transport soak (`pnpm test:soak:transports`: file, rotating-file, and HTTP delivery against a collector that injects 503s, resets, and hung requests). The nightly `Soak` workflow runs both for 20 minutes; dispatch it manually with a longer duration before a release.
+- `tests/e2e/browser-upgrade.spec.ts` opens IndexedDB data written by the previous published release (`@loggerjs/browser-previous` in `examples/browser-basic`) with the current code.
 - The `windows` CI job runs the core and Node suites on Windows.
 - `pnpm test:live:local` starts Docker-backed Elasticsearch and Loki instances, writes real log events through the transports, and queries those services back.
 - `pnpm test:live:external` writes to and queries Datadog Logs and CloudWatch Logs. It requires `DATADOG_API_KEY`, `DATADOG_APP_KEY`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `CLOUDWATCH_LOG_GROUP`; use `pnpm test:live:config` to audit which variables are present without printing secret values.
@@ -3620,6 +3626,8 @@ Before a release that adds a public transport or integration subpath, verify the
 ## Every Release
 
 - Run the `Soak` workflow manually with a longer duration (for example 60 minutes) on the release commit and check both soaks pass.
+- After publishing, point `@loggerjs/browser-previous` in `examples/browser-basic/package.json` at the version just released, so the upgrade tests keep opening data written by the last published release, and replace the exact versions under `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` with the ones the alias now installs.
+
 ## NPM Publishing
 
 The release workflow is `.github/workflows/release.yml`. Each publishable `@loggerjs/*` package should be configured on npmjs.com with a Trusted Publisher entry for:
