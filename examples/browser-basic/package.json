@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@loggerjs/browser": "workspace:*",
+    "@loggerjs/core": "workspace:*",
     "@loggerjs/processors": "workspace:*"
   },
   "devDependencies": {

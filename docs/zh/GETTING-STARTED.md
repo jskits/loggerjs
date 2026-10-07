@@ -10,14 +10,14 @@ LoggerJS 是一个同构的结构化日志 SDK。同一套 core API 可以运行
 
 ## 安装
 
-按运行平台选择包。每个平台包都会重新导出 `@loggerjs/core` 的内核，所以安装一个平台包就足以开始使用。
+按运行平台选择包。每个平台包都会重新导出 `@loggerjs/core` 的内核，所以安装一个平台包就足以开始使用。所有 LoggerJS 包都把 `@loggerjs/core` 作为 peer dependency，以保证应用中只有一份 core；请像下面这样一并安装它（npm 和 pnpm 会自动安装缺失的 peer，Yarn 不会）。
 
 ```bash
 # Node services
-pnpm add @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-pnpm add @loggerjs/browser @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
 所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试；Node 22 是最低版本。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上（见 GOVERNANCE 中的支持承诺）。

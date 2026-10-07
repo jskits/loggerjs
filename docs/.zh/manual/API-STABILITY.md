@@ -107,7 +107,7 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 - `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起升到 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
 - `@loggerjs/processors` 和 `@loggerjs/codecs` 留在 0.x，直到 design partner 的使用情况表明哪些 processor 和 codec 值得保留。在 1.0 冻结它们的目录，等于承诺了尚未经过验证的稳定性。
 - `@loggerjs/otel`、`@loggerjs/sentry`、`@loggerjs/datadog`、`@loggerjs/elastic`、`@loggerjs/loki`、`@loggerjs/cloudwatch` 和 `@loggerjs/database` 作为 experimental 留在 0.x，按各自的节奏发版。
-- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。
+- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。Changesets 启用了 `onlyUpdatePeerDependentsWhenOutOfRange`，因此只要 core 的新版本仍在某个包的 peer 范围内，就不会强制发布该包；`pnpm pack:check` 会检查这些范围。
 
 ## 新增公开 API
 

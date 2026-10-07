@@ -14,7 +14,7 @@ A Grafana Loki push transport for [LoggerJS](../../README.md). It builds Loki JS
 ## Install
 
 ```bash
-npm install @loggerjs/loki
+npm install @loggerjs/core @loggerjs/loki
 ```
 
 ## Usage

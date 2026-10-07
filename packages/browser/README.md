@@ -14,7 +14,7 @@ The browser platform package for [LoggerJS](../../README.md). It re-exports the 
 ## Install
 
 ```bash
-npm install @loggerjs/browser @loggerjs/processors
+npm install @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
 ## Usage

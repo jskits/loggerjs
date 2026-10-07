@@ -114,14 +114,28 @@ for (const packageDir of packageDirs()) {
     );
   }
 
-  // Internal dependencies publish as caret ranges so a consumer who upgrades
-  // @loggerjs/core alone can dedupe it instead of installing a second copy.
-  for (const [dependencyName, range] of Object.entries(manifest.dependencies ?? {})) {
-    if (!dependencyName.startsWith("@loggerjs/")) continue;
+  // Packages that build on @loggerjs/core take it as a peer dependency, so an
+  // application installs exactly one copy. "workspace:^" publishes as a caret
+  // range on core's current version, and a "workspace:*" devDependency links
+  // the local core for builds and tests.
+  for (const dependencyName of Object.keys(manifest.dependencies ?? {})) {
     assert(
-      range === "workspace:^",
+      !dependencyName.startsWith("@loggerjs/"),
       failures,
-      `${manifest.name}: dependency ${dependencyName} must use "workspace:^" (found "${range}")`,
+      `${manifest.name}: ${dependencyName} must be a peer dependency, not a dependency`,
+    );
+  }
+  if (manifest.name !== "@loggerjs/core") {
+    const corePeer = manifest.peerDependencies?.["@loggerjs/core"];
+    assert(
+      corePeer === "workspace:^",
+      failures,
+      `${manifest.name}: peerDependencies["@loggerjs/core"] must be "workspace:^" (found "${corePeer}")`,
+    );
+    assert(
+      manifest.devDependencies?.["@loggerjs/core"] === "workspace:*",
+      failures,
+      `${manifest.name}: devDependencies["@loggerjs/core"] must be "workspace:*"`,
     );
   }
 

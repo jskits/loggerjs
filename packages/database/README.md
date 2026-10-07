@@ -14,7 +14,7 @@ Batch transports for [LoggerJS](../../README.md) that write structured logs into
 ## Install
 
 ```bash
-npm install @loggerjs/database
+npm install @loggerjs/core @loggerjs/database
 # plus whichever driver you use:
 npm install better-sqlite3   # or: sqlite3
 npm install pg

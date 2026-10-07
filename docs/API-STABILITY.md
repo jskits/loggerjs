@@ -107,7 +107,7 @@ Moving the remaining compatible components into separate packages would remove t
 - `@loggerjs/core`, `@loggerjs/browser`, `@loggerjs/node`, and `@loggerjs/pretty` hold the stable kernel. They move to 1.0 together and form a Changesets `linked` group, so their version numbers move in step and nobody needs a compatibility table.
 - `@loggerjs/processors` and `@loggerjs/codecs` stay on 0.x until design-partner usage shows which processors and codecs to keep. Freezing their catalogs at 1.0 would promise stability nobody has validated.
 - `@loggerjs/otel`, `@loggerjs/sentry`, `@loggerjs/datadog`, `@loggerjs/elastic`, `@loggerjs/loki`, `@loggerjs/cloudwatch`, and `@loggerjs/database` stay experimental on 0.x and release on their own schedule.
-- Every package other than core declares `@loggerjs/core` as a peer dependency from 1.0, so an application installs exactly one core and the copy problem above only remains for genuinely separate bundles. Kernel packages use `^1.0.0`; the 0.x packages accept `^0.7.0 || ^1.0.0` so the move does not force them to 1.0.
+- Every package other than core declares `@loggerjs/core` as a peer dependency from 1.0, so an application installs exactly one core and the copy problem above only remains for genuinely separate bundles. Kernel packages use `^1.0.0`; the 0.x packages accept `^0.7.0 || ^1.0.0` so the move does not force them to 1.0. Changesets runs with `onlyUpdatePeerDependentsWhenOutOfRange`, so a core release inside a package's peer range does not force a release of that package, and `pnpm pack:check` enforces these ranges.
 
 ## Adding Public API
 

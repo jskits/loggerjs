@@ -101,10 +101,10 @@ Pick the package for your platform. Each platform package **re-exports the `@log
 
 ```bash
 # Node services
-npm install @loggerjs/node @loggerjs/processors
+npm install @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-npm install @loggerjs/browser @loggerjs/processors
+npm install @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
 <sub>Using pnpm or yarn? Swap `npm install` for `pnpm add` / `yarn add`. Add vendor packages (`@loggerjs/otel`, `@loggerjs/sentry`, `@loggerjs/datadog`, …) only when you deliver to that destination.</sub>

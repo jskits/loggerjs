@@ -14,7 +14,7 @@ OpenTelemetry integration for [LoggerJS](../../README.md). Ship logs to any OTLP
 ## Install
 
 ```bash
-npm install @loggerjs/otel
+npm install @loggerjs/core @loggerjs/otel
 ```
 
 `@opentelemetry/api` (`>=1 <2`) is a **peer dependency** — pass the API object your app already uses.

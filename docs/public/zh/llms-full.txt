@@ -115,14 +115,14 @@ LoggerJS 是一个同构的结构化日志 SDK。同一套 core API 可以运行
 
 ## 安装
 
-按运行平台选择包。每个平台包都会重新导出 `@loggerjs/core` 的内核，所以安装一个平台包就足以开始使用。
+按运行平台选择包。每个平台包都会重新导出 `@loggerjs/core` 的内核，所以安装一个平台包就足以开始使用。所有 LoggerJS 包都把 `@loggerjs/core` 作为 peer dependency，以保证应用中只有一份 core；请像下面这样一并安装它（npm 和 pnpm 会自动安装缺失的 peer，Yarn 不会）。
 
 ```bash
 # Node services
-pnpm add @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-pnpm add @loggerjs/browser @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
 所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试；Node 22 是最低版本。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上（见 GOVERNANCE 中的支持承诺）。
@@ -2939,7 +2939,7 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 - `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起升到 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
 - `@loggerjs/processors` 和 `@loggerjs/codecs` 留在 0.x，直到 design partner 的使用情况表明哪些 processor 和 codec 值得保留。在 1.0 冻结它们的目录，等于承诺了尚未经过验证的稳定性。
 - `@loggerjs/otel`、`@loggerjs/sentry`、`@loggerjs/datadog`、`@loggerjs/elastic`、`@loggerjs/loki`、`@loggerjs/cloudwatch` 和 `@loggerjs/database` 作为 experimental 留在 0.x，按各自的节奏发版。
-- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。
+- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。Changesets 启用了 `onlyUpdatePeerDependentsWhenOutOfRange`，因此只要 core 的新版本仍在某个包的 peer 范围内，就不会强制发布该包；`pnpm pack:check` 会检查这些范围。
 
 ## 新增公开 API
 
@@ -3955,22 +3955,22 @@ Use the smallest package set that matches the target runtime and delivery path.
 Use the package manager already used by the repo.
 
 ```bash
-npm install @loggerjs/node @loggerjs/processors
-pnpm add @loggerjs/node @loggerjs/processors
-yarn add @loggerjs/node @loggerjs/processors
-bun add @loggerjs/node @loggerjs/processors
+npm install @loggerjs/core @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
+yarn add @loggerjs/core @loggerjs/node @loggerjs/processors
+bun add @loggerjs/core @loggerjs/node @loggerjs/processors
 ```
 
 For browsers:
 
 ```bash
-npm install @loggerjs/browser @loggerjs/processors
+npm install @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
-For libraries:
+For libraries, declare `@loggerjs/core` as a peer dependency so the application provides the one copy every package shares:
 
 ```bash
-npm install @loggerjs/core
+npm install --save-peer @loggerjs/core
 ```
 
 ## Selection Rules

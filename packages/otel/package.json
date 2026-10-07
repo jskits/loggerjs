@@ -61,10 +61,11 @@
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@loggerjs/core": "workspace:^"
+  "devDependencies": {
+    "@loggerjs/core": "workspace:*"
   },
   "peerDependencies": {
+    "@loggerjs/core": "workspace:^",
     "@opentelemetry/api": ">=1 <2"
   },
   "peerDependenciesMeta": {

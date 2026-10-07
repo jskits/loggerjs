@@ -14,7 +14,7 @@ A Datadog Logs transport for [LoggerJS](../../README.md). It speaks the intake A
 ## Install
 
 ```bash
-npm install @loggerjs/datadog
+npm install @loggerjs/core @loggerjs/datadog
 ```
 
 ## Usage

@@ -4,14 +4,14 @@ LoggerJS is an isomorphic structured logging SDK. The same core API runs in Node
 
 ## Install
 
-Pick the package for your platform. Each platform package re-exports the `@loggerjs/core` kernel, so one install is enough to start.
+Pick the package for your platform. Each platform package re-exports the `@loggerjs/core` kernel, so one install is enough to start. Every LoggerJS package takes `@loggerjs/core` as a peer dependency so an application has exactly one copy of it; install it alongside, as below (npm and pnpm add a missing peer automatically, Yarn does not).
 
 ```bash
 # Node services
-pnpm add @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-pnpm add @loggerjs/browser @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
 All packages ship ESM and CJS entry points with full TypeScript declarations. For Node consumers, packed packages are smoke-tested on Node 22.0.0, the latest

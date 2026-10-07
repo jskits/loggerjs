@@ -42,8 +42,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@loggerjs/core": "workspace:^",
     "msgpackr": "^2.0.4"
+  },
+  "devDependencies": {
+    "@loggerjs/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@loggerjs/core": "workspace:^"
   },
   "engines": {
     "node": ">=22.0.0"

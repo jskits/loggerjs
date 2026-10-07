@@ -101,6 +101,9 @@ importers:
       '@loggerjs/browser':
         specifier: workspace:*
         version: link:../../packages/browser
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@loggerjs/processors':
         specifier: workspace:*
         version: link:../../packages/processors
@@ -136,6 +139,9 @@ importers:
 
   examples/node-basic:
     dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@loggerjs/node':
         specifier: workspace:*
         version: link:../../packages/node
@@ -149,6 +155,9 @@ importers:
 
   examples/otel-basic:
     dependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@loggerjs/node':
         specifier: workspace:*
         version: link:../../packages/node
@@ -174,87 +183,90 @@ importers:
         version: 4.22.4
 
   packages/browser:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/cloudwatch:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/codecs:
     dependencies:
-      '@loggerjs/core':
-        specifier: workspace:^
-        version: link:../core
       msgpackr:
         specifier: ^2.0.4
         version: 2.0.4
+    devDependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/core: {}
 
   packages/database:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/datadog:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/elastic:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/loki:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/node:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/otel:
     dependencies:
-      '@loggerjs/core':
-        specifier: workspace:^
-        version: link:../core
       '@opentelemetry/api':
         specifier: '>=1 <2'
         version: 1.9.1
+    devDependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/pretty:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/processors:
-    dependencies:
+    devDependencies:
       '@loggerjs/core':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../core
 
   packages/sentry:
     dependencies:
-      '@loggerjs/core':
-        specifier: workspace:^
-        version: link:../core
       '@sentry/core':
         specifier: '>=8 <11'
         version: 10.57.0
+    devDependencies:
+      '@loggerjs/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 

@@ -46,10 +46,11 @@
     "test": "vitest run --passWithNoTests",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@loggerjs/core": "workspace:^"
+  "devDependencies": {
+    "@loggerjs/core": "workspace:*"
   },
   "peerDependencies": {
+    "@loggerjs/core": "workspace:^",
     "@sentry/core": ">=8 <11"
   },
   "peerDependenciesMeta": {

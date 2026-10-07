@@ -18,7 +18,7 @@ Node 22, and Node 24. The repository development toolchain uses Node >=22.13.0; 
 ## Install
 
 ```bash
-npm install @loggerjs/node @loggerjs/processors
+npm install @loggerjs/core @loggerjs/node @loggerjs/processors
 ```
 
 `@loggerjs/processors` is optional but recommended for redaction, sampling, and enrichment.
