@@ -38,11 +38,13 @@ async function settlesWithin<T>(promise: Promise<T> | T, ms = 2_000): Promise<"s
   return result;
 }
 
-function waitUntil(condition: () => boolean, timeoutMs: number): Promise<void> {
+// Resolves to whether the condition held before the timeout.
+function waitUntil(condition: () => boolean, timeoutMs: number): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   return new Promise((done) => {
     const poll = () => {
-      if (condition() || Date.now() >= deadline) done();
+      if (condition()) done(true);
+      else if (Date.now() >= deadline) done(false);
       else setTimeout(poll, 20);
     };
     poll();
@@ -134,11 +136,13 @@ describe("file transports under injected failures", () => {
     });
     const exited = new Promise<void>((done) => child.once("exit", () => done()));
 
-    // Kill without warning once a few rotations have happened.
-    await waitUntil(() => existsSync(`${path}.4`), 15_000);
+    // Kill without warning once a few rotations have happened. Check that
+    // they did before the kill: one that lands mid-rotation can leave .4
+    // renamed to .5 before .3 has moved up.
+    const rotated = await waitUntil(() => existsSync(`${path}.4`), 15_000);
     child.kill("SIGKILL");
     await exited;
-    expect(existsSync(`${path}.4`)).toBe(true);
+    expect(rotated).toBe(true);
 
     const files: string[] = [];
     for (let index = 200; index >= 1; index -= 1) {
