@@ -177,9 +177,9 @@ In 1.0 the `@loggerjs/core` root exports only the kernel. The exports below were
 
 The `Integration`, `IntegrationSetupContext`, `Transport`, `Codec`, and other pipeline types stay in the root.
 
-## Browser and Node Root Imports in 1.0
+## Browser and Node Root Imports Removed in 1.0
 
-In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and the stable components: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations in the browser; `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, process capture, and AsyncLocalStorage context in Node. Since 0.7 their other root exports are marked `@deprecated`. Import them from their subpaths, together with their option types:
+In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and the stable components: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations in the browser; `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, process capture, and AsyncLocalStorage context in Node. Their other root exports were deprecated in 0.7 and are removed. Import them from their subpaths, together with their option types:
 
 | Browser exports | Import from |
 | --- | --- |

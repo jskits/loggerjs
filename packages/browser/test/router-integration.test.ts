@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { captureRouterIntegration, type BrowserHistoryLike } from "../src";
+import { captureRouterIntegration, type BrowserHistoryLike } from "../src/router-integration";
 
 type Listener = EventListenerOrEventListenerObject;
 type AddListener = (

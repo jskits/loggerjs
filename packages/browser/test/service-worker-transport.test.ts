@@ -10,7 +10,7 @@ import {
   browserServiceWorkerTransport,
   type BrowserServiceWorkerContainerLike,
   type BrowserServiceWorkerLike,
-} from "../src";
+} from "../src/service-worker-transport";
 
 const event: LogEvent = {
   id: "evt-1",

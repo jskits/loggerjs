@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { captureFetchIntegration, captureXHRIntegration } from "../src";
+import { captureFetchIntegration } from "../src/fetch-integration";
+import { captureXHRIntegration } from "../src/xhr-integration";
 
 type XHRListener = EventListenerOrEventListenerObject;
 

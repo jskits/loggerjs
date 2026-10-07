@@ -4,7 +4,7 @@ LoggerJS is an isomorphic structured logging SDK. The same core API runs in Node
 
 ## Install
 
-Pick the package for your platform. Each platform package re-exports everything from `@loggerjs/core`, so one install is enough to start.
+Pick the package for your platform. Each platform package re-exports the `@loggerjs/core` kernel, so one install is enough to start.
 
 ```bash
 # Node services

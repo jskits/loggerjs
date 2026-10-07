@@ -183,9 +183,9 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 `Integration`、`IntegrationSetupContext`、`Transport`、`Codec` 等管线类型仍留在根入口。
 
-## 1.0 中 browser 和 node 根入口的导入
+## 1.0 从 browser 和 node 根入口删除的导出
 
-1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。从 0.7 开始，根入口的其他导出已标为 `@deprecated`。请连同它们的选项类型一起改从子路径导入：
+1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。根入口的其他导出在 0.7 标为 deprecated，现已删除。请连同它们的选项类型一起从子路径导入：
 
 | 浏览器端导出 | 导入路径 |
 | --- | --- |

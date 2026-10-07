@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { queueIntegration, type QueueClientLike } from "../src";
+import { queueIntegration, type QueueClientLike } from "../src/queue-integration";
 
 function createLogger(): LoggerLike {
   return {

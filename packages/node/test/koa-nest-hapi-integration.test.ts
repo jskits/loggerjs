@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { LoggerLike } from "@loggerjs/core";
 import {
   hapiIntegration,
-  koaIntegration,
-  nestMiddlewareIntegration,
   type HapiRequestLike,
   type HapiToolkitLike,
-} from "../src";
+} from "../src/hapi-integration";
+import { koaIntegration } from "../src/koa-integration";
+import { nestMiddlewareIntegration } from "../src/nest-integration";
 
 function createLogger(): LoggerLike {
   return {

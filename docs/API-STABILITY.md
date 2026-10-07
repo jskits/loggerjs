@@ -27,8 +27,8 @@ Stable exports are tracked in `api-stability.policy.json`. The current stable pa
 | Package | Stable surface |
 | --- | --- |
 | `@loggerjs/core` | The root kernel (`createLogger`/`Logger`, `getLogger`/`configure`, levels, types, record and event conversion, ambient context, typed events, middleware, meta counters, error and safe-stringify utilities, JSON codecs, and the console, memory, batch, and reliability transports) and the `middleware`, `codec-json`, `context`, `events`, `transport-console`, `transport-batch`, and `transport-reliability` subpaths. |
-| `@loggerjs/browser` | `transport-http`, `offline-indexeddb`, `transport-indexeddb`, `offline-first-transport`, and the console, error, context, and page-lifecycle integrations. |
-| `@loggerjs/node` | `transport-stdout`, `transport-file`, `transport-rotating-file`, `transport-http`, `integration-process`, and AsyncLocalStorage `context`. |
+| `@loggerjs/browser` | The root (the core kernel plus the stable components in this row), `transport-http`, `offline-indexeddb`, `transport-indexeddb`, `offline-first-transport`, and the console, error, context, and page-lifecycle integrations. |
+| `@loggerjs/node` | The root (the core kernel plus the stable components in this row), `transport-stdout`, `transport-file`, `transport-rotating-file`, `transport-http`, `integration-process`, and AsyncLocalStorage `context`. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
 
 Stable semantics include:
@@ -46,7 +46,6 @@ Stable semantics include:
 Compatible exports stay documented and tested, but they are not frozen enough to be stable v1 candidates yet. Current compatible areas include:
 
 - Core modules outside the root: `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`. Their `@loggerjs/core` root re-exports were deprecated in 0.7 and removed in 1.0; import them from these subpaths. `pnpm verify:api-stability` only lets a root re-export less stable modules through deprecated specifiers.
-- Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Since 0.7 their re-exports of compatible components are deprecated; in 1.0 the roots export only the core kernel and the stable browser or Node components and become stable. Import compatible components from their subpaths (see MIGRATION).
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
 - Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.
 - Node syslog and worker transports, compression payload transforms, outgoing fetch/HTTP client capture, diagnostics_channel capture, and logger diagnostics.

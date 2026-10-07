@@ -5,7 +5,7 @@ import {
   captureReportingIntegration,
   type BrowserReportLike,
   type BrowserReportingObserverLike,
-} from "../src";
+} from "../src/reporting-integration";
 
 type Listener = EventListenerOrEventListenerObject;
 type AddListener = (

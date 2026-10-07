@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { nextRouterIntegration, reactRouterIntegration, vueRouterIntegration } from "../src";
+import {
+  nextRouterIntegration,
+  reactRouterIntegration,
+  vueRouterIntegration,
+} from "../src/framework-router-integrations";
 
 function createLogger(): LoggerLike {
   return {

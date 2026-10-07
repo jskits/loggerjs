@@ -8,7 +8,11 @@ import {
   type LogEvent,
   type TransportContext,
 } from "@loggerjs/core";
-import { workerTransport, type WorkerLike, type WorkerTransportMessage } from "../src";
+import {
+  workerTransport,
+  type WorkerLike,
+  type WorkerTransportMessage,
+} from "../src/worker-transport";
 
 const textCodec: Codec<string | Uint8Array> = {
   name: "text",

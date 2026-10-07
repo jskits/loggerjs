@@ -1,7 +1,7 @@
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { applyPayloadTransforms } from "@loggerjs/core/payload-transforms";
-import { nodeCompressionPayloadTransform } from "../src";
+import { nodeCompressionPayloadTransform } from "../src/payload-transforms";
 
 describe("node payload transforms", () => {
   it("compresses payloads with gzip and exposes content-encoding", async () => {

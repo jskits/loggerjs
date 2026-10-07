@@ -4,12 +4,12 @@
 
 # @loggerjs/browser
 
-> Browser transports, offline persistence, and 19 automatic integrations — re-exports all of `@loggerjs/core`.
+> Browser transports, offline persistence, and 19 automatic integrations — re-exports the `@loggerjs/core` kernel.
 
 [![npm](https://img.shields.io/npm/v/@loggerjs/browser.svg)](https://www.npmjs.com/package/@loggerjs/browser)
 [![license](https://img.shields.io/npm/l/@loggerjs/browser)](../../LICENSE)
 
-The browser platform package for [LoggerJS](../../README.md). It re-exports the entire `@loggerjs/core` API and adds HTTP / IndexedDB / WebSocket / service-worker / broadcast-channel transports, offline queues with replay, ZIP export, and a broad suite of integrations that turn console calls, errors, network failures, Web Vitals, routing, and lifecycle events into structured logs — all opt-in.
+The browser platform package for [LoggerJS](../../README.md). It re-exports the `@loggerjs/core` kernel and adds HTTP / IndexedDB / WebSocket / service-worker / broadcast-channel transports, offline queues with replay, ZIP export, and a broad suite of integrations that turn console calls, errors, network failures, Web Vitals, routing, and lifecycle events into structured logs — all opt-in.
 
 ## Install
 

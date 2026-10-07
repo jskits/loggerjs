@@ -21,7 +21,7 @@ LoggerJS is an isomorphic structured logging toolkit: a zero-dependency core plu
    - Prefer `@loggerjs/node` for Node services/CLIs, `@loggerjs/browser` for frontend apps, and `@loggerjs/core` for runtime-neutral libraries.
 3. Add one centralized logger module per runtime boundary.
    - Keep app code importing from the local logger module, not directly from many LoggerJS package paths.
-   - Platform packages re-export core APIs, so start with one platform package unless a vendor or processor package is needed.
+   - Platform packages re-export the core kernel, so start with one platform package unless a vendor or processor package is needed.
 4. Configure production safety before broad rollout.
    - Read `references/production-checklist.md` before adding browser delivery, vendor delivery, persistent queues, or automatic capture.
    - Add redaction/privacy processors before transports that leave the process.

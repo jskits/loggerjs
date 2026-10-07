@@ -97,7 +97,7 @@ Crash-path `flushSync`, beacon on page close, offline replay, batch retry with c
 
 ## Install
 
-Pick the package for your platform. Each platform package **re-exports all of `@loggerjs/core`**, so one install per app is enough to start.
+Pick the package for your platform. Each platform package **re-exports the `@loggerjs/core` kernel**, so one install per app is enough to start.
 
 ```bash
 # Node services

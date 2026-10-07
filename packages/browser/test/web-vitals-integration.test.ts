@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { captureWebVitalsIntegration } from "../src";
+import { captureWebVitalsIntegration } from "../src/web-vitals-integration";
 
 type Listener = EventListenerOrEventListenerObject;
 type AddListener = (

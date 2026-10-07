@@ -11,10 +11,10 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const budgets = [
   // The kernel-only root measures 86,169 raw and 19,020 gzip bytes with shared chunks.
   ["@loggerjs/core", "packages/core/dist/index.js", 86_700, 19_200],
-  // Idempotency keys and resending held batches whole measure 150,638 raw and 31,414 gzip bytes with shared chunks.
-  ["@loggerjs/browser", "packages/browser/dist/index.js", 151_100, 31_600],
-  // Idempotency keys for nodeHttpTransport measure 81,800 raw and 16,285 gzip bytes with shared chunks.
-  ["@loggerjs/node", "packages/node/dist/index.js", 82_300, 16_400],
+  // The stable-only root measures 74,361 raw and 15,998 gzip bytes with shared chunks.
+  ["@loggerjs/browser", "packages/browser/dist/index.js", 74_900, 16_200],
+  // The stable-only root measures 20,812 raw and 5,055 gzip bytes with shared chunks.
+  ["@loggerjs/node", "packages/node/dist/index.js", 21_300, 5_200],
   ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 18_500, 4_400],

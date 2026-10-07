@@ -5,7 +5,7 @@ import {
   nodeSyslogTransport,
   type NodeSyslogTcpSocket,
   type NodeSyslogUdpSocket,
-} from "../src";
+} from "../src/syslog-transport";
 
 const event: LogEvent = {
   id: "evt-1",

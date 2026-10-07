@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { capturePerformanceIntegration, normalizeBrowserPerformanceEntry } from "../src";
+import {
+  capturePerformanceIntegration,
+  normalizeBrowserPerformanceEntry,
+} from "../src/performance-integration";
 
 class FakePerformanceObserver {
   static supportedEntryTypes = ["longtask", "measure", "navigation", "resource"];

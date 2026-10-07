@@ -9,7 +9,7 @@ import {
   type FastifyOnResponseHook,
   type FastifyReplyLike,
   type FastifyRequestLike,
-} from "../src";
+} from "../src/fastify-integration";
 
 class FakeFastify implements FastifyInstanceLike {
   onRequest?: FastifyOnRequestHook;

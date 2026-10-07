@@ -5,7 +5,7 @@ import {
   type ExpressNextFunction,
   type ExpressRequestLike,
   type ExpressResponseLike,
-} from "../src";
+} from "../src/express-integration";
 
 class FakeResponse implements ExpressResponseLike {
   statusCode = 200;
