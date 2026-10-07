@@ -50,7 +50,7 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 
 `pnpm bench:matrix` 封装了 `BENCH_AB=1 BENCH_JSON=1` 测试框架，会运行多次，记录 CPU、操作系统、Node、依赖版本和 Git 等元数据，并默认把 JSON 和 Markdown 结果写到 `benchmarks/matrix/`。该目录被 git 忽略，因为它存放的是本地证据。只提交经过有意整理的汇总结果，例如 [基准矩阵](BENCHMARK-MATRIX.md)。做跨机器的性能表述时，应引用仓库中的这份矩阵。
 
-需要非 Apple Silicon 和多 Node 版本的证据时，手动运行 GitHub Actions workflow `Benchmark Matrix`。它会在 Linux x64 上为 Node 20.19.0、22 和 24 采集数据，并上传汇总的 Markdown 产物供检查。只有在核对过 JSON 产物和 runner 元数据之后，才提交汇总结果。
+需要非 Apple Silicon 和多 Node 版本的证据时，手动运行 GitHub Actions workflow `Benchmark Matrix`。它会在 Linux x64 上为 Node 22 和 24 采集数据，并上传汇总的 Markdown 产物供检查。只有在核对过 JSON 产物和 runner 元数据之后，才提交汇总结果。
 
 使用矩阵中的结论时要谨慎：它只能证明表中列出的机器、运行时和依赖组合，不能推广到未来所有的 CPU、Node/V8 版本或 pino 版本。
 

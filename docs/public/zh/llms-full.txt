@@ -125,7 +125,7 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上；1.0 会把 Node 下限提高到 22（见 GOVERNANCE 中的支持承诺）。
+所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试；Node 22 是最低版本。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上（见 GOVERNANCE 中的支持承诺）。
 
 ## 第一个 Logger（Node）
 
@@ -2209,7 +2209,7 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 
 `pnpm bench:matrix` 封装了 `BENCH_AB=1 BENCH_JSON=1` 测试框架，会运行多次，记录 CPU、操作系统、Node、依赖版本和 Git 等元数据，并默认把 JSON 和 Markdown 结果写到 `benchmarks/matrix/`。该目录被 git 忽略，因为它存放的是本地证据。只提交经过有意整理的汇总结果，例如 [基准矩阵](BENCHMARK-MATRIX.md)。做跨机器的性能表述时，应引用仓库中的这份矩阵。
 
-需要非 Apple Silicon 和多 Node 版本的证据时，手动运行 GitHub Actions workflow `Benchmark Matrix`。它会在 Linux x64 上为 Node 20.19.0、22 和 24 采集数据，并上传汇总的 Markdown 产物供检查。只有在核对过 JSON 产物和 runner 元数据之后，才提交汇总结果。
+需要非 Apple Silicon 和多 Node 版本的证据时，手动运行 GitHub Actions workflow `Benchmark Matrix`。它会在 Linux x64 上为 Node 22 和 24 采集数据，并上传汇总的 Markdown 产物供检查。只有在核对过 JSON 产物和 runner 元数据之后，才提交汇总结果。
 
 使用矩阵中的结论时要谨慎：它只能证明表中列出的机器、运行时和依赖组合，不能推广到未来所有的 CPU、Node/V8 版本或 pino 版本。
 
@@ -3402,7 +3402,7 @@ pnpm check     # 完整门禁，push 前运行
 
 - **仓库开发**：使用 Node `>=22.13.0`。根目录 `package.json` 的 `engines` 字段和本地工具链都以此为下限。
 - **完整 CI 门禁**：在 Node 22 和 24 上运行 `pnpm check`，发布构建使用 Node 24。
-- **已发布包的运行时兼容性**：打包后的产物会以消费方身份在 Node 20.19.0、22 和 24 上做冒烟测试。Node 20.19.0 是 Node 使用者的运行时兼容下限，但并不会降低仓库开发工具链的要求。
+- **已发布包的运行时兼容性**：打包后的产物会以消费方身份在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试。Node 22.0.0 是 Node 使用者的运行时兼容下限，但并不会降低仓库开发工具链的要求。
 
 ## 仓库布局
 

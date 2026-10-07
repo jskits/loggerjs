@@ -13,7 +13,7 @@ pnpm check     # the full gate — run before pushing
 
 - **Repository development:** use Node `>=22.13.0`. The root `package.json` `engines` field and local tooling are intentionally set to this floor.
 - **Full CI gate:** runs `pnpm check` on Node 22 and 24, with releases built on Node 24.
-- **Published package runtime compatibility:** packed packages are smoke-tested as consumers on Node 20.19.0, 22, and 24. Node 20.19.0 is the runtime compatibility floor for Node consumers; it does not lower the repo development toolchain requirement.
+- **Published package runtime compatibility:** packed packages are smoke-tested as consumers on Node 22.0.0, the latest Node 22, and Node 24. Node 22.0.0 is the runtime compatibility floor for Node consumers; it does not lower the repo development toolchain requirement.
 
 ## Repository Layout
 

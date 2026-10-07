@@ -14,8 +14,8 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-All packages ship ESM and CJS entry points with full TypeScript declarations. For Node consumers, packed packages are smoke-tested on Node 20.19.0, 22, and
-24. Repository development uses Node >=22.13.0 for the full toolchain. Browser code targets Chrome and Edge 103, Firefox 100, and Safari 16 or later; 1.0 raises the Node floor to 22 (see the support commitments in GOVERNANCE).
+All packages ship ESM and CJS entry points with full TypeScript declarations. For Node consumers, packed packages are smoke-tested on Node 22.0.0, the latest
+Node 22, and Node 24; Node 22 is the floor. Repository development uses Node >=22.13.0 for the full toolchain. Browser code targets Chrome and Edge 103, Firefox 100, and Safari 16 or later (see the support commitments in GOVERNANCE).
 
 ## First Logger (Node)
 

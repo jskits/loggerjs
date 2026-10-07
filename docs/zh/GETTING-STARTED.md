@@ -20,7 +20,7 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上；1.0 会把 Node 下限提高到 22（见 GOVERNANCE 中的支持承诺）。
+所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试；Node 22 是最低版本。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上（见 GOVERNANCE 中的支持承诺）。
 
 ## 第一个 Logger（Node）
 

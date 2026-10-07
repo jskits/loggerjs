@@ -16,7 +16,7 @@ const requiredPackedFiles = [
 ];
 // Keep in sync with the lowest version in the ci.yml node-compat matrix, which
 // smoke-tests the packed packages on that runtime.
-const supportedNodeRange = ">=20.19.0";
+const supportedNodeRange = ">=22.0.0";
 const forbiddenPackedPrefixes = ["src/", "test/", ".turbo/", "node_modules/"];
 
 function readJson(path) {
