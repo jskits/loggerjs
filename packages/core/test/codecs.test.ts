@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  createPreparedRecordEncoder,
   createRecord,
   jsonCodec,
-  metricsCodec,
   ndjsonCodec,
   safeJsonCodec,
   type Codec,
   type LogEvent,
   type LogRecord,
 } from "../src";
+import { createPreparedRecordEncoder } from "../src/codecs/prepared";
+import { metricsCodec } from "../src/codecs/metrics";
 
 function sampleEvent(patch: Partial<LogEvent> = {}): LogEvent {
   return {

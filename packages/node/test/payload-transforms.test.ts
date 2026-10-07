@@ -1,6 +1,6 @@
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { applyPayloadTransforms } from "@loggerjs/core";
+import { applyPayloadTransforms } from "@loggerjs/core/payload-transforms";
 import { nodeCompressionPayloadTransform } from "../src";
 
 describe("node payload transforms", () => {

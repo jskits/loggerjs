@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  createIntegrationSetupContext,
   createLogger,
   getLoggerMetaStats,
   memoryTransport,
@@ -9,6 +8,7 @@ import {
   type IntegrationSetupContext,
   type LoggerLike,
 } from "../src";
+import { createIntegrationSetupContext } from "../src/integration-api";
 
 describe("integration API", () => {
   afterEach(() => {

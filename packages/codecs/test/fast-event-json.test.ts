@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  createPreparedRecordEncoder,
-  createRecord,
-  recordToEvent,
-  type LogEvent,
-} from "@loggerjs/core";
+import { createRecord, recordToEvent, type LogEvent } from "@loggerjs/core";
+import { createPreparedRecordEncoder } from "@loggerjs/core/codec-prepared";
 import { fastEventJsonCodec, msgpackrCodec, projectorCodec } from "../src";
 
 function sampleEvent(patch: Partial<LogEvent> = {}): LogEvent {

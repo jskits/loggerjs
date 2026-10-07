@@ -1,13 +1,11 @@
+import { addContextProvider, type Integration, type TraceContext } from "@loggerjs/core";
 import {
-  addContextProvider,
   formatBaggage,
   formatTraceparent,
   parseBaggage,
   parseTraceparent,
   type Baggage,
-  type Integration,
-  type TraceContext,
-} from "@loggerjs/core";
+} from "@loggerjs/core/trace-propagation";
 
 export type BrowserContextActionEventName = "change" | "click" | "input" | "keydown" | "submit";
 

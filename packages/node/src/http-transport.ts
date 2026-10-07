@@ -1,5 +1,4 @@
 import {
-  applyPayloadTransforms,
   batchTransport,
   safeJsonCodec,
   type BatchTransportOptions,
@@ -10,6 +9,7 @@ import {
   type PayloadTransform,
   type Transport,
 } from "@loggerjs/core";
+import { applyPayloadTransforms } from "@loggerjs/core/payload-transforms";
 
 export interface NodeHttpTransportOptions extends BatchTransportOptions {
   url: string;

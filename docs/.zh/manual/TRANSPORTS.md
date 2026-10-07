@@ -330,7 +330,7 @@ const myTransport: Transport = {
 
 ```ts
 import { fastEventJsonCodec } from "@loggerjs/codecs";
-import { createPreparedRecordEncoder } from "@loggerjs/core";
+import { createPreparedRecordEncoder } from "@loggerjs/core/codec-prepared";
 
 const codec = fastEventJsonCodec();
 const encodeRecord = createPreparedRecordEncoder(codec);

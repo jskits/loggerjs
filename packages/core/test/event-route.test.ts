@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { type LogEvent } from "../src";
 import {
   getLogEventRoute,
   LOGGERJS_ROUTE,
   withLogEventRoute,
-  type LogEvent,
   type RoutableLogEvent,
-} from "../src";
+} from "../src/event-route";
 
 function createEvent(): LogEvent {
   return {

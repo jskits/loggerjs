@@ -4,7 +4,7 @@ import {
   composePayloadTransforms,
   encodedPayloadToUint8Array,
   encryptionPayloadTransform,
-} from "../src";
+} from "../src/payload-transforms";
 
 describe("payload transforms", () => {
   it("composes payload, header, and content-type transforms in order", async () => {

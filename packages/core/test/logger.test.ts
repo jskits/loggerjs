@@ -4,7 +4,6 @@ import {
   defineEvent,
   createLogger,
   getLoggerMetaStats,
-  LOGGERJS_ROUTE,
   memoryTransport,
   resetContextManager,
   resetLoggerMetaStats,
@@ -13,9 +12,9 @@ import {
   type LogRecord,
   type Processor,
   type Transport,
-  withLogEventRoute,
   withContext,
 } from "../src";
+import { LOGGERJS_ROUTE, withLogEventRoute } from "../src/event-route";
 
 const failingProcessor: Processor = () => {
   throw new Error("processor failed");

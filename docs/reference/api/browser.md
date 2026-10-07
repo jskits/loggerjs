@@ -69,7 +69,8 @@ export {};
 ## context-propagation-integration.d.ts
 
 ```ts
-import { type Baggage, type Integration, type TraceContext } from "@loggerjs/core";
+import { type Integration, type TraceContext } from "@loggerjs/core";
+import { type Baggage } from "@loggerjs/core/trace-propagation";
 export type BrowserContextActionEventName = "change" | "click" | "input" | "keydown" | "submit";
 export interface BrowserContextEventTargetLike {
     addEventListener: typeof globalThis.addEventListener;

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { getLogEventRoute, type LogEvent, type ProcessorContext } from "@loggerjs/core";
+import { type LogEvent, type ProcessorContext } from "@loggerjs/core";
+import { getLogEventRoute } from "@loggerjs/core/event-route";
 import { filterProcessor, routeProcessor } from "../src/filter-route";
 
 const event: LogEvent = {

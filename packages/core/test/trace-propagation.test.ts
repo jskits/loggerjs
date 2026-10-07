@@ -1,16 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { addContextProvider, getContext, resetContextManager, setContextProvider } from "../src";
 import {
-  addContextProvider,
   formatBaggage,
   formatTraceparent,
-  getContext,
   parseBaggage,
   parseTraceparent,
-  resetContextManager,
-  setContextProvider,
   traceContextFromHeaders,
   traceContextToHeaders,
-} from "../src";
+} from "../src/trace-propagation";
 
 describe("trace propagation", () => {
   afterEach(() => {

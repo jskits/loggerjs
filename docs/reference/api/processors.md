@@ -153,7 +153,8 @@ export {};
 ## filter-route.d.ts
 
 ```ts
-import { type EnabledLogLevelName, type LogEvent, type LogEventRoute, type LoggerLevel, type Processor, type ProcessorContext, type Tags } from "@loggerjs/core";
+import { type EnabledLogLevelName, type LogEvent, type LoggerLevel, type Processor, type ProcessorContext, type Tags } from "@loggerjs/core";
+import { type LogEventRoute } from "@loggerjs/core/event-route";
 export type EventStringMatcher = string | RegExp | ((value: string | undefined, event: LogEvent) => boolean);
 export interface EventMatch {
     when?: (event: LogEvent, context: ProcessorContext) => boolean;

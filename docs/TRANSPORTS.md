@@ -330,7 +330,7 @@ A record-aware transport opts into the fast path (no event projection when the l
 
 ```ts
 import { fastEventJsonCodec } from "@loggerjs/codecs";
-import { createPreparedRecordEncoder } from "@loggerjs/core";
+import { createPreparedRecordEncoder } from "@loggerjs/core/codec-prepared";
 
 const codec = fastEventJsonCodec();
 const encodeRecord = createPreparedRecordEncoder(codec);

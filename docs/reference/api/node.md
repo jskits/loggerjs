@@ -394,7 +394,7 @@ export declare function koaIntegration(logger: LoggerLike, options?: KoaIntegrat
 ## logger-diagnostics.d.ts
 
 ```ts
-import { type LoggerDiagnosticEvent } from "@loggerjs/core";
+import { type LoggerDiagnosticEvent } from "@loggerjs/core/diagnostics";
 export interface LoggerDiagnosticsChannelPublisher {
     hasSubscribers?: boolean;
     publish: (message: LoggerDiagnosticEvent) => void;

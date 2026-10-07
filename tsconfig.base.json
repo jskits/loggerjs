@@ -15,19 +15,130 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": false,
     "paths": {
-      "@loggerjs/core": ["./packages/core/src/index.ts"],
       "@loggerjs/browser": ["./packages/browser/src/index.ts"],
+      "@loggerjs/browser/transport-http": ["./packages/browser/src/http-transport.ts"],
+      "@loggerjs/browser/payload-transforms": ["./packages/browser/src/payload-transforms.ts"],
+      "@loggerjs/browser/transport-broadcast-channel": [
+        "./packages/browser/src/broadcast-channel-transport.ts"
+      ],
+      "@loggerjs/browser/transport-service-worker": [
+        "./packages/browser/src/service-worker-transport.ts"
+      ],
+      "@loggerjs/browser/transport-websocket": ["./packages/browser/src/websocket-transport.ts"],
+      "@loggerjs/browser/offline-indexeddb": ["./packages/browser/src/indexeddb-offline-queue.ts"],
       "@loggerjs/browser/transport-indexeddb": ["./packages/browser/src/indexeddb-transport.ts"],
+      "@loggerjs/browser/offline-first-transport": [
+        "./packages/browser/src/offline-first-transport.ts"
+      ],
       "@loggerjs/browser/export-zip": ["./packages/browser/src/zip-export.ts"],
-      "@loggerjs/database": ["./packages/database/src/index.ts"],
-      "@loggerjs/node": ["./packages/node/src/index.ts"],
-      "@loggerjs/pretty": ["./packages/pretty/src/index.ts"],
-      "@loggerjs/processors": ["./packages/processors/src/index.ts"],
+      "@loggerjs/browser/integration-console": ["./packages/browser/src/console-integration.ts"],
+      "@loggerjs/browser/integration-context": [
+        "./packages/browser/src/context-propagation-integration.ts"
+      ],
+      "@loggerjs/browser/integration-errors": ["./packages/browser/src/error-integration.ts"],
+      "@loggerjs/browser/integration-fetch": ["./packages/browser/src/fetch-integration.ts"],
+      "@loggerjs/browser/integration-xhr": ["./packages/browser/src/xhr-integration.ts"],
+      "@loggerjs/browser/integration-framework-errors": [
+        "./packages/browser/src/framework-error-integration.ts"
+      ],
+      "@loggerjs/browser/integration-framework-routers": [
+        "./packages/browser/src/framework-router-integrations.ts"
+      ],
+      "@loggerjs/browser/integration-reporting": [
+        "./packages/browser/src/reporting-integration.ts"
+      ],
+      "@loggerjs/browser/integration-router": ["./packages/browser/src/router-integration.ts"],
+      "@loggerjs/browser/integration-runtime-host": [
+        "./packages/browser/src/runtime-host-integration.ts"
+      ],
+      "@loggerjs/browser/integration-service-worker": [
+        "./packages/browser/src/service-worker-integration.ts"
+      ],
+      "@loggerjs/browser/integration-user-actions": [
+        "./packages/browser/src/user-action-integration.ts"
+      ],
+      "@loggerjs/browser/integration-websocket": [
+        "./packages/browser/src/websocket-integration.ts"
+      ],
+      "@loggerjs/browser/integration-web-vitals": [
+        "./packages/browser/src/web-vitals-integration.ts"
+      ],
+      "@loggerjs/browser/integration-performance": [
+        "./packages/browser/src/performance-integration.ts"
+      ],
+      "@loggerjs/browser/integration-page-lifecycle": ["./packages/browser/src/page-lifecycle.ts"],
+      "@loggerjs/cloudwatch": ["./packages/cloudwatch/src/index.ts"],
+      "@loggerjs/cloudwatch/transport": ["./packages/cloudwatch/src/index.ts"],
       "@loggerjs/codecs": ["./packages/codecs/src/index.ts"],
-      "@loggerjs/otel": ["./packages/otel/src/index.ts"],
-      "@loggerjs/sentry": ["./packages/sentry/src/index.ts"],
+      "@loggerjs/core": ["./packages/core/src/index.ts"],
+      "@loggerjs/core/middleware": ["./packages/core/src/middleware.ts"],
+      "@loggerjs/core/codec-json": ["./packages/core/src/codecs/json.ts"],
+      "@loggerjs/core/codec-metrics": ["./packages/core/src/codecs/metrics.ts"],
+      "@loggerjs/core/codec-prepared": ["./packages/core/src/codecs/prepared.ts"],
+      "@loggerjs/core/transport-console": ["./packages/core/src/transports/console.ts"],
+      "@loggerjs/core/transport-batch": ["./packages/core/src/transports/batch.ts"],
+      "@loggerjs/core/transport-reliability": ["./packages/core/src/transports/reliability.ts"],
+      "@loggerjs/core/transport-test": ["./packages/core/src/transports/test.ts"],
+      "@loggerjs/core/context": ["./packages/core/src/context.ts"],
+      "@loggerjs/core/diagnostics": ["./packages/core/src/diagnostics.ts"],
+      "@loggerjs/core/event-route": ["./packages/core/src/event-route.ts"],
+      "@loggerjs/core/trace-propagation": ["./packages/core/src/trace-propagation.ts"],
+      "@loggerjs/core/events": ["./packages/core/src/events.ts"],
+      "@loggerjs/core/integration-api": ["./packages/core/src/integration-api.ts"],
+      "@loggerjs/core/semantic-events": ["./packages/core/src/semantic-events.ts"],
+      "@loggerjs/core/payload-transforms": ["./packages/core/src/payload-transforms.ts"],
+      "@loggerjs/database": ["./packages/database/src/index.ts"],
+      "@loggerjs/database/transport": ["./packages/database/src/transport.ts"],
+      "@loggerjs/database/sqlite": ["./packages/database/src/sqlite.ts"],
+      "@loggerjs/database/postgres": ["./packages/database/src/postgres.ts"],
+      "@loggerjs/datadog": ["./packages/datadog/src/index.ts"],
+      "@loggerjs/datadog/transport": ["./packages/datadog/src/index.ts"],
       "@loggerjs/elastic": ["./packages/elastic/src/index.ts"],
-      "@loggerjs/cloudwatch": ["./packages/cloudwatch/src/index.ts"]
+      "@loggerjs/elastic/transport": ["./packages/elastic/src/index.ts"],
+      "@loggerjs/loki": ["./packages/loki/src/index.ts"],
+      "@loggerjs/loki/transport": ["./packages/loki/src/index.ts"],
+      "@loggerjs/node": ["./packages/node/src/index.ts"],
+      "@loggerjs/node/transport-http": ["./packages/node/src/http-transport.ts"],
+      "@loggerjs/node/payload-transforms": ["./packages/node/src/payload-transforms.ts"],
+      "@loggerjs/node/transport-file": ["./packages/node/src/file-transport.ts"],
+      "@loggerjs/node/transport-rotating-file": ["./packages/node/src/rotating-file-transport.ts"],
+      "@loggerjs/node/transport-stdout": ["./packages/node/src/stdout-transport.ts"],
+      "@loggerjs/node/transport-syslog": ["./packages/node/src/syslog-transport.ts"],
+      "@loggerjs/node/transport-worker": ["./packages/node/src/worker-transport.ts"],
+      "@loggerjs/node/integration-process": ["./packages/node/src/process-integration.ts"],
+      "@loggerjs/node/integration-cli": ["./packages/node/src/cli-integration.ts"],
+      "@loggerjs/node/integration-koa": ["./packages/node/src/koa-integration.ts"],
+      "@loggerjs/node/integration-nest": ["./packages/node/src/nest-integration.ts"],
+      "@loggerjs/node/integration-hapi": ["./packages/node/src/hapi-integration.ts"],
+      "@loggerjs/node/integration-prisma": ["./packages/node/src/prisma-integration.ts"],
+      "@loggerjs/node/integration-redis": ["./packages/node/src/redis-integration.ts"],
+      "@loggerjs/node/integration-queue": ["./packages/node/src/queue-integration.ts"],
+      "@loggerjs/node/integration-bullmq": ["./packages/node/src/bullmq-integration.ts"],
+      "@loggerjs/node/integration-serverless": ["./packages/node/src/serverless-integration.ts"],
+      "@loggerjs/node/integration-database": ["./packages/node/src/database-integration.ts"],
+      "@loggerjs/node/integration-express": ["./packages/node/src/express-integration.ts"],
+      "@loggerjs/node/integration-fastify": ["./packages/node/src/fastify-integration.ts"],
+      "@loggerjs/node/integration-fetch": ["./packages/node/src/node-fetch-integration.ts"],
+      "@loggerjs/node/integration-http-client": [
+        "./packages/node/src/node-http-client-integration.ts"
+      ],
+      "@loggerjs/node/integration-diagnostics": [
+        "./packages/node/src/diagnostics-channel-integration.ts"
+      ],
+      "@loggerjs/node/logger-diagnostics": ["./packages/node/src/logger-diagnostics.ts"],
+      "@loggerjs/node/context": ["./packages/node/src/context.ts"],
+      "@loggerjs/otel": ["./packages/otel/src/index.ts"],
+      "@loggerjs/otel/transport-http": ["./packages/otel/src/transport.ts"],
+      "@loggerjs/otel/codec-otlp-json": ["./packages/otel/src/otlp-json.ts"],
+      "@loggerjs/otel/trace": ["./packages/otel/src/trace.ts"],
+      "@loggerjs/otel/log-bridge": ["./packages/otel/src/log-bridge.ts"],
+      "@loggerjs/pretty": ["./packages/pretty/src/index.ts"],
+      "@loggerjs/pretty/formatter": ["./packages/pretty/src/formatter.ts"],
+      "@loggerjs/pretty/transport-console": ["./packages/pretty/src/console-transport.ts"],
+      "@loggerjs/pretty/transport-stream": ["./packages/pretty/src/stream-transport.ts"],
+      "@loggerjs/processors": ["./packages/processors/src/index.ts"],
+      "@loggerjs/sentry": ["./packages/sentry/src/index.ts"],
+      "@loggerjs/sentry/transport": ["./packages/sentry/src/index.ts"]
     }
   }
 }

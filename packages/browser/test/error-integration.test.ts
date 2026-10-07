@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  createIntegrationSetupContext,
   getLoggerMetaStats,
   resetLoggerMetaStats,
   type CaptureInput,
   type IntegrationSetupContext,
   type LoggerLike,
 } from "@loggerjs/core";
+import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
 import { captureBrowserErrorsIntegration } from "../src";
 
 type Listener = EventListenerOrEventListenerObject;

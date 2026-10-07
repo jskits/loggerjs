@@ -1,8 +1,5 @@
-import {
-  encodedPayloadToUint8Array,
-  type PayloadTransform,
-  type PayloadTransformContext,
-} from "@loggerjs/core";
+import { type PayloadTransform, type PayloadTransformContext } from "@loggerjs/core";
+import { encodedPayloadToUint8Array } from "@loggerjs/core/payload-transforms";
 
 export type BrowserCompressionFormat = "gzip" | "deflate";
 

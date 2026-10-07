@@ -4,7 +4,7 @@ import {
   type LoggerDiagnosticEvent,
   type LoggerDiagnosticSink,
   type LoggerDiagnosticStage,
-} from "@loggerjs/core";
+} from "@loggerjs/core/diagnostics";
 
 export interface LoggerDiagnosticsChannelPublisher {
   hasSubscribers?: boolean;

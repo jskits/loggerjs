@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createLogger, memoryTransport, semanticEvents } from "../src";
+import { createLogger, memoryTransport } from "../src";
+import { semanticEvents } from "../src/semantic-events";
 
 describe("semanticEvents", () => {
   it("formats every built-in semantic event message", () => {
