@@ -491,7 +491,7 @@ Runnable examples live in [`examples/`](examples): [Node basics](examples/node-b
 
 ## Development
 
-Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor.
+Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor. Browser code targets **Chrome and Edge 103, Firefox 100, and Safari 16** or later. From 1.0 the Node floor is 22, and the support windows in [GOVERNANCE](GOVERNANCE.md) and [SECURITY](SECURITY.md) apply.
 
 ```bash
 pnpm install

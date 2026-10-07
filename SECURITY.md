@@ -6,6 +6,17 @@ LoggerJS handles application logs, error payloads, redaction, and offline delive
 
 LoggerJS is pre-1.0. Security fixes target the latest released minor line only. Older 0.x releases may receive fixes when the patch is low-risk, but users should expect to upgrade to the newest 0.x release for security updates.
 
+From 1.0.0 the following windows apply (see `GOVERNANCE.md`):
+
+| Line | Receives |
+| --- | --- |
+| Latest 1.x minor | All fixes |
+| Previous 1.x minor | Security and data-loss fixes for six months after the next minor ships |
+| Last 0.x minor | Security fixes for three months after 1.0.0 ships |
+| Earlier 0.x minors | None |
+
+Supported runtimes are Node 22 or later and Chrome or Edge 103, Firefox 100, and Safari 16 or later. A major release keeps supporting every runtime it shipped with, even after that runtime reaches end of life.
+
 ## Reporting a Vulnerability
 
 Use GitHub private vulnerability reporting for `github.com/jskits/loggerjs` when available. Include:

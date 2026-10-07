@@ -44,16 +44,17 @@ Maintainer changes should be reflected in `CODEOWNERS` and this file.
 
 ## v1 Readiness
 
-A 1.0.0 release is a maintenance promise, not a feature milestone. Before tagging it, the maintainer should be able to check every item below. The support windows are proposals for the maintainer to confirm or adjust; once confirmed, `SECURITY.md` should state the same windows.
+A 1.0.0 release is a maintenance promise, not a feature milestone. Before tagging it, the maintainer should be able to check every item below. The support commitments after the checklist are adopted, and `SECURITY.md` states the same windows.
 
 - **Real usage.** At least three design-partner projects, covering a browser app, a Node service, and an Electron app, have run the stable kernel in production for eight weeks or more and shared `transport.dropped.*`, `transport.retry.*`, and queue-depth metrics. API that none of them used is moved out of the stable set or removed before the freeze.
 - **Second maintainer.** At least one more maintainer with review history (see Adding Maintainers) and npm publish access, so releases and security fixes do not depend on one person.
 - **Failure evidence.** The failure-injection suites, the lifecycle model tests, the browser upgrade tests, and a 60-minute run of the `Soak` workflow pass on the release commit, and the Windows CI job is green.
 - **Node support.** `engines.node` and the lowest `ci.yml` node-compat version name a Node line that is still maintained upstream at release time.
 
-Proposed support commitments after 1.0.0:
+Support commitments after 1.0.0:
 
-- The latest 1.x minor receives all fixes. The previous minor receives security and data-loss fixes for six months after the next minor ships.
-- The 0.x line receives security fixes for three months after 1.0.0.
-- Dropping a Node major from `engines.node` is a major release, even when that Node line is already end-of-life.
-- Security response targets stay as stated in `SECURITY.md`: acknowledgement within 7 days and triage within 14 days.
+- **Release lines.** The latest 1.x minor receives all fixes. The previous minor receives security and data-loss fixes for six months after the next minor ships.
+- **0.x.** When 1.0.0 ships, the last 0.x minor receives security fixes for three months. Earlier 0.x minors receive none.
+- **Node.** 1.0 requires Node 22 or later. Every Node line a major supports when it ships stays supported, with CI coverage, for that whole major, even after the line reaches end of life. Only a new major drops Node lines, and it drops the ones that reached end of life. Keeping an old Node line in CI is cheaper than a yearly major.
+- **Browsers.** The baseline is Chrome and Edge 103, Firefox 100, and Safari 16, the first versions with `AbortSignal.timeout()`, which the HTTP transport timeouts use. Raising the baseline is a major release, like dropping a Node line.
+- **Security response.** Acknowledgement within 7 days and triage within 14 days, as stated in `SECURITY.md`. A one-maintainer project cannot promise more until a second maintainer is in place.
