@@ -32,7 +32,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 | 包 | 稳定范围 |
 | --- | --- |
-| `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
+| `@loggerjs/core` | 根入口内核（`createLogger`/`Logger`、`getLogger`/`configure`、级别、类型、record 与 event 转换、环境 context、类型化事件、middleware、meta 计数器、错误与安全序列化工具、JSON codec，以及 console、memory、batch、reliability transport），以及 `middleware`、`codec-json`、`context`、`events`、`transport-console`、`transport-batch`、`transport-reliability` 子路径。 |
 | `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
 | `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
@@ -51,6 +51,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选的程度。当前属于 Compatible 的部分包括：
 
+- 将在 1.0 移出根入口的 core 模块：`@loggerjs/core/trace-propagation`、`semantic-events`、`payload-transforms`、`diagnostics`、`integration-api`、`event-route`、`codec-metrics`、`codec-prepared` 和 `transport-test`。它们在 `@loggerjs/core` 根入口的 re-export 从 0.7 起标为 deprecated，并在 1.0 删除；请改从这些子路径导入。`pnpm verify:api-stability` 只允许根入口通过 deprecated 的导出项转导出稳定性更低的模块。
 - browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
 - 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。

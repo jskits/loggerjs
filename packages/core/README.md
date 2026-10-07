@@ -59,11 +59,11 @@ log.debug("handshake started"); // no output until the app configures logging
 | **Logger & registry** | `createLogger`, `getLogger`, `configure`, child loggers, numeric levels with names |
 | **Record/event model** | `LogRecord` (hot path) and `LogEvent` (transport-facing), `recordToEvent` / `eventToRecord` |
 | **Context** | `withContext`, `getContext`, `setContextManager`, `addContextProvider` |
-| **Typed & semantic events** | `defineEvent`, `semanticEvents` (shared `error` / `http` / `db` / `job` / `ui` / … field families) |
+| **Typed & semantic events** | `defineEvent`, plus `semanticEvents` from `@loggerjs/core/semantic-events` (shared `error` / `http` / `db` / `job` / `ui` / … field families) |
 | **Trace propagation** | W3C `traceparent` / `baggage` parse and format helpers |
 | **Middleware & integrations** | the synchronous middleware kernel and the `setup(api)` integration API with re-entrancy guards |
-| **Transports** | `consoleTransport`, `memoryTransport`, `testTransport`, plus reliability wrappers `batchTransport`, `retryTransport`, `fallbackTransport` |
-| **Codecs** | `jsonCodec`, `safeJsonCodec`, `ndjsonCodec`, `metricsCodec` |
+| **Transports** | `consoleTransport`, `memoryTransport`, plus reliability wrappers `batchTransport`, `retryTransport`, `fallbackTransport`; `testTransport` from `@loggerjs/core/transport-test` |
+| **Codecs** | `jsonCodec`, `safeJsonCodec`, `ndjsonCodec`; `metricsCodec` from `@loggerjs/core/codec-metrics` |
 | **Diagnostics** | `getLoggerMetaStats`, `getLoggerSelfMetrics` — counters and gauges for every silent degradation (queue drops, codec fallbacks, integration re-entrancy) |
 
 ## Subpath exports

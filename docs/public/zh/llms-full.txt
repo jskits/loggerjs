@@ -2715,6 +2715,24 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 编写自定义 transport 时，实现 `write`/`writeBatch` 可以在快速路径上接收 `LogRecord`，实现 `log`/`logBatch` 则接收投影后的 `LogEvent`。凡是涉及网络 I/O 的 transport，都应使用 `batchTransport()` 包装，以获得队列上限、重试、字节限制、并发和熔断能力。见 [传输](TRANSPORTS.md#编写自定义-transport)。
 
+## 1.0 移出 core 根入口的导出
+
+1.0 起 `@loggerjs/core` 根入口只保留内核。从 0.7 开始，下列导出仍可从根入口使用，但已标为 `@deprecated`，编辑器会给出提示；请改从对应子路径导入：
+
+| 导出 | 导入路径 |
+| --- | --- |
+| `parseTraceparent`、`formatTraceparent`、`parseBaggage`、`formatBaggage`、`traceContextFromHeaders`、`traceContextToHeaders` | `@loggerjs/core/trace-propagation` |
+| `semanticEvents` 及 `Semantic*Payload` 类型 | `@loggerjs/core/semantic-events` |
+| `applyPayloadTransforms`、`composePayloadTransforms`、`encryptionPayloadTransform`、`encodedPayloadToUint8Array` | `@loggerjs/core/payload-transforms` |
+| `setLoggerDiagnosticSink`、`runLoggerDiagnostic`、`emitLoggerDiagnostic`、`loggerDiagnosticsEnabled`、`loggerDiagnosticNow` | `@loggerjs/core/diagnostics` |
+| `createIntegrationSetupContext`、`getUnpatchedRegistry`、`registerUnpatchedDefaults`、`onceTeardown` | `@loggerjs/core/integration-api` |
+| `withLogEventRoute`、`getLogEventRoute`、`LOGGERJS_ROUTE` | `@loggerjs/core/event-route` |
+| `metricsCodec` | `@loggerjs/core/codec-metrics` |
+| `createPreparedRecordEncoder` | `@loggerjs/core/codec-prepared` |
+| `testTransport` 及其选项类型 | `@loggerjs/core/transport-test` |
+
+`Integration`、`IntegrationSetupContext`、`Transport`、`Codec` 等管线类型仍留在根入口。
+
 ## 包导入
 
 根入口在任何环境都可用：
@@ -2778,7 +2796,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 | 包 | 稳定范围 |
 | --- | --- |
-| `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
+| `@loggerjs/core` | 根入口内核（`createLogger`/`Logger`、`getLogger`/`configure`、级别、类型、record 与 event 转换、环境 context、类型化事件、middleware、meta 计数器、错误与安全序列化工具、JSON codec，以及 console、memory、batch、reliability transport），以及 `middleware`、`codec-json`、`context`、`events`、`transport-console`、`transport-batch`、`transport-reliability` 子路径。 |
 | `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
 | `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
@@ -2797,6 +2815,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选的程度。当前属于 Compatible 的部分包括：
 
+- 将在 1.0 移出根入口的 core 模块：`@loggerjs/core/trace-propagation`、`semantic-events`、`payload-transforms`、`diagnostics`、`integration-api`、`event-route`、`codec-metrics`、`codec-prepared` 和 `transport-test`。它们在 `@loggerjs/core` 根入口的 re-export 从 0.7 起标为 deprecated，并在 1.0 删除；请改从这些子路径导入。`pnpm verify:api-stability` 只允许根入口通过 deprecated 的导出项转导出稳定性更低的模块。
 - browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
 - 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。
@@ -3358,7 +3377,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 各包使用 Vitest，测试文件位于 `test/*.test.ts`。仓库约定：
 
 - 用刁钻的输入固定行为（循环引用、BigInt、冻结对象、会抛错的回调），大多数回归问题都是靠这类测试发现的。
-- 在 transport 侧做断言时使用 core 的 `testTransport()`，它提供快照、统计和 `waitForCount`。
+- 在 transport 侧做断言时使用 `@loggerjs/core/transport-test` 的 `testTransport()`，它提供快照、统计和 `waitForCount`。
 - 新的 transport/integration 要附带拆除测试：patch、采集、恢复，然后断言没有重复采集。
 
 其他 CI 门禁覆盖运行时和质量方面：

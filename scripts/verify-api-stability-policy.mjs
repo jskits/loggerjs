@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const packagesRoot = join(repoRoot, "packages");
@@ -74,24 +75,76 @@ for (const [key, item] of actualExports) {
   }
 }
 
+// A package root may not promise more than what it re-exports. Only direct
+// re-exports count: `export *` and named re-exports without @deprecated on
+// every specifier. Deprecated re-exports are on their way out of the root and
+// may point at less stable modules until they are removed.
+function directRootReExports(packageDir) {
+  const indexPath = join(packageDir, "src", "index.ts");
+  const source = ts.createSourceFile(
+    indexPath,
+    readFileSync(indexPath, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const modules = [];
+  for (const statement of source.statements) {
+    if (!ts.isExportDeclaration(statement) || !statement.moduleSpecifier) continue;
+    const target = statement.moduleSpecifier.text;
+    const clause = statement.exportClause;
+    const allDeprecated =
+      clause &&
+      ts.isNamedExports(clause) &&
+      clause.elements.length > 0 &&
+      clause.elements.every((element) =>
+        ts.getJSDocTags(element).some((tag) => tag.tagName.text === "deprecated"),
+      );
+    if (!allDeprecated) modules.push(target);
+  }
+  return modules;
+}
+
+function exportPathForModule(packageJson, packageDir, target) {
+  if (!target.startsWith("./")) return undefined;
+  const source = join(packageDir, "src", `${target.slice(2)}.ts`);
+  const entries = packageJson.loggerjsSubpathEntries ?? {};
+  for (const [exportPath, conditions] of Object.entries(packageJson.exports ?? {})) {
+    if (exportPath === ".") continue;
+    const importTarget = typeof conditions === "string" ? conditions : conditions.import;
+    const stem = importTarget?.split("/").pop()?.replace(/\.js$/, "");
+    if (stem && entries[stem] && join(packageDir, entries[stem]) === source) return exportPath;
+  }
+  return undefined;
+}
+
 for (const item of actualExports.values()) {
   if (item.exportPath !== ".") continue;
   const rootStatus = classifiedExports.get(`${item.packageName}:.`);
-  if (rootStatus !== "stable") continue;
+  if (!rootStatus) continue;
+  const packageDir = dirname(item.packageJsonPath);
+  const packageJson = JSON.parse(readFileSync(item.packageJsonPath, "utf8"));
 
-  for (const candidate of actualExports.values()) {
-    if (candidate.packageName !== item.packageName || candidate.exportPath === ".") continue;
-    const candidateStatus = classifiedExports.get(
-      `${candidate.packageName}:${candidate.exportPath}`,
-    );
+  for (const target of directRootReExports(packageDir)) {
+    const reExported = target.startsWith("@loggerjs/")
+      ? { key: `${target}:.`, label: target }
+      : (() => {
+          const exportPath = exportPathForModule(packageJson, packageDir, target);
+          return exportPath
+            ? {
+                key: `${item.packageName}:${exportPath}`,
+                label: specifier(item.packageName, exportPath),
+              }
+            : undefined;
+        })();
+    if (!reExported) continue;
+    const reExportedStatus = classifiedExports.get(reExported.key);
     if (
-      candidateStatus &&
-      (statusRank.get(candidateStatus) ?? 0) > (statusRank.get(rootStatus) ?? 0)
+      reExportedStatus &&
+      (statusRank.get(reExportedStatus) ?? 0) > (statusRank.get(rootStatus) ?? 0)
     ) {
       addFailure(
-        `${item.packageName} root export is stable but ${candidate.specifier} is ${candidateStatus}; classify the root no higher than the lowest re-exported public surface`,
+        `${item.packageName} root is ${rootStatus} but directly re-exports ${reExported.label}, which is ${reExportedStatus}; deprecate those root re-exports or classify the root no higher than them`,
       );
-      break;
     }
   }
 }

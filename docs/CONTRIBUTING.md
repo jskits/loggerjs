@@ -68,7 +68,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 Vitest per package, `test/*.test.ts`. House style:
 
 - Pin behavior with hostile inputs (circular refs, BigInt, frozen objects, throwing callbacks) — most past regressions were caught by exactly these.
-- Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
+- Use `testTransport()` from `@loggerjs/core/transport-test` for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
 - Delivery code is tested against injected failures, not only the happy path, and asserts the conservation invariant: every emitted event is delivered, or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle. Prefer real failures (a directory or `/dev/full` as a file target, a real HTTP collector that answers 503, resets, or never answers, `context.setOffline()`, a CDP quota override) over mocked streams. See `packages/node/test/failure-injection.test.ts`, `packages/node/test/http-failure-injection.test.ts`, and `tests/e2e/browser-failures.spec.ts`.
 - Lifecycle changes (flush, close, configure, retries) should keep `packages/core/test/lifecycle-model.test.ts` green; it runs seeded random operation sequences against flaky transports. When it fails, the seed in the test name replays the run.

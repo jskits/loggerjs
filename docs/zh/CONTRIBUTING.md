@@ -74,7 +74,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 各包使用 Vitest，测试文件位于 `test/*.test.ts`。仓库约定：
 
 - 用刁钻的输入固定行为（循环引用、BigInt、冻结对象、会抛错的回调），大多数回归问题都是靠这类测试发现的。
-- 在 transport 侧做断言时使用 core 的 `testTransport()`，它提供快照、统计和 `waitForCount`。
+- 在 transport 侧做断言时使用 `@loggerjs/core/transport-test` 的 `testTransport()`，它提供快照、统计和 `waitForCount`。
 - 新的 transport/integration 要附带拆除测试：patch、采集、恢复，然后断言没有重复采集。
 
 其他 CI 门禁覆盖运行时和质量方面：

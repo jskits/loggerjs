@@ -357,7 +357,7 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 <br/>
 
-**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport`, plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
+**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport` (`@loggerjs/core/transport-test`), plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
 
 **Pretty developer UX** (`@loggerjs/pretty`) — `prettyConsoleTransport` for browser DevTools or local consoles · `prettyStdoutTransport` / `prettyStderrTransport` for Node terminals · `formatPrettyEvent` for custom display sinks
 
@@ -451,7 +451,7 @@ Middleware run on raw records before id/message/error work; processors run on pr
 
 <br/>
 
-`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (core) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
+`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (`@loggerjs/core/codec-metrics`) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
 
 Codecs fall back to a safe representation on circular references instead of throwing, and increment a `codec.fallback` meta counter so silent degradation is observable. See [docs/CODECS.md](docs/CODECS.md).
 
@@ -2976,6 +2976,24 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
+## Imports Leaving the Core Root in 1.0
+
+The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports below still work from the root but are marked `@deprecated`, so editors flag them; import them from their subpath instead:
+
+| Exports | Import from |
+| --- | --- |
+| `parseTraceparent`, `formatTraceparent`, `parseBaggage`, `formatBaggage`, `traceContextFromHeaders`, `traceContextToHeaders` | `@loggerjs/core/trace-propagation` |
+| `semanticEvents` and the `Semantic*Payload` types | `@loggerjs/core/semantic-events` |
+| `applyPayloadTransforms`, `composePayloadTransforms`, `encryptionPayloadTransform`, `encodedPayloadToUint8Array` | `@loggerjs/core/payload-transforms` |
+| `setLoggerDiagnosticSink`, `runLoggerDiagnostic`, `emitLoggerDiagnostic`, `loggerDiagnosticsEnabled`, `loggerDiagnosticNow` | `@loggerjs/core/diagnostics` |
+| `createIntegrationSetupContext`, `getUnpatchedRegistry`, `registerUnpatchedDefaults`, `onceTeardown` | `@loggerjs/core/integration-api` |
+| `withLogEventRoute`, `getLogEventRoute`, `LOGGERJS_ROUTE` | `@loggerjs/core/event-route` |
+| `metricsCodec` | `@loggerjs/core/codec-metrics` |
+| `createPreparedRecordEncoder` | `@loggerjs/core/codec-prepared` |
+| `testTransport` and its option types | `@loggerjs/core/transport-test` |
+
+The `Integration`, `IntegrationSetupContext`, `Transport`, `Codec`, and other pipeline types stay in the root.
+
 ## Package Imports
 
 Root package imports work everywhere:
@@ -3028,7 +3046,7 @@ Stable exports are tracked in `api-stability.policy.json`. The current stable pa
 
 | Package | Stable surface |
 | --- | --- |
-| `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
+| `@loggerjs/core` | The root kernel (`createLogger`/`Logger`, `getLogger`/`configure`, levels, types, record and event conversion, ambient context, typed events, middleware, meta counters, error and safe-stringify utilities, JSON codecs, and the console, memory, batch, and reliability transports) and the `middleware`, `codec-json`, `context`, `events`, `transport-console`, `transport-batch`, and `transport-reliability` subpaths. |
 | `@loggerjs/browser` | `transport-http`, `offline-indexeddb`, `transport-indexeddb`, `offline-first-transport`, and the console, error, context, and page-lifecycle integrations. |
 | `@loggerjs/node` | `transport-stdout`, `transport-file`, `transport-rotating-file`, `transport-http`, `integration-process`, and AsyncLocalStorage `context`. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
@@ -3047,6 +3065,7 @@ Stable semantics include:
 
 Compatible exports stay documented and tested, but they are not frozen enough to be stable v1 candidates yet. Current compatible areas include:
 
+- Core modules that leave the root in 1.0: `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`. Their `@loggerjs/core` root re-exports are deprecated since 0.7 and removed in 1.0; import them from these subpaths. `pnpm verify:api-stability` only lets a root re-export less stable modules through deprecated specifiers.
 - Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Use the stable subpaths above when you need a v1 candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
 - Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.
@@ -3586,7 +3605,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 Vitest per package, `test/*.test.ts`. House style:
 
 - Pin behavior with hostile inputs (circular refs, BigInt, frozen objects, throwing callbacks) — most past regressions were caught by exactly these.
-- Use `testTransport()` from core for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
+- Use `testTransport()` from `@loggerjs/core/transport-test` for transport-side assertions; it provides snapshots, stats, and `waitForCount`.
 - New transports/integrations ship with teardown tests: patch, capture, restore, assert no double-capture.
 - Delivery code is tested against injected failures, not only the happy path, and asserts the conservation invariant: every emitted event is delivered, or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle. Prefer real failures (a directory or `/dev/full` as a file target, a real HTTP collector that answers 503, resets, or never answers, `context.setOffline()`, a CDP quota override) over mocked streams. See `packages/node/test/failure-injection.test.ts`, `packages/node/test/http-failure-injection.test.ts`, and `tests/e2e/browser-failures.spec.ts`.
 - Lifecycle changes (flush, close, configure, retries) should keep `packages/core/test/lifecycle-model.test.ts` green; it runs seeded random operation sequences against flaky transports. When it fails, the seed in the test name replays the run.

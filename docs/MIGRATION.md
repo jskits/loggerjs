@@ -159,6 +159,24 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
+## Imports Leaving the Core Root in 1.0
+
+The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports below still work from the root but are marked `@deprecated`, so editors flag them; import them from their subpath instead:
+
+| Exports | Import from |
+| --- | --- |
+| `parseTraceparent`, `formatTraceparent`, `parseBaggage`, `formatBaggage`, `traceContextFromHeaders`, `traceContextToHeaders` | `@loggerjs/core/trace-propagation` |
+| `semanticEvents` and the `Semantic*Payload` types | `@loggerjs/core/semantic-events` |
+| `applyPayloadTransforms`, `composePayloadTransforms`, `encryptionPayloadTransform`, `encodedPayloadToUint8Array` | `@loggerjs/core/payload-transforms` |
+| `setLoggerDiagnosticSink`, `runLoggerDiagnostic`, `emitLoggerDiagnostic`, `loggerDiagnosticsEnabled`, `loggerDiagnosticNow` | `@loggerjs/core/diagnostics` |
+| `createIntegrationSetupContext`, `getUnpatchedRegistry`, `registerUnpatchedDefaults`, `onceTeardown` | `@loggerjs/core/integration-api` |
+| `withLogEventRoute`, `getLogEventRoute`, `LOGGERJS_ROUTE` | `@loggerjs/core/event-route` |
+| `metricsCodec` | `@loggerjs/core/codec-metrics` |
+| `createPreparedRecordEncoder` | `@loggerjs/core/codec-prepared` |
+| `testTransport` and its option types | `@loggerjs/core/transport-test` |
+
+The `Integration`, `IntegrationSetupContext`, `Transport`, `Codec`, and other pipeline types stay in the root.
+
 ## Package Imports
 
 Root package imports work everywhere:

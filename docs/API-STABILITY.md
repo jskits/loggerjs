@@ -26,7 +26,7 @@ Stable exports are tracked in `api-stability.policy.json`. The current stable pa
 
 | Package | Stable surface |
 | --- | --- |
-| `@loggerjs/core` | Root package and documented core subpaths for middleware, codecs, events, context, trace propagation, payload transforms, and core transports. |
+| `@loggerjs/core` | The root kernel (`createLogger`/`Logger`, `getLogger`/`configure`, levels, types, record and event conversion, ambient context, typed events, middleware, meta counters, error and safe-stringify utilities, JSON codecs, and the console, memory, batch, and reliability transports) and the `middleware`, `codec-json`, `context`, `events`, `transport-console`, `transport-batch`, and `transport-reliability` subpaths. |
 | `@loggerjs/browser` | `transport-http`, `offline-indexeddb`, `transport-indexeddb`, `offline-first-transport`, and the console, error, context, and page-lifecycle integrations. |
 | `@loggerjs/node` | `transport-stdout`, `transport-file`, `transport-rotating-file`, `transport-http`, `integration-process`, and AsyncLocalStorage `context`. |
 | `@loggerjs/pretty` | Root package, formatter, console transport, and stream transports. |
@@ -45,6 +45,7 @@ Stable semantics include:
 
 Compatible exports stay documented and tested, but they are not frozen enough to be stable v1 candidates yet. Current compatible areas include:
 
+- Core modules that leave the root in 1.0: `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`. Their `@loggerjs/core` root re-exports are deprecated since 0.7 and removed in 1.0; import them from these subpaths. `pnpm verify:api-stability` only lets a root re-export less stable modules through deprecated specifiers.
 - Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Use the stable subpaths above when you need a v1 candidate compatibility boundary.
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
 - Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.

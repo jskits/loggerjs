@@ -349,7 +349,7 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 <br/>
 
-**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport`, plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
+**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport` (`@loggerjs/core/transport-test`), plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
 
 **Pretty developer UX** (`@loggerjs/pretty`) — `prettyConsoleTransport` for browser DevTools or local consoles · `prettyStdoutTransport` / `prettyStderrTransport` for Node terminals · `formatPrettyEvent` for custom display sinks
 
@@ -443,7 +443,7 @@ Middleware run on raw records before id/message/error work; processors run on pr
 
 <br/>
 
-`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (core) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
+`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (`@loggerjs/core/codec-metrics`) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
 
 Codecs fall back to a safe representation on circular references instead of throwing, and increment a `codec.fallback` meta counter so silent degradation is observable. See [docs/CODECS.md](docs/CODECS.md).
 
