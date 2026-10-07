@@ -28,6 +28,14 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
    * Set to 0 to disable. Defaults to 10000.
    */
   timeoutMs?: number;
+  /**
+   * Header that carries an idempotency key for each request, for example
+   * "Idempotency-Key". Every resend of a batch repeats its key, so the
+   * collector can drop the duplicate that a retry after a timeout may cause.
+   * Keys start with a random per-transport prefix, so senders never share
+   * one. Off by default.
+   */
+  idempotencyKeyHeader?: string;
 }
 
 function payloadToBody(payload: EncodedPayload): BodyInit {
@@ -35,9 +43,36 @@ function payloadToBody(payload: EncodedPayload): BodyInit {
   return Uint8Array.from(payload);
 }
 
+// Keys are a random per-transport prefix, which keeps senders apart, and a
+// batch number. A batch's key is stored under its last event: retries and
+// resends of a batch handed back to the queue keep that event, because a full
+// queue only drops events from the front. Mirrors @loggerjs/browser.
+function idempotencyKeyHeaders(
+  header: string | undefined,
+): (events: readonly LogEvent[]) => Record<string, string> | undefined {
+  if (!header) return () => undefined;
+  // Throws a TypeError for an invalid header name now instead of on every send.
+  new Headers().append(header, "");
+  const prefix = Array.from(crypto.getRandomValues(new Uint32Array(2)), (word) =>
+    word.toString(36),
+  ).join("");
+  const keys = new WeakMap<LogEvent, string>();
+  let next = 0;
+  return (events) => {
+    const last = events[events.length - 1]!;
+    let key = keys.get(last);
+    if (key === undefined) {
+      key = `${prefix}-${(next++).toString(36)}`;
+      keys.set(last, key);
+    }
+    return { [header]: key };
+  };
+}
+
 export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport {
   const codec = options.codec ?? safeJsonCodec();
   const fetchFn = options.fetchFn ?? globalThis.fetch?.bind(globalThis);
+  const keyHeaders = idempotencyKeyHeaders(options.idempotencyKeyHeader);
   const timeoutMs = options.timeoutMs ?? 10_000;
   const inner: Transport = {
     name: options.name ?? "node-http-inner",
@@ -59,6 +94,7 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
         headers: {
           "content-type": transformed.contentType,
           ...transformed.headers,
+          ...keyHeaders(events),
           ...options.headers,
         },
         body: payloadToBody(transformed.payload),

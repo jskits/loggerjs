@@ -11,6 +11,7 @@ interface Collector {
   acknowledged: Map<string, number>;
   requests: Fault[];
   requestTimes: number[];
+  idempotencyKeys: Array<string | undefined>;
   close: () => Promise<void>;
 }
 
@@ -22,10 +23,12 @@ async function startCollector(plan: (request: number) => Fault): Promise<Collect
   const acknowledged = new Map<string, number>();
   const requests: Fault[] = [];
   const requestTimes: number[] = [];
+  const idempotencyKeys: Array<string | undefined> = [];
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     const fault = plan(requests.length);
     requests.push(fault);
     requestTimes.push(Date.now());
+    idempotencyKeys.push(request.headers["idempotency-key"] as string | undefined);
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
@@ -61,6 +64,7 @@ async function startCollector(plan: (request: number) => Fault): Promise<Collect
     acknowledged,
     requests,
     requestTimes,
+    idempotencyKeys,
     close: () =>
       new Promise<void>((done) => {
         server.closeAllConnections();
@@ -179,6 +183,26 @@ describe("nodeHttpTransport under injected network faults", () => {
     expect(collector.acknowledged.size).toBe(3);
     expect(collector.requests).toEqual(["rate-limited-1s", "ok"]);
     expect(collector.requestTimes[1]! - collector.requestTimes[0]!).toBeGreaterThanOrEqual(950);
+  });
+
+  it("repeats the batch's idempotency key on every retry", async () => {
+    const collector = await startCollector((request) => (request < 2 ? "server-error" : "ok"));
+
+    const result = await emitAndClose(collector, 4, { idempotencyKeyHeader: "Idempotency-Key" });
+
+    expect(result.closeSettled).toBe(true);
+    expect(collector.requests).toEqual(["server-error", "server-error", "ok"]);
+    const [first, ...retries] = collector.idempotencyKeys;
+    expect(first).toMatch(/^[0-9a-z]+-[0-9a-z]+$/);
+    expect(retries).toEqual([first, first]);
+  });
+
+  it("sends no idempotency key unless the header is configured", async () => {
+    const collector = await startCollector(() => "ok");
+
+    await emitAndClose(collector, 2);
+
+    expect(collector.idempotencyKeys).toEqual([undefined]);
   });
 
   it("retries after the collector resets the connection", async () => {

@@ -140,6 +140,7 @@ batchTransport(inner, {
 - 丢弃总会计入 logger meta（`transport.dropped.*`）；只有注册了 `onDrop` 回调时，才会为它把 record 转换成 event。
 - 失败的批次会重新放回队首；熔断器可以避免不断请求一个已经挂掉的端点。
 - 会遵守 `Retry-After`。当投递错误带有 `retryAfterMs`（HTTP transport 会从 429 或 503 响应的 `Retry-After` 头中解析出来）时，下一次尝试至少等待这么久。如果等待时间超过 `retryMaxDelayMs`，会改为结束本轮重试（计入 `transport.retry.deferred`）：批次放回队列，等待结束前不发送任何内容，因此 `flush()` 和 `close()` 不会被它卡住。`retryTransport()` 遵循同样的规则，等待时间超过 `retryMaxDelayMs` 时直接放弃（`retry-exhausted`）。
+- 投递失败后放回队列的批次会原样重发：新事件排在它后面，不会并入这个批次，因此由批次事件推导出的内容（例如幂等键）保持不变。
 - `close()` 会最后尝试 flush 一次，然后停止 flush 定时器，并且无论成败都会关闭内部 transport。未能投递的记录以及关闭后写入的记录都计为 `transport.dropped.closed`；最后一次 flush 的错误仍会抛出。
 
 `retryTransport()` 和 `fallbackTransport()` 没有队列：放弃投递时，这次投递会 reject，事件计入 `transport.dropped.*`，并逐个交给 `onDrop`。从该包装层的角度看这是最终的丢弃；如果外层 transport 自己还会重试被 reject 的投递（例如 `batchTransport()` 会把失败的批次重新入队），这些事件之后仍可能送达。请直接使用 `batchTransport()` 自带的重试选项，而不要在其中嵌套 `retryTransport()`。
@@ -162,7 +163,7 @@ pretty transport 是显示用的 sink，不做批量、不重试、不持久化�
 | `stdoutTransport()` / `stderrTransport()` | 输出 NDJSON 行，跟踪写入背压，妥善处理 `EPIPE`，可选 `minLength` 缓冲；`flush()` 会等待未完成的写入。 |
 | `fileTransport({ path })` | 默认以追加方式把 NDJSON 写入文件；支持 `mkdir`、`append: false`、异步 `minLength` 缓冲、`sync: true` 和崩溃路径的 `flushSync()`。 |
 | `rotatingFileTransport({ path, maxBytes, maxFiles })` | 通过同一个文件目的地按大小轮转，生成带编号的归档文件。同步写入；每个文件只应由一个 logger 进程写入。如果轮转失败（例如 Windows 上另一个进程占用文件导致 `EBUSY`/`EPERM`），错误会以 `operation: "rotate"` 报告，日志继续写入当前文件，并在再写入一个 `maxBytes` 后重试轮转。 |
-| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。`timeoutMs`（默认 `10000`，设为 `0` 关闭）会中止收集端接受连接却一直不响应的请求，避免 `flush()` 和 `close()` 卡住停机流程；超时的尝试按重试设置处理。收集端可能已经处理了超时的请求，因此重试可能导致重复投递；如有需要，请按事件 `id` 去重。 |
+| `nodeHttpTransport({ url })` | 基于 fetch 的 HTTP 投递，内部用 `batchTransport` 包装。`timeoutMs`（默认 `10000`，设为 `0` 关闭）会中止收集端接受连接却一直不响应的请求，避免 `flush()` 和 `close()` 卡住停机流程；超时的尝试按重试设置处理。收集端可能已经处理了超时的请求，因此重试可能让同一批次到达两次。设置 `idempotencyKeyHeader`（例如 `"Idempotency-Key"`）后，每个请求都会带上一个幂等键；同一批次的每次重发都使用相同的键，收集端据此丢弃重复的请求。键以每个 transport 随机生成的前缀开头，因此不同进程之间不会出现相同的键。 |
 | `nodeSyslogTransport()` | 通过 UDP/TCP 发送 RFC 格式的 syslog 消息；`formatSyslogMessage()` 也单独导出。 |
 | `workerTransport({ workerScript })` | 用 codec 编码批次并发送到 worker 线程，可选转移 buffer；支持 ready 超时、等待批次 ack、回退和 `autoEnd`。 |
 
@@ -208,9 +209,9 @@ worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 
 | `browserBroadcastChannelTransport({ channel })` | 把日志分发到其他标签页（本身就可能丢失；接收方必须正在监听）。 |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | 把日志（例如来自 `indexedDbTransport().query()`）打包成 ZIP，包含 manifest、可选的按 session 拆分文件、可选的 `recent.ndjson`/`recent.json` 和 CRC，用于技术支持流程。 |
 
-`browserHttpTransport()` 会遵守 429 和 503 响应中的 `Retry-After`：在等待结束前，定时发送、批量已满时的发送、显式 `flush()` 和离线重放都会暂停，而页面退出时的 Beacon flush 照常发出。跨域收集端必须把 `Retry-After` 列在 `Access-Control-Expose-Headers` 中，否则浏览器读不到它。`browserHttpTransport()` 会在 `timeoutMs`（默认 `10000`，设为 `0` 关闭）后中止 Fetch 投递。浏览器自身永远不会让请求超时，没有它时一个卡住的请求会挡住之后所有的 flush 和 `close()`；配置了离线队列时，超时的批次会被存下来以便重放。`close()` 是终态：它无法投递或存储的事件，以及之后再记录的事件，都会通过 `onDrop` 和 `transport.dropped.closed` 报告。
+`browserHttpTransport()` 会遵守 429 和 503 响应中的 `Retry-After`：在等待结束前，定时发送、批量已满时的发送、显式 `flush()` 和离线重放都会暂停，而页面退出时的 Beacon flush 照常发出。跨域收集端必须把 `Retry-After` 列在 `Access-Control-Expose-Headers` 中，否则浏览器读不到它。`browserHttpTransport()` 会在 `timeoutMs`（默认 `10000`，设为 `0` 关闭）后中止 Fetch 投递。浏览器自身永远不会让请求超时，没有它时一个卡住的请求会挡住之后所有的 flush 和 `close()`；配置了离线队列时，超时的批次会被存下来以便重放。超时的请求可能已经被处理，因此同一批次可能到达两次。设置 `idempotencyKeyHeader` 后，每个 Fetch 请求都会带上幂等键：重试、保留批次的重发和离线重放都使用该批次原来的键（离线条目会把它一并存下），收集端据此丢弃重复的请求。跨域收集端必须在 `Access-Control-Allow-Headers` 中允许这个请求头，页面退出时的 Beacon 请求无法携带它。`close()` 是终态：它无法投递或存储的事件，以及之后再记录的事件，都会通过 `onDrop` 和 `transport.dropped.closed` 报告。
 
-`indexedDbTransport()` 在某个批次的 IndexedDB 写入失败时，会通过 `onDrop` 报告其中每个事件：`QuotaExceededError` 的原因为 `quota`，其他情况为 `write-failed`。`indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 在另一个标签页需要升级或删除数据库（例如新版本应用）时会关闭连接，并在下次使用时重新打开。`close()` 之后再写入 `indexedDbTransport()` 的事件会以 `closed` 原因报告为丢弃。与 Node 一样，超时的请求可能已经被处理，因此超时的批次可能到达两次；如有需要，请按事件 `id` 去重。
+`indexedDbTransport()` 在某个批次的 IndexedDB 写入失败时，会通过 `onDrop` 报告其中每个事件：`QuotaExceededError` 的原因为 `quota`，其他情况为 `write-failed`。`indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 在另一个标签页需要升级或删除数据库（例如新版本应用）时会关闭连接，并在下次使用时重新打开。`close()` 之后再写入 `indexedDbTransport()` 的事件会以 `closed` 原因报告为丢弃。
 
 `browserHttpTransport()` 在普通 Fetch 投递中使用 `codec`。如果 pagehide 或页面隐藏时的 Beacon 请求需要不同的编码或 content type，可以设置 `beaconCodec`；未设置时回退到 `codec`。配置了 `transformPayload` 时会跳过 Beacon 投递，生命周期 flush 改走普通 Fetch 路径，`beaconCodec` 也就不会生效。
 

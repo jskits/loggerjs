@@ -11,10 +11,10 @@ const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const budgets = [
   // Retry-After handling (parseRetryAfter, httpStatusError, deferred batches) measures 101,185 raw and 22,314 gzip bytes with shared chunks.
   ["@loggerjs/core", "packages/core/dist/index.js", 101_800, 22_500],
-  // Retry-After pauses for sends and offline replay measure 149,746 raw and 31,123 gzip bytes with shared chunks.
-  ["@loggerjs/browser", "packages/browser/dist/index.js", 150_200, 31_300],
-  // Entry plus shared chunks after splitting shared modules into chunks measures 81,039 raw and 16,041 gzip bytes.
-  ["@loggerjs/node", "packages/node/dist/index.js", 81_500, 16_100],
+  // Idempotency keys and resending held batches whole measure 150,638 raw and 31,414 gzip bytes with shared chunks.
+  ["@loggerjs/browser", "packages/browser/dist/index.js", 151_100, 31_600],
+  // Idempotency keys for nodeHttpTransport measure 81,800 raw and 16,285 gzip bytes with shared chunks.
+  ["@loggerjs/node", "packages/node/dist/index.js", 82_300, 16_400],
   ["@loggerjs/pretty", "packages/pretty/dist/index.js", 18_000, 5_000],
   ["@loggerjs/database", "packages/database/dist/index.js", 12_000, 4_000],
   ["@loggerjs/codecs", "packages/codecs/dist/index.js", 18_500, 4_400],
@@ -41,14 +41,14 @@ createLogger({ transports: [consoleTransport()] }).info("ready", { ok: true });`
     19_900,
     6_400,
   ],
-  // createLogger() plus browserHttpTransport() measures 24,876 raw and 8,310 gzip bytes.
+  // createLogger() plus browserHttpTransport() measures 25,258 raw and 8,494 gzip bytes.
   [
     "browser logger + http",
     `import { createLogger } from "@loggerjs/core";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 createLogger({ transports: [browserHttpTransport({ url: "/logs" })] }).info("ready");`,
-    25_200,
-    8_400,
+    25_600,
+    8_600,
   ],
   // createLogger() plus stdoutTransport() measures 21,065 raw and 6,872 gzip bytes.
   [

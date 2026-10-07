@@ -115,6 +115,66 @@ describe("nodeHttpTransport", () => {
     expect(fetchFn.mock.calls[1]?.[1]?.body).toBe("retained");
   });
 
+  it("repeats the idempotency key when a handed-back batch is resent", async () => {
+    let fail = true;
+    const fetchFn = vi.fn<typeof fetch>(async () =>
+      fail ? ({ ok: false, status: 503 } as Response) : okResponse,
+    );
+    const transport = nodeHttpTransport({
+      url: "https://collector.example/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      maxRetries: 0,
+      idempotencyKeyHeader: "Idempotency-Key",
+      fetchFn,
+    });
+    const context = createTransportContext();
+
+    transport.log?.(createEvent("first"), context);
+    await expect(transport.flush?.()).rejects.toThrow("status 503");
+    fail = false;
+    transport.log?.(createEvent("later"), context);
+    await transport.flush?.();
+
+    const requests = fetchFn.mock.calls.map(([, init]) => ({
+      body: init?.body,
+      key: new Headers(init?.headers).get("Idempotency-Key"),
+    }));
+    expect(requests.map((request) => request.body)).toEqual(["first", "first", "later"]);
+    expect(requests[0]?.key).toMatch(/^[0-9a-z]+-[0-9a-z]+$/);
+    expect(requests[1]?.key).toBe(requests[0]?.key);
+    expect(requests[2]?.key).not.toBe(requests[0]?.key);
+  });
+
+  it("gives each transport its own idempotency key prefix", async () => {
+    const keys: string[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async (_url, init) => {
+      keys.push(new Headers(init?.headers).get("idempotency-key") ?? "missing");
+      return okResponse;
+    });
+    const options = {
+      url: "https://collector.example/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      idempotencyKeyHeader: "idempotency-key",
+      fetchFn,
+    };
+    const first = nodeHttpTransport(options);
+    const second = nodeHttpTransport(options);
+    const sameEvent = createEvent("same id in another process");
+
+    first.log?.(sameEvent, createTransportContext());
+    second.log?.(sameEvent, createTransportContext());
+    await Promise.all([first.flush?.(), second.flush?.()]);
+
+    const [firstKey, secondKey] = keys.map((key) => key.split("-"));
+    expect(firstKey?.[0]).not.toBe(secondKey?.[0]);
+    expect(firstKey?.slice(1)).toEqual(secondKey?.slice(1));
+    expect(() =>
+      nodeHttpTransport({ url: "https://collector.example/logs", idempotencyKeyHeader: "bad key" }),
+    ).toThrow(TypeError);
+  });
+
   it("fails explicitly when fetch is unavailable", async () => {
     vi.stubGlobal("fetch", undefined);
     const transport = nodeHttpTransport({

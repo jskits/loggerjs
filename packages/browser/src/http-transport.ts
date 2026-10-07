@@ -76,6 +76,15 @@ export interface BrowserHttpTransportOptions {
    * 10000.
    */
   timeoutMs?: number;
+  /**
+   * Header that carries an idempotency key for each Fetch request, for
+   * example "Idempotency-Key". Every resend of a batch repeats its key, and
+   * offline-queue entries store it, so the collector can drop duplicates.
+   * Keys start with a random per-transport prefix, so senders never share
+   * one. Off by default because a cross-origin collector must allow the
+   * header in Access-Control-Allow-Headers. Beacon requests cannot carry it.
+   */
+  idempotencyKeyHeader?: string;
 }
 
 export function memoryBrowserHttpOfflineQueue(
@@ -149,6 +158,32 @@ function remainingEvents(chunks: BeaconChunk[], startIndex: number): LogEvent[] 
   return events;
 }
 
+// Keys are a random per-transport prefix, which keeps senders apart, and a
+// batch number. A batch's key is stored under its last event: resends of a
+// held batch keep that event, because a full queue and Beacon delivery only
+// remove events from the front. Mirrors @loggerjs/node.
+function idempotencyKeyHeaders(
+  header: string | undefined,
+): (events: readonly LogEvent[]) => Record<string, string> | undefined {
+  if (!header) return () => undefined;
+  // Throws a TypeError for an invalid header name now instead of on every send.
+  new Headers().append(header, "");
+  const prefix = Array.from(crypto.getRandomValues(new Uint32Array(2)), (word) =>
+    word.toString(36),
+  ).join("");
+  const keys = new WeakMap<LogEvent, string>();
+  let next = 0;
+  return (events) => {
+    const last = events[events.length - 1]!;
+    let key = keys.get(last);
+    if (key === undefined) {
+      key = `${prefix}-${(next++).toString(36)}`;
+      keys.set(last, key);
+    }
+    return { [header]: key };
+  };
+}
+
 export function browserHttpTransport(options: BrowserHttpTransportOptions): Transport {
   const codec = options.codec ?? safeJsonCodec();
   const beaconCodec = options.beaconCodec ?? codec;
@@ -158,6 +193,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     throw new RangeError("maxBatchSize must be a positive safe integer");
   }
   const flushIntervalMs = options.flushIntervalMs ?? 2000;
+  const keyHeaders = idempotencyKeyHeaders(options.idempotencyKeyHeader);
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
   const beaconMaxBytes = options.beaconMaxBytes ?? DEFAULT_BEACON_MAX_BYTES;
@@ -177,6 +213,9 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   let activeFlush: Promise<void> | undefined;
   let flushingBeacon = false;
   let replayPromise: Promise<void> | undefined;
+  // Events at the front of the queue that a failed send handed back. They are
+  // resent as the same batch, so its idempotency key repeats.
+  let heldBatchSize = 0;
   let lastContext: TransportContext | undefined;
 
   const headers = (payloadHeaders?: Record<string, string>, contentType = codec.contentType) => ({
@@ -333,27 +372,21 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   // the offline queue took it instead.
   const sendFetchBatch = async (batch: LogEvent[]): Promise<"sent" | "queued"> => {
     const transformed = await encodeTransformedPayload(batch);
+    // The key travels in the stored headers, so replays repeat it.
+    const payloadHeaders = { ...transformed.headers, ...keyHeaders(batch) };
     if (offlineQueue && !isOnline()) {
-      await enqueueOfflinePayload(
-        transformed.payload,
-        transformed.headers,
-        transformed.contentType,
-      );
+      await enqueueOfflinePayload(transformed.payload, payloadHeaders, transformed.contentType);
       return "queued";
     }
     try {
       await sendPayload(
-        createOfflineEntry(transformed.payload, transformed.headers, transformed.contentType),
+        createOfflineEntry(transformed.payload, payloadHeaders, transformed.contentType),
       );
       return "sent";
     } catch (error) {
       noteRetryAfter(error);
       if (
-        await enqueueOfflinePayload(
-          transformed.payload,
-          transformed.headers,
-          transformed.contentType,
-        )
+        await enqueueOfflinePayload(transformed.payload, payloadHeaders, transformed.contentType)
       ) {
         return "queued";
       }
@@ -437,13 +470,15 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const flushBeaconQueue = () => {
     if (flushingBeacon || options.transformPayload || queue.length === 0) return;
     flushingBeacon = true;
-    let pending = queue.splice(0, queue.length);
+    const taken = queue.length;
+    let pending = queue.splice(0, taken);
     try {
       const result = sendBeaconBatch(pending);
       pending = result.remaining;
       if (result.failure) throw result.failure.error;
     } finally {
       if (pending.length > 0) queue.unshift(...pending);
+      heldBatchSize = Math.max(0, heldBatchSize - (taken - pending.length));
       flushingBeacon = false;
     }
   };
@@ -489,7 +524,8 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         let sent = false;
         let queued = false;
         while (queue.length > 0) {
-          const batch = queue.splice(0, maxBatchSize);
+          const batch = queue.splice(0, heldBatchSize || maxBatchSize);
+          heldBatchSize = 0;
           try {
             // oxlint-disable-next-line no-await-in-loop -- Preserve batch order and stop on the first unhandled failure.
             const outcome = await sendFetchBatch(batch);
@@ -497,6 +533,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
             else queued = true;
           } catch (error) {
             queue.unshift(...batch);
+            heldBatchSize = batch.length;
             throw error;
           }
         }
@@ -565,6 +602,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           return;
         }
         const dropped = queue.shift();
+        if (heldBatchSize > 0) heldBatchSize -= 1;
         if (dropped) reportDrop(dropped, "queue-full");
       }
       queue.push(event);

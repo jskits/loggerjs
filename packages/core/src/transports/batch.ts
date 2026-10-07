@@ -56,6 +56,10 @@ interface QueueItem {
   payload: LogEvent | LogRecord;
   kind: "event" | "record";
   estimatedBytes: number;
+  // Marks the last item of a batch handed back after a failed delivery. The
+  // batch is resent with the same items, so an inner transport can recognize
+  // it, for example to repeat its idempotency key.
+  batchEnd?: true;
 }
 
 const MAX_ESTIMATE_DEPTH = 4;
@@ -350,6 +354,7 @@ export function batchTransport(
       if (!item) break;
       batch.push(item);
       bytes += item.estimatedBytes;
+      if (item.batchEnd) break;
     }
 
     updateQueueDepth();
@@ -363,6 +368,7 @@ export function batchTransport(
       setLoggerMetaGauge(`transport.active_batches.${transportName}`, statsState.activeBatches);
       await deliverWithRetry(batchItems, context);
     } catch (error) {
+      batchItems[batchItems.length - 1]!.batchEnd = true;
       queue.unshift(...batchItems);
       updateQueueDepth();
       throw error;

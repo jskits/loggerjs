@@ -268,6 +268,15 @@ export interface BrowserHttpTransportOptions {
      * 10000.
      */
     timeoutMs?: number;
+    /**
+     * Header that carries an idempotency key for each Fetch request, for
+     * example "Idempotency-Key". Every resend of a batch repeats its key, and
+     * offline-queue entries store it, so the collector can drop duplicates.
+     * Keys start with a random per-transport prefix, so senders never share
+     * one. Off by default because a cross-origin collector must allow the
+     * header in Access-Control-Allow-Headers. Beacon requests cannot carry it.
+     */
+    idempotencyKeyHeader?: string;
 }
 export declare function memoryBrowserHttpOfflineQueue(options?: MemoryBrowserHttpOfflineQueueOptions): BrowserHttpOfflineQueue & {
     size: () => number;

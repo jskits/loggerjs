@@ -794,9 +794,50 @@ describe("browserHttpTransport", () => {
     await vi.advanceTimersByTimeAsync(1500);
     expect(sentAt).toEqual([50]);
 
+    // The held batch goes first and alone, then the event logged meanwhile.
     await vi.advanceTimersByTimeAsync(600);
-    expect(sentAt).toEqual([50, 2050]);
-    expect(fetchFn.mock.calls[1]?.[1]?.body).toBe("limited|during window");
+    expect(sentAt).toEqual([50, 2050, 2050]);
+    expect(fetchFn.mock.calls.slice(1).map(([, init]) => init?.body)).toEqual([
+      "limited",
+      "during window",
+    ]);
+  });
+
+  it("repeats an idempotency key across retries and offline replays", async () => {
+    const keys: string[] = [];
+    let failures = 2;
+    const fetchFn = vi.fn<typeof fetch>(async (_input, init) => {
+      keys.push(new Headers(init?.headers).get("idempotency-key") ?? "missing");
+      if (failures > 0) {
+        failures -= 1;
+        return new Response(null, { status: 503 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayOnStart: false,
+      offlineReplayBaseDelayMs: 0,
+      idempotencyKeyHeader: "idempotency-key",
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("one"), createTransportContext());
+    transport.log?.(createEvent("two"), createTransportContext());
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(1);
+
+    // The stored entry replays with the key it was first sent with.
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(0);
+    expect(keys).toHaveLength(3);
+    expect(keys[0]).toMatch(/^[0-9a-z]+-[0-9a-z]+$/);
+    expect(new Set(keys).size).toBe(1);
   });
 
   it("flushes queued events on the scheduled timer", async () => {
@@ -979,6 +1020,39 @@ describe("browserHttpTransport", () => {
 
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(fetchFn.mock.calls[1]?.[1]?.body).toBe("retained");
+  });
+
+  it("resends a retained batch alone so its idempotency key repeats", async () => {
+    const requests: Array<{ body: unknown; key: string | null }> = [];
+    let fail = true;
+    const fetchFn = vi.fn<typeof fetch>(async (_input, init) => {
+      requests.push({
+        body: init?.body,
+        key: new Headers(init?.headers).get("idempotency-key"),
+      });
+      return new Response(null, { status: fail ? 503 : 204 });
+    });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      idempotencyKeyHeader: "idempotency-key",
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("retained"), createTransportContext());
+    await expect(transport.flush?.()).rejects.toThrow("status 503");
+    fail = false;
+    transport.log?.(createEvent("later"), createTransportContext());
+    await transport.flush?.();
+
+    expect(requests.map((request) => request.body)).toEqual(["retained", "retained", "later"]);
+    expect(requests[1]?.key).toBe(requests[0]?.key);
+    expect(requests[2]?.key).not.toBe(requests[0]?.key);
+    expect(() => browserHttpTransport({ url: "/logs", idempotencyKeyHeader: "bad key" })).toThrow(
+      TypeError,
+    );
   });
 
   it("transforms encoded payloads before fetch and offline storage", async () => {
