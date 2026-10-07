@@ -75,7 +75,7 @@ Raw vendor transports are not durable by themselves. For production delivery, wr
 
 - **Wire formats.** Codec output, the event shape the logger produces, and the exact HTTP requests the Node and browser transports send are pinned byte for byte by golden files under `packages/*/test/golden/`. Changing them is a wire-protocol change and follows the same policy as a signature change of the owning API.
 - **Persisted browser data.** The IndexedDB schemas of `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` must stay readable by the next release. `tests/e2e/browser-upgrade.spec.ts` writes data with the previous published release and reads it with the current code.
-- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change.
+- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change. Isolation stays the default for all of 1.x: a missing library log comes with a warning and a one-line fix, while sharing by default would let one micro-frontend's `configure()` replace another's and close its transports. Changing the default either way would be a breaking change.
 - **Delivery accounting.** Every event handed to a first-party transport is delivered or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle even when the destination fails. Failure-injection, model-based, and soak tests assert this invariant.
 
 ## Change Policy
@@ -92,6 +92,23 @@ For Compatible and Experimental APIs:
 - Public exports stay typechecked, tested, API-reported, and documented.
 - Minor releases may adjust names, options, field shape, or exact behavior before v1.
 - Breaking changes should still include release notes and migration guidance, because public does not mean disposable.
+
+## SemVer After 1.0
+
+From 1.0, the semantic-versioning guarantees of a package cover its Stable exports. The other tiers keep their own rules inside a 1.x package:
+
+- **Stable:** no removals, renames, or signature breaks within a major. Additive changes ship in minors. A behavior change outside security, data-loss, or wire-protocol correctness fixes needs a major.
+- **Compatible:** a minor may change a compatible export only after an earlier minor has marked it `@deprecated` with a migration path, and the release notes must call the change out.
+- **Experimental:** packages stay on 0.x until they are promoted, so their minors may change anything, with release notes.
+
+Moving the remaining compatible components into separate packages would remove the tiers inside `@loggerjs/browser` and `@loggerjs/node`, but it costs too much before 1.0.
+
+## Versioning at 1.0
+
+- `@loggerjs/core`, `@loggerjs/browser`, `@loggerjs/node`, and `@loggerjs/pretty` hold the stable kernel. They move to 1.0 together and form a Changesets `linked` group, so their version numbers move in step and nobody needs a compatibility table.
+- `@loggerjs/processors` and `@loggerjs/codecs` stay on 0.x until design-partner usage shows which processors and codecs to keep. Freezing their catalogs at 1.0 would promise stability nobody has validated.
+- `@loggerjs/otel`, `@loggerjs/sentry`, `@loggerjs/datadog`, `@loggerjs/elastic`, `@loggerjs/loki`, `@loggerjs/cloudwatch`, and `@loggerjs/database` stay experimental on 0.x and release on their own schedule.
+- Every package other than core declares `@loggerjs/core` as a peer dependency from 1.0, so an application installs exactly one core and the copy problem above only remains for genuinely separate bundles. Kernel packages use `^1.0.0`; the 0.x packages accept `^0.7.0 || ^1.0.0` so the move does not force them to 1.0.
 
 ## Adding Public API
 

@@ -141,7 +141,7 @@ Routes are attached as non-enumerable event metadata and consulted at dispatch. 
 - `configure({ shareAcrossCopies: true })` lets every copy use one process-wide store, so libraries in other copies log through the application's configuration.
 - `configure({ shareAcrossCopies: false })` keeps copies isolated and silences the warning. Independently bundled micro-frontends on one page want this, so one app's `configure()` cannot replace another's or close its transports.
 
-Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state.
+Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state. Isolation stays the default for all of 1.x, so an application opts into sharing explicitly.
 
 ## Levels, Categories, Sources
 

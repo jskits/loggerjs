@@ -75,7 +75,7 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 - **线上格式。** codec 输出、logger 产出的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求，都由 `packages/*/test/golden/` 下的 golden 文件逐字节固定。改动它们就是线上协议变更，适用与所属 API 签名变更相同的策略。
 - **浏览器持久化数据。** `indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 的 IndexedDB 结构必须能被下一个版本读取。`tests/e2e/browser-upgrade.spec.ts` 用上一个已发布版本写入数据，再用当前代码读取。
-- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。
+- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。整个 1.x 期间默认都保持隔离：库的日志缺失时会有警告，一行配置即可解决；而默认共享会让一个微前端的 `configure()` 替换另一个的配置并关闭它的 transport。无论往哪个方向修改默认值，都属于破坏性变更。
 - **投递计数。** 交给第一方 transport 的每个事件，要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告；即使目标端出错，`flush()`/`close()` 也必须结束。故障注入测试、基于模型的测试和浸泡测试都会断言这一不变量。
 
 ## 变更策略
@@ -92,6 +92,23 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 - 公开导出仍然保持类型检查、测试、API 报告和文档齐全。
 - v1 之前的 minor 版本可以调整名称、选项、字段结构或具体行为。
 - 破坏性变更仍应附带发布说明和迁移指南，因为“公开”不等于“可以随意丢弃”。
+
+## 1.0 之后的 SemVer
+
+从 1.0 开始，一个包的语义化版本保证只覆盖其中的 Stable 导出。其他层级在 1.x 包里保持各自的规则：
+
+- **Stable：** 同一个 major 内不删除、不重命名、不破坏签名。新增内容在 minor 中发布。除安全、数据丢失或线上协议正确性修复外，行为变化需要发 major。
+- **Compatible：** 只有在更早的 minor 已将其标为 `@deprecated` 并给出迁移路径之后，后续 minor 才能修改该导出，且发布说明必须写明。
+- **Experimental：** 这些包在升级前一直停留在 0.x，因此其 minor 可以修改任何内容，但需附带发布说明。
+
+把剩余的 compatible 组件拆成独立的包，可以消除 `@loggerjs/browser` 和 `@loggerjs/node` 内部的分层，但在 1.0 之前代价太大。
+
+## 1.0 的版本策略
+
+- `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起升到 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
+- `@loggerjs/processors` 和 `@loggerjs/codecs` 留在 0.x，直到 design partner 的使用情况表明哪些 processor 和 codec 值得保留。在 1.0 冻结它们的目录，等于承诺了尚未经过验证的稳定性。
+- `@loggerjs/otel`、`@loggerjs/sentry`、`@loggerjs/datadog`、`@loggerjs/elastic`、`@loggerjs/loki`、`@loggerjs/cloudwatch` 和 `@loggerjs/database` 作为 experimental 留在 0.x，按各自的节奏发版。
+- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。
 
 ## 新增公开 API
 

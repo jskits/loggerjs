@@ -146,7 +146,7 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 - `configure({ shareAcrossCopies: true })` 让所有副本使用同一个进程级存储，其他副本中的库也会走应用的配置。
 - `configure({ shareAcrossCopies: false })` 保持各副本隔离，并关闭警告。同一页面上各自打包的微前端需要这样，避免一个应用的 `configure()` 替换另一个应用的配置或关闭它的 transport。
 
-同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。
+同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。整个 1.x 期间默认都保持隔离，应用需要显式开启共享。
 
 ## Levels、Categories、Sources
 
