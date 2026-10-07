@@ -215,6 +215,8 @@ worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 
 
 `browserHttpTransport()` 在普通 Fetch 投递中使用 `codec`。如果 pagehide 或页面隐藏时的 Beacon 请求需要不同的编码或 content type，可以设置 `beaconCodec`；未设置时回退到 `codec`。配置了 `transformPayload` 时会跳过 Beacon 投递，生命周期 flush 改走普通 Fetch 路径，`beaconCodec` 也就不会生效。
 
+Beacon 投递无法确认。在 `pagehide` 和页面变为隐藏时（除非 `useBeaconOnPageHide` 为 `false`），以及在 `close()` 中，`browserHttpTransport()` 会把队列中的事件交给 `navigator.sendBeacon()`，而它只报告浏览器是否接收了这个请求。浏览器可能在页面关闭后才发出请求，没有任何机制报告收集端是否收到。被接收的请求中的事件会离开队列并计入 `transport.beacon.accepted`；它们永远不会通过 `onDrop` 报告，这是投递计数中唯一的例外。浏览器会限制同时在途的 Beacon 数据量。被拒绝的请求中的事件计入 `transport.beacon.rejected`，并留在队列中等待下一次 Fetch 发送，`close()` 会用 Fetch 发送它们，或将其报告为丢弃。大于 `beaconMaxBytes` 的事件会以 `beacon-too-large` 原因丢弃。Beacon 请求不能携带自定义请求头，因此既没有幂等键，也不会带上 `headers`。如果每个事件都很重要，请在可控的时机（例如应用内导航之前）通过 Fetch flush，减少留到页面退出时的数据，并把收集端的接收记录与 `transport.beacon.accepted` 对照。
+
 `browserHttpTransport()` 同样接受 `transformPayload`。在支持 `CompressionStream` 的浏览器中使用 `browserCompressionPayloadTransform()`：
 
 ```ts
@@ -255,7 +257,7 @@ indexedDbTransport({
 | 路径 | 失败边界 / 丢失窗口 | 生产建议 |
 | --- | --- | --- |
 | `browserHttpTransport()` | 内存中的批次会在页面刷新、关闭标签页、进程被杀，或队列上限在投递前丢弃记录时丢失。页面跳转也可能中断 fetch。 | 使用有界队列和重试选项；需要在刷新后保留时，加上 IndexedDB 离线队列。 |
-| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` 只发不管。浏览器会限制 payload 大小，并可能在关闭压力下拒绝、截断或跳过投递。 | `beaconMaxBytes` 设得保守些，把 pagehide flush 当作最后机会，不要把它作为唯一的持久化路径。 |
+| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` 只发不管：被接收的请求永远得不到确认，其中的事件计入 `transport.beacon.accepted`，而不会通过 `onDrop` 报告。浏览器会限制在途的 Beacon 数据量，可能拒绝请求（计入 `transport.beacon.rejected`，事件留在队列中），也可能在关闭过程中丢失请求。 | `beaconMaxBytes` 设得保守些，在可控的时机通过 Fetch flush，把页面退出时的 flush 当作最后机会，而不是唯一的持久化路径；需要完整性时，把收集端的接收记录与 `transport.beacon.accepted` 对照。 |
 | `memoryBrowserHttpOfflineQueue()` | 只要页面进程存活，就能扛过临时离线。 | 适合轻量应用或测试；支持/调试日志需要在刷新后保留时，改用 IndexedDB。 |
 | `indexedDbBrowserHttpOfflineQueue()` | 在刷新之间保存待重放的 payload，但配额、隐私浏览模式、存储驱逐、升级被阻塞或 IndexedDB 不可用仍可能导致无法持久化。 | 监控队列和丢弃计数，保持 payload 有界；与 HTTP 重放和页面生命周期 flush 搭配使用。 |
 | `offlineFirstTransport(remote)` | 远端投递失败时入队，之后重放。如果本地存储失败或被驱逐，重放也无法保证。 | 优先使用持久化的队列适配器；在可控的关闭或跳转时尽量调用 `flush()`。 |

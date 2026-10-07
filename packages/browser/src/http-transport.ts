@@ -302,10 +302,17 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           options.url,
           payloadToBeaconBody(chunk.payload, beaconCodec.contentType),
         );
-        if (!ok) return { remaining: remainingEvents(chunks, index) };
+        if (!ok) {
+          incrementLoggerMetaCounter("transport.beacon.rejected", chunk.events.length);
+          return { remaining: remainingEvents(chunks, index) };
+        }
       } catch (error) {
+        incrementLoggerMetaCounter("transport.beacon.rejected", chunk.events.length);
         return { remaining: remainingEvents(chunks, index), failure: { error } };
       }
+      // Accepted only means the browser queued the request: nothing reports
+      // whether it reaches the collector, so these events are never dropped.
+      incrementLoggerMetaCounter("transport.beacon.accepted", chunk.events.length);
     }
 
     return { remaining: [] };

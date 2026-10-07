@@ -168,6 +168,38 @@ describe("browserHttpTransport", () => {
     expect(queue.size()).toBe(2);
   });
 
+  it("counts the events sendBeacon accepts and refuses, and sends refused ones by Fetch", async () => {
+    resetLoggerMetaStats();
+    // The browser takes the first request and refuses the second.
+    let beacons = 0;
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => ++beacons === 1);
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("navigator", { sendBeacon });
+    const dropped: string[] = [];
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      beaconMaxBytes: 5,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      onDrop: (event, reason) => dropped.push(`${event.message}:${reason}`),
+    });
+    const context = createTransportContext();
+
+    transport.log?.(createEvent("aa"), context);
+    transport.log?.(createEvent("bb"), context);
+    transport.log?.(createEvent("cc"), context);
+    await transport.close?.();
+
+    expect(sendBeacon).toHaveBeenCalledTimes(2);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.beacon.accepted": 2,
+      "transport.beacon.rejected": 1,
+    });
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["cc"]);
+    expect(dropped).toEqual([]);
+  });
+
   it("splits beacon payloads around the configured byte budget", async () => {
     const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
     const fetchFn = vi.fn<typeof fetch>();
