@@ -21,9 +21,9 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 
 | 级别 | 含义 |
 | --- | --- |
-| Stable | 计划作为 v1 兼容的应用 API。选项名和高层语义受 API 报告、测试和文档保护。 |
-| Compatible | 公开且有测试，但在 v1 之前，具体运行时行为或消息结构仍可能调整。文档中的注意事项符合你的部署场景时再使用。 |
-| Experimental | 公开且有测试，但尚不属于 v1 兼容承诺。名称、选项、payload 映射或批量建议在 v1 之前都可能变化。 |
+| Stable | 受 1.x 兼容承诺保护。选项名和高层语义受 API 报告、测试和文档保护。 |
+| Compatible | 公开且有测试，但具体运行时行为或消息结构仍可能在更早的 minor 中先弃用后再调整。文档中的注意事项符合你的部署场景时再使用。 |
+| Experimental | 公开且有测试，生产使用最少。名称、选项、payload 映射或批量建议可能在更早的 minor 中先弃用后再变化。 |
 | Runtime-dependent | 公开 API 稳定，但实际可靠性很大程度上取决于 LoggerJS 之外的浏览器、worker、存储、网络、SDK 或数据库行为。请在目标环境中验证。 |
 | Test-only | 为断言和测试夹具而设计，不用于生产投递。 |
 
@@ -37,7 +37,7 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | 生产用本地 sink，具备 drain 和崩溃路径处理。 |
 | `rotatingFileTransport()` | Stable | 本地按大小轮转；每个文件只应有一个写入进程。 |
 | `nodeHttpTransport()` | Stable | 内置批量包装的 HTTP 投递，使用共享的可靠性选项。 |
-| `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包在 v1 之前不冻结。 |
+| `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包的生产使用最少。 |
 | `nodeSyslogTransport()` | Compatible | 消息格式有测试覆盖，但在更多部署验证之前不属于 v1 内核；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
 | `workerTransport()` | Compatible | 消息协议公开，但 ready/ack/回退等生命周期细节可能继续调整。 |
 | `browserHttpTransport()` | Stable | 主要的浏览器远程 transport；pagehide 时的 Beacon 仍是尽力而为。 |
@@ -46,8 +46,8 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `browserWebSocketTransport()` | Compatible | 适合实时/调试通道；重连和最终持久性由调用方负责。 |
 | `browserServiceWorkerTransport()` | Runtime-dependent | API 公开，但投递取决于 service worker 的注册、激活和生命周期。 |
 | `browserBroadcastChannelTransport()` | Compatible | 同源标签页之间的分发本身就可能丢失，并取决于是否有接收方。 |
-| Datadog / Elastic / Loki / CloudWatch transports | Experimental | 线上 payload 有测试，但厂商包在 v1 之前不冻结；生产环境需要在原始 transport 外包一层批量/重试才能保证持久性。 |
-| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | 适配器契约公开且有测试，但 SDK/provider 映射在 v1 之前仍可能变化。 |
+| Datadog / Elastic / Loki / CloudWatch transports | Experimental | 线上 payload 有测试，但厂商包的生产使用最少；生产环境需要在原始 transport 外包一层批量/重试才能保证持久性。 |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | 适配器契约公开且有测试，但 SDK/provider 映射仍可能在弃用之后变化。 |
 | `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | 适配器 API 公开且有测试，但驱动事务和表结构约定还需要更多真实用户验证。 |
 
 ## 导入边界

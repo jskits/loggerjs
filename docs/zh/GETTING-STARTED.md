@@ -200,7 +200,7 @@ await logger.close(); // tear down integrations, close transports
 - [性能](PERFORMANCE.md)：如何按吞吐量配置。
 - [运维](OPERATIONS.md)：隐私、离线队列和崩溃路径。
 - [生产配方](PRODUCTION-RECIPES.md)：浏览器 HTTP/离线、Node stdout+OTLP、Loki/Datadog 部署。
-- [API 稳定性](API-STABILITY.md)：v1 稳定 API 子集和 pre-1.0 兼容策略。
+- [API 稳定性](API-STABILITY.md)：stable、compatible 和 experimental 分级以及语义化版本承诺。
 - [迁移](MIGRATION.md)：从 pino、winston 或 console 迁移。
 
 ## 相关链接

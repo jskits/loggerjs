@@ -56,7 +56,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 ## 工程约定
 
 - **core 保持平台无关**：不使用 DOM 类型和 Node 内置模块，通过 `globalThis` 做特性检测。公开类型必须在没有 `lib.dom` 的情况下也能编译。
-- **v1 之前优先求稳，而不是扩大 API**：先加固现有的 transport 和 integration。新增内置组件需要有生产用例、放在合适的运行时包中，并附带测试、稳定性文档、导入边界文档和体积预算数据。
+- **优先求稳，而不是扩大 API**：先加固现有的 transport 和 integration。新增内置组件需要有生产用例、放在合适的运行时包中，并附带测试、稳定性文档、导入边界文档和体积预算数据。
 - **管线永远不向应用抛错。** middleware、processor、codec 和 transport 都做了错误隔离，失败通过 `onInternalError` 和 meta 计数上报。新代码必须保持这一点。
 - **codec 不得丢日志**：对有风险的编码做保护，失败时回退到 `safeJsonStringify`，并在 meta 中计数。
 - **共享对象被冻结，只能替换，不能原地修改**（`record.tags`、`record.ctx`）。

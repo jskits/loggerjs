@@ -4,9 +4,7 @@ LoggerJS handles application logs, error payloads, redaction, and offline delive
 
 ## Supported Versions
 
-LoggerJS is pre-1.0. Security fixes target the latest released minor line only. Older 0.x releases may receive fixes when the patch is low-risk, but users should expect to upgrade to the newest 0.x release for security updates.
-
-From 1.0.0 the following windows apply (see `GOVERNANCE.md`):
+These windows apply to every `@loggerjs/*` package; see `GOVERNANCE.md`:
 
 | Line | Receives |
 | --- | --- |

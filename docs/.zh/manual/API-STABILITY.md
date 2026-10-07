@@ -1,26 +1,26 @@
 # API 稳定性
 
-LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记录了每一个导出的 TypeScript 声明，但这并不表示每个导出符号都已经作为 v1 API 冻结。
+LoggerJS 1.0 让所有 `@loggerjs/*` 包都进入 1.x，但一个导出承诺多少取决于它的分级。仓库中的 `api-reports/` 文件记录了每一个导出的 TypeScript 声明；本页说明每个导出属于哪个分级。
 
 本页是写给人看的稳定性约定。机器可读的分级位于 [`docs/api-stability.policy.json`](https://github.com/jskits/loggerjs/blob/main/docs/api-stability.policy.json)；如果某个包的导出没有列入该文件，`pnpm verify:api-stability` 会失败。
 
 ## 当前策略
 
-在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定为一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。v1 冻结应当在早期合作用户把这个内核真正跑在生产环境、并根据实际使用情况裁剪其余部分之后进行，而不是之前。
+稳定范围是一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。1.0 发布时，早期合作用户还没有在生产环境中运行过这个内核（见 `GOVERNANCE.md`），因此 compatible 和 experimental 组件哪些升级、调整或弃用，仍由真实使用情况决定。
 
-其他部分同样可能是公开的、经过测试且可用的，但并非都属于 v1 兼容承诺。尤其是厂商、可观测性和数据库相关的包，在获得更多真实使用和故障场景验证之前，仍保持实验状态。
+其他部分仍然公开、有测试、有文档，只是承诺更弱：Compatible 的导出和 Experimental 的包需要先在更早的 minor 中弃用才能变更，而不必等到下一个 major。厂商、可观测性和数据库相关的包保持 Experimental，直到真实使用和故障场景验证足以支持把它们升级。
 
 ## 状态分级
 
 | 状态 | 含义 |
 | --- | --- |
-| Stable v1 Candidate | 计划原样带入 v1：不删除、不重命名、不破坏签名，安全、数据丢失或线上协议正确性修复除外。允许新增。 |
-| Compatible Public Surface | 公开且有测试，但还没有稳定到 v1 候选的程度。v1 之前的 minor 版本可能调整选项名、采集字段或运行时边界行为，并在发布说明中注明。 |
-| Experimental Before v1 | 公开的包或子路径，在 v1 之前可能变化。当前行为满足需求时可以使用，但不要把它们当作已冻结的兼容契约。 |
+| Stable | 受语义化版本保护：同一个 major 内不删除、不重命名、不破坏签名，安全、数据丢失或线上协议正确性修复除外。新增内容在 minor 中发布。 |
+| Compatible | 公开且有测试。只有在更早的 minor 已经将其标为 deprecated 并给出迁移路径之后，后续 minor 才能修改该导出。 |
+| Experimental | 生产使用最少的包。它们遵循 Compatible 规则：破坏性变更需要先在更早的 minor 中弃用。当前行为满足需求时可以使用。 |
 
 内部源码路径、`dist` 文件路径、生成的 bundle 结构、私有类字段，以及只能从测试中推断出的行为，在任何状态下都不属于公开 API。
 
-## Stable v1 Candidate
+## Stable
 
 稳定的导出记录在 `api-stability.policy.json` 中。当前稳定的包和入口如下：
 
@@ -41,9 +41,9 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 - middleware、processor、codec、integration 和 transport 的错误与应用代码隔离。
 - 序列化仍由 transport 负责；middleware 和 processor 处理的始终是结构化的值。
 
-## Compatible Public Surface
+## Compatible
 
-Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选的程度。当前属于 Compatible 的部分包括：
+Compatible 的导出同样有文档和测试，但它们通过 minor 中的 deprecation 来变更，而不必等到下一个 major。当前属于 Compatible 的部分包括：
 
 - 不在根入口中的 core 模块：`@loggerjs/core/trace-propagation`、`semantic-events`、`payload-transforms`、`diagnostics`、`integration-api`、`event-route`、`codec-metrics`、`codec-prepared` 和 `transport-test`。它们在 `@loggerjs/core` 根入口的 re-export 在 0.7 标为 deprecated，并已在 1.0 删除；请从这些子路径导入。`pnpm verify:api-stability` 只允许根入口通过 deprecated 的导出项转导出稳定性更低的模块。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
@@ -52,11 +52,11 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 - Node 的框架和数据类 integration：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、通用队列、BullMQ、serverless 生命周期、数据库方法包装和 CLI 采集。
 - `@loggerjs/processors` 和 `@loggerjs/codecs` 目录。单个 processor 和 codec 都很小也很有用，但在真实使用表明哪些真正重要之前冻结约一百个导出，只会锁定错误的那部分。
 
-在 1.0 之前，这些公开的导入路径会继续保留，但具体的采集字段、钩子覆盖范围和边界行为仍可能调整。如果真实使用表明当前 API 过于宽泛，这些部分也是 v1 之前收窄命名或降低承诺的合适位置。
+它们的导入路径在同一个 major 内保持可用。采集字段、钩子覆盖范围和边界行为可以在 deprecation 之后调整，哪些组件升级为 Stable 由真实使用情况决定。
 
-## Experimental Before v1
+## Experimental
 
-以下包之所以公开，是因为它们对集成测试和早期使用者有用，但它们不属于 v1 兼容承诺：
+以下包之所以公开，是因为它们对集成测试和早期使用者有用，但它们的生产使用最少：
 
 | 包类别 | 实验性导出 |
 | --- | --- |
@@ -64,7 +64,7 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 | 厂商协议 transport | `@loggerjs/datadog/*`, `@loggerjs/elastic/*`, `@loggerjs/loki/*`, `@loggerjs/cloudwatch/*` |
 | 数据库 transport | `@loggerjs/database/*` |
 
-实验性不等于没有测试。它的意思是：如果早期合作用户或真实端点表明有更好的设计，v1 之前的 minor 版本可能调整选项名、payload 映射、重试预期、批量建议或子路径结构。
+实验性不等于没有测试。它的意思是：如果早期合作用户或真实端点表明有更好的设计，选项名、payload 映射、重试预期、批量建议或子路径结构仍可能变化：要么在更早的 minor 中先弃用，要么在厂商端点变化、旧映射失效时通过 patch 修正，这属于线上协议正确性修复。
 
 原始的厂商 transport 本身不具备持久性。生产投递应使用 `batchTransport()` 和 `retryTransport()` 包装，或者投递到一个自己负责排队、重试、认证和退避的收集端点。
 
@@ -79,35 +79,21 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 ## 变更策略
 
-对于 Stable v1 Candidate API：
+一个包的语义化版本保证只覆盖其中的 Stable 导出。其他层级在 1.x 包里保持各自的规则：
 
-- v1 之前不会有意删除、重命名或破坏签名，除非同时提供弃用说明和迁移路径。
-- 允许新增：新的选项、字段、重载、processor、transport、integration 和子路径。
-- 影响投递、隐私或性能的默认值变化，需要更新文档并写入发布说明。
-- 安全修复、数据丢失修复和厂商线上协议正确性修复可能改变边界情况下的行为，发布说明中必须写明。
-
-对于 Compatible 和 Experimental API：
-
-- 公开导出仍然保持类型检查、测试、API 报告和文档齐全。
-- v1 之前的 minor 版本可以调整名称、选项、字段结构或具体行为。
-- 破坏性变更仍应附带发布说明和迁移指南，因为“公开”不等于“可以随意丢弃”。
-
-## 1.0 之后的 SemVer
-
-从 1.0 开始，一个包的语义化版本保证只覆盖其中的 Stable 导出。其他层级在 1.x 包里保持各自的规则：
-
-- **Stable：** 同一个 major 内不删除、不重命名、不破坏签名。新增内容在 minor 中发布。除安全、数据丢失或线上协议正确性修复外，行为变化需要发 major。
+- **Stable：** 同一个 major 内不删除、不重命名、不破坏签名。删除一个 stable 导出，需要先在某个 minor 中标为 deprecated，再在下一个 major 中删除。新增内容在 minor 中发布：新的选项、字段、重载、processor、transport、integration 和子路径。除安全、数据丢失或线上协议正确性修复外，行为变化需要发 major，而这些修复必须在发布说明中写明。
 - **Compatible：** 只有在更早的 minor 已将其标为 `@deprecated` 并给出迁移路径之后，后续 minor 才能修改该导出，且发布说明必须写明。
-- **Experimental：** 这些包在升级前一直停留在 0.x，因此其 minor 可以修改任何内容，但需附带发布说明。
+- **Experimental：** 适用 Compatible 规则：破坏性变更需要先在更早的 minor 中弃用并给出迁移路径，且发布说明必须写明。厂商端点的线上协议正确性修复是例外，与 Stable 导出相同。
 
-把剩余的 compatible 组件拆成独立的包，可以消除 `@loggerjs/browser` 和 `@loggerjs/node` 内部的分层，但在 1.0 之前代价太大。
+无论哪个层级，影响投递、隐私或性能的默认值都只能在更新文档并写入发布说明后变更；公开导出始终保持类型检查、测试、API 报告和文档齐全，因为“公开”不等于“可以随意丢弃”。
 
-## 1.0 的版本策略
+把剩余的 compatible 组件拆成独立的包，可以消除 `@loggerjs/browser` 和 `@loggerjs/node` 内部的分层；这仍是以后某个 major 的可选方案。
 
-- `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起升到 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
-- `@loggerjs/processors` 和 `@loggerjs/codecs` 留在 0.x，直到 design partner 的使用情况表明哪些 processor 和 codec 值得保留。在 1.0 冻结它们的目录，等于承诺了尚未经过验证的稳定性。
-- `@loggerjs/otel`、`@loggerjs/sentry`、`@loggerjs/datadog`、`@loggerjs/elastic`、`@loggerjs/loki`、`@loggerjs/cloudwatch` 和 `@loggerjs/database` 作为 experimental 留在 0.x，按各自的节奏发版。
-- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。Changesets 启用了 `onlyUpdatePeerDependentsWhenOutOfRange`，因此只要 core 的新版本仍在某个包的 peer 范围内，就不会强制发布该包；`pnpm pack:check` 会检查这些范围。
+## 包的版本
+
+- `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起进入 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
+- 其他包（`@loggerjs/processors`、`@loggerjs/codecs`、可观测性适配器、厂商 transport 和 `@loggerjs/database`）与内核一起进入 1.0.0，之后按各自的节奏发版，因此某个 processor、codec 或厂商适配器可以单独发 minor 或 major，而不影响内核。它们不在 linked 组中：Changesets 按组内最高版本计算 linked 发布，一个适配器的 major 会把 core 也推到同一个 major。
+- 除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，范围是 `^1.0.0`，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。Changesets 启用了 `onlyUpdatePeerDependentsWhenOutOfRange`，因此只要 core 的新版本仍在这个范围内，就不会强制发布每个包；`pnpm pack:check` 会检查这些范围。
 
 ## 新增公开 API
 

@@ -56,7 +56,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 ## Engineering Conventions
 
 - **Core stays platform-neutral**: no DOM types, no Node built-ins, feature-detect via `globalThis`. The public type surface must compile without `lib.dom`.
-- **Prefer stabilization over surface expansion before v1**: harden existing transports/integrations first. A new built-in component needs a production use case, runtime-appropriate package placement, tests, stability docs, import-boundary docs, and size-budget evidence.
+- **Prefer stabilization over surface expansion**: harden existing transports/integrations first. A new built-in component needs a production use case, runtime-appropriate package placement, tests, stability docs, import-boundary docs, and size-budget evidence.
 - **The pipeline never throws into the app.** Middleware, processors, codecs, and transports are error-isolated; failures report through `onInternalError` and meta counters. New code keeps that property.
 - **Codecs must not lose logs**: wrap risky encodes and fall back to `safeJsonStringify`; count fallbacks in meta.
 - **Shared objects are frozen, replaced not mutated** (`record.tags`, `record.ctx`).
