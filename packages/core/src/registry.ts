@@ -56,6 +56,11 @@ interface RuntimeSnapshot {
   integrations: Integration[];
   cache: Map<string, Logger>;
   integrationHost: Logger | null;
+  // Builds the registry's loggers. With shareAcrossCopies, every copy of core
+  // then creates them with the copy that called configure(), so a diagnostics
+  // sink installed through that copy sees all of them. Snapshots from older
+  // copies lack it, and the reading copy uses its own Logger instead.
+  createLogger?: (options: LoggerOptions) => Logger;
 }
 
 const registry = /* @__PURE__ */ sharedState("registry", () => ({
@@ -127,7 +132,7 @@ function createRuntimeLogger(snapshot: RuntimeSnapshot, category: readonly strin
     processors: [...snapshot.processors, ...(route?.processors ?? [])],
     transports: selectTransports(snapshot, route),
   };
-  return new Logger(options);
+  return snapshot.createLogger ? snapshot.createLogger(options) : new Logger(options);
 }
 
 function getRuntimeLogger(category: readonly string[]): Logger | undefined {
@@ -203,6 +208,7 @@ export async function configure(options: ConfigureOptions = {}): Promise<void> {
     integrations: [...(options.integrations ?? [])],
     cache: new Map(),
     integrationHost: null,
+    createLogger: (loggerOptions) => new Logger(loggerOptions),
   };
 
   if (snapshot.integrations.length > 0) {
