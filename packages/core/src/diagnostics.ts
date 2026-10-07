@@ -1,3 +1,4 @@
+import { diagnosticSink, replaceDiagnosticSink } from "./diagnostics-sink";
 import { runtimeNow } from "./host";
 
 export type LoggerDiagnosticStage = "encode" | "dispatch" | "transport" | "flush" | "worker";
@@ -22,27 +23,21 @@ export interface LoggerDiagnosticSink {
   enabled?: (stage: LoggerDiagnosticStage) => boolean;
 }
 
-// Unlike the registry and context, the sink stays module-local: when nothing
-// installs one, bundlers fold loggerDiagnosticsEnabled() to false and drop the
-// instrumentation from Logger. A sink installed through a different copy of
-// core only misses diagnostics, never log events.
-let sink: LoggerDiagnosticSink | undefined;
-
 export function setLoggerDiagnosticSink(
   next: LoggerDiagnosticSink | undefined,
 ): LoggerDiagnosticSink | undefined {
-  const previous = sink;
-  sink = next;
-  return previous;
+  return replaceDiagnosticSink(next);
 }
 
 export function loggerDiagnosticsEnabled(stage?: LoggerDiagnosticStage): boolean {
+  const sink = diagnosticSink;
   if (!sink) return false;
   if (stage === undefined) return true;
   return sink.enabled?.(stage) ?? true;
 }
 
 export function emitLoggerDiagnostic(event: LoggerDiagnosticEvent): void {
+  const sink = diagnosticSink;
   if (!sink || sink.enabled?.(event.stage) === false) return;
   sink(event);
 }
@@ -55,7 +50,7 @@ export function runLoggerDiagnostic<T>(
   event: Omit<LoggerDiagnosticEvent, "phase" | "durationMs" | "error">,
   run: () => T,
 ): T {
-  if (!loggerDiagnosticsEnabled(event.stage)) return run();
+  if (diagnosticSink === undefined || !loggerDiagnosticsEnabled(event.stage)) return run();
   const start = loggerDiagnosticNow();
   emitLoggerDiagnostic({ ...event, phase: "start" });
   try {

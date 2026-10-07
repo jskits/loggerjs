@@ -81,8 +81,8 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 - **线上格式。** codec 输出、logger 产出的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求，都由 `packages/*/test/golden/` 下的 golden 文件逐字节固定。改动它们就是线上协议变更，适用与所属 API 签名变更相同的策略。
 - **浏览器持久化数据。** `indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 的 IndexedDB 结构必须能被下一个版本读取。`tests/e2e/browser-upgrade.spec.ts` 用上一个已发布版本写入数据，再用当前代码读取。
-- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。整个 1.x 期间默认都保持隔离：库的日志缺失时会有警告，一行配置即可解决；而默认共享会让一个微前端的 `configure()` 替换另一个的配置并关闭它的 transport。无论往哪个方向修改默认值，都属于破坏性变更。
-- **投递计数。** 交给第一方 transport 的每个事件，要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告；即使目标端出错，`flush()`/`close()` 也必须结束。故障注入测试、基于模型的测试和浸泡测试都会断言这一不变量。
+- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。registry 中的 logger 由调用 `configure()` 的副本创建，因此该副本的诊断 sink 能看到所有这些 logger。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。整个 1.x 期间默认都保持隔离：库的日志缺失时会有警告，一行配置即可解决；而默认共享会让一个微前端的 `configure()` 替换另一个的配置并关闭它的 transport。无论往哪个方向修改默认值，都属于破坏性变更。
+- **投递计数。** 交给第一方 transport 的每个事件，要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告；即使目标端出错，`flush()`/`close()` 也必须结束。唯一的例外是 `browserHttpTransport()` 交给 `navigator.sendBeacon()` 的事件：浏览器从不确认它们，因此改为计入 `transport.beacon.accepted`。故障注入测试、基于模型的测试和浸泡测试都会断言这一不变量。
 
 ## 变更策略
 

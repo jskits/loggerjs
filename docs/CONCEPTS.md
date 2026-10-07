@@ -141,6 +141,8 @@ Routes are attached as non-enumerable event metadata and consulted at dispatch. 
 - `configure({ shareAcrossCopies: true })` lets every copy use one process-wide store, so libraries in other copies log through the application's configuration.
 - `configure({ shareAcrossCopies: false })` keeps copies isolated and silences the warning. Independently bundled micro-frontends on one page want this, so one app's `configure()` cannot replace another's or close its transports.
 
+With sharing on, the copy that last called `configure()` builds every registry logger, whichever copy calls `getLogger()`. A diagnostics sink installed through that copy (`setLoggerDiagnosticSink()` from `@loggerjs/core/diagnostics`) therefore sees them all. The sink itself stays per copy, so a bundle that never installs one drops the diagnostics code. A logger created with `createLogger()` in another copy reports to that copy's sink; install the sink there as well if you need those diagnostics.
+
 Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state. Isolation stays the default for all of 1.x, so an application opts into sharing explicitly.
 
 ## Levels, Categories, Sources

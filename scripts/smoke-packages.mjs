@@ -190,9 +190,14 @@ module.exports = () => getLogger("library").info("from cjs library");
     `
 import { createRequire } from "node:module";
 import { configure } from "@loggerjs/core";
+import { setLoggerDiagnosticSink } from "@loggerjs/core/diagnostics";
 
 const require = createRequire(import.meta.url);
 const messages = [];
+const dispatched = [];
+setLoggerDiagnosticSink((event) => {
+  if (event.stage === "dispatch" && event.phase === "end") dispatched.push(event.logger);
+});
 await configure({
   shareAcrossCopies: true,
   transports: [{ name: "dual", log: (event) => messages.push(event.message) }],
@@ -200,6 +205,10 @@ await configure({
 require("./dual-library.cjs")();
 if (messages.join() !== "from cjs library") {
   throw new Error("CJS getLogger() missed the ESM configure(): " + JSON.stringify(messages));
+}
+// The ESM copy configured the registry, so it builds the library's logger too.
+if (dispatched.join() !== "library") {
+  throw new Error("The ESM diagnostics sink missed the CJS registry logger: " + JSON.stringify(dispatched));
 }
 `,
   );

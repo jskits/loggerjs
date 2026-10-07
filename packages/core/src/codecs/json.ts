@@ -101,7 +101,12 @@ export function jsonCodec(): Codec<string> {
   };
 }
 
-export function safeJsonCodec(options: SafeStringifyOptions = {}): Codec<string> {
+/**
+ * {@link safeJsonCodec} without `decode()`. Transports that only send logs use
+ * it as their default codec, so bundles that never decode leave out the
+ * payload validation that `decode()` needs.
+ */
+export function safeJsonEncoder(options: SafeStringifyOptions = {}): Codec<string> {
   return {
     name: "safe-json",
     contentType: "application/json",
@@ -110,6 +115,12 @@ export function safeJsonCodec(options: SafeStringifyOptions = {}): Codec<string>
         safeJsonStringify(normalizeCodecInput(input), options),
       );
     },
+  };
+}
+
+export function safeJsonCodec(options: SafeStringifyOptions = {}): Codec<string> {
+  return {
+    ...safeJsonEncoder(options),
     decode(payload: string) {
       return validateLogEventPayload(JSON.parse(payload));
     },
@@ -136,6 +147,23 @@ function hasSafeOptions(options: SafeStringifyOptions): boolean {
  * expansion) for every line.
  */
 export function ndjsonCodec(options: SafeStringifyOptions = {}): Codec<string> {
+  return {
+    ...ndjsonEncoder(options),
+    decode(payload: string) {
+      return payload
+        .split("\n")
+        .map((line, index) => ({ line, index }))
+        .filter(({ line }) => line.length > 0)
+        .map(({ line, index }) => validateLogEvent(JSON.parse(line), `payload line ${index + 1}`));
+    },
+  };
+}
+
+/**
+ * {@link ndjsonCodec} without `decode()`, for transports that only write
+ * logs; see {@link safeJsonEncoder}.
+ */
+export function ndjsonEncoder(options: SafeStringifyOptions = {}): Codec<string> {
   const safeMode = hasSafeOptions(options);
   const encodeLine = (event: LogEvent): string => {
     if (safeMode) return safeJsonStringify(event, options);
@@ -158,13 +186,6 @@ export function ndjsonCodec(options: SafeStringifyOptions = {}): Codec<string> {
         for (const event of normalized) output += `${encodeLine(event)}\n`;
         return output;
       });
-    },
-    decode(payload: string) {
-      return payload
-        .split("\n")
-        .map((line, index) => ({ line, index }))
-        .filter(({ line }) => line.length > 0)
-        .map(({ line, index }) => validateLogEvent(JSON.parse(line), `payload line ${index + 1}`));
     },
   };
 }

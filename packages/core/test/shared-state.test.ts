@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as primary from "../src";
+import { setLoggerDiagnosticSink, type LoggerDiagnosticEvent } from "../src/diagnostics";
 
 // A second, independently evaluated copy of the core module graph stands in
 // for an ESM app with a CJS library, two installed versions of
@@ -45,6 +46,44 @@ describe("state across core copies", () => {
     copy.getLogger("library").info("from library");
 
     expect(sink.events.map((event) => event.message)).toEqual(["from app", "from library"]);
+  });
+
+  it("builds registry loggers with the configuring copy, whose diagnostics sink sees them", async () => {
+    const copy = await loadSecondCopy();
+    const sink = primary.memoryTransport({ name: "memory" });
+    const dispatched: string[] = [];
+    const record = (event: LoggerDiagnosticEvent) => {
+      if (event.stage === "dispatch" && event.phase === "end") dispatched.push(event.logger ?? "");
+    };
+    const previous = setLoggerDiagnosticSink(record);
+    try {
+      await primary.configure({ transports: [sink], shareAcrossCopies: true });
+      copy.getLogger("library").info("through the registry");
+      // Loggers a copy creates itself report to that copy's own sink.
+      copy.createLogger({ category: "direct", transports: [sink] }).info("direct");
+    } finally {
+      setLoggerDiagnosticSink(previous);
+    }
+
+    expect(sink.events.map((event) => event.message)).toEqual(["through the registry", "direct"]);
+    expect(dispatched).toEqual(["library"]);
+  });
+
+  it("falls back to the reading copy's Logger for a snapshot without a logger factory", async () => {
+    const copy = await loadSecondCopy();
+    const sink = primary.memoryTransport({ name: "memory" });
+    await primary.configure({ transports: [sink], shareAcrossCopies: true });
+    // A copy that predates the factory leaves it out of the snapshot.
+    type SharedRegistry = { runtime: { createLogger?: unknown } };
+    const shared = (
+      globalThis as unknown as Record<symbol, { slots: { registry: SharedRegistry } }>
+    )[Symbol.for("@loggerjs/core/shared-state/v1")];
+    expect(shared?.slots.registry.runtime.createLogger).toBeTypeOf("function");
+    delete shared!.slots.registry.runtime.createLogger;
+
+    copy.getLogger("library").info("from an older snapshot");
+
+    expect(sink.events.map((event) => event.message)).toEqual(["from an older snapshot"]);
   });
 
   it("carries a registry configured before sharing into the shared store", async () => {

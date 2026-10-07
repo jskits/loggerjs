@@ -1,5 +1,5 @@
 import {
-  ndjsonCodec,
+  ndjsonEncoder,
   toLevelValue,
   type Codec,
   type LogEvent,
@@ -27,7 +27,7 @@ export interface FileTransport extends Transport {
 }
 
 export function fileTransport(options: FileTransportOptions): FileTransport {
-  const codec = options.codec ?? ndjsonCodec();
+  const codec = options.codec ?? ndjsonEncoder();
   const destination = createNodeFileDestination({
     name: options.name ?? "file",
     path: options.path,

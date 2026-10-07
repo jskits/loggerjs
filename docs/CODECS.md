@@ -23,13 +23,16 @@ interface Codec<TPayload = string | Uint8Array> {
 | Codec | Package | Behavior |
 | --- | --- | --- |
 | `jsonCodec()` | core | Bare `JSON.stringify` after input normalization. Fast, throws on circular/BigInt — pick it only when payloads are guaranteed clean. |
-| `safeJsonCodec(options)` | core | Full safe normalization every time: circular → `"[Circular]"`, BigInt → string, Error → `{name, message, stack}`, depth/array/key truncation, Map/Set conversion. Default codec of `consoleTransport({ pretty: false })`. |
-| `ndjsonCodec(options)` | core | One JSON object per line. **Fast-by-default contract** (below). Default codec of the Node stdout/file transports. |
+| `safeJsonCodec(options)` | core | Full safe normalization every time: circular → `"[Circular]"`, BigInt → string, Error → `{name, message, stack}`, depth/array/key truncation, Map/Set conversion. `consoleTransport({ pretty: false })` writes the same output. |
+| `ndjsonCodec(options)` | core | One JSON object per line. **Fast-by-default contract** (below). |
+| `safeJsonEncoder(options)` / `ndjsonEncoder(options)` | core | `safeJsonCodec` and `ndjsonCodec` without `decode()`. Default codecs of the transports that only send logs: `safeJsonEncoder` for the browser and Node HTTP, WebSocket, worker, and database transports, `ndjsonEncoder` for the Node stdout and file transports. |
 | `fastEventJsonCodec(options)` | `@loggerjs/codecs` | The performance codec: native fast path, fragment caches (level, logger, tags, time), scan-based string escaping, flat-data direct writer, lean envelope options. |
 | `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | Pino-shaped NDJSON for migration paths: `level`, `time`, optional `pid`/`hostname` base fields, `msg`, `err`, and opt-in root data merging with reserved-key protection. |
 | `msgpackrCodec(options?)` | `@loggerjs/codecs` | Built-in MessagePack codec backed by `msgpackr`; returns `Uint8Array`. Passing `{ pack, unpack }` is still supported for custom runtimes. |
 | `projectorCodec(options)` | `@loggerjs/codecs` | Generic project → serialize (→ parse → unproject) adapter for custom wire schemas. |
 | `otlpJsonCodec(options)` | `@loggerjs/otel` | OTLP/HTTP JSON log payloads with resource attributes. |
+
+`decode()` validates every event it returns, and that validation is a sizable part of a small bundle. Transports that never read logs back default to the encode-only forms, so an application that only logs leaves it out. Use the full codecs where events are read back, as `indexedDbTransport().query()` does.
 
 ## The Fast-by-Default Contract
 

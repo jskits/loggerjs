@@ -168,6 +168,38 @@ describe("browserHttpTransport", () => {
     expect(queue.size()).toBe(2);
   });
 
+  it("counts the events sendBeacon accepts and refuses, and sends refused ones by Fetch", async () => {
+    resetLoggerMetaStats();
+    // The browser takes the first request and refuses the second.
+    let beacons = 0;
+    const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => ++beacons === 1);
+    const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    vi.stubGlobal("navigator", { sendBeacon });
+    const dropped: string[] = [];
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      beaconMaxBytes: 5,
+      useBeaconOnPageHide: false,
+      fetchFn,
+      onDrop: (event, reason) => dropped.push(`${event.message}:${reason}`),
+    });
+    const context = createTransportContext();
+
+    transport.log?.(createEvent("aa"), context);
+    transport.log?.(createEvent("bb"), context);
+    transport.log?.(createEvent("cc"), context);
+    await transport.close?.();
+
+    expect(sendBeacon).toHaveBeenCalledTimes(2);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.beacon.accepted": 2,
+      "transport.beacon.rejected": 1,
+    });
+    expect(fetchFn.mock.calls.map(([, init]) => init?.body)).toEqual(["cc"]);
+    expect(dropped).toEqual([]);
+  });
+
   it("splits beacon payloads around the configured byte budget", async () => {
     const sendBeacon = vi.fn<Navigator["sendBeacon"]>(() => true);
     const fetchFn = vi.fn<typeof fetch>();
@@ -726,6 +758,120 @@ describe("browserHttpTransport", () => {
     ]);
   });
 
+  it("waits for the collector's Retry-After before replaying the offline queue", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const addEventListener = vi.fn<typeof globalThis.addEventListener>();
+    vi.stubGlobal("addEventListener", addEventListener);
+    const sentAt: number[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      sentAt.push(Date.now());
+      return sentAt.length === 1
+        ? new Response(null, { status: 429, headers: { "retry-after": "2" } })
+        : new Response(null, { status: 204 });
+    });
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayOnStart: false,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("limited"), createTransportContext());
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(1);
+
+    // Reconnecting inside the window schedules the replay instead of sending.
+    const online = listenerFor(addEventListener, "online");
+    if (typeof online !== "function") throw new Error("online listener is not callable");
+    online(new Event("online"));
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(sentAt).toEqual([0]);
+
+    await vi.advanceTimersByTimeAsync(600);
+    expect(sentAt).toEqual([0, 2000]);
+    expect(offlineQueue.size()).toBe(0);
+    await transport.close?.();
+  });
+
+  it("waits for the collector's Retry-After before sending again", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const sentAt: number[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      sentAt.push(Date.now());
+      return sentAt.length === 1
+        ? new Response(null, { status: 429, headers: { "retry-after": "2" } })
+        : new Response(null, { status: 204 });
+    });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 50,
+      useBeaconOnPageHide: false,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("limited"), createTransportContext());
+    await vi.advanceTimersByTimeAsync(60);
+    expect(sentAt).toEqual([50]);
+
+    // Neither the scheduler nor an explicit flush sends inside the window.
+    await transport.flush?.();
+    transport.log?.(createEvent("during window"), createTransportContext());
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(sentAt).toEqual([50]);
+
+    // The held batch goes first and alone, then the event logged meanwhile.
+    await vi.advanceTimersByTimeAsync(600);
+    expect(sentAt).toEqual([50, 2050, 2050]);
+    expect(fetchFn.mock.calls.slice(1).map(([, init]) => init?.body)).toEqual([
+      "limited",
+      "during window",
+    ]);
+  });
+
+  it("repeats an idempotency key across retries and offline replays", async () => {
+    const keys: string[] = [];
+    let failures = 2;
+    const fetchFn = vi.fn<typeof fetch>(async (_input, init) => {
+      keys.push(new Headers(init?.headers).get("idempotency-key") ?? "missing");
+      if (failures > 0) {
+        failures -= 1;
+        return new Response(null, { status: 503 });
+      }
+      return new Response(null, { status: 204 });
+    });
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayOnStart: false,
+      offlineReplayBaseDelayMs: 0,
+      idempotencyKeyHeader: "idempotency-key",
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("one"), createTransportContext());
+    transport.log?.(createEvent("two"), createTransportContext());
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(1);
+
+    // The stored entry replays with the key it was first sent with.
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(0);
+    expect(keys).toHaveLength(3);
+    expect(keys[0]).toMatch(/^[0-9a-z]+-[0-9a-z]+$/);
+    expect(new Set(keys).size).toBe(1);
+  });
+
   it("flushes queued events on the scheduled timer", async () => {
     vi.useFakeTimers();
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
@@ -906,6 +1052,39 @@ describe("browserHttpTransport", () => {
 
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(fetchFn.mock.calls[1]?.[1]?.body).toBe("retained");
+  });
+
+  it("resends a retained batch alone so its idempotency key repeats", async () => {
+    const requests: Array<{ body: unknown; key: string | null }> = [];
+    let fail = true;
+    const fetchFn = vi.fn<typeof fetch>(async (_input, init) => {
+      requests.push({
+        body: init?.body,
+        key: new Headers(init?.headers).get("idempotency-key"),
+      });
+      return new Response(null, { status: fail ? 503 : 204 });
+    });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      idempotencyKeyHeader: "idempotency-key",
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("retained"), createTransportContext());
+    await expect(transport.flush?.()).rejects.toThrow("status 503");
+    fail = false;
+    transport.log?.(createEvent("later"), createTransportContext());
+    await transport.flush?.();
+
+    expect(requests.map((request) => request.body)).toEqual(["retained", "retained", "later"]);
+    expect(requests[1]?.key).toBe(requests[0]?.key);
+    expect(requests[2]?.key).not.toBe(requests[0]?.key);
+    expect(() => browserHttpTransport({ url: "/logs", idempotencyKeyHeader: "bad key" })).toThrow(
+      TypeError,
+    );
   });
 
   it("transforms encoded payloads before fetch and offline storage", async () => {

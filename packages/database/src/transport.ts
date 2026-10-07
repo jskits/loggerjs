@@ -1,6 +1,6 @@
 import {
   batchTransport,
-  safeJsonCodec,
+  safeJsonEncoder,
   safeJsonStringify,
   type BatchTransportOptions,
   type Codec,
@@ -52,7 +52,7 @@ export function createDatabaseLogRow(
   event: LogEvent,
   options: DatabaseLogRowOptions = {},
 ): DatabaseLogRow {
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec ?? safeJsonEncoder();
   const serialize = options.serialize ?? safeJsonStringify;
 
   return {

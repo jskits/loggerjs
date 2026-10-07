@@ -1,4 +1,5 @@
 import {
+  httpStatusError,
   batchTransport,
   type BatchTransportOptions,
   type LoggerLevel,
@@ -30,7 +31,7 @@ export function otlpHttpTransport(options: OtlpHttpTransportOptions): Transport 
         },
         body: codec.encode(events),
       });
-      if (!response.ok) throw new Error(`otlpHttpTransport failed with status ${response.status}`);
+      if (!response.ok) throw httpStatusError("otlpHttpTransport", response);
     },
   };
 

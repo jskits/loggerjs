@@ -2,6 +2,7 @@ import { eventToRecord } from "../record";
 import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
 import { incrementLoggerMetaCounter, setLoggerMetaGauge } from "../meta";
 import { toLevelValue } from "../levels";
+import { retryAfterFromError } from "./retry-after";
 import {
   clearRuntimeTimeout,
   runtimeNow,
@@ -55,6 +56,10 @@ interface QueueItem {
   payload: LogEvent | LogRecord;
   kind: "event" | "record";
   estimatedBytes: number;
+  // Marks the last item of a batch handed back after a failed delivery. The
+  // batch is resent with the same items, so an inner transport can recognize
+  // it, for example to repeat its idempotency key.
+  batchEnd?: true;
 }
 
 const MAX_ESTIMATE_DEPTH = 4;
@@ -181,6 +186,8 @@ export function batchTransport(
   let activeFlush: Promise<void> | undefined;
   let consecutiveFailures = 0;
   let circuitOpenUntil = 0;
+  // Set from a delivery error's retryAfterMs: no batch is sent before then.
+  let retryNotBefore = 0;
   const statsState: BatchTransportStats = {
     queueDepth: 0,
     maxQueueDepth: 0,
@@ -236,6 +243,11 @@ export function batchTransport(
     const maybeNodeTimer = timer as unknown as { unref?: () => void };
     maybeNodeTimer.unref?.();
   };
+
+  // How long sending must wait for an open circuit or a server-requested
+  // Retry-After; 0 when batches may go out now.
+  const sendWaitMs = (): number =>
+    Math.max(0, circuitOpenUntil - Date.now(), retryNotBefore - Date.now());
 
   const retryDelay = (attempt: number): number => {
     const cap = Math.min(retryMaxDelayMs, retryBaseDelayMs * 2 ** attempt);
@@ -300,6 +312,17 @@ export function batchTransport(
         consecutiveFailures = 0;
         return;
       } catch (error) {
+        const retryAfterMs = retryAfterFromError(error);
+        if (retryAfterMs !== undefined) {
+          retryNotBefore = Math.max(retryNotBefore, Date.now() + retryAfterMs);
+          // Waiting longer than the backoff cap inside this flush would hold
+          // flush() and close(); hand the batch back and let the scheduler
+          // wait for the server instead.
+          if (retryAfterMs > retryMaxDelayMs) {
+            incrementLoggerMetaCounter("transport.retry.deferred");
+            throw error;
+          }
+        }
         if (attempt >= maxRetries) {
           consecutiveFailures += 1;
           statsState.retryExhausted += 1;
@@ -314,7 +337,7 @@ export function batchTransport(
         statsState.retryCount += 1;
         incrementLoggerMetaCounter("transport.retry");
         // oxlint-disable-next-line no-await-in-loop -- Backoff must complete before the next retry.
-        await sleep(retryDelay(attempt));
+        await sleep(Math.max(retryDelay(attempt), retryAfterMs ?? 0));
       }
     }
   };
@@ -331,6 +354,7 @@ export function batchTransport(
       if (!item) break;
       batch.push(item);
       bytes += item.estimatedBytes;
+      if (item.batchEnd) break;
     }
 
     updateQueueDepth();
@@ -344,6 +368,7 @@ export function batchTransport(
       setLoggerMetaGauge(`transport.active_batches.${transportName}`, statsState.activeBatches);
       await deliverWithRetry(batchItems, context);
     } catch (error) {
+      batchItems[batchItems.length - 1]!.batchEnd = true;
       queue.unshift(...batchItems);
       updateQueueDepth();
       throw error;
@@ -358,9 +383,9 @@ export function batchTransport(
 
     const launchAvailableBatches = () => {
       while (queue.length > 0 && inFlight.size < concurrency) {
-        const now = Date.now();
-        if (circuitOpenUntil > now) {
-          schedule(circuitOpenUntil - now);
+        const waitMs = sendWaitMs();
+        if (waitMs > 0) {
+          schedule(waitMs);
           return;
         }
         const batchItems = takeBatch();
@@ -394,9 +419,9 @@ export function batchTransport(
     const context = lastContext;
     if (!context) return;
 
-    const now = Date.now();
-    if (circuitOpenUntil > now) {
-      schedule(circuitOpenUntil - now);
+    const waitMs = sendWaitMs();
+    if (waitMs > 0) {
+      schedule(waitMs);
       return;
     }
 
@@ -420,8 +445,7 @@ export function batchTransport(
       flushing = false;
       activeFlush = undefined;
       if (queue.length > 0) {
-        const delay =
-          circuitOpenUntil > Date.now() ? circuitOpenUntil - Date.now() : flushIntervalMs;
+        const delay = sendWaitMs() || flushIntervalMs;
         schedule(delay);
       }
     }

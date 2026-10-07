@@ -313,6 +313,14 @@ export interface NodeHttpTransportOptions extends BatchTransportOptions {
      * Set to 0 to disable. Defaults to 10000.
      */
     timeoutMs?: number;
+    /**
+     * Header that carries an idempotency key for each request, for example
+     * "Idempotency-Key". Every resend of a batch repeats its key, so the
+     * collector can drop the duplicate that a retry after a timeout may cause.
+     * Keys start with a random per-transport prefix, so senders never share
+     * one. Off by default.
+     */
+    idempotencyKeyHeader?: string;
 }
 export declare function nodeHttpTransport(options: NodeHttpTransportOptions): Transport;
 ```

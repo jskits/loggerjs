@@ -1,5 +1,5 @@
 import {
-  ndjsonCodec,
+  ndjsonEncoder,
   toLevelValue,
   type Codec,
   type LogEvent,
@@ -19,7 +19,7 @@ export interface StdoutTransportOptions {
 }
 
 export function stdoutTransport(options: StdoutTransportOptions = {}): Transport {
-  const codec = options.codec ?? ndjsonCodec();
+  const codec = options.codec ?? ndjsonEncoder();
   const stream = options.stream ?? process.stdout;
   const transportName = options.name ?? "stdout";
   const destination = createNodeStreamDestination({

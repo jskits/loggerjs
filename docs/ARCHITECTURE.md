@@ -354,9 +354,11 @@ Any feature that writes logs to durable browser storage is explicit, because it 
 | Disabled level call | one numeric comparison, zero allocation | ~3 ns on the reference machine |
 | Record allocation | one record object; no data copy unless middleware clones | met |
 | Node lean NDJSON path | same class as pino for equivalent output | ~1.19x pino throughput on the M1 Max reference, slower than pino on the M4 Pro row |
-| Core size | as small as the platform-neutral feature set allows | ~21 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 6.3 KB gzip for `createLogger` plus `consoleTransport`, 8.1 KB with `browserHttpTransport`, and 7 KB with `stdoutTransport` |
+| Core size | as small as the platform-neutral feature set allows | ~22 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 5.5 KB gzip for `createLogger` plus `consoleTransport`, 7.8 KB with `browserHttpTransport`, and 6.2 KB with `stdoutTransport` |
 
-`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
+Most of the remaining minimal bundle is the stable `Logger` itself: child loggers, bindings and ambient context, middleware and processors, integration setup, `event()` and `capture()`, error normalization, safe stringification, and the delivery accounting behind `onDrop`. All of them are 1.x API, so getting to 3–4 KB would take a separate entry with a smaller API rather than more trimming of this one. Diagnostics cost nothing until a sink is installed: Logger guards its instrumentation with a direct test of the sink binding, which bundlers fold away when nothing assigns it.
+
+`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and checks that they leave out codec decode validation, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
 
 ### Decision: keep the record pipeline; optimize through codec-owned preparation
 

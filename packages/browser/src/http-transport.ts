@@ -1,6 +1,7 @@
 import {
+  httpStatusError,
   incrementLoggerMetaCounter,
-  safeJsonCodec,
+  safeJsonEncoder,
   toLevelValue,
   type Codec,
   type EncodedPayload,
@@ -9,6 +10,7 @@ import {
   type PayloadTransform,
   type Transport,
   type TransportContext,
+  type HttpStatusError,
 } from "@loggerjs/core";
 import { applyPayloadTransforms } from "@loggerjs/core/payload-transforms";
 
@@ -74,6 +76,15 @@ export interface BrowserHttpTransportOptions {
    * 10000.
    */
   timeoutMs?: number;
+  /**
+   * Header that carries an idempotency key for each Fetch request, for
+   * example "Idempotency-Key". Every resend of a batch repeats its key, and
+   * offline-queue entries store it, so the collector can drop duplicates.
+   * Keys start with a random per-transport prefix, so senders never share
+   * one. Off by default because a cross-origin collector must allow the
+   * header in Access-Control-Allow-Headers. Beacon requests cannot carry it.
+   */
+  idempotencyKeyHeader?: string;
 }
 
 export function memoryBrowserHttpOfflineQueue(
@@ -147,8 +158,34 @@ function remainingEvents(chunks: BeaconChunk[], startIndex: number): LogEvent[] 
   return events;
 }
 
+// Keys are a random per-transport prefix, which keeps senders apart, and a
+// batch number. A batch's key is stored under its last event: resends of a
+// held batch keep that event, because a full queue and Beacon delivery only
+// remove events from the front. Mirrors @loggerjs/node.
+function idempotencyKeyHeaders(
+  header: string | undefined,
+): (events: readonly LogEvent[]) => Record<string, string> | undefined {
+  if (!header) return () => undefined;
+  // Throws a TypeError for an invalid header name now instead of on every send.
+  new Headers().append(header, "");
+  const prefix = Array.from(crypto.getRandomValues(new Uint32Array(2)), (word) =>
+    word.toString(36),
+  ).join("");
+  const keys = new WeakMap<LogEvent, string>();
+  let next = 0;
+  return (events) => {
+    const last = events[events.length - 1]!;
+    let key = keys.get(last);
+    if (key === undefined) {
+      key = `${prefix}-${(next++).toString(36)}`;
+      keys.set(last, key);
+    }
+    return { [header]: key };
+  };
+}
+
 export function browserHttpTransport(options: BrowserHttpTransportOptions): Transport {
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec ?? safeJsonEncoder();
   const beaconCodec = options.beaconCodec ?? codec;
   const queue: LogEvent[] = [];
   const maxBatchSize = options.maxBatchSize ?? 50;
@@ -156,6 +193,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     throw new RangeError("maxBatchSize must be a positive safe integer");
   }
   const flushIntervalMs = options.flushIntervalMs ?? 2000;
+  const keyHeaders = idempotencyKeyHeaders(options.idempotencyKeyHeader);
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
   const beaconMaxBytes = options.beaconMaxBytes ?? DEFAULT_BEACON_MAX_BYTES;
@@ -168,10 +206,16 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const timeoutMs = options.timeoutMs ?? 10_000;
   let offlineEntrySeq = 0;
   let closed = false;
+  // Set from a Retry-After response: automatic sends and replays wait until then.
+  let retryNotBefore = 0;
+  let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeFlush: Promise<void> | undefined;
   let flushingBeacon = false;
   let replayPromise: Promise<void> | undefined;
+  // Events at the front of the queue that a failed send handed back. They are
+  // resent as the same batch, so its idempotency key repeats.
+  let heldBatchSize = 0;
   let lastContext: TransportContext | undefined;
 
   const headers = (payloadHeaders?: Record<string, string>, contentType = codec.contentType) => ({
@@ -258,10 +302,17 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           options.url,
           payloadToBeaconBody(chunk.payload, beaconCodec.contentType),
         );
-        if (!ok) return { remaining: remainingEvents(chunks, index) };
+        if (!ok) {
+          incrementLoggerMetaCounter("transport.beacon.rejected", chunk.events.length);
+          return { remaining: remainingEvents(chunks, index) };
+        }
       } catch (error) {
+        incrementLoggerMetaCounter("transport.beacon.rejected", chunk.events.length);
         return { remaining: remainingEvents(chunks, index), failure: { error } };
       }
+      // Accepted only means the browser queued the request: nothing reports
+      // whether it reaches the collector, so these events are never dropped.
+      incrementLoggerMetaCounter("transport.beacon.accepted", chunk.events.length);
     }
 
     return { remaining: [] };
@@ -280,7 +331,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           ? AbortSignal.timeout(timeoutMs)
           : undefined,
     });
-    if (!response.ok) throw new Error(`browserHttpTransport failed with status ${response.status}`);
+    if (!response.ok) throw httpStatusError("browserHttpTransport", response);
   };
 
   const encodeTransformedPayload = async (batch: LogEvent[]) => {
@@ -328,31 +379,37 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   // the offline queue took it instead.
   const sendFetchBatch = async (batch: LogEvent[]): Promise<"sent" | "queued"> => {
     const transformed = await encodeTransformedPayload(batch);
+    // The key travels in the stored headers, so replays repeat it.
+    const payloadHeaders = { ...transformed.headers, ...keyHeaders(batch) };
     if (offlineQueue && !isOnline()) {
-      await enqueueOfflinePayload(
-        transformed.payload,
-        transformed.headers,
-        transformed.contentType,
-      );
+      await enqueueOfflinePayload(transformed.payload, payloadHeaders, transformed.contentType);
       return "queued";
     }
     try {
       await sendPayload(
-        createOfflineEntry(transformed.payload, transformed.headers, transformed.contentType),
+        createOfflineEntry(transformed.payload, payloadHeaders, transformed.contentType),
       );
       return "sent";
     } catch (error) {
+      noteRetryAfter(error);
       if (
-        await enqueueOfflinePayload(
-          transformed.payload,
-          transformed.headers,
-          transformed.contentType,
-        )
+        await enqueueOfflinePayload(transformed.payload, payloadHeaders, transformed.contentType)
       ) {
         return "queued";
       }
       throw error;
     }
+  };
+
+  const retryWaitMs = () => Math.max(0, retryNotBefore - Date.now());
+
+  // Cross-origin collectors must expose Retry-After through
+  // Access-Control-Expose-Headers for the browser to read it.
+  const noteRetryAfter = (error: unknown): number | undefined => {
+    const retryAfterMs = (error as Partial<HttpStatusError> | null)?.retryAfterMs;
+    if (typeof retryAfterMs !== "number" || !(retryAfterMs >= 0)) return undefined;
+    retryNotBefore = Math.max(retryNotBefore, Date.now() + retryAfterMs);
+    return retryAfterMs;
   };
 
   const replayRetryDelay = (attempt: number): number => {
@@ -368,13 +425,16 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         incrementLoggerMetaCounter("transport.offline.replayed");
         return;
       } catch (error) {
-        if (attempt >= offlineReplayMaxRetries) {
+        const retryAfterMs = noteRetryAfter(error);
+        // A longer server-requested wait ends this replay round; the entry
+        // stays queued and replays after the wait.
+        if (attempt >= offlineReplayMaxRetries || (retryAfterMs ?? 0) > offlineReplayMaxDelayMs) {
           incrementLoggerMetaCounter("transport.offline.replay.failed");
           throw error;
         }
         incrementLoggerMetaCounter("transport.offline.retry");
         // oxlint-disable-next-line no-await-in-loop -- Backoff must complete before the next retry.
-        await sleep(replayRetryDelay(attempt));
+        await sleep(Math.max(replayRetryDelay(attempt), retryAfterMs ?? 0));
       }
     }
   };
@@ -393,8 +453,18 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
   // Stored entries stay in the offline queue when replay fails, so a failed
   // replay is reported instead of failing the flush that triggered it.
-  const replayOfflineQueueSafely = async (operation: string) => {
+  const replayOfflineQueueSafely = async (operation: string): Promise<void> => {
     if (!offlineQueue || !isOnline()) return;
+    const waitMs = retryWaitMs();
+    if (waitMs > 0) {
+      if (!closed && replayTimer === undefined) {
+        replayTimer = setTimeout(() => {
+          replayTimer = undefined;
+          void replayOfflineQueueSafely(operation);
+        }, waitMs);
+      }
+      return;
+    }
     try {
       await replayOfflineQueue();
     } catch (error) {
@@ -407,13 +477,15 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const flushBeaconQueue = () => {
     if (flushingBeacon || options.transformPayload || queue.length === 0) return;
     flushingBeacon = true;
-    let pending = queue.splice(0, queue.length);
+    const taken = queue.length;
+    let pending = queue.splice(0, taken);
     try {
       const result = sendBeaconBatch(pending);
       pending = result.remaining;
       if (result.failure) throw result.failure.error;
     } finally {
       if (pending.length > 0) queue.unshift(...pending);
+      heldBatchSize = Math.max(0, heldBatchSize - (taken - pending.length));
       flushingBeacon = false;
     }
   };
@@ -437,6 +509,12 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       // entries queued during a server outage do not wait for an `online` event.
       return preferBeacon ? Promise.resolve() : replayOfflineQueueSafely("replay");
     }
+    // While the collector's Retry-After runs, keep events queued; the
+    // scheduler sends them when it ends. Page-exit Beacon flushes still go out.
+    if (!preferBeacon && retryWaitMs() > 0) {
+      schedule();
+      return Promise.resolve();
+    }
     clearTimer();
 
     // Publish the task before invoking user codecs/transforms, which may reenter log().
@@ -453,7 +531,8 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         let sent = false;
         let queued = false;
         while (queue.length > 0) {
-          const batch = queue.splice(0, maxBatchSize);
+          const batch = queue.splice(0, heldBatchSize || maxBatchSize);
+          heldBatchSize = 0;
           try {
             // oxlint-disable-next-line no-await-in-loop -- Preserve batch order and stop on the first unhandled failure.
             const outcome = await sendFetchBatch(batch);
@@ -461,6 +540,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
             else queued = true;
           } catch (error) {
             queue.unshift(...batch);
+            heldBatchSize = batch.length;
             throw error;
           }
         }
@@ -479,11 +559,13 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   };
 
   const schedule = () => {
-    if (closed || activeFlush || timer || flushIntervalMs <= 0) return;
+    if (closed || activeFlush || timer) return;
+    const delayMs = Math.max(flushIntervalMs, retryWaitMs());
+    if (delayMs <= 0) return;
     timer = setTimeout(() => {
       timer = undefined;
       void flush(false).catch((error: unknown) => reportInternalError(error, "flush"));
-    }, flushIntervalMs);
+    }, delayMs);
   };
 
   const onPageHide = () => {
@@ -495,7 +577,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     }
   };
   const onOnline = () => {
-    void replayOfflineQueue().catch((error: unknown) => reportInternalError(error, "replay"));
+    void replayOfflineQueueSafely("replay");
   };
 
   if (options.useBeaconOnPageHide ?? true) {
@@ -527,6 +609,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           return;
         }
         const dropped = queue.shift();
+        if (heldBatchSize > 0) heldBatchSize -= 1;
         if (dropped) reportDrop(dropped, "queue-full");
       }
       queue.push(event);
@@ -544,6 +627,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       globalThis.removeEventListener?.("online", onOnline);
       closed = true;
       clearTimer();
+      if (replayTimer !== undefined) clearTimeout(replayTimer);
       // Events the final flush could not deliver or store are accounted for
       // as dropped instead of disappearing with the transport.
       const dropUndelivered = () => {

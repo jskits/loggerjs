@@ -935,10 +935,11 @@ describe("circuit breaker", () => {
     expect(transport.stats().queueDepth).toBe(2); // both items still queued
 
     // Advance past the reset window so circuitOpenUntil (5000) is no longer > now.
+    // The handed-back batch is resent alone, then the item queued meanwhile.
     vi.setSystemTime(5_001);
     await transport.flush?.();
-    expect(logBatch).toHaveBeenCalledTimes(2);
-    expect(batches).toEqual([["evt-1", "evt-2"]]);
+    expect(logBatch).toHaveBeenCalledTimes(3);
+    expect(batches).toEqual([["evt-1"], ["evt-2"]]);
     expect(transport.stats().circuitOpen).toBe(false);
     expect(transport.stats().circuitOpenUntil).toBe(0);
   });
@@ -1567,7 +1568,7 @@ describe("circuit-open re-scheduling", () => {
     expect(batches).toEqual([]);
     // The 5000th ms fires the rescheduled flush which now succeeds.
     await vi.advanceTimersByTimeAsync(1);
-    expect(batches).toEqual([["evt-1", "evt-2"]]);
+    expect(batches).toEqual([["evt-1"], ["evt-2"]]);
   });
 });
 

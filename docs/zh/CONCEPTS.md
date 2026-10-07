@@ -152,6 +152,8 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 - `configure({ shareAcrossCopies: true })` 让所有副本使用同一个进程级存储，其他副本中的库也会走应用的配置。
 - `configure({ shareAcrossCopies: false })` 保持各副本隔离，并关闭警告。同一页面上各自打包的微前端需要这样，避免一个应用的 `configure()` 替换另一个应用的配置或关闭它的 transport。
 
+开启共享后，无论哪个副本调用 `getLogger()`，registry 中的 logger 都由最后调用 `configure()` 的副本创建。因此，通过该副本安装的诊断 sink（`@loggerjs/core/diagnostics` 中的 `setLoggerDiagnosticSink()`）能看到所有这些 logger。sink 本身仍按副本区分，这样从不安装 sink 的打包产物可以去掉诊断代码。在其他副本中用 `createLogger()` 创建的 logger 会上报给该副本自己的 sink；如果需要这些诊断数据，请在那个副本中也安装 sink。
+
 同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。整个 1.x 期间默认都保持隔离，应用需要显式开启共享。
 
 ## Levels、Categories、Sources

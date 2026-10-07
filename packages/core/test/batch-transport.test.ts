@@ -281,6 +281,32 @@ describe("batchTransport", () => {
     expect(batches).toEqual([["evt-1"], ["evt-2"], ["evt-3"], ["evt-4"]]);
   });
 
+  it("resends a handed-back batch alone instead of merging newer events into it", async () => {
+    const batches: string[][] = [];
+    let fail = true;
+    const transport = batchTransport(
+      {
+        name: "collector",
+        logBatch(events) {
+          batches.push(events.map((item) => item.message));
+          if (fail) throw new Error("collector unavailable");
+        },
+      },
+      { flushIntervalMs: 0, maxBatchSize: 10, maxRetries: 0 },
+    );
+    const context = createContext();
+
+    transport.log?.({ ...event, id: "a", message: "a" }, context);
+    transport.log?.({ ...event, id: "b", message: "b" }, context);
+    await expect(transport.flush?.()).rejects.toThrow("collector unavailable");
+    fail = false;
+    transport.log?.({ ...event, id: "c", message: "c" }, context);
+    await transport.flush?.();
+
+    // A key derived from the batch's events, like an idempotency key, repeats.
+    expect(batches).toEqual([["a", "b"], ["a", "b"], ["c"]]);
+  });
+
   it("retries transient delivery failures", async () => {
     resetLoggerMetaStats();
     const logBatch = vi.fn<NonNullable<Transport["logBatch"]>>(async () => {

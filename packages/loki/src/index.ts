@@ -1,4 +1,10 @@
-import { toLevelValue, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  toLevelValue,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+  httpStatusError,
+} from "@loggerjs/core";
 
 export interface LokiTransportOptions {
   url: string;
@@ -125,7 +131,7 @@ export function lokiTransport(options: LokiTransportOptions): Transport {
       headers,
       body: JSON.stringify(createPayload(events, options)),
     });
-    if (!response.ok) throw new Error(`lokiTransport failed with status ${response.status}`);
+    if (!response.ok) throw httpStatusError("lokiTransport", response);
   };
 
   return {

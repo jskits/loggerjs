@@ -1,4 +1,5 @@
 import {
+  httpStatusError,
   safeJsonStringify,
   toLevelValue,
   type LogEvent,
@@ -266,9 +267,7 @@ export function cloudWatchLogsTransport(options: CloudWatchLogsTransportOptions)
           headers: signedHeaders,
           method: "POST",
         });
-        if (!response.ok) {
-          throw new Error(`cloudWatchLogsTransport failed with status ${response.status}`);
-        }
+        if (!response.ok) throw httpStatusError("cloudWatchLogsTransport", response);
       }),
     );
   };

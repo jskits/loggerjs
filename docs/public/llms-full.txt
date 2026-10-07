@@ -869,6 +869,8 @@ Routes are attached as non-enumerable event metadata and consulted at dispatch. 
 - `configure({ shareAcrossCopies: true })` lets every copy use one process-wide store, so libraries in other copies log through the application's configuration.
 - `configure({ shareAcrossCopies: false })` keeps copies isolated and silences the warning. Independently bundled micro-frontends on one page want this, so one app's `configure()` cannot replace another's or close its transports.
 
+With sharing on, the copy that last called `configure()` builds every registry logger, whichever copy calls `getLogger()`. A diagnostics sink installed through that copy (`setLoggerDiagnosticSink()` from `@loggerjs/core/diagnostics`) therefore sees them all. The sink itself stays per copy, so a bundle that never installs one drops the diagnostics code. A logger created with `createLogger()` in another copy reports to that copy's sink; install the sink there as well if you need those diagnostics.
+
 Subpath entries of one installed version (for example `@loggerjs/core/context`) are not separate copies; they share the root entry's state. Isolation stays the default for all of 1.x, so an application opts into sharing explicitly.
 
 ## Levels, Categories, Sources
@@ -1011,8 +1013,8 @@ Transports are composable by default. Some transports include batching or durabl
 | `memoryTransport()` | Ring buffer of recent events (`maxEvents`, default 1000). Useful for diagnostics endpoints and tests. |
 | `testTransport()` | Assertion-friendly sink: snapshots, call stats, `waitFor()`/`waitForCount()`, injectable failures. |
 | `batchTransport(inner, options)` | Wraps any transport with batching, retry, and reliability controls (below). |
-| `retryTransport(inner, options)` | Wraps any transport with retries, exponential backoff, optional circuit breaker, and optional fallback. |
-| `fallbackTransport(primary, fallback)` | Sends to a fallback transport when the primary throws. |
+| `retryTransport(inner, options)` | Wraps any transport with retries, exponential backoff, optional circuit breaker, and optional fallback. `onDrop(event, reason)` reports each event it gives up on: `retry-exhausted` (no fallback), `circuit-open` (no fallback), or `fallback-failed`. |
+| `fallbackTransport(primary, fallback, options)` | Sends to a fallback transport when the primary throws. `onDrop(event, "fallback-failed")` reports events neither transport accepted. |
 
 ### `batchTransport` reliability options
 
@@ -1040,7 +1042,11 @@ Notes:
 - Byte estimation walks the payload; it is skipped entirely unless `maxBytes` is finite.
 - Drops are always counted in logger meta (`transport.dropped.*`); the `onDrop` event conversion only happens when a listener is registered.
 - A failed batch is re-queued at the head; the circuit breaker stops hammering a dead endpoint.
+- `Retry-After` is honored. When a delivery error carries `retryAfterMs` (the HTTP transports set it from the `Retry-After` header of a 429 or 503), the next attempt waits at least that long. A wait longer than `retryMaxDelayMs` ends the current retries instead (`transport.retry.deferred`): the batch goes back to the queue, and nothing is sent until the wait ends, so `flush()` and `close()` are not held for it. `retryTransport()` follows the same rule and gives up (`retry-exhausted`) when the wait exceeds `retryMaxDelayMs`.
+- A batch that goes back to the queue after a failed delivery is resent as the same batch: newer events wait behind it instead of joining it, so anything derived from the batch's events, such as an idempotency key, repeats.
 - `close()` makes one final flush attempt, then stops the flush timer and always closes the inner transport. Records that could not be delivered, and records written after close, are counted as `transport.dropped.closed`; the final flush error is still thrown.
+
+`retryTransport()` and `fallbackTransport()` have no queue: when they give up, the delivery rejects, the events are counted in `transport.dropped.*`, and `onDrop` receives each one. A drop there is final from that wrapper's point of view; if an outer transport retries rejected deliveries itself (as `batchTransport()` re-queues a failed batch), the events can still arrive later. Use `batchTransport()`'s own retry options instead of nesting `retryTransport()` inside it.
 
 ## Pretty / Developer UX (`@loggerjs/pretty`)
 
@@ -1060,7 +1066,7 @@ Pretty transports are display sinks. They do not batch, retry, persist, or speak
 | `stdoutTransport()` / `stderrTransport()` | NDJSON lines with write backpressure tracking, clean `EPIPE` handling, and optional `minLength` buffering; `flush()` waits for pending writes. |
 | `fileTransport({ path })` | Append NDJSON to a file by default; supports `mkdir`, `append: false`, async `minLength` buffering, `sync: true`, and `flushSync()` for crash paths. |
 | `rotatingFileTransport({ path, maxBytes, maxFiles })` | Size-based rotation with numbered archives through the same file destination. Synchronous writes; use one logger process per file. If a rotation fails (for example `EBUSY`/`EPERM` while another process holds the file on Windows), the error is reported with `operation: "rotate"`, logging continues in the current file, and rotation is retried after another `maxBytes`. |
-| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. `timeoutMs` (default `10000`, `0` disables) aborts an attempt whose collector accepts the connection but never answers, so `flush()` and `close()` cannot stall shutdown; a timed-out attempt follows the retry settings. The collector may have processed a request that timed out, so retries can deliver duplicates; deduplicate on event `id` if that matters. |
+| `nodeHttpTransport({ url })` | fetch-based HTTP delivery wrapped in `batchTransport`. `timeoutMs` (default `10000`, `0` disables) aborts an attempt whose collector accepts the connection but never answers, so `flush()` and `close()` cannot stall shutdown; a timed-out attempt follows the retry settings. The collector may have processed a request that timed out, so a retry can deliver a batch twice. Set `idempotencyKeyHeader` (for example `"Idempotency-Key"`) to send a key with each request; every resend of a batch repeats it, so the collector can drop the duplicate. Keys start with a random per-transport prefix, so different processes never share one. |
 | `nodeSyslogTransport()` | RFC syslog formatting over UDP/TCP; `formatSyslogMessage()` is exported separately. |
 | `workerTransport({ workerScript })` | Encodes batches with a codec and posts them to a worker thread, optionally transferring buffers; supports ready timeout, batch ack waiting, fallback, and `autoEnd`. |
 
@@ -1106,11 +1112,13 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@lo
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
-`browserHttpTransport()` aborts a Fetch delivery after `timeoutMs` (default `10000`, `0` disables). Browsers never time out a request themselves, so without it one stalled request would hold every later flush and `close()`; with an offline queue configured, a timed-out batch is stored for replay. `close()` is terminal: events it could not deliver or store, and events logged after it, are reported through `onDrop` and `transport.dropped.closed`.
+`browserHttpTransport()` honors `Retry-After` from 429 and 503 responses: scheduled sends, full-batch sends, explicit `flush()`, and offline replay wait until it ends, while page-exit Beacon flushes still go out. A cross-origin collector must list `Retry-After` in `Access-Control-Expose-Headers`, or the browser hides it. `browserHttpTransport()` aborts a Fetch delivery after `timeoutMs` (default `10000`, `0` disables). Browsers never time out a request themselves, so without it one stalled request would hold every later flush and `close()`; with an offline queue configured, a timed-out batch is stored for replay. A request that timed out may still have been processed, so a batch can arrive twice. Set `idempotencyKeyHeader` to send an idempotency key with each Fetch request: retries, resends of a retained batch, and offline replays all repeat the batch's key (offline entries store it), so the collector can drop the duplicate. A cross-origin collector must allow the header in `Access-Control-Allow-Headers`, and page-exit Beacon requests cannot carry it. `close()` is terminal: events it could not deliver or store, and events logged after it, are reported through `onDrop` and `transport.dropped.closed`.
 
-`indexedDbTransport()` reports every event of a batch whose IndexedDB write fails through `onDrop`, with reason `quota` for `QuotaExceededError` and `write-failed` otherwise. Both `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` close their connection when another tab needs to upgrade or delete the database (for example a newer app version) and reopen it on next use. Events logged to `indexedDbTransport()` after `close()` are reported as dropped with reason `closed`. As with Node, a request that timed out may still have been processed, so a timed-out batch can arrive twice; deduplicate on event `id` if that matters.
+`indexedDbTransport()` reports every event of a batch whose IndexedDB write fails through `onDrop`, with reason `quota` for `QuotaExceededError` and `write-failed` otherwise. Both `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` close their connection when another tab needs to upgrade or delete the database (for example a newer app version) and reopen it on next use. Events logged to `indexedDbTransport()` after `close()` are reported as dropped with reason `closed`.
 
 `browserHttpTransport()` uses `codec` for normal Fetch delivery. Set `beaconCodec` when pagehide or hidden-page Beacon requests need a different encoding or content type; it falls back to `codec` when omitted. Beacon delivery is skipped when `transformPayload` is configured, so lifecycle flushes use the normal Fetch path and `beaconCodec` does not apply.
+
+Beacon delivery cannot be confirmed. On `pagehide` and when the page becomes hidden (unless `useBeaconOnPageHide` is `false`), and in `close()`, `browserHttpTransport()` hands queued events to `navigator.sendBeacon()`, which only reports whether the browser queued the request. The browser sends it after the page may be gone, and nothing reports whether the collector received it. Events in an accepted request leave the queue and count toward `transport.beacon.accepted`; they are never reported through `onDrop`, which makes them the one exception to delivery accounting. Browsers cap how much Beacon data can be in flight. Events in a refused request count toward `transport.beacon.rejected` and stay queued for the next Fetch send, and `close()` sends them by Fetch or reports them as dropped. An event larger than `beaconMaxBytes` is dropped with reason `beacon-too-large`. Beacon requests carry no custom headers, so no idempotency key and none of `headers`. When every event matters, flush by Fetch at points you control, such as before an in-app navigation, so less is left for page exit, and compare collector receipts with `transport.beacon.accepted`.
 
 `browserHttpTransport()` also accepts `transformPayload`. Use `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
 
@@ -1152,7 +1160,7 @@ Browser delivery is best effort unless the log has already been acknowledged by 
 | Path | Failure boundary / loss window | Production guidance |
 | --- | --- | --- |
 | `browserHttpTransport()` | In-memory batches are lost on reload, tab close, process kill, or if the queue bound drops records before delivery. Fetch can be aborted by navigation or by `timeoutMs`. Events still undelivered at `close()` are reported as dropped with reason `closed`. | Use bounded queues, retry options, and an IndexedDB offline queue when reload survival matters. |
-| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` is fire-and-forget. Browsers cap payload size and can reject, truncate, or skip delivery under shutdown pressure. | Keep `beaconMaxBytes` conservative, treat pagehide flush as a last chance, and do not use it as the only durability path. |
+| `browserHttpTransport({ useBeaconOnPageHide: true })` | `sendBeacon` is fire-and-forget: an accepted request is never confirmed, and its events are counted in `transport.beacon.accepted` instead of being reported through `onDrop`. Browsers cap in-flight Beacon data and can refuse a request (`transport.beacon.rejected`, the events stay queued) or lose it during shutdown. | Keep `beaconMaxBytes` conservative, flush by Fetch at points you control, treat the page-exit flush as a last chance rather than the only durability path, and reconcile collector receipts with `transport.beacon.accepted` when completeness matters. |
 | `memoryBrowserHttpOfflineQueue()` | Survives temporary offline periods only while the page process stays alive. | Use for lightweight apps or tests; switch to IndexedDB for support/debug logs that must survive reload. |
 | `indexedDbBrowserHttpOfflineQueue()` | Stores replay payloads across reloads, but quota, private browsing mode, storage eviction, blocked upgrades, or unavailable IndexedDB can still prevent persistence. | Monitor queue/drop counters and keep payloads bounded; pair with HTTP replay and page lifecycle flush. |
 | `offlineFirstTransport(remote)` | Queues when remote delivery fails, then replays later. Replay is not a guarantee if local storage fails or is evicted. | Prefer a persistent queue adapter and call `flush()` during controlled shutdown/navigation when possible. |
@@ -1221,6 +1229,8 @@ const transport = batchTransport(datadogLogsTransport({ apiKey: process.env.DD_A
 | `@loggerjs/database` | `sqliteTransport()` / `postgresTransport()` / `databaseTransport(adapter)` | Batched inserts through driver-agnostic adapters. |
 
 ## Writing a Custom Transport
+
+An HTTP transport that throws `httpStatusError(name, response)` from `@loggerjs/core` for a non-2xx response gets `Retry-After` handling from `batchTransport()` and `retryTransport()`: the error carries `status` and the parsed `retryAfterMs`. `parseRetryAfter(value)` parses the header on its own.
 
 Implement any of the four delivery methods. The simplest event transport:
 
@@ -1774,13 +1784,16 @@ interface Codec<TPayload = string | Uint8Array> {
 | Codec | Package | Behavior |
 | --- | --- | --- |
 | `jsonCodec()` | core | Bare `JSON.stringify` after input normalization. Fast, throws on circular/BigInt — pick it only when payloads are guaranteed clean. |
-| `safeJsonCodec(options)` | core | Full safe normalization every time: circular → `"[Circular]"`, BigInt → string, Error → `{name, message, stack}`, depth/array/key truncation, Map/Set conversion. Default codec of `consoleTransport({ pretty: false })`. |
-| `ndjsonCodec(options)` | core | One JSON object per line. **Fast-by-default contract** (below). Default codec of the Node stdout/file transports. |
+| `safeJsonCodec(options)` | core | Full safe normalization every time: circular → `"[Circular]"`, BigInt → string, Error → `{name, message, stack}`, depth/array/key truncation, Map/Set conversion. `consoleTransport({ pretty: false })` writes the same output. |
+| `ndjsonCodec(options)` | core | One JSON object per line. **Fast-by-default contract** (below). |
+| `safeJsonEncoder(options)` / `ndjsonEncoder(options)` | core | `safeJsonCodec` and `ndjsonCodec` without `decode()`. Default codecs of the transports that only send logs: `safeJsonEncoder` for the browser and Node HTTP, WebSocket, worker, and database transports, `ndjsonEncoder` for the Node stdout and file transports. |
 | `fastEventJsonCodec(options)` | `@loggerjs/codecs` | The performance codec: native fast path, fragment caches (level, logger, tags, time), scan-based string escaping, flat-data direct writer, lean envelope options. |
 | `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | Pino-shaped NDJSON for migration paths: `level`, `time`, optional `pid`/`hostname` base fields, `msg`, `err`, and opt-in root data merging with reserved-key protection. |
 | `msgpackrCodec(options?)` | `@loggerjs/codecs` | Built-in MessagePack codec backed by `msgpackr`; returns `Uint8Array`. Passing `{ pack, unpack }` is still supported for custom runtimes. |
 | `projectorCodec(options)` | `@loggerjs/codecs` | Generic project → serialize (→ parse → unproject) adapter for custom wire schemas. |
 | `otlpJsonCodec(options)` | `@loggerjs/otel` | OTLP/HTTP JSON log payloads with resource attributes. |
+
+`decode()` validates every event it returns, and that validation is a sizable part of a small bundle. Transports that never read logs back default to the encode-only forms, so an application that only logs leaves it out. Use the full codecs where events are read back, as `indexedDbTransport().query()` does.
 
 ## The Fast-by-Default Contract
 
@@ -3144,8 +3157,8 @@ Raw vendor transports are not durable by themselves. For production delivery, wr
 
 - **Wire formats.** Codec output, the event shape the logger produces, and the exact HTTP requests the Node and browser transports send are pinned byte for byte by golden files under `packages/*/test/golden/`. Changing them is a wire-protocol change and follows the same policy as a signature change of the owning API.
 - **Persisted browser data.** The IndexedDB schemas of `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` must stay readable by the next release. `tests/e2e/browser-upgrade.spec.ts` writes data with the previous published release and reads it with the current code.
-- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change. Isolation stays the default for all of 1.x: a missing library log comes with a warning and a one-line fix, while sharing by default would let one micro-frontend's `configure()` replace another's and close its transports. Changing the default either way would be a breaking change.
-- **Delivery accounting.** Every event handed to a first-party transport is delivered or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle even when the destination fails. Failure-injection, model-based, and soak tests assert this invariant.
+- **Shared process state.** With `configure({ shareAcrossCopies: true })`, every copy of `@loggerjs/core` loaded into one process (an ESM and a CJS build, or two installed versions) uses one registry, ambient context, and meta counters stored under `Symbol.for("@loggerjs/core/shared-state/v1")`; otherwise copies stay isolated. The copy that called `configure()` builds the registry's loggers, so its diagnostics sink sees them all. Subpath entries of one build always share state through shared chunks. The `v1` suffix changes only when the shape of that state changes incompatibly, which is a breaking change. Isolation stays the default for all of 1.x: a missing library log comes with a warning and a one-line fix, while sharing by default would let one micro-frontend's `configure()` replace another's and close its transports. Changing the default either way would be a breaking change.
+- **Delivery accounting.** Every event handed to a first-party transport is delivered or reported through `onDrop` and the `transport.dropped.*` counters, and `flush()`/`close()` settle even when the destination fails. The one exception is events `browserHttpTransport()` hands to `navigator.sendBeacon()`: the browser never confirms them, so they are counted in `transport.beacon.accepted` instead. Failure-injection, model-based, and soak tests assert this invariant.
 
 ## Change Policy
 
@@ -3560,9 +3573,11 @@ Any feature that writes logs to durable browser storage is explicit, because it 
 | Disabled level call | one numeric comparison, zero allocation | ~3 ns on the reference machine |
 | Record allocation | one record object; no data copy unless middleware clones | met |
 | Node lean NDJSON path | same class as pino for equivalent output | ~1.19x pino throughput on the M1 Max reference, slower than pino on the M4 Pro row |
-| Core size | as small as the platform-neutral feature set allows | ~21 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 6.3 KB gzip for `createLogger` plus `consoleTransport`, 8.1 KB with `browserHttpTransport`, and 7 KB with `stdoutTransport` |
+| Core size | as small as the platform-neutral feature set allows | ~22 KB gzip for the full barrel with its shared chunks; after tree-shaking and minification about 5.5 KB gzip for `createLogger` plus `consoleTransport`, 7.8 KB with `browserHttpTransport`, and 6.2 KB with `stdoutTransport` |
 
-`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
+Most of the remaining minimal bundle is the stable `Logger` itself: child loggers, bindings and ambient context, middleware and processors, integration setup, `event()` and `capture()`, error normalization, safe stringification, and the delivery accounting behind `onDrop`. All of them are 1.x API, so getting to 3–4 KB would take a separate entry with a smaller API rather than more trimming of this one. Diagnostics cost nothing until a sink is installed: Logger guards its instrumentation with a direct test of the sink binding, which bundlers fold away when nothing assigns it.
+
+`pnpm size:check` enforces raw and gzip budgets for every package entry and for those three minimal application bundles, and checks that they leave out codec decode validation, and `pnpm bench:gate` enforces paired A/B ratios against pino for the disabled, enqueue, lean, prepared, and full-envelope paths. Benchmarks run on Node and in a real browser; see [Benchmarks](BENCHMARKS.md) and the [benchmark matrix](BENCHMARK-MATRIX.md).
 
 ### Decision: keep the record pipeline; optimize through codec-owned preparation
 

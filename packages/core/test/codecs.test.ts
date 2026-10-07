@@ -3,7 +3,9 @@ import {
   createRecord,
   jsonCodec,
   ndjsonCodec,
+  ndjsonEncoder,
   safeJsonCodec,
+  safeJsonEncoder,
   type Codec,
   type LogEvent,
   type LogRecord,
@@ -61,6 +63,18 @@ describe("core codecs", () => {
     ]);
     expect(JSON.parse(safeJsonCodec().encode([record]))).toHaveLength(1);
     expect(ndjsonCodec().encode([record])).toContain('"message":"created"');
+  });
+
+  it("offers encode-only forms of the safe JSON and NDJSON codecs", () => {
+    const events = [sampleEvent(), sampleEvent({ id: "evt-2", data: { big: 1n } })];
+    const options = { maxDepth: 2 };
+
+    expect(safeJsonEncoder(options).encode(events)).toBe(safeJsonCodec(options).encode(events));
+    expect(ndjsonEncoder().encode(events)).toBe(ndjsonCodec().encode(events));
+    expect(safeJsonEncoder()).toMatchObject({ name: "safe-json", contentType: "application/json" });
+    expect(ndjsonEncoder()).toMatchObject({ name: "ndjson", contentType: "application/x-ndjson" });
+    expect(safeJsonEncoder()).not.toHaveProperty("decode");
+    expect(ndjsonEncoder()).not.toHaveProperty("decode");
   });
 
   it("validates decoded JSON event envelopes before returning them", () => {

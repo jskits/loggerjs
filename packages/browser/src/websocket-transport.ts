@@ -1,6 +1,6 @@
 import {
   incrementLoggerMetaCounter,
-  safeJsonCodec,
+  safeJsonEncoder,
   type Codec,
   type LogEvent,
   type LoggerLevel,
@@ -81,7 +81,7 @@ export function browserWebSocketTransport(
   options: BrowserWebSocketTransportOptions,
 ): BrowserWebSocketTransport {
   const transportName = options.name ?? "browser-websocket";
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec ?? safeJsonEncoder();
   const maxQueueSize = options.maxQueueSize ?? 1000;
   const dropPolicy = options.dropPolicy ?? "drop-oldest";
   const webSocketFactory = options.webSocketFactory ?? defaultWebSocketFactory;
