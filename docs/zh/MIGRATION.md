@@ -165,9 +165,9 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 编写自定义 transport 时，实现 `write`/`writeBatch` 可以在快速路径上接收 `LogRecord`，实现 `log`/`logBatch` 则接收投影后的 `LogEvent`。凡是涉及网络 I/O 的 transport，都应使用 `batchTransport()` 包装，以获得队列上限、重试、字节限制、并发和熔断能力。见 [传输](TRANSPORTS.md#编写自定义-transport)。
 
-## 1.0 移出 core 根入口的导出
+## 1.0 从 core 根入口删除的导出
 
-1.0 起 `@loggerjs/core` 根入口只保留内核。从 0.7 开始，下列导出仍可从根入口使用，但已标为 `@deprecated`，编辑器会给出提示；请改从对应子路径导入：
+1.0 起 `@loggerjs/core` 根入口只导出内核。下列导出在 0.7 标为 deprecated，现已无法从根入口使用；请从对应子路径导入：
 
 | 导出 | 导入路径 |
 | --- | --- |

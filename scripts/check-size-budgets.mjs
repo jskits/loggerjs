@@ -9,8 +9,8 @@ import { rolldown } from "rolldown";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  // Encode-only codecs and the internal diagnostics sink module measure 102,533 raw and 22,608 gzip bytes with shared chunks.
-  ["@loggerjs/core", "packages/core/dist/index.js", 103_000, 22_800],
+  // The kernel-only root measures 86,169 raw and 19,020 gzip bytes with shared chunks.
+  ["@loggerjs/core", "packages/core/dist/index.js", 86_700, 19_200],
   // Idempotency keys and resending held batches whole measure 150,638 raw and 31,414 gzip bytes with shared chunks.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 151_100, 31_600],
   // Idempotency keys for nodeHttpTransport measure 81,800 raw and 16,285 gzip bytes with shared chunks.

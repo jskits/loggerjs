@@ -159,9 +159,9 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
-## Imports Leaving the Core Root in 1.0
+## Imports Removed from the Core Root in 1.0
 
-The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports below still work from the root but are marked `@deprecated`, so editors flag them; import them from their subpath instead:
+In 1.0 the `@loggerjs/core` root exports only the kernel. The exports below were deprecated in 0.7 and are no longer available from the root; import them from their subpath:
 
 | Exports | Import from |
 | --- | --- |

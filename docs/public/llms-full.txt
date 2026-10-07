@@ -2992,9 +2992,9 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
-## Imports Leaving the Core Root in 1.0
+## Imports Removed from the Core Root in 1.0
 
-The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports below still work from the root but are marked `@deprecated`, so editors flag them; import them from their subpath instead:
+In 1.0 the `@loggerjs/core` root exports only the kernel. The exports below were deprecated in 0.7 and are no longer available from the root; import them from their subpath:
 
 | Exports | Import from |
 | --- | --- |
@@ -3127,7 +3127,7 @@ Stable semantics include:
 
 Compatible exports stay documented and tested, but they are not frozen enough to be stable v1 candidates yet. Current compatible areas include:
 
-- Core modules that leave the root in 1.0: `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`. Their `@loggerjs/core` root re-exports are deprecated since 0.7 and removed in 1.0; import them from these subpaths. `pnpm verify:api-stability` only lets a root re-export less stable modules through deprecated specifiers.
+- Core modules outside the root: `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`. Their `@loggerjs/core` root re-exports were deprecated in 0.7 and removed in 1.0; import them from these subpaths. `pnpm verify:api-stability` only lets a root re-export less stable modules through deprecated specifiers.
 - Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Since 0.7 their re-exports of compatible components are deprecated; in 1.0 the roots export only the core kernel and the stable browser or Node components and become stable. Import compatible components from their subpaths (see MIGRATION).
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
 - Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.
