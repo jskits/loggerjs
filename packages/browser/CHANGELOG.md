@@ -1,5 +1,51 @@
 # @loggerjs/browser
 
+## 0.7.0
+
+### Minor Changes
+
+- `browserHttpTransport()` now counts what it hands to `navigator.sendBeacon()`: events in requests the browser accepted add to `transport.beacon.accepted`, and events in requests it refused add to `transport.beacon.rejected` (they stay queued for Fetch). `sendBeacon()` only reports that the browser queued a request, so accepted events are never confirmed and never reported through `onDrop`. The transport docs and the delivery accounting contract now describe this exception and how to reconcile against the counter.
+
+- `browserHttpTransport().close()` is now terminal. Events it could not deliver or store are reported as dropped with reason `closed`, and events logged after `close()` are dropped the same way. Previously they stayed in the closed transport without reaching `onDrop` or the drop counters, and a later `flush()` could still send them.
+
+- Add `timeoutMs` to `browserHttpTransport()`, defaulting to 10 seconds (`0` disables). Browsers never time out a request on their own, so one stalled request previously held every later flush and `close()` until the page unloaded. With an offline queue configured, a timed-out batch is stored for replay.
+
+  A collector may have processed a request that timed out before it answered, so the batch can be delivered twice. Deduplicate on the event `id` on the collector side if duplicates matter, and raise `timeoutMs` for large batches on slow networks.
+
+- Deprecate the root re-exports of compatible components. In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and their stable components (browser: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations; Node: stdout, stderr, file, rotating-file, and HTTP transports, process capture, and AsyncLocalStorage context) and become stable. The other root exports keep working in 0.x and are marked `@deprecated`; import them from their subpaths, for example `captureFetchIntegration` from `@loggerjs/browser/integration-fetch` or `expressIntegration` from `@loggerjs/node/integration-express`. MIGRATION lists the subpath for every export.
+
+- Add `idempotencyKeyHeader` to `nodeHttpTransport()` and `browserHttpTransport()`. When set (for example to `"Idempotency-Key"`), each request carries a key made of a random per-transport prefix and a batch number. Every resend of a batch repeats its key, including retries after a timeout, resends after the batch went back to the queue, and browser offline replays (offline entries store the key), so a collector can drop the duplicates that a retry after a timeout may cause. The option is off by default. A cross-origin collector must allow the header in `Access-Control-Allow-Headers`, and Beacon requests cannot carry it. An invalid header name throws a `TypeError` when the transport is created.
+
+  `batchTransport()` and `browserHttpTransport()` now resend a batch that went back to the queue after a failed delivery as the same batch. Newer events wait behind it instead of joining it.
+
+- Honor `Retry-After`. HTTP transports now throw `httpStatusError()` for non-2xx responses, which carries `status` and, when the response sends `Retry-After` (delay-seconds or an HTTP-date), `retryAfterMs`. `batchTransport()` and `retryTransport()` wait at least that long before the next attempt. A wait longer than `retryMaxDelayMs` ends the current retries instead: `batchTransport()` puts the batch back and sends nothing until the wait ends (counted as `transport.retry.deferred`), and `retryTransport()` gives up with reason `retry-exhausted`, so `flush()` and `close()` are never held by a long server-requested wait. `browserHttpTransport()` pauses scheduled, full-batch, and explicit sends and offline replay until the wait ends; cross-origin collectors must expose `Retry-After` through `Access-Control-Expose-Headers`.
+
+  `parseRetryAfter()` and `httpStatusError()` are exported from `@loggerjs/core` for custom HTTP transports. Error messages are unchanged.
+
+### Patch Changes
+
+- Depend on `@loggerjs/core` with a caret range instead of an exact version. Upgrading `@loggerjs/core` on its own no longer forces the package manager to install a second copy of core underneath each LoggerJS package.
+
+- Declare `engines.node: ">=20.19.0"`, the oldest Node release the packed packages are smoke-tested on in CI. Package managers can now warn when LoggerJS is installed on an older Node.
+
+- Import core helpers that leave the `@loggerjs/core` root in 1.0 (payload transforms, trace propagation, diagnostics, integration helpers, and event routes) from their `@loggerjs/core/*` subpaths. These packages now need `@loggerjs/core` 0.7 or later, which their dependency range already requires.
+
+- `indexedDbTransport()` reports events logged after `close()` as dropped with reason `closed` instead of ignoring them silently.
+
+- Stop `indexedDbTransport()` from losing events logged while a write is in progress. A flush started during an in-flight write returned that write's promise without writing the newly buffered events, and with `flushIntervalMs: 0` no timer picked them up afterwards, so `close()`, `pagehide`, and full-batch flushes could finish with events still in memory that were never stored or reported. A flush now waits for the in-flight write and then writes what was buffered meanwhile, and with `flushIntervalMs: 0` leftover events are written as soon as the previous write finishes.
+
+- `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` close their connection when another tab needs to upgrade or delete the database, and reopen it on next use. Previously an open tab blocked a newer app version in another tab from upgrading the database.
+
+- `indexedDbTransport()` reports every event in a batch whose IndexedDB write fails as dropped, with reason `quota` for `QuotaExceededError` and `write-failed` otherwise. Previously the batch had already left the buffer and disappeared without a drop report.
+
+- Smaller application bundles. `createLogger()` with `consoleTransport()` drops from about 6.3 KB to 5.5 KB gzip after tree-shaking and minification, `browserHttpTransport()` from 8.5 KB to 7.8 KB, and `stdoutTransport()` from 6.9 KB to 6.2 KB.
+
+  - New `safeJsonEncoder()` and `ndjsonEncoder()` in `@loggerjs/core/codec-json` are `safeJsonCodec()` and `ndjsonCodec()` without `decode()`. Transports that only send logs (browser and Node HTTP, WebSocket, worker, database, Node stdout and file) default to them, and `consoleTransport({ pretty: false })` encodes the same way, so apps that never decode leave out the payload validation. Output is unchanged.
+  - Diagnostics instrumentation is removed entirely from bundles that never install a diagnostics sink, instead of leaving inert checks behind.
+
+- Updated dependencies:
+  - @loggerjs/core@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes

@@ -1,5 +1,54 @@
 # @loggerjs/core
 
+## 0.7.0
+
+### Minor Changes
+
+- Add the `@loggerjs/core/diagnostics`, `@loggerjs/core/integration-api`, `@loggerjs/core/event-route`, and `@loggerjs/core/codec-prepared` subpath entries. Together with the existing `semantic-events`, `codec-metrics`, `transport-test`, `trace-propagation`, and `payload-transforms` subpaths, every module that leaves the `@loggerjs/core` root in 1.0 can now be imported from its own subpath.
+
+- Deprecate the `@loggerjs/core` root exports of modules that leave the root in 1.0. They keep working in 0.x and are marked `@deprecated`, so editors flag them; import them from their subpaths instead:
+
+  - `@loggerjs/core/trace-propagation`: `parseTraceparent`, `formatTraceparent`, `parseBaggage`, `formatBaggage`, `traceContextFromHeaders`, `traceContextToHeaders`
+  - `@loggerjs/core/semantic-events`: `semanticEvents` and the `Semantic*Payload` types
+  - `@loggerjs/core/payload-transforms`: `applyPayloadTransforms`, `composePayloadTransforms`, `encryptionPayloadTransform`, `encodedPayloadToUint8Array`
+  - `@loggerjs/core/diagnostics`: `setLoggerDiagnosticSink` and the diagnostic helpers
+  - `@loggerjs/core/integration-api`: `createIntegrationSetupContext`, `getUnpatchedRegistry`, `registerUnpatchedDefaults`, `onceTeardown`
+  - `@loggerjs/core/event-route`: `withLogEventRoute`, `getLogEventRoute`, `LOGGERJS_ROUTE`
+  - `@loggerjs/core/codec-metrics`: `metricsCodec`
+  - `@loggerjs/core/codec-prepared`: `createPreparedRecordEncoder`
+  - `@loggerjs/core/transport-test`: `testTransport` and its option types
+
+  These subpaths are now classified Compatible Public Surface; the root kernel stays stable.
+
+- Add `onDrop(event, reason)` to `retryTransport()` and `fallbackTransport()`. When a wrapper gives up on a delivery, it now counts the events in `transport.dropped` and `transport.dropped.<reason>` and hands each one to `onDrop`, with reason `retry-exhausted` (retries ran out and there is no fallback), `circuit-open` (the circuit was open and there is no fallback), or `fallback-failed` (the fallback failed too). Previously only `transport.retry.exhausted` and `transport.circuit.skipped` were counted, and callers could not tell which events were lost. The delivery still rejects as before, and an `onDrop` callback that throws is reported as an internal error without replacing the delivery error.
+
+- Honor `Retry-After`. HTTP transports now throw `httpStatusError()` for non-2xx responses, which carries `status` and, when the response sends `Retry-After` (delay-seconds or an HTTP-date), `retryAfterMs`. `batchTransport()` and `retryTransport()` wait at least that long before the next attempt. A wait longer than `retryMaxDelayMs` ends the current retries instead: `batchTransport()` puts the batch back and sends nothing until the wait ends (counted as `transport.retry.deferred`), and `retryTransport()` gives up with reason `retry-exhausted`, so `flush()` and `close()` are never held by a long server-requested wait. `browserHttpTransport()` pauses scheduled, full-batch, and explicit sends and offline replay until the wait ends; cross-origin collectors must expose `Retry-After` through `Access-Control-Expose-Headers`.
+
+  `parseRetryAfter()` and `httpStatusError()` are exported from `@loggerjs/core` for custom HTTP transports. Error messages are unchanged.
+
+- Add `configure({ shareAcrossCopies })` for processes that load more than one copy of `@loggerjs/core`, such as an ESM application with a CJS library, or two installed versions. Each copy keeps its own registry, ambient context, and meta counters, so a library's `getLogger()` in another copy ignored the application's `configure()` and its logs were silently dropped.
+
+  - `shareAcrossCopies: true` moves that state into one process-wide store that every copy uses, so libraries in other copies log through the application's configuration.
+  - `shareAcrossCopies: false` keeps copies isolated, which is what independently bundled micro-frontends on one page want.
+  - Left unset, behavior is unchanged, and `configure()` warns once when it sees more than one copy loaded.
+
+- Smaller application bundles. `createLogger()` with `consoleTransport()` drops from about 6.3 KB to 5.5 KB gzip after tree-shaking and minification, `browserHttpTransport()` from 8.5 KB to 7.8 KB, and `stdoutTransport()` from 6.9 KB to 6.2 KB.
+
+  - New `safeJsonEncoder()` and `ndjsonEncoder()` in `@loggerjs/core/codec-json` are `safeJsonCodec()` and `ndjsonCodec()` without `decode()`. Transports that only send logs (browser and Node HTTP, WebSocket, worker, database, Node stdout and file) default to them, and `consoleTransport({ pretty: false })` encodes the same way, so apps that never decode leave out the payload validation. Output is unchanged.
+  - Diagnostics instrumentation is removed entirely from bundles that never install a diagnostics sink, instead of leaving inert checks behind.
+
+### Patch Changes
+
+- Declare `engines.node: ">=20.19.0"`, the oldest Node release the packed packages are smoke-tested on in CI. Package managers can now warn when LoggerJS is installed on an older Node.
+
+- Keep `error.cause` chains in logs written with native-JSON codecs. The logger copied an `Error` cause into the serialized error as the `Error` instance itself, and `jsonCodec()`, `ndjsonCodec()` (the default for file, rotating-file, and stdout transports), and `fastEventJsonCodec()` encode with `JSON.stringify`, which turns an `Error` into `{}`, so every cause was written as `"cause":{}`. Error causes are now serialized like the top-level error (name, message, stack, code, and their own cause), with circular causes written as `"[Circular]"` and chains cut off after eight levels.
+
+- Add `idempotencyKeyHeader` to `nodeHttpTransport()` and `browserHttpTransport()`. When set (for example to `"Idempotency-Key"`), each request carries a key made of a random per-transport prefix and a batch number. Every resend of a batch repeats its key, including retries after a timeout, resends after the batch went back to the queue, and browser offline replays (offline entries store the key), so a collector can drop the duplicates that a retry after a timeout may cause. The option is off by default. A cross-origin collector must allow the header in `Access-Control-Allow-Headers`, and Beacon requests cannot carry it. An invalid header name throws a `TypeError` when the transport is created.
+
+  `batchTransport()` and `browserHttpTransport()` now resend a batch that went back to the queue after a failed delivery as the same batch. Newer events wait behind it instead of joining it.
+
+- With `configure({ shareAcrossCopies: true })`, the copy of `@loggerjs/core` that called `configure()` now builds every registry logger, whichever copy calls `getLogger()`. A diagnostics sink installed through that copy with `setLoggerDiagnosticSink()` therefore sees the registry loggers of libraries that load another copy, such as a CJS library in an ESM app. The sink itself stays per copy, so bundles that never install one still drop the diagnostics code. A configuration written by an older copy falls back to the reading copy's own logger.
+
 ## 0.6.0
 
 ### Minor Changes

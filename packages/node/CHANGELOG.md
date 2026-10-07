@@ -1,5 +1,47 @@
 # @loggerjs/node
 
+## 0.7.0
+
+### Minor Changes
+
+- Deprecate the root re-exports of compatible components. In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and their stable components (browser: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations; Node: stdout, stderr, file, rotating-file, and HTTP transports, process capture, and AsyncLocalStorage context) and become stable. The other root exports keep working in 0.x and are marked `@deprecated`; import them from their subpaths, for example `captureFetchIntegration` from `@loggerjs/browser/integration-fetch` or `expressIntegration` from `@loggerjs/node/integration-express`. MIGRATION lists the subpath for every export.
+
+- Add `idempotencyKeyHeader` to `nodeHttpTransport()` and `browserHttpTransport()`. When set (for example to `"Idempotency-Key"`), each request carries a key made of a random per-transport prefix and a batch number. Every resend of a batch repeats its key, including retries after a timeout, resends after the batch went back to the queue, and browser offline replays (offline entries store the key), so a collector can drop the duplicates that a retry after a timeout may cause. The option is off by default. A cross-origin collector must allow the header in `Access-Control-Allow-Headers`, and Beacon requests cannot carry it. An invalid header name throws a `TypeError` when the transport is created.
+
+  `batchTransport()` and `browserHttpTransport()` now resend a batch that went back to the queue after a failed delivery as the same batch. Newer events wait behind it instead of joining it.
+
+- Add `timeoutMs` to `nodeHttpTransport()`, defaulting to 10 seconds. Previously a collector that accepted the connection but never answered left the delivery pending until undici's five-minute headers timeout, so `logger.flush()` and `logger.close()` stalled graceful shutdown well past typical termination grace periods. A timed-out attempt now fails like any other and follows the retry settings; events still queued at `close()` are reported as `transport.dropped.closed`. Set `timeoutMs: 0` to restore the previous behavior.
+
+  A collector may have processed a request that timed out before it answered, so a retry can deliver the same events twice. Deduplicate on the event `id` on the collector side if duplicates matter.
+
+- Honor `Retry-After`. HTTP transports now throw `httpStatusError()` for non-2xx responses, which carries `status` and, when the response sends `Retry-After` (delay-seconds or an HTTP-date), `retryAfterMs`. `batchTransport()` and `retryTransport()` wait at least that long before the next attempt. A wait longer than `retryMaxDelayMs` ends the current retries instead: `batchTransport()` puts the batch back and sends nothing until the wait ends (counted as `transport.retry.deferred`), and `retryTransport()` gives up with reason `retry-exhausted`, so `flush()` and `close()` are never held by a long server-requested wait. `browserHttpTransport()` pauses scheduled, full-batch, and explicit sends and offline replay until the wait ends; cross-origin collectors must expose `Retry-After` through `Access-Control-Expose-Headers`.
+
+  `parseRetryAfter()` and `httpStatusError()` are exported from `@loggerjs/core` for custom HTTP transports. Error messages are unchanged.
+
+### Patch Changes
+
+- Depend on `@loggerjs/core` with a caret range instead of an exact version. Upgrading `@loggerjs/core` on its own no longer forces the package manager to install a second copy of core underneath each LoggerJS package.
+
+- Declare `engines.node: ">=20.19.0"`, the oldest Node release the packed packages are smoke-tested on in CI. Package managers can now warn when LoggerJS is installed on an older Node.
+
+- Stop `flush()` and `close()` from hanging after a file or stream destination fails. Once a stream was destroyed by a write error such as `ENOSPC`, `EACCES`, or `EISDIR`, the next write returned `false` and the destination waited for a `drain` event that a destroyed stream never emits, so every later `logger.flush()` and `logger.close()` stayed pending forever and graceful shutdown hung. They now settle with the stream error. `WritableLike` gains an optional `destroyed` flag, which Node streams already provide.
+
+- Never truncate a log file when a file destination reopens it. With `append: false`, a failed rotation made the next write reopen the current file with `"w"` and erase the logs already written. The configured flags now apply only to the first open; every reopen appends.
+
+- Stop a file write that fails after `close()` from crashing the process. `fileTransport()` removed its error listener when closing, so a write error surfacing afterwards (for example `ENOSPC` while the last buffered chunk is flushed to a full disk) was an unhandled `error` event. File destinations now keep an error listener on the stream they own for its whole life.
+
+- Import core helpers that leave the `@loggerjs/core` root in 1.0 (payload transforms, trace propagation, diagnostics, integration helpers, and event routes) from their `@loggerjs/core/*` subpaths. These packages now need `@loggerjs/core` 0.7 or later, which their dependency range already requires.
+
+- Keep logging when `rotatingFileTransport()` cannot rotate. Previously a failed rename (for example `EBUSY` or `EPERM` while another process holds the log file open on Windows) threw out of every later write, so all subsequent logs were dropped. A failed automatic rotation is now reported through `reportInternalError` with `operation: "rotate"`, logging continues in the current file, and rotation is retried after another `maxBytes`.
+
+- Smaller application bundles. `createLogger()` with `consoleTransport()` drops from about 6.3 KB to 5.5 KB gzip after tree-shaking and minification, `browserHttpTransport()` from 8.5 KB to 7.8 KB, and `stdoutTransport()` from 6.9 KB to 6.2 KB.
+
+  - New `safeJsonEncoder()` and `ndjsonEncoder()` in `@loggerjs/core/codec-json` are `safeJsonCodec()` and `ndjsonCodec()` without `decode()`. Transports that only send logs (browser and Node HTTP, WebSocket, worker, database, Node stdout and file) default to them, and `consoleTransport({ pretty: false })` encodes the same way, so apps that never decode leave out the payload validation. Output is unchanged.
+  - Diagnostics instrumentation is removed entirely from bundles that never install a diagnostics sink, instead of leaving inert checks behind.
+
+- Updated dependencies:
+  - @loggerjs/core@0.7.0
+
 ## 0.6.0
 
 ### Minor Changes

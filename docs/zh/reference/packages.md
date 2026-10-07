@@ -31,7 +31,7 @@ LoggerJS 以一组小包发布：无依赖 core 负责公共模型，平台包�
 
 Tiny isomorphic structured logger core for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/core](https://github.com/jskits/loggerjs/tree/main/packages/core)
 - README：[packages/core/README.md](https://github.com/jskits/loggerjs/blob/main/packages/core/README.md)
 - API 报告：[@loggerjs/core](/zh/reference/api/core)
@@ -42,7 +42,7 @@ Tiny isomorphic structured logger core for loggerjs.
 
 Browser transports and integrations for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/browser](https://github.com/jskits/loggerjs/tree/main/packages/browser)
 - README：[packages/browser/README.md](https://github.com/jskits/loggerjs/blob/main/packages/browser/README.md)
 - API 报告：[@loggerjs/browser](/zh/reference/api/browser)
@@ -53,7 +53,7 @@ Browser transports and integrations for loggerjs.
 
 Node.js transports and integrations for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/node](https://github.com/jskits/loggerjs/tree/main/packages/node)
 - README：[packages/node/README.md](https://github.com/jskits/loggerjs/blob/main/packages/node/README.md)
 - API 报告：[@loggerjs/node](/zh/reference/api/node)
@@ -64,7 +64,7 @@ Node.js transports and integrations for loggerjs.
 
 Pretty console and terminal output helpers for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/pretty](https://github.com/jskits/loggerjs/tree/main/packages/pretty)
 - README：[packages/pretty/README.md](https://github.com/jskits/loggerjs/blob/main/packages/pretty/README.md)
 - API 报告：[@loggerjs/pretty](/zh/reference/api/pretty)
@@ -75,7 +75,7 @@ Pretty console and terminal output helpers for loggerjs.
 
 Reusable loggerjs event processors.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/processors](https://github.com/jskits/loggerjs/tree/main/packages/processors)
 - README：[packages/processors/README.md](https://github.com/jskits/loggerjs/blob/main/packages/processors/README.md)
 - API 报告：[@loggerjs/processors](/zh/reference/api/processors)
@@ -86,7 +86,7 @@ Reusable loggerjs event processors.
 
 Serialization codecs for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/codecs](https://github.com/jskits/loggerjs/tree/main/packages/codecs)
 - README：[packages/codecs/README.md](https://github.com/jskits/loggerjs/blob/main/packages/codecs/README.md)
 - API 报告：[@loggerjs/codecs](/zh/reference/api/codecs)
@@ -97,7 +97,7 @@ Serialization codecs for loggerjs.
 
 OpenTelemetry mapping and OTLP JSON transport for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/otel](https://github.com/jskits/loggerjs/tree/main/packages/otel)
 - README：[packages/otel/README.md](https://github.com/jskits/loggerjs/blob/main/packages/otel/README.md)
 - API 报告：[@loggerjs/otel](/zh/reference/api/otel)
@@ -108,7 +108,7 @@ OpenTelemetry mapping and OTLP JSON transport for loggerjs.
 
 Sentry adapter transport for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/sentry](https://github.com/jskits/loggerjs/tree/main/packages/sentry)
 - README：[packages/sentry/README.md](https://github.com/jskits/loggerjs/blob/main/packages/sentry/README.md)
 - API 报告：[@loggerjs/sentry](/zh/reference/api/sentry)
@@ -119,7 +119,7 @@ Sentry adapter transport for loggerjs.
 
 Datadog Logs transport for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/datadog](https://github.com/jskits/loggerjs/tree/main/packages/datadog)
 - README：[packages/datadog/README.md](https://github.com/jskits/loggerjs/blob/main/packages/datadog/README.md)
 - API 报告：[@loggerjs/datadog](/zh/reference/api/datadog)
@@ -130,7 +130,7 @@ Datadog Logs transport for loggerjs.
 
 Elasticsearch bulk transport for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/elastic](https://github.com/jskits/loggerjs/tree/main/packages/elastic)
 - README：[packages/elastic/README.md](https://github.com/jskits/loggerjs/blob/main/packages/elastic/README.md)
 - API 报告：[@loggerjs/elastic](/zh/reference/api/elastic)
@@ -141,7 +141,7 @@ Elasticsearch bulk transport for loggerjs.
 
 Grafana Loki transport for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/loki](https://github.com/jskits/loggerjs/tree/main/packages/loki)
 - README：[packages/loki/README.md](https://github.com/jskits/loggerjs/blob/main/packages/loki/README.md)
 - API 报告：[@loggerjs/loki](/zh/reference/api/loki)
@@ -152,7 +152,7 @@ Grafana Loki transport for loggerjs.
 
 Amazon CloudWatch Logs transport for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/cloudwatch](https://github.com/jskits/loggerjs/tree/main/packages/cloudwatch)
 - README：[packages/cloudwatch/README.md](https://github.com/jskits/loggerjs/blob/main/packages/cloudwatch/README.md)
 - API 报告：[@loggerjs/cloudwatch](/zh/reference/api/cloudwatch)
@@ -163,7 +163,7 @@ Amazon CloudWatch Logs transport for loggerjs.
 
 SQLite, PostgreSQL, and custom database transports for loggerjs.
 
-- 版本：`0.6.0`
+- 版本：`0.7.0`
 - 源码：[packages/database](https://github.com/jskits/loggerjs/tree/main/packages/database)
 - README：[packages/database/README.md](https://github.com/jskits/loggerjs/blob/main/packages/database/README.md)
 - API 报告：[@loggerjs/database](/zh/reference/api/database)
