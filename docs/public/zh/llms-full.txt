@@ -125,7 +125,7 @@ pnpm add @loggerjs/node @loggerjs/processors
 pnpm add @loggerjs/browser @loggerjs/processors
 ```
 
-所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。
+所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上；1.0 会把 Node 下限提高到 22（见 GOVERNANCE 中的支持承诺）。
 
 ## 第一个 Logger（Node）
 
@@ -473,7 +473,7 @@ routeProcessor([{ minLevel: "error", transports: ["alerts"] }]);
 - `configure({ shareAcrossCopies: true })` 让所有副本使用同一个进程级存储，其他副本中的库也会走应用的配置。
 - `configure({ shareAcrossCopies: false })` 保持各副本隔离，并关闭警告。同一页面上各自打包的微前端需要这样，避免一个应用的 `configure()` 替换另一个应用的配置或关闭它的 transport。
 
-同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。
+同一个已安装版本的子路径入口（例如 `@loggerjs/core/context`）不算独立副本，它们与根入口共享状态。整个 1.x 期间默认都保持隔离，应用需要显式开启共享。
 
 ## Levels、Categories、Sources
 
@@ -684,7 +684,8 @@ pretty transport 是显示用的 sink，不做批量、不重试、不持久化�
 `nodeHttpTransport()` 接受 `transformPayload`，在 codec 编码之后对线上 payload 做转换。gzip、brotli 或 deflate 压缩使用 `nodeCompressionPayloadTransform()`：
 
 ```ts
-import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
+import { nodeHttpTransport } from "@loggerjs/node";
+import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
 
 nodeHttpTransport({
   url: "https://collector.example/logs",
@@ -729,7 +730,8 @@ worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 
 `browserHttpTransport()` 同样接受 `transformPayload`。在支持 `CompressionStream` 的浏览器中使用 `browserCompressionPayloadTransform()`：
 
 ```ts
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -785,7 +787,8 @@ import {
   composePayloadTransforms,
   encryptionPayloadTransform,
 } from "@loggerjs/core/payload-transforms";
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -852,7 +855,7 @@ const myTransport: Transport = {
 
 ```ts
 import { fastEventJsonCodec } from "@loggerjs/codecs";
-import { createPreparedRecordEncoder } from "@loggerjs/core";
+import { createPreparedRecordEncoder } from "@loggerjs/core/codec-prepared";
 
 const codec = fastEventJsonCodec();
 const encodeRecord = createPreparedRecordEncoder(codec);
@@ -1244,6 +1247,8 @@ setup 上下文（`api`）提供：
 - `unpatched`：原始 `console.*` / `fetch` / `XMLHttpRequest` 实现的注册表，在所有 integration 之间共享，因此多次 patch 可以正确叠加。
 - `flush/flushSync/close`：供页面隐藏等由生命周期驱动的 integration 使用。
 
+面向 integration 作者的辅助函数在 `@loggerjs/core/integration-api` 中：`createIntegrationSetupContext()` 可以在 logger 之外构造 setup context（适合测试），`getUnpatchedRegistry()` / `registerUnpatchedDefaults()` 提供共享的平台原始函数注册表，`onceTeardown()` 让 teardown 只执行一次。`Integration` 和 `IntegrationSetupContext` 类型仍从 `@loggerjs/core` 导入。
+
 注意事项：
 
 - 始终返回一个拆除函数，恢复你 patch 过的内容。拆除函数会在 `logger.close()` 时按 setup 的相反顺序各执行一次。
@@ -1553,12 +1558,12 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
-  captureWebVitalsIntegration,
   createLogger,
   indexedDbBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
+import { captureWebVitalsIntegration } from "@loggerjs/browser/integration-web-vitals";
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const offlineQueue = indexedDbBrowserHttpOfflineQueue({
@@ -1895,7 +1900,7 @@ description: "隐私、离线重放、崩溃路径、可靠性和 trace 关联�
 示例：
 
 ```ts
-import { captureFetchIntegration } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const processors = [redactProcessor({ keys: ["password", "token", /secret/i] })];
@@ -2713,6 +2718,70 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 编写自定义 transport 时，实现 `write`/`writeBatch` 可以在快速路径上接收 `LogRecord`，实现 `log`/`logBatch` 则接收投影后的 `LogEvent`。凡是涉及网络 I/O 的 transport，都应使用 `batchTransport()` 包装，以获得队列上限、重试、字节限制、并发和熔断能力。见 [传输](TRANSPORTS.md#编写自定义-transport)。
 
+## 1.0 移出 core 根入口的导出
+
+1.0 起 `@loggerjs/core` 根入口只保留内核。从 0.7 开始，下列导出仍可从根入口使用，但已标为 `@deprecated`，编辑器会给出提示；请改从对应子路径导入：
+
+| 导出 | 导入路径 |
+| --- | --- |
+| `parseTraceparent`、`formatTraceparent`、`parseBaggage`、`formatBaggage`、`traceContextFromHeaders`、`traceContextToHeaders` | `@loggerjs/core/trace-propagation` |
+| `semanticEvents` 及 `Semantic*Payload` 类型 | `@loggerjs/core/semantic-events` |
+| `applyPayloadTransforms`、`composePayloadTransforms`、`encryptionPayloadTransform`、`encodedPayloadToUint8Array` | `@loggerjs/core/payload-transforms` |
+| `setLoggerDiagnosticSink`、`runLoggerDiagnostic`、`emitLoggerDiagnostic`、`loggerDiagnosticsEnabled`、`loggerDiagnosticNow` | `@loggerjs/core/diagnostics` |
+| `createIntegrationSetupContext`、`getUnpatchedRegistry`、`registerUnpatchedDefaults`、`onceTeardown` | `@loggerjs/core/integration-api` |
+| `withLogEventRoute`、`getLogEventRoute`、`LOGGERJS_ROUTE` | `@loggerjs/core/event-route` |
+| `metricsCodec` | `@loggerjs/core/codec-metrics` |
+| `createPreparedRecordEncoder` | `@loggerjs/core/codec-prepared` |
+| `testTransport` 及其选项类型 | `@loggerjs/core/transport-test` |
+
+`Integration`、`IntegrationSetupContext`、`Transport`、`Codec` 等管线类型仍留在根入口。
+
+## 1.0 中 browser 和 node 根入口的导入
+
+1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。从 0.7 开始，根入口的其他导出已标为 `@deprecated`。请连同它们的选项类型一起改从子路径导入：
+
+| 浏览器端导出 | 导入路径 |
+| --- | --- |
+| `browserBroadcastChannelTransport` | `@loggerjs/browser/transport-broadcast-channel` |
+| `browserCompressionPayloadTransform` | `@loggerjs/browser/payload-transforms` |
+| `browserServiceWorkerTransport` | `@loggerjs/browser/transport-service-worker` |
+| `browserWebSocketTransport` | `@loggerjs/browser/transport-websocket` |
+| `createLogZipBlob`, `downloadBlob`, `exportLogsToZip` | `@loggerjs/browser/export-zip` |
+| `captureFetchIntegration` | `@loggerjs/browser/integration-fetch` |
+| `captureXHRIntegration` | `@loggerjs/browser/integration-xhr` |
+| `captureFrameworkErrorsIntegration` | `@loggerjs/browser/integration-framework-errors` |
+| `nextRouterIntegration`, `nuxtRouterIntegration`, `reactRouterIntegration`, `vueRouterIntegration` | `@loggerjs/browser/integration-framework-routers` |
+| `captureReportingIntegration` | `@loggerjs/browser/integration-reporting` |
+| `captureRouterIntegration` | `@loggerjs/browser/integration-router` |
+| `captureRuntimeHostIntegration` | `@loggerjs/browser/integration-runtime-host` |
+| `captureServiceWorkerIntegration` | `@loggerjs/browser/integration-service-worker` |
+| `captureUserActionsIntegration` | `@loggerjs/browser/integration-user-actions` |
+| `captureWebSocketIntegration` | `@loggerjs/browser/integration-websocket` |
+| `captureWebVitalsIntegration` | `@loggerjs/browser/integration-web-vitals` |
+| `capturePerformanceIntegration`, `normalizeBrowserPerformanceEntry` | `@loggerjs/browser/integration-performance` |
+
+| Node 端导出 | 导入路径 |
+| --- | --- |
+| `nodeCompressionPayloadTransform` | `@loggerjs/node/payload-transforms` |
+| `formatSyslogMessage`, `nodeSyslogTransport` | `@loggerjs/node/transport-syslog` |
+| `workerTransport` | `@loggerjs/node/transport-worker` |
+| `bullMqIntegration` | `@loggerjs/node/integration-bullmq` |
+| `captureCliIntegration` | `@loggerjs/node/integration-cli` |
+| `databaseIntegration` | `@loggerjs/node/integration-database` |
+| `expressIntegration` | `@loggerjs/node/integration-express` |
+| `fastifyIntegration` | `@loggerjs/node/integration-fastify` |
+| `hapiIntegration` | `@loggerjs/node/integration-hapi` |
+| `koaIntegration` | `@loggerjs/node/integration-koa` |
+| `nestMiddlewareIntegration` | `@loggerjs/node/integration-nest` |
+| `nodeFetchIntegration` | `@loggerjs/node/integration-fetch` |
+| `nodeHttpClientIntegration` | `@loggerjs/node/integration-http-client` |
+| `prismaIntegration` | `@loggerjs/node/integration-prisma` |
+| `queueIntegration` | `@loggerjs/node/integration-queue` |
+| `redisIntegration` | `@loggerjs/node/integration-redis` |
+| `serverlessIntegration` | `@loggerjs/node/integration-serverless` |
+| `diagnosticsChannelIntegration` | `@loggerjs/node/integration-diagnostics` |
+| `installLoggerDiagnosticsChannel` | `@loggerjs/node/logger-diagnostics` |
+
 ## 包导入
 
 根入口在任何环境都可用：
@@ -2776,7 +2845,7 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 | 包 | 稳定范围 |
 | --- | --- |
-| `@loggerjs/core` | 根入口，以及文档中列出的 middleware、codec、events、context、trace 传播、payload 转换和 core transport 子路径。 |
+| `@loggerjs/core` | 根入口内核（`createLogger`/`Logger`、`getLogger`/`configure`、级别、类型、record 与 event 转换、环境 context、类型化事件、middleware、meta 计数器、错误与安全序列化工具、JSON codec，以及 console、memory、batch、reliability transport），以及 `middleware`、`codec-json`、`context`、`events`、`transport-console`、`transport-batch`、`transport-reliability` 子路径。 |
 | `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
 | `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
@@ -2795,7 +2864,8 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 
 Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选的程度。当前属于 Compatible 的部分包括：
 
-- browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。
+- 将在 1.0 移出根入口的 core 模块：`@loggerjs/core/trace-propagation`、`semantic-events`、`payload-transforms`、`diagnostics`、`integration-api`、`event-route`、`codec-metrics`、`codec-prepared` 和 `transport-test`。它们在 `@loggerjs/core` 根入口的 re-export 从 0.7 起标为 deprecated，并在 1.0 删除；请改从这些子路径导入。`pnpm verify:api-stability` 只允许根入口通过 deprecated 的导出项转导出稳定性更低的模块。
+- browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。从 0.7 起，它们对 compatible 组件的 re-export 已标为 deprecated；1.0 起根入口只导出 core 内核和 browser 或 Node 的 stable 组件，并成为 stable。请改从子路径导入 compatible 组件（见迁移说明）。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
 - 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。
 - Node 的 syslog 和 worker transport、压缩 payload 转换、出站 fetch/HTTP client 采集、diagnostics_channel 采集和 logger 诊断。
@@ -2824,7 +2894,7 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 - **线上格式。** codec 输出、logger 产出的事件结构，以及 Node 和浏览器 transport 发出的完整 HTTP 请求，都由 `packages/*/test/golden/` 下的 golden 文件逐字节固定。改动它们就是线上协议变更，适用与所属 API 签名变更相同的策略。
 - **浏览器持久化数据。** `indexedDbTransport()` 和 `indexedDbBrowserHttpOfflineQueue()` 的 IndexedDB 结构必须能被下一个版本读取。`tests/e2e/browser-upgrade.spec.ts` 用上一个已发布版本写入数据，再用当前代码读取。
-- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。
+- **进程共享状态。** 使用 `configure({ shareAcrossCopies: true })` 时，同一进程中加载的所有 `@loggerjs/core` 副本（ESM 与 CJS 构建，或两个已安装的版本）共用存放在 `Symbol.for("@loggerjs/core/shared-state/v1")` 下的 registry、环境 context 和 meta 计数器；否则各副本保持隔离。同一构建的子路径入口始终通过共享 chunk 共享状态。只有该状态的结构发生不兼容变化时才会修改 `v1` 后缀，这属于破坏性变更。整个 1.x 期间默认都保持隔离：库的日志缺失时会有警告，一行配置即可解决；而默认共享会让一个微前端的 `configure()` 替换另一个的配置并关闭它的 transport。无论往哪个方向修改默认值，都属于破坏性变更。
 - **投递计数。** 交给第一方 transport 的每个事件，要么被投递，要么通过 `onDrop` 和 `transport.dropped.*` 计数器报告；即使目标端出错，`flush()`/`close()` 也必须结束。故障注入测试、基于模型的测试和浸泡测试都会断言这一不变量。
 
 ## 变更策略
@@ -2841,6 +2911,23 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 - 公开导出仍然保持类型检查、测试、API 报告和文档齐全。
 - v1 之前的 minor 版本可以调整名称、选项、字段结构或具体行为。
 - 破坏性变更仍应附带发布说明和迁移指南，因为“公开”不等于“可以随意丢弃”。
+
+## 1.0 之后的 SemVer
+
+从 1.0 开始，一个包的语义化版本保证只覆盖其中的 Stable 导出。其他层级在 1.x 包里保持各自的规则：
+
+- **Stable：** 同一个 major 内不删除、不重命名、不破坏签名。新增内容在 minor 中发布。除安全、数据丢失或线上协议正确性修复外，行为变化需要发 major。
+- **Compatible：** 只有在更早的 minor 已将其标为 `@deprecated` 并给出迁移路径之后，后续 minor 才能修改该导出，且发布说明必须写明。
+- **Experimental：** 这些包在升级前一直停留在 0.x，因此其 minor 可以修改任何内容，但需附带发布说明。
+
+把剩余的 compatible 组件拆成独立的包，可以消除 `@loggerjs/browser` 和 `@loggerjs/node` 内部的分层，但在 1.0 之前代价太大。
+
+## 1.0 的版本策略
+
+- `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起升到 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
+- `@loggerjs/processors` 和 `@loggerjs/codecs` 留在 0.x，直到 design partner 的使用情况表明哪些 processor 和 codec 值得保留。在 1.0 冻结它们的目录，等于承诺了尚未经过验证的稳定性。
+- `@loggerjs/otel`、`@loggerjs/sentry`、`@loggerjs/datadog`、`@loggerjs/elastic`、`@loggerjs/loki`、`@loggerjs/cloudwatch` 和 `@loggerjs/database` 作为 experimental 留在 0.x，按各自的节奏发版。
+- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。
 
 ## 新增公开 API
 
@@ -3356,7 +3443,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 各包使用 Vitest，测试文件位于 `test/*.test.ts`。仓库约定：
 
 - 用刁钻的输入固定行为（循环引用、BigInt、冻结对象、会抛错的回调），大多数回归问题都是靠这类测试发现的。
-- 在 transport 侧做断言时使用 core 的 `testTransport()`，它提供快照、统计和 `waitForCount`。
+- 在 transport 侧做断言时使用 `@loggerjs/core/transport-test` 的 `testTransport()`，它提供快照、统计和 `waitForCount`。
 - 新的 transport/integration 要附带拆除测试：patch、采集、恢复，然后断言没有重复采集。
 
 其他 CI 门禁覆盖运行时和质量方面：
@@ -3772,10 +3859,10 @@ Browser app:
 import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
-  captureFetchIntegration,
   createLogger,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 export const logger = createLogger({
@@ -3930,10 +4017,10 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
   createLogger,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor, sampleProcessor } from "@loggerjs/processors";
 
 export const logger = createLogger({

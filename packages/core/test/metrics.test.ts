@@ -4,12 +4,12 @@ import {
   getLoggerMetaGauges,
   getLoggerMetaStats,
   getLoggerSelfMetrics,
-  metricsCodec,
   ndjsonCodec,
   resetLoggerMetaStats,
   type LogEvent,
   type TransportContext,
 } from "../src";
+import { metricsCodec } from "../src/codecs/metrics";
 
 const event: LogEvent = {
   id: "evt-1",

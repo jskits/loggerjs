@@ -5,11 +5,8 @@ import {
   type BrotliOptions,
   type ZlibOptions,
 } from "node:zlib";
-import {
-  encodedPayloadToUint8Array,
-  type EncodedPayload,
-  type PayloadTransform,
-} from "@loggerjs/core";
+import { type EncodedPayload, type PayloadTransform } from "@loggerjs/core";
+import { encodedPayloadToUint8Array } from "@loggerjs/core/payload-transforms";
 
 export type NodeCompressionFormat = "gzip" | "brotli" | "deflate";
 

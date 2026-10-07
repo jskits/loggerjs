@@ -1,13 +1,13 @@
 import {
   browserHttpTransport,
-  browserServiceWorkerTransport,
   createLogger,
-  exportLogsToZip,
   indexedDbBrowserHttpOfflineQueue,
   indexedDbTransport,
   type Codec,
   type LogEvent,
 } from "@loggerjs/browser";
+import { browserServiceWorkerTransport } from "@loggerjs/browser/transport-service-worker";
+import { exportLogsToZip } from "@loggerjs/browser/export-zip";
 
 const LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
 const SUPPORT_LOG_STORE = "support-logs";

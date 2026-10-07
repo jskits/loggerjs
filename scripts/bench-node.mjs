@@ -26,6 +26,9 @@ function distUrl(relativePath) {
 }
 
 const core = await import(distUrl("packages/core/dist/index.js"));
+const { createPreparedRecordEncoder } = await import(
+  distUrl("packages/core/dist/codec-prepared.js")
+);
 const codecs = await import(distUrl("packages/codecs/dist/index.js"));
 
 const sampleEvent = {
@@ -300,7 +303,7 @@ async function main() {
     includeSeq: false,
     includeLevelName: false,
   });
-  const preparedLeanRecordEncoder = core.createPreparedRecordEncoder(leanFastEventJsonCodec);
+  const preparedLeanRecordEncoder = createPreparedRecordEncoder(leanFastEventJsonCodec);
   const loggerjsLeanRecordLogger = core.createLogger({
     level: "debug",
     tags: benchTags,
@@ -325,7 +328,7 @@ async function main() {
       },
     ],
   });
-  const preparedFastEventRecordEncoder = core.createPreparedRecordEncoder(fastEventJsonCodec);
+  const preparedFastEventRecordEncoder = createPreparedRecordEncoder(fastEventJsonCodec);
   const loggerjsFastEventLogger = core.createLogger({
     level: "debug",
     tags: benchTags,

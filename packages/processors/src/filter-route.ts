@@ -1,14 +1,13 @@
 import {
   toLevelValue,
-  withLogEventRoute,
   type EnabledLogLevelName,
   type LogEvent,
-  type LogEventRoute,
   type LoggerLevel,
   type Processor,
   type ProcessorContext,
   type Tags,
 } from "@loggerjs/core";
+import { withLogEventRoute, type LogEventRoute } from "@loggerjs/core/event-route";
 
 export type EventStringMatcher =
   | string

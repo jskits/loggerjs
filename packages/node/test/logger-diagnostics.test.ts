@@ -3,7 +3,7 @@ import {
   emitLoggerDiagnostic,
   loggerDiagnosticsEnabled,
   setLoggerDiagnosticSink,
-} from "@loggerjs/core";
+} from "@loggerjs/core/diagnostics";
 import {
   installLoggerDiagnosticsChannel,
   type LoggerDiagnosticsChannelModule,

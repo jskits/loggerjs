@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { applyPayloadTransforms, encodedPayloadToUint8Array } from "@loggerjs/core";
+import {
+  applyPayloadTransforms,
+  encodedPayloadToUint8Array,
+} from "@loggerjs/core/payload-transforms";
 import { browserCompressionPayloadTransform } from "../src";
 
 afterEach(() => {

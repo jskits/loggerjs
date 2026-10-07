@@ -173,11 +173,11 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
   createLogger,
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
@@ -349,7 +349,7 @@ See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), [docs/TRANSPORTS.md](docs/TRAN
 
 <br/>
 
-**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport`, plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
+**Core / runtime-neutral** (`@loggerjs/core`) — `consoleTransport` · `memoryTransport` · `testTransport` (`@loggerjs/core/transport-test`), plus reliability wrappers `batchTransport` · `retryTransport` · `fallbackTransport`
 
 **Pretty developer UX** (`@loggerjs/pretty`) — `prettyConsoleTransport` for browser DevTools or local consoles · `prettyStdoutTransport` / `prettyStderrTransport` for Node terminals · `formatPrettyEvent` for custom display sinks
 
@@ -443,7 +443,7 @@ Middleware run on raw records before id/message/error work; processors run on pr
 
 <br/>
 
-`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (core) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
+`jsonCodec` · `safeJsonCodec` · `ndjsonCodec` · `metricsCodec` (`@loggerjs/core/codec-metrics`) — `fastEventJsonCodec` (the performance codec) · `pinoCompatCodec` · `msgpackrCodec` · `projectorCodec` (`@loggerjs/codecs`).
 
 Codecs fall back to a safe representation on circular references instead of throwing, and increment a `codec.fallback` meta counter so silent degradation is observable. See [docs/CODECS.md](docs/CODECS.md).
 
@@ -491,7 +491,7 @@ Runnable examples live in [`examples/`](examples): [Node basics](examples/node-b
 
 ## Development
 
-Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor.
+Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor. Browser code targets **Chrome and Edge 103, Firefox 100, and Safari 16** or later. From 1.0 the Node floor is 22, and the support windows in [GOVERNANCE](GOVERNANCE.md) and [SECURITY](SECURITY.md) apply.
 
 ```bash
 pnpm install

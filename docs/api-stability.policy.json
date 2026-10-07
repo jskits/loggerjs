@@ -4,16 +4,11 @@
       ".",
       "./middleware",
       "./codec-json",
-      "./codec-metrics",
       "./transport-console",
       "./transport-batch",
       "./transport-reliability",
-      "./transport-test",
       "./context",
-      "./trace-propagation",
-      "./events",
-      "./semantic-events",
-      "./payload-transforms"
+      "./events"
     ],
     "@loggerjs/browser": [
       "./transport-http",
@@ -79,7 +74,18 @@
       "./logger-diagnostics"
     ],
     "@loggerjs/processors": ["."],
-    "@loggerjs/codecs": ["."]
+    "@loggerjs/codecs": ["."],
+    "@loggerjs/core": [
+      "./codec-metrics",
+      "./codec-prepared",
+      "./transport-test",
+      "./diagnostics",
+      "./event-route",
+      "./trace-propagation",
+      "./integration-api",
+      "./semantic-events",
+      "./payload-transforms"
+    ]
   },
   "experimental": {
     "@loggerjs/otel": [".", "./transport-http", "./codec-otlp-json", "./trace", "./log-bridge"],

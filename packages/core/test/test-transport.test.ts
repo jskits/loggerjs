@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createLogger, recordToEvent, testTransport, type LogEvent } from "../src";
+import { createLogger, recordToEvent, type LogEvent } from "../src";
+import { testTransport } from "../src/transports/test";
 
 const event: LogEvent = {
   id: "evt-1",

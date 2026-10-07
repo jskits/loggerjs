@@ -24,12 +24,12 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
-  captureWebVitalsIntegration,
   createLogger,
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
+import { captureWebVitalsIntegration } from "@loggerjs/browser/integration-web-vitals";
 import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({

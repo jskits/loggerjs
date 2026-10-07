@@ -150,6 +150,8 @@ The setup context (`api`) gives you:
 - `unpatched` — registry of original `console.*` / `fetch` / `XMLHttpRequest` implementations, shared across all integrations so double patching composes.
 - `flush/flushSync/close` — for lifecycle-driven integrations like page hide.
 
+Helpers for integration authors live in `@loggerjs/core/integration-api`: `createIntegrationSetupContext()` builds a setup context outside a logger (useful in tests), `getUnpatchedRegistry()` / `registerUnpatchedDefaults()` give access to the shared registry of original platform functions, and `onceTeardown()` makes a teardown idempotent. The `Integration` and `IntegrationSetupContext` types stay in `@loggerjs/core`.
+
 Rules of the road:
 
 - Always return a teardown that restores what you patched. Teardowns run once, in reverse setup order, on `logger.close()`.

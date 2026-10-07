@@ -1,11 +1,11 @@
 import {
-  registerUnpatchedDefaults,
   type ConsoleMethod,
   type LogEvent,
   type LogRecord,
   type Transport,
   type TransportContext,
 } from "@loggerjs/core";
+import { registerUnpatchedDefaults } from "@loggerjs/core/integration-api";
 import { formatPrettyEvent, type PrettyFormatterOptions } from "./formatter";
 
 export interface PrettyConsoleLike {

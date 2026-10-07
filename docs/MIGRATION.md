@@ -159,6 +159,70 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
+## Imports Leaving the Core Root in 1.0
+
+The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports below still work from the root but are marked `@deprecated`, so editors flag them; import them from their subpath instead:
+
+| Exports | Import from |
+| --- | --- |
+| `parseTraceparent`, `formatTraceparent`, `parseBaggage`, `formatBaggage`, `traceContextFromHeaders`, `traceContextToHeaders` | `@loggerjs/core/trace-propagation` |
+| `semanticEvents` and the `Semantic*Payload` types | `@loggerjs/core/semantic-events` |
+| `applyPayloadTransforms`, `composePayloadTransforms`, `encryptionPayloadTransform`, `encodedPayloadToUint8Array` | `@loggerjs/core/payload-transforms` |
+| `setLoggerDiagnosticSink`, `runLoggerDiagnostic`, `emitLoggerDiagnostic`, `loggerDiagnosticsEnabled`, `loggerDiagnosticNow` | `@loggerjs/core/diagnostics` |
+| `createIntegrationSetupContext`, `getUnpatchedRegistry`, `registerUnpatchedDefaults`, `onceTeardown` | `@loggerjs/core/integration-api` |
+| `withLogEventRoute`, `getLogEventRoute`, `LOGGERJS_ROUTE` | `@loggerjs/core/event-route` |
+| `metricsCodec` | `@loggerjs/core/codec-metrics` |
+| `createPreparedRecordEncoder` | `@loggerjs/core/codec-prepared` |
+| `testTransport` and its option types | `@loggerjs/core/transport-test` |
+
+The `Integration`, `IntegrationSetupContext`, `Transport`, `Codec`, and other pipeline types stay in the root.
+
+## Browser and Node Root Imports in 1.0
+
+In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and the stable components: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations in the browser; `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, process capture, and AsyncLocalStorage context in Node. Since 0.7 their other root exports are marked `@deprecated`. Import them from their subpaths, together with their option types:
+
+| Browser exports | Import from |
+| --- | --- |
+| `browserBroadcastChannelTransport` | `@loggerjs/browser/transport-broadcast-channel` |
+| `browserCompressionPayloadTransform` | `@loggerjs/browser/payload-transforms` |
+| `browserServiceWorkerTransport` | `@loggerjs/browser/transport-service-worker` |
+| `browserWebSocketTransport` | `@loggerjs/browser/transport-websocket` |
+| `createLogZipBlob`, `downloadBlob`, `exportLogsToZip` | `@loggerjs/browser/export-zip` |
+| `captureFetchIntegration` | `@loggerjs/browser/integration-fetch` |
+| `captureXHRIntegration` | `@loggerjs/browser/integration-xhr` |
+| `captureFrameworkErrorsIntegration` | `@loggerjs/browser/integration-framework-errors` |
+| `nextRouterIntegration`, `nuxtRouterIntegration`, `reactRouterIntegration`, `vueRouterIntegration` | `@loggerjs/browser/integration-framework-routers` |
+| `captureReportingIntegration` | `@loggerjs/browser/integration-reporting` |
+| `captureRouterIntegration` | `@loggerjs/browser/integration-router` |
+| `captureRuntimeHostIntegration` | `@loggerjs/browser/integration-runtime-host` |
+| `captureServiceWorkerIntegration` | `@loggerjs/browser/integration-service-worker` |
+| `captureUserActionsIntegration` | `@loggerjs/browser/integration-user-actions` |
+| `captureWebSocketIntegration` | `@loggerjs/browser/integration-websocket` |
+| `captureWebVitalsIntegration` | `@loggerjs/browser/integration-web-vitals` |
+| `capturePerformanceIntegration`, `normalizeBrowserPerformanceEntry` | `@loggerjs/browser/integration-performance` |
+
+| Node exports | Import from |
+| --- | --- |
+| `nodeCompressionPayloadTransform` | `@loggerjs/node/payload-transforms` |
+| `formatSyslogMessage`, `nodeSyslogTransport` | `@loggerjs/node/transport-syslog` |
+| `workerTransport` | `@loggerjs/node/transport-worker` |
+| `bullMqIntegration` | `@loggerjs/node/integration-bullmq` |
+| `captureCliIntegration` | `@loggerjs/node/integration-cli` |
+| `databaseIntegration` | `@loggerjs/node/integration-database` |
+| `expressIntegration` | `@loggerjs/node/integration-express` |
+| `fastifyIntegration` | `@loggerjs/node/integration-fastify` |
+| `hapiIntegration` | `@loggerjs/node/integration-hapi` |
+| `koaIntegration` | `@loggerjs/node/integration-koa` |
+| `nestMiddlewareIntegration` | `@loggerjs/node/integration-nest` |
+| `nodeFetchIntegration` | `@loggerjs/node/integration-fetch` |
+| `nodeHttpClientIntegration` | `@loggerjs/node/integration-http-client` |
+| `prismaIntegration` | `@loggerjs/node/integration-prisma` |
+| `queueIntegration` | `@loggerjs/node/integration-queue` |
+| `redisIntegration` | `@loggerjs/node/integration-redis` |
+| `serverlessIntegration` | `@loggerjs/node/integration-serverless` |
+| `diagnosticsChannelIntegration` | `@loggerjs/node/integration-diagnostics` |
+| `installLoggerDiagnosticsChannel` | `@loggerjs/node/logger-diagnostics` |
+
 ## Package Imports
 
 Root package imports work everywhere:

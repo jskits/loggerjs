@@ -1,5 +1,4 @@
 import {
-  applyPayloadTransforms,
   incrementLoggerMetaCounter,
   safeJsonCodec,
   toLevelValue,
@@ -11,6 +10,7 @@ import {
   type Transport,
   type TransportContext,
 } from "@loggerjs/core";
+import { applyPayloadTransforms } from "@loggerjs/core/payload-transforms";
 
 export type BrowserHttpDropPolicy = "drop-oldest" | "drop-newest";
 

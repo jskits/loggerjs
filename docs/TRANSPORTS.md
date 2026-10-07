@@ -162,7 +162,8 @@ File and stream destinations settle `flush()` and `close()` with the stream erro
 `nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
 
 ```ts
-import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
+import { nodeHttpTransport } from "@loggerjs/node";
+import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
 
 nodeHttpTransport({
   url: "https://collector.example/logs",
@@ -207,7 +208,8 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@lo
 `browserHttpTransport()` also accepts `transformPayload`. Use `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
 
 ```ts
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -263,7 +265,8 @@ import {
   composePayloadTransforms,
   encryptionPayloadTransform,
 } from "@loggerjs/core/payload-transforms";
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -330,7 +333,7 @@ A record-aware transport opts into the fast path (no event projection when the l
 
 ```ts
 import { fastEventJsonCodec } from "@loggerjs/codecs";
-import { createPreparedRecordEncoder } from "@loggerjs/core";
+import { createPreparedRecordEncoder } from "@loggerjs/core/codec-prepared";
 
 const codec = fastEventJsonCodec();
 const encodeRecord = createPreparedRecordEncoder(codec);

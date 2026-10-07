@@ -1,6 +1,5 @@
 import { Worker } from "node:worker_threads";
 import {
-  emitLoggerDiagnostic,
   incrementLoggerMetaCounter,
   safeJsonCodec,
   setLoggerMetaGauge,
@@ -11,6 +10,7 @@ import {
   type Transport,
   type TransportContext,
 } from "@loggerjs/core";
+import { emitLoggerDiagnostic } from "@loggerjs/core/diagnostics";
 
 export interface WorkerLike {
   postMessage: (value: unknown, transferList?: ArrayBuffer[]) => void;

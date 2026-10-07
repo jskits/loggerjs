@@ -34,19 +34,25 @@ import {
   consoleTransport,
   createLogger,
   defineEvent,
-  encodedPayloadToUint8Array,
   fallbackTransport,
   jsonCodec,
   retryTransport,
-  testTransport,
   type LogEvent,
-  type TestTransportAbortSignal,
-  type TestTransportWaitOptions,
   type Transport,
 } from "@loggerjs/core";
 import { createMiddleware } from "@loggerjs/core/middleware";
 import { safeJsonCodec } from "@loggerjs/core/codec-json";
+import { createPreparedRecordEncoder } from "@loggerjs/core/codec-prepared";
+import { setLoggerDiagnosticSink } from "@loggerjs/core/diagnostics";
+import { withLogEventRoute } from "@loggerjs/core/event-route";
+import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
+import { encodedPayloadToUint8Array } from "@loggerjs/core/payload-transforms";
 import { traceContextFromHeaders } from "@loggerjs/core/trace-propagation";
+import {
+  testTransport,
+  type TestTransportAbortSignal,
+  type TestTransportWaitOptions,
+} from "@loggerjs/core/transport-test";
 
 const loginEvent = defineEvent<{ userId: string }>({
   type: "auth.login",
@@ -82,6 +88,15 @@ jsonCodec().encode(events);
 safeJsonCodec().encode(events);
 encodedPayloadToUint8Array("hello");
 traceContextFromHeaders({ traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" });
+createPreparedRecordEncoder(jsonCodec());
+setLoggerDiagnosticSink(undefined);
+withLogEventRoute(events[0] as LogEvent, { transports: ["console"] });
+createIntegrationSetupContext({
+  name: "platform-check",
+  logger,
+  capture() {},
+  getLogger: () => logger,
+});
 `;
 
   const tsconfigSource = {

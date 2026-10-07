@@ -1,14 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { createLogger, ndjsonCodec, type Transport } from "../src";
 import {
-  createLogger,
   emitLoggerDiagnostic,
   loggerDiagnosticsEnabled,
-  ndjsonCodec,
   setLoggerDiagnosticSink,
   type LoggerDiagnosticEvent,
   type LoggerDiagnosticSink,
-  type Transport,
-} from "../src";
+} from "../src/diagnostics";
 
 describe("logger diagnostics", () => {
   const events: LoggerDiagnosticEvent[] = [];
