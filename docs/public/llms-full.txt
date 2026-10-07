@@ -1040,6 +1040,7 @@ Notes:
 - Byte estimation walks the payload; it is skipped entirely unless `maxBytes` is finite.
 - Drops are always counted in logger meta (`transport.dropped.*`); the `onDrop` event conversion only happens when a listener is registered.
 - A failed batch is re-queued at the head; the circuit breaker stops hammering a dead endpoint.
+- `Retry-After` is honored. When a delivery error carries `retryAfterMs` (the HTTP transports set it from the `Retry-After` header of a 429 or 503), the next attempt waits at least that long. A wait longer than `retryMaxDelayMs` ends the current retries instead (`transport.retry.deferred`): the batch goes back to the queue, and nothing is sent until the wait ends, so `flush()` and `close()` are not held for it. `retryTransport()` follows the same rule and gives up (`retry-exhausted`) when the wait exceeds `retryMaxDelayMs`.
 - `close()` makes one final flush attempt, then stops the flush timer and always closes the inner transport. Records that could not be delivered, and records written after close, are counted as `transport.dropped.closed`; the final flush error is still thrown.
 
 `retryTransport()` and `fallbackTransport()` have no queue: when they give up, the delivery rejects, the events are counted in `transport.dropped.*`, and `onDrop` receives each one. A drop there is final from that wrapper's point of view; if an outer transport retries rejected deliveries itself (as `batchTransport()` re-queues a failed batch), the events can still arrive later. Use `batchTransport()`'s own retry options instead of nesting `retryTransport()` inside it.
@@ -1108,7 +1109,7 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@lo
 | `browserBroadcastChannelTransport({ channel })` | Fan logs out to other tabs (lossy by nature; receivers must be listening). |
 | `exportLogsToZip(source)` / `createLogZipBlob()` / `downloadBlob()` | Bundle logs (for example from `indexedDbTransport().query()`) into a ZIP with manifest, optional per-session files, optional `recent.ndjson`/`recent.json`, and CRC for support workflows. |
 
-`browserHttpTransport()` aborts a Fetch delivery after `timeoutMs` (default `10000`, `0` disables). Browsers never time out a request themselves, so without it one stalled request would hold every later flush and `close()`; with an offline queue configured, a timed-out batch is stored for replay. `close()` is terminal: events it could not deliver or store, and events logged after it, are reported through `onDrop` and `transport.dropped.closed`.
+`browserHttpTransport()` honors `Retry-After` from 429 and 503 responses: scheduled sends, full-batch sends, explicit `flush()`, and offline replay wait until it ends, while page-exit Beacon flushes still go out. A cross-origin collector must list `Retry-After` in `Access-Control-Expose-Headers`, or the browser hides it. `browserHttpTransport()` aborts a Fetch delivery after `timeoutMs` (default `10000`, `0` disables). Browsers never time out a request themselves, so without it one stalled request would hold every later flush and `close()`; with an offline queue configured, a timed-out batch is stored for replay. `close()` is terminal: events it could not deliver or store, and events logged after it, are reported through `onDrop` and `transport.dropped.closed`.
 
 `indexedDbTransport()` reports every event of a batch whose IndexedDB write fails through `onDrop`, with reason `quota` for `QuotaExceededError` and `write-failed` otherwise. Both `indexedDbTransport()` and `indexedDbBrowserHttpOfflineQueue()` close their connection when another tab needs to upgrade or delete the database (for example a newer app version) and reopen it on next use. Events logged to `indexedDbTransport()` after `close()` are reported as dropped with reason `closed`. As with Node, a request that timed out may still have been processed, so a timed-out batch can arrive twice; deduplicate on event `id` if that matters.
 
@@ -1223,6 +1224,8 @@ const transport = batchTransport(datadogLogsTransport({ apiKey: process.env.DD_A
 | `@loggerjs/database` | `sqliteTransport()` / `postgresTransport()` / `databaseTransport(adapter)` | Batched inserts through driver-agnostic adapters. |
 
 ## Writing a Custom Transport
+
+An HTTP transport that throws `httpStatusError(name, response)` from `@loggerjs/core` for a non-2xx response gets `Retry-After` handling from `batchTransport()` and `retryTransport()`: the error carries `status` and the parsed `retryAfterMs`. `parseRetryAfter(value)` parses the header on its own.
 
 Implement any of the four delivery methods. The simplest event transport:
 

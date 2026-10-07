@@ -5,6 +5,8 @@ import {
   createRecord,
   fallbackTransport,
   getLoggerMetaStats,
+  httpStatusError,
+  parseRetryAfter,
   recordToEvent,
   resetLoggerMetaStats,
   retryTransport,
@@ -582,5 +584,140 @@ describe("wrapper readiness", () => {
     expect(batchTransport(inner).ready).toBeUndefined();
     expect(retryTransport(inner).ready).toBeUndefined();
     expect(fallbackTransport(inner, { log() {} }).ready).toBeUndefined();
+  });
+});
+
+describe("Retry-After", () => {
+  it("parses delay-seconds and HTTP-dates", () => {
+    const now = Date.UTC(2026, 0, 1);
+    expect(parseRetryAfter("120", now)).toBe(120_000);
+    expect(parseRetryAfter(" 5 ", now)).toBe(5000);
+    expect(parseRetryAfter(new Date(now + 30_000).toUTCString(), now)).toBe(30_000);
+    expect(parseRetryAfter(new Date(now - 30_000).toUTCString(), now)).toBe(0);
+    expect(parseRetryAfter("soon", now)).toBeUndefined();
+    expect(parseRetryAfter(null, now)).toBeUndefined();
+  });
+
+  it("builds HTTP status errors that carry the requested delay", () => {
+    const limited = httpStatusError(
+      "demoTransport",
+      new Response(null, { status: 429, headers: { "retry-after": "3" } }),
+    );
+    expect(limited).toMatchObject({
+      message: "demoTransport failed with status 429",
+      status: 429,
+      retryAfterMs: 3000,
+    });
+    expect(
+      httpStatusError("demoTransport", new Response(null, { status: 500 })),
+    ).not.toHaveProperty("retryAfterMs");
+  });
+
+  function rateLimited(retryAfterMs: number, failures: number, attempts: number[]): Transport {
+    return {
+      name: "remote",
+      log() {
+        attempts.push(Date.now());
+        if (attempts.length <= failures) {
+          throw Object.assign(new Error("remote rate limited"), { status: 429, retryAfterMs });
+        }
+      },
+      logBatch(events) {
+        for (const item of events) this.log?.(item, createContext());
+      },
+    };
+  }
+
+  it("makes retryTransport wait at least the requested delay", async () => {
+    const attempts: number[] = [];
+    const delays: number[] = [];
+    const transport = retryTransport(rateLimited(40, 1, attempts), {
+      maxRetries: 2,
+      retryBaseDelayMs: 1,
+      retryMaxDelayMs: 100,
+      onRetry: ({ delayMs }) => delays.push(delayMs),
+    });
+
+    await transport.log?.(event, createContext());
+
+    expect(attempts).toHaveLength(2);
+    expect(delays[0]).toBeGreaterThanOrEqual(40);
+    expect(attempts[1]! - attempts[0]!).toBeGreaterThanOrEqual(35);
+  });
+
+  it("makes retryTransport wait a requested delay equal to retryMaxDelayMs", async () => {
+    const attempts: number[] = [];
+    const transport = retryTransport(rateLimited(50, 1, attempts), {
+      maxRetries: 2,
+      retryBaseDelayMs: 1,
+      retryMaxDelayMs: 50,
+    });
+
+    await transport.log?.(event, createContext());
+
+    expect(attempts).toHaveLength(2);
+  });
+
+  it("makes retryTransport give up when the requested delay exceeds retryMaxDelayMs", async () => {
+    const attempts: number[] = [];
+    const dropped: string[] = [];
+    const transport = retryTransport(rateLimited(60_000, 5, attempts), {
+      maxRetries: 3,
+      retryMaxDelayMs: 1000,
+      onDrop: (_event, reason) => dropped.push(reason),
+    });
+
+    await expect(transport.log?.(event, createContext())).rejects.toThrow("rate limited");
+    expect(attempts).toHaveLength(1);
+    expect(dropped).toEqual(["retry-exhausted"]);
+  });
+
+  it("makes batchTransport retry inside the flush when Retry-After fits retryMaxDelayMs", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    resetLoggerMetaStats();
+    const attempts: number[] = [];
+    const transport = batchTransport(rateLimited(1000, 1, attempts), {
+      maxBatchSize: 10,
+      flushIntervalMs: 50,
+      maxRetries: 3,
+      retryBaseDelayMs: 1,
+      retryMaxDelayMs: 1000,
+    });
+
+    transport.log?.(event, createContext());
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(attempts).toEqual([50, 1050]);
+    expect(getLoggerMetaStats()["transport.retry.deferred"]).toBeUndefined();
+    expect(transport.stats().queueDepth).toBe(0);
+  });
+
+  it("makes batchTransport hold its queue until a long Retry-After ends", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    resetLoggerMetaStats();
+    const attempts: number[] = [];
+    const errors: unknown[] = [];
+    const transport = batchTransport(rateLimited(10_000, 1, attempts), {
+      maxBatchSize: 10,
+      flushIntervalMs: 50,
+      maxRetries: 3,
+      retryMaxDelayMs: 1000,
+    });
+
+    transport.log?.(event, createContext(errors));
+    await vi.advanceTimersByTimeAsync(60);
+    expect(attempts).toEqual([50]);
+    expect(getLoggerMetaStats()["transport.retry.deferred"]).toBe(1);
+
+    // An explicit flush inside the window sends nothing.
+    await transport.flush?.();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(attempts).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(5100);
+    expect(attempts).toEqual([50, 10_050]);
+    expect(transport.stats().queueDepth).toBe(0);
   });
 });

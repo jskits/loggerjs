@@ -726,6 +726,79 @@ describe("browserHttpTransport", () => {
     ]);
   });
 
+  it("waits for the collector's Retry-After before replaying the offline queue", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const addEventListener = vi.fn<typeof globalThis.addEventListener>();
+    vi.stubGlobal("addEventListener", addEventListener);
+    const sentAt: number[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      sentAt.push(Date.now());
+      return sentAt.length === 1
+        ? new Response(null, { status: 429, headers: { "retry-after": "2" } })
+        : new Response(null, { status: 204 });
+    });
+    const offlineQueue = memoryBrowserHttpOfflineQueue();
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 0,
+      useBeaconOnPageHide: false,
+      offlineQueue,
+      offlineReplayOnStart: false,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("limited"), createTransportContext());
+    await transport.flush?.();
+    expect(offlineQueue.size()).toBe(1);
+
+    // Reconnecting inside the window schedules the replay instead of sending.
+    const online = listenerFor(addEventListener, "online");
+    if (typeof online !== "function") throw new Error("online listener is not callable");
+    online(new Event("online"));
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(sentAt).toEqual([0]);
+
+    await vi.advanceTimersByTimeAsync(600);
+    expect(sentAt).toEqual([0, 2000]);
+    expect(offlineQueue.size()).toBe(0);
+    await transport.close?.();
+  });
+
+  it("waits for the collector's Retry-After before sending again", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const sentAt: number[] = [];
+    const fetchFn = vi.fn<typeof fetch>(async () => {
+      sentAt.push(Date.now());
+      return sentAt.length === 1
+        ? new Response(null, { status: 429, headers: { "retry-after": "2" } })
+        : new Response(null, { status: 204 });
+    });
+    const transport = browserHttpTransport({
+      url: "/logs",
+      codec: textCodec,
+      flushIntervalMs: 50,
+      useBeaconOnPageHide: false,
+      fetchFn,
+    });
+
+    transport.log?.(createEvent("limited"), createTransportContext());
+    await vi.advanceTimersByTimeAsync(60);
+    expect(sentAt).toEqual([50]);
+
+    // Neither the scheduler nor an explicit flush sends inside the window.
+    await transport.flush?.();
+    transport.log?.(createEvent("during window"), createTransportContext());
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(sentAt).toEqual([50]);
+
+    await vi.advanceTimersByTimeAsync(600);
+    expect(sentAt).toEqual([50, 2050]);
+    expect(fetchFn.mock.calls[1]?.[1]?.body).toBe("limited|during window");
+  });
+
   it("flushes queued events on the scheduled timer", async () => {
     vi.useFakeTimers();
     const fetchFn = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));

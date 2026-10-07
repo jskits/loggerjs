@@ -772,6 +772,7 @@ export declare function memoryTransport(options?: {
 
 ```ts
 import type { LogEvent, Transport } from "../types.js";
+export { httpStatusError, parseRetryAfter, type HttpStatusError } from "./retry-after.js";
 export type TransportOperation = "write" | "writeBatch" | "log" | "logBatch";
 export type RetryFallbackReason = "primary-error" | "circuit-open";
 /**
@@ -816,6 +817,36 @@ export interface FallbackTransportOptions {
 }
 export declare function fallbackTransport(primary: Transport, fallback: Transport, options?: FallbackTransportOptions): Transport;
 export declare function retryTransport(inner: Transport, options?: RetryTransportOptions): Transport;
+```
+
+## transports/retry-after.d.ts
+
+```ts
+/** Error thrown by HTTP transports for a non-2xx response. */
+export interface HttpStatusError extends Error {
+    status: number;
+    /** Delay the server asked for through Retry-After, in milliseconds. */
+    retryAfterMs?: number;
+}
+/**
+ * Parses an HTTP `Retry-After` value, either delay-seconds or an HTTP-date,
+ * into milliseconds from `now`. Returns undefined when the value is missing
+ * or invalid.
+ */
+export declare function parseRetryAfter(value: string | null | undefined, now?: number): number | undefined;
+/**
+ * Builds the error an HTTP transport throws for a non-2xx response. It
+ * carries `status` and, when the response sends `Retry-After`, `retryAfterMs`,
+ * which batchTransport() and retryTransport() honor before the next attempt.
+ */
+export declare function httpStatusError(transport: string, response: {
+    status: number;
+    headers?: {
+        get(name: string): string | null;
+    };
+}): HttpStatusError;
+/** Reads a server-requested retry delay from a delivery error, if any. */
+export declare function retryAfterFromError(error: unknown): number | undefined;
 ```
 
 ## transports/test.d.ts

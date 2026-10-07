@@ -1,4 +1,5 @@
 import {
+  httpStatusError,
   batchTransport,
   safeJsonCodec,
   type BatchTransportOptions,
@@ -63,7 +64,7 @@ export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport 
         body: payloadToBody(transformed.payload),
         signal: timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined,
       });
-      if (!response.ok) throw new Error(`nodeHttpTransport failed with status ${response.status}`);
+      if (!response.ok) throw httpStatusError("nodeHttpTransport", response);
     },
   };
   return batchTransport(inner, {

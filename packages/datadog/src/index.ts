@@ -1,4 +1,10 @@
-import { toLevelValue, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  toLevelValue,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+  httpStatusError,
+} from "@loggerjs/core";
 
 export type DatadogLogStatus = "debug" | "emergency" | "error" | "info" | "notice" | "warning";
 
@@ -123,9 +129,7 @@ export function datadogLogsTransport(options: DatadogLogsTransportOptions = {}):
       headers,
       body: JSON.stringify(events.map((event) => toDatadogItem(event, options))),
     });
-    if (!response.ok) {
-      throw new Error(`datadogLogsTransport failed with status ${response.status}`);
-    }
+    if (!response.ok) throw httpStatusError("datadogLogsTransport", response);
   };
 
   return {

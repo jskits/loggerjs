@@ -1,4 +1,5 @@
 import {
+  httpStatusError,
   incrementLoggerMetaCounter,
   safeJsonCodec,
   toLevelValue,
@@ -9,6 +10,7 @@ import {
   type PayloadTransform,
   type Transport,
   type TransportContext,
+  type HttpStatusError,
 } from "@loggerjs/core";
 import { applyPayloadTransforms } from "@loggerjs/core/payload-transforms";
 
@@ -168,6 +170,9 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   const timeoutMs = options.timeoutMs ?? 10_000;
   let offlineEntrySeq = 0;
   let closed = false;
+  // Set from a Retry-After response: automatic sends and replays wait until then.
+  let retryNotBefore = 0;
+  let replayTimer: ReturnType<typeof setTimeout> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let activeFlush: Promise<void> | undefined;
   let flushingBeacon = false;
@@ -280,7 +285,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
           ? AbortSignal.timeout(timeoutMs)
           : undefined,
     });
-    if (!response.ok) throw new Error(`browserHttpTransport failed with status ${response.status}`);
+    if (!response.ok) throw httpStatusError("browserHttpTransport", response);
   };
 
   const encodeTransformedPayload = async (batch: LogEvent[]) => {
@@ -342,6 +347,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       );
       return "sent";
     } catch (error) {
+      noteRetryAfter(error);
       if (
         await enqueueOfflinePayload(
           transformed.payload,
@@ -353,6 +359,17 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       }
       throw error;
     }
+  };
+
+  const retryWaitMs = () => Math.max(0, retryNotBefore - Date.now());
+
+  // Cross-origin collectors must expose Retry-After through
+  // Access-Control-Expose-Headers for the browser to read it.
+  const noteRetryAfter = (error: unknown): number | undefined => {
+    const retryAfterMs = (error as Partial<HttpStatusError> | null)?.retryAfterMs;
+    if (typeof retryAfterMs !== "number" || !(retryAfterMs >= 0)) return undefined;
+    retryNotBefore = Math.max(retryNotBefore, Date.now() + retryAfterMs);
+    return retryAfterMs;
   };
 
   const replayRetryDelay = (attempt: number): number => {
@@ -368,13 +385,16 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
         incrementLoggerMetaCounter("transport.offline.replayed");
         return;
       } catch (error) {
-        if (attempt >= offlineReplayMaxRetries) {
+        const retryAfterMs = noteRetryAfter(error);
+        // A longer server-requested wait ends this replay round; the entry
+        // stays queued and replays after the wait.
+        if (attempt >= offlineReplayMaxRetries || (retryAfterMs ?? 0) > offlineReplayMaxDelayMs) {
           incrementLoggerMetaCounter("transport.offline.replay.failed");
           throw error;
         }
         incrementLoggerMetaCounter("transport.offline.retry");
         // oxlint-disable-next-line no-await-in-loop -- Backoff must complete before the next retry.
-        await sleep(replayRetryDelay(attempt));
+        await sleep(Math.max(replayRetryDelay(attempt), retryAfterMs ?? 0));
       }
     }
   };
@@ -393,8 +413,18 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
 
   // Stored entries stay in the offline queue when replay fails, so a failed
   // replay is reported instead of failing the flush that triggered it.
-  const replayOfflineQueueSafely = async (operation: string) => {
+  const replayOfflineQueueSafely = async (operation: string): Promise<void> => {
     if (!offlineQueue || !isOnline()) return;
+    const waitMs = retryWaitMs();
+    if (waitMs > 0) {
+      if (!closed && replayTimer === undefined) {
+        replayTimer = setTimeout(() => {
+          replayTimer = undefined;
+          void replayOfflineQueueSafely(operation);
+        }, waitMs);
+      }
+      return;
+    }
     try {
       await replayOfflineQueue();
     } catch (error) {
@@ -436,6 +466,12 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       // An explicit flush with nothing live still retries stored payloads, so
       // entries queued during a server outage do not wait for an `online` event.
       return preferBeacon ? Promise.resolve() : replayOfflineQueueSafely("replay");
+    }
+    // While the collector's Retry-After runs, keep events queued; the
+    // scheduler sends them when it ends. Page-exit Beacon flushes still go out.
+    if (!preferBeacon && retryWaitMs() > 0) {
+      schedule();
+      return Promise.resolve();
     }
     clearTimer();
 
@@ -479,11 +515,13 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
   };
 
   const schedule = () => {
-    if (closed || activeFlush || timer || flushIntervalMs <= 0) return;
+    if (closed || activeFlush || timer) return;
+    const delayMs = Math.max(flushIntervalMs, retryWaitMs());
+    if (delayMs <= 0) return;
     timer = setTimeout(() => {
       timer = undefined;
       void flush(false).catch((error: unknown) => reportInternalError(error, "flush"));
-    }, flushIntervalMs);
+    }, delayMs);
   };
 
   const onPageHide = () => {
@@ -495,7 +533,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
     }
   };
   const onOnline = () => {
-    void replayOfflineQueue().catch((error: unknown) => reportInternalError(error, "replay"));
+    void replayOfflineQueueSafely("replay");
   };
 
   if (options.useBeaconOnPageHide ?? true) {
@@ -544,6 +582,7 @@ export function browserHttpTransport(options: BrowserHttpTransportOptions): Tran
       globalThis.removeEventListener?.("online", onOnline);
       closed = true;
       clearTimer();
+      if (replayTimer !== undefined) clearTimeout(replayTimer);
       // Events the final flush could not deliver or store are accounted for
       // as dropped instead of disappearing with the transport.
       const dropUndelivered = () => {

@@ -2,6 +2,9 @@ import { incrementLoggerMetaCounter } from "../meta";
 import { eventToRecord } from "../record";
 import type { LogEvent, LogRecord, Transport, TransportContext } from "../types";
 import { sleep } from "../host";
+import { retryAfterFromError } from "./retry-after";
+
+export { httpStatusError, parseRetryAfter, type HttpStatusError } from "./retry-after";
 
 export type TransportOperation = "write" | "writeBatch" | "log" | "logBatch";
 
@@ -327,7 +330,10 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
         consecutiveFailures = 0;
         return;
       } catch (error) {
-        if (attempt >= maxRetries) {
+        // A server-requested delay longer than the backoff cap ends the
+        // retries now instead of holding flush() and close() for it.
+        const retryAfterMs = retryAfterFromError(error);
+        if (attempt >= maxRetries || (retryAfterMs ?? 0) > retryMaxDelayMs) {
           consecutiveFailures += 1;
           incrementLoggerMetaCounter("transport.retry.exhausted");
           if (consecutiveFailures >= circuitBreakerFailureThreshold) {
@@ -339,7 +345,10 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
           return;
         }
 
-        const delayMs = retryDelay(attempt, retryBaseDelayMs, retryMaxDelayMs, random);
+        const delayMs = Math.max(
+          retryDelay(attempt, retryBaseDelayMs, retryMaxDelayMs, random),
+          retryAfterMs ?? 0,
+        );
         incrementLoggerMetaCounter("transport.retry");
         options.onRetry?.({ attempt: attempt + 1, delayMs, error });
         // oxlint-disable-next-line no-await-in-loop -- Backoff must complete before the next retry.

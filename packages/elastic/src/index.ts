@@ -1,4 +1,10 @@
-import { toLevelValue, type LogEvent, type LoggerLevel, type Transport } from "@loggerjs/core";
+import {
+  toLevelValue,
+  type LogEvent,
+  type LoggerLevel,
+  type Transport,
+  httpStatusError,
+} from "@loggerjs/core";
 
 export type ElasticIndexSelector = string | ((event: LogEvent) => string);
 export type ElasticOpType = "create" | "index";
@@ -119,7 +125,7 @@ export function elasticTransport(options: ElasticTransportOptions): Transport {
       headers,
       body: createElasticBulkPayload(events, options),
     });
-    if (!response.ok) throw new Error(`elasticTransport failed with status ${response.status}`);
+    if (!response.ok) throw httpStatusError("elasticTransport", response);
 
     if (checkBulkErrors) {
       const result = (await response.json().catch(() => undefined)) as

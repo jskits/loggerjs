@@ -4,12 +4,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createLogger, getLoggerMetaStats, resetLoggerMetaStats } from "@loggerjs/core";
 import { nodeHttpTransport, type NodeHttpTransportOptions } from "../src";
 
-type Fault = "ok" | "server-error" | "rate-limited" | "reset" | "hang";
+type Fault = "ok" | "server-error" | "rate-limited" | "rate-limited-1s" | "reset" | "hang";
 
 interface Collector {
   url: string;
   acknowledged: Map<string, number>;
   requests: Fault[];
+  requestTimes: number[];
   close: () => Promise<void>;
 }
 
@@ -20,9 +21,11 @@ const servers: Server[] = [];
 async function startCollector(plan: (request: number) => Fault): Promise<Collector> {
   const acknowledged = new Map<string, number>();
   const requests: Fault[] = [];
+  const requestTimes: number[] = [];
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     const fault = plan(requests.length);
     requests.push(fault);
+    requestTimes.push(Date.now());
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
@@ -39,6 +42,10 @@ async function startCollector(plan: (request: number) => Fault): Promise<Collect
         response.writeHead(429, { "retry-after": "0" }).end();
         return;
       }
+      if (fault === "rate-limited-1s") {
+        response.writeHead(429, { "retry-after": "1" }).end();
+        return;
+      }
       const events = JSON.parse(Buffer.concat(chunks).toString("utf8")) as Array<{ id: string }>;
       for (const event of events) {
         acknowledged.set(event.id, (acknowledged.get(event.id) ?? 0) + 1);
@@ -53,6 +60,7 @@ async function startCollector(plan: (request: number) => Fault): Promise<Collect
     url: `http://127.0.0.1:${port}/logs`,
     acknowledged,
     requests,
+    requestTimes,
     close: () =>
       new Promise<void>((done) => {
         server.closeAllConnections();
@@ -160,6 +168,17 @@ describe("nodeHttpTransport under injected network faults", () => {
     expect(result.dropped.size).toBe(0);
     expect(collector.acknowledged.size).toBe(25);
     expect(getLoggerMetaStats()["transport.retry"]).toBeGreaterThanOrEqual(3);
+  });
+
+  it("waits for the collector's Retry-After before retrying", async () => {
+    const collector = await startCollector((request) => (request === 0 ? "rate-limited-1s" : "ok"));
+
+    const result = await emitAndClose(collector, 3, { retryMaxDelayMs: 2000 });
+
+    expect(result.closeSettled).toBe(true);
+    expect(collector.acknowledged.size).toBe(3);
+    expect(collector.requests).toEqual(["rate-limited-1s", "ok"]);
+    expect(collector.requestTimes[1]! - collector.requestTimes[0]!).toBeGreaterThanOrEqual(950);
   });
 
   it("retries after the collector resets the connection", async () => {
