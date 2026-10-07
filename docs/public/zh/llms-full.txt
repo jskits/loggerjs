@@ -1244,6 +1244,8 @@ setup 上下文（`api`）提供：
 - `unpatched`：原始 `console.*` / `fetch` / `XMLHttpRequest` 实现的注册表，在所有 integration 之间共享，因此多次 patch 可以正确叠加。
 - `flush/flushSync/close`：供页面隐藏等由生命周期驱动的 integration 使用。
 
+面向 integration 作者的辅助函数在 `@loggerjs/core/integration-api` 中：`createIntegrationSetupContext()` 可以在 logger 之外构造 setup context（适合测试），`getUnpatchedRegistry()` / `registerUnpatchedDefaults()` 提供共享的平台原始函数注册表，`onceTeardown()` 让 teardown 只执行一次。`Integration` 和 `IntegrationSetupContext` 类型仍从 `@loggerjs/core` 导入。
+
 注意事项：
 
 - 始终返回一个拆除函数，恢复你 patch 过的内容。拆除函数会在 `logger.close()` 时按 setup 的相反顺序各执行一次。

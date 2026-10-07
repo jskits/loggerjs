@@ -43,6 +43,11 @@
       "import": "./dist/codec-metrics.js",
       "require": "./dist/codec-metrics.cjs"
     },
+    "./codec-prepared": {
+      "types": "./dist/codecs/prepared.d.ts",
+      "import": "./dist/codec-prepared.js",
+      "require": "./dist/codec-prepared.cjs"
+    },
     "./transport-console": {
       "types": "./dist/transports/console.d.ts",
       "import": "./dist/transport-console.js",
@@ -68,6 +73,16 @@
       "import": "./dist/context.js",
       "require": "./dist/context.cjs"
     },
+    "./diagnostics": {
+      "types": "./dist/diagnostics.d.ts",
+      "import": "./dist/diagnostics.js",
+      "require": "./dist/diagnostics.cjs"
+    },
+    "./event-route": {
+      "types": "./dist/event-route.d.ts",
+      "import": "./dist/event-route.js",
+      "require": "./dist/event-route.cjs"
+    },
     "./trace-propagation": {
       "types": "./dist/trace-propagation.d.ts",
       "import": "./dist/trace-propagation.js",
@@ -77,6 +92,11 @@
       "types": "./dist/events.d.ts",
       "import": "./dist/events.js",
       "require": "./dist/events.cjs"
+    },
+    "./integration-api": {
+      "types": "./dist/integration-api.d.ts",
+      "import": "./dist/integration-api.js",
+      "require": "./dist/integration-api.cjs"
     },
     "./semantic-events": {
       "types": "./dist/semantic-events.d.ts",
@@ -117,6 +137,10 @@
     "trace-propagation": "src/trace-propagation.ts",
     "events": "src/events.ts",
     "semantic-events": "src/semantic-events.ts",
-    "payload-transforms": "src/payload-transforms.ts"
+    "payload-transforms": "src/payload-transforms.ts",
+    "codec-prepared": "src/codecs/prepared.ts",
+    "diagnostics": "src/diagnostics.ts",
+    "event-route": "src/event-route.ts",
+    "integration-api": "src/integration-api.ts"
   }
 }

@@ -13,7 +13,7 @@ LoggerJS 以一组小包发布：无依赖 core 负责公共模型，平台包�
 
 | 包 | 说明 | Export subpaths | Runtime dependencies |
 | --- | --- | ---: | --- |
-| [`@loggerjs/core`](https://github.com/jskits/loggerjs/tree/main/packages/core) | Tiny isomorphic structured logger core for loggerjs. | 13 | None |
+| [`@loggerjs/core`](https://github.com/jskits/loggerjs/tree/main/packages/core) | Tiny isomorphic structured logger core for loggerjs. | 17 | None |
 | [`@loggerjs/browser`](https://github.com/jskits/loggerjs/tree/main/packages/browser) | Browser transports and integrations for loggerjs. | 26 | `@loggerjs/core` |
 | [`@loggerjs/node`](https://github.com/jskits/loggerjs/tree/main/packages/node) | Node.js transports and integrations for loggerjs. | 26 | `@loggerjs/core` |
 | [`@loggerjs/pretty`](https://github.com/jskits/loggerjs/tree/main/packages/pretty) | Pretty console and terminal output helpers for loggerjs. | 4 | `@loggerjs/core` |
@@ -35,7 +35,7 @@ Tiny isomorphic structured logger core for loggerjs.
 - 源码：[packages/core](https://github.com/jskits/loggerjs/tree/main/packages/core)
 - README：[packages/core/README.md](https://github.com/jskits/loggerjs/blob/main/packages/core/README.md)
 - API 报告：[@loggerjs/core](/zh/reference/api/core)
-- Export subpaths：`.`, `./middleware`, `./codec-json`, `./codec-metrics`, `./transport-console`, `./transport-batch`, `./transport-reliability`, `./transport-test`, `./context`, `./trace-propagation`, `./events`, `./semantic-events`, `./payload-transforms`
+- Export subpaths：`.`, `./middleware`, `./codec-json`, `./codec-metrics`, `./codec-prepared`, `./transport-console`, `./transport-batch`, `./transport-reliability`, `./transport-test`, `./context`, `./diagnostics`, `./event-route`, `./trace-propagation`, `./events`, `./integration-api`, `./semantic-events`, `./payload-transforms`
 - Runtime dependencies：None
 
 ## @loggerjs/browser
