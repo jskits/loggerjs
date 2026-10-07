@@ -1,6 +1,7 @@
+import { runLoggerDiagnostic } from "../diagnostics";
 import { registerUnpatchedDefaults } from "../integration-api";
-import { safeJsonCodec } from "../codecs/json";
 import { runtimeHost } from "../host";
+import { safeJsonStringify } from "../utils/safe-stringify";
 import type { Codec, LogEvent, LogRecord, Transport, TransportContext } from "../types";
 
 type ConsoleMethod = "debug" | "info" | "warn" | "error" | "log";
@@ -34,7 +35,7 @@ export interface ConsoleTransportOptions {
 }
 
 export function consoleTransport(options: ConsoleTransportOptions = {}): Transport {
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec;
   const filter = options.filter ?? defaultFilter;
   const writeEvent = (event: LogEvent) => {
     if (!filter(event)) return;
@@ -46,8 +47,16 @@ export function consoleTransport(options: ConsoleTransportOptions = {}): Transpo
       if (event.error !== undefined) args.push(event.error);
       if (options.includeEvent) args.push(event);
       writer(...args);
-    } else {
+    } else if (codec) {
       writer(codec.encode(event));
+    } else {
+      // The output of safeJsonCodec().encode(event), without bundling the
+      // codec's decode validation into every app that logs to the console.
+      writer(
+        runLoggerDiagnostic({ stage: "encode", codec: "safe-json" }, () =>
+          safeJsonStringify(event),
+        ),
+      );
     }
   };
   const writeRecord = (record: LogRecord, context: TransportContext) => {

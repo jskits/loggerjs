@@ -86,6 +86,23 @@ export function onceTeardown(teardown: Teardown): Teardown {
   };
 }
 
+// The setup context forwards these to the integration's logger.
+const forwardedLoggerMethods = [
+  "log",
+  "trace",
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "fatal",
+  "captureException",
+  "event",
+  "ready",
+  "flush",
+  "flushSync",
+  "close",
+] as const;
+
 export function createIntegrationSetupContext(
   options: CreateIntegrationSetupContextOptions,
 ): IntegrationSetupContext {
@@ -93,21 +110,16 @@ export function createIntegrationSetupContext(
   const source = `integration:${options.name}`;
   let guardDepth = 0;
 
-  return {
-    log: (...args) => options.logger.log(...args),
-    trace: (...args) => options.logger.trace(...args),
-    debug: (...args) => options.logger.debug(...args),
-    info: (...args) => options.logger.info(...args),
-    warn: (...args) => options.logger.warn(...args),
-    error: (...args) => options.logger.error(...args),
-    fatal: (...args) => options.logger.fatal(...args),
-    captureException: (...args) => options.logger.captureException(...args),
-    event: (...args) => options.logger.event(...args),
-    ready: () => options.logger.ready(),
-    flush: () => options.logger.flush(),
-    flushSync: () => options.logger.flushSync?.(),
-    close: () => options.logger.close(),
-    capture(input) {
+  const logger = options.logger as unknown as Record<
+    string,
+    ((...args: unknown[]) => unknown) | undefined
+  >;
+  const context: Record<string, unknown> = {};
+  for (const method of forwardedLoggerMethods) {
+    context[method] = (...args: unknown[]) => logger[method]?.(...args);
+  }
+  return Object.assign(context as unknown as IntegrationSetupContext, {
+    capture(input: CaptureInput) {
       options.capture({ ...input, source });
     },
     getLogger: options.getLogger,
@@ -129,5 +141,5 @@ export function createIntegrationSetupContext(
       };
       return guarded as unknown as T;
     },
-  };
+  });
 }

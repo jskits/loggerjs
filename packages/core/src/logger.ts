@@ -8,6 +8,7 @@ import {
 } from "./levels";
 import { getContext } from "./context";
 import { emitLoggerDiagnostic, loggerDiagnosticNow, loggerDiagnosticsEnabled } from "./diagnostics";
+import { diagnosticSink } from "./diagnostics-sink";
 import { getLogEventRoute } from "./event-route";
 import { createIntegrationSetupContext, onceTeardown } from "./integration-api";
 import { reportLoggerMetaError } from "./meta";
@@ -105,35 +106,22 @@ function normalizeLogArgs(
   data?: LogData | string,
   props?: LogData,
 ): NormalizedLogArgs {
-  if (typeof message === "string") {
-    const normalized = normalizePropsAndError(data as LogData | undefined);
-    return {
-      msg: message,
-      lazy: null,
-      props: normalized.props,
-      err: normalized.err,
-    };
-  }
-
-  if (typeof message === "function") {
-    const normalized = normalizePropsAndError(data as LogData | undefined);
-    return {
-      msg: null,
-      lazy: message as () => string,
-      props: normalized.props,
-      err: normalized.err,
-    };
-  }
-
-  const hasExplicitMessage = typeof data === "string";
-  const normalized = normalizePropsAndError(
-    hasExplicitMessage ? props : (data as LogData | undefined),
+  // A non-text message (usually an error) may be followed by an explicit
+  // message string, which moves the data to the third argument.
+  const text = typeof message === "string" || typeof message === "function";
+  const hasExplicitMessage = !text && typeof data === "string";
+  const { props: recordProps, err } = normalizePropsAndError(
+    (hasExplicitMessage ? props : data) as LogData | undefined,
   );
+  if (typeof message === "string") return { msg: message, lazy: null, props: recordProps, err };
+  if (typeof message === "function") {
+    return { msg: null, lazy: message as () => string, props: recordProps, err };
+  }
   return {
-    msg: hasExplicitMessage ? data : valueToMessage(message),
+    msg: hasExplicitMessage ? (data as string) : valueToMessage(message),
     lazy: null,
-    props: normalized.props,
-    err: message ?? normalized.err,
+    props: recordProps,
+    err: message ?? err,
   };
 }
 
@@ -492,7 +480,7 @@ export class Logger implements LoggerLike {
   }
 
   async flush() {
-    const flushDiagnostics = loggerDiagnosticsEnabled("flush");
+    const flushDiagnostics = diagnosticSink !== undefined && loggerDiagnosticsEnabled("flush");
     const start = flushDiagnostics ? loggerDiagnosticNow() : undefined;
     if (flushDiagnostics) {
       emitLoggerDiagnostic({ stage: "flush", phase: "start", logger: this.name });
@@ -523,7 +511,7 @@ export class Logger implements LoggerLike {
   }
 
   flushSync() {
-    const flushDiagnostics = loggerDiagnosticsEnabled("flush");
+    const flushDiagnostics = diagnosticSink !== undefined && loggerDiagnosticsEnabled("flush");
     const start = flushDiagnostics ? loggerDiagnosticNow() : undefined;
     if (flushDiagnostics) {
       emitLoggerDiagnostic({
@@ -718,8 +706,10 @@ export class Logger implements LoggerLike {
   // shouldDispatchEventToTransport.
   private dispatchRecord(record: LogRecord) {
     const context = this.getTransportContext();
-    const dispatchDiagnostics = loggerDiagnosticsEnabled("dispatch");
-    const transportDiagnostics = loggerDiagnosticsEnabled("transport");
+    const dispatchDiagnostics =
+      diagnosticSink !== undefined && loggerDiagnosticsEnabled("dispatch");
+    const transportDiagnostics =
+      diagnosticSink !== undefined && loggerDiagnosticsEnabled("transport");
     const dispatchStart = dispatchDiagnostics ? loggerDiagnosticNow() : undefined;
     if (dispatchDiagnostics) {
       emitLoggerDiagnostic({
@@ -807,8 +797,10 @@ export class Logger implements LoggerLike {
       return record;
     };
     const context = this.getTransportContext();
-    const dispatchDiagnostics = loggerDiagnosticsEnabled("dispatch");
-    const transportDiagnostics = loggerDiagnosticsEnabled("transport");
+    const dispatchDiagnostics =
+      diagnosticSink !== undefined && loggerDiagnosticsEnabled("dispatch");
+    const transportDiagnostics =
+      diagnosticSink !== undefined && loggerDiagnosticsEnabled("transport");
     const dispatchStart = dispatchDiagnostics ? loggerDiagnosticNow() : undefined;
     if (dispatchDiagnostics) {
       emitLoggerDiagnostic({

@@ -23,13 +23,16 @@ interface Codec<TPayload = string | Uint8Array> {
 | Codec | Package | 行为 |
 | --- | --- | --- |
 | `jsonCodec()` | core | 输入标准化后直接 `JSON.stringify`。速度快，但 circular/BigInt 会抛错；只在 payload 保证干净时使用。 |
-| `safeJsonCodec(options)` | core | 每次都做完整的安全规范化：循环引用 -> `"[Circular]"`、BigInt -> 字符串、Error -> `{name, message, stack}`、按深度/数组长度/键数量截断、转换 Map/Set。是 `consoleTransport({ pretty: false })` 的默认 codec。 |
-| `ndjsonCodec(options)` | core | 每行一个 JSON 对象，遵循下文的**默认快速契约**。是 Node stdout/file transport 的默认 codec。 |
+| `safeJsonCodec(options)` | core | 每次都做完整的安全规范化：循环引用 -> `"[Circular]"`、BigInt -> 字符串、Error -> `{name, message, stack}`、按深度/数组长度/键数量截断、转换 Map/Set。`consoleTransport({ pretty: false })` 的输出与它相同。 |
+| `ndjsonCodec(options)` | core | 每行一个 JSON 对象，遵循下文的**默认快速契约**。 |
+| `safeJsonEncoder(options)` / `ndjsonEncoder(options)` | core | 去掉 `decode()` 的 `safeJsonCodec` 和 `ndjsonCodec`。只发送日志的 transport 默认使用它们：浏览器和 Node 的 HTTP、WebSocket、worker 以及 database transport 使用 `safeJsonEncoder`，Node 的 stdout 和 file transport 使用 `ndjsonEncoder`。 |
 | `fastEventJsonCodec(options)` | `@loggerjs/codecs` | 面向性能的 codec：原生快速路径、片段缓存（level、logger、tags、time）、扫描式字符串转义、扁平数据直接写入，以及 lean 信封选项。 |
 | `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | 用于迁移的 Pino 格式 NDJSON：`level`、`time`、可选的 `pid`/`hostname` 基础字段、`msg`、`err`，以及可选的、带保留键保护的根级数据合并。 |
 | `msgpackrCodec(options?)` | `@loggerjs/codecs` | 基于 `msgpackr` 的内置 MessagePack codec；返回 `Uint8Array`。仍支持传入 `{ pack, unpack }` 适配自定义 runtime。 |
 | `projectorCodec(options)` | `@loggerjs/codecs` | 通用的“投影 -> 序列化（-> 解析 -> 反投影）”适配器，用于自定义线上格式。 |
 | `otlpJsonCodec(options)` | `@loggerjs/otel` | 带 resource 属性的 OTLP/HTTP JSON 日志 payload。 |
+
+`decode()` 会校验它返回的每个事件，这部分校验在小体积打包产物中占比不小。从不读回日志的 transport 默认使用只编码的形式，因此只记录日志的应用不会打包这部分代码。需要读回事件的地方请使用完整的 codec，例如 `indexedDbTransport().query()`。
 
 ## 默认快速契约
 

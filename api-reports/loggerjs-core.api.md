@@ -9,6 +9,12 @@ Update with `pnpm build && pnpm api:report` after intentional public API changes
 import type { Codec } from "../types.js";
 import { type SafeStringifyOptions } from "../utils/safe-stringify.js";
 export declare function jsonCodec(): Codec<string>;
+/**
+ * {@link safeJsonCodec} without `decode()`. Transports that only send logs use
+ * it as their default codec, so bundles that never decode leave out the
+ * payload validation that `decode()` needs.
+ */
+export declare function safeJsonEncoder(options?: SafeStringifyOptions): Codec<string>;
 export declare function safeJsonCodec(options?: SafeStringifyOptions): Codec<string>;
 /**
  * Same fast-by-default contract as fastEventJsonCodec: without options each
@@ -19,6 +25,11 @@ export declare function safeJsonCodec(options?: SafeStringifyOptions): Codec<str
  * expansion) for every line.
  */
 export declare function ndjsonCodec(options?: SafeStringifyOptions): Codec<string>;
+/**
+ * {@link ndjsonCodec} without `decode()`, for transports that only write
+ * logs; see {@link safeJsonEncoder}.
+ */
+export declare function ndjsonEncoder(options?: SafeStringifyOptions): Codec<string>;
 ```
 
 ## codecs/metrics.d.ts
@@ -60,6 +71,14 @@ export declare function setContextManager(nextManager: ContextManager): void;
 export declare function resetContextManager(): void;
 export declare function getContext(): BoundContext | undefined;
 export declare function withContext<T>(context: Record<string, unknown>, fn: () => T): T;
+```
+
+## diagnostics-sink.d.ts
+
+```ts
+import type { LoggerDiagnosticSink } from "./diagnostics.js";
+export declare let diagnosticSink: LoggerDiagnosticSink | undefined;
+export declare function replaceDiagnosticSink(next: LoggerDiagnosticSink | undefined): LoggerDiagnosticSink | undefined;
 ```
 
 ## diagnostics.d.ts

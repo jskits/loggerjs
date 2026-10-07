@@ -1,7 +1,7 @@
 import {
   httpStatusError,
   incrementLoggerMetaCounter,
-  safeJsonCodec,
+  safeJsonEncoder,
   toLevelValue,
   type Codec,
   type EncodedPayload,
@@ -185,7 +185,7 @@ function idempotencyKeyHeaders(
 }
 
 export function browserHttpTransport(options: BrowserHttpTransportOptions): Transport {
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec ?? safeJsonEncoder();
   const beaconCodec = options.beaconCodec ?? codec;
   const queue: LogEvent[] = [];
   const maxBatchSize = options.maxBatchSize ?? 50;

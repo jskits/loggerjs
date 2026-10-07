@@ -1452,13 +1452,16 @@ interface Codec<TPayload = string | Uint8Array> {
 | Codec | Package | 行为 |
 | --- | --- | --- |
 | `jsonCodec()` | core | 输入标准化后直接 `JSON.stringify`。速度快，但 circular/BigInt 会抛错；只在 payload 保证干净时使用。 |
-| `safeJsonCodec(options)` | core | 每次都做完整的安全规范化：循环引用 -> `"[Circular]"`、BigInt -> 字符串、Error -> `{name, message, stack}`、按深度/数组长度/键数量截断、转换 Map/Set。是 `consoleTransport({ pretty: false })` 的默认 codec。 |
-| `ndjsonCodec(options)` | core | 每行一个 JSON 对象，遵循下文的**默认快速契约**。是 Node stdout/file transport 的默认 codec。 |
+| `safeJsonCodec(options)` | core | 每次都做完整的安全规范化：循环引用 -> `"[Circular]"`、BigInt -> 字符串、Error -> `{name, message, stack}`、按深度/数组长度/键数量截断、转换 Map/Set。`consoleTransport({ pretty: false })` 的输出与它相同。 |
+| `ndjsonCodec(options)` | core | 每行一个 JSON 对象，遵循下文的**默认快速契约**。 |
+| `safeJsonEncoder(options)` / `ndjsonEncoder(options)` | core | 去掉 `decode()` 的 `safeJsonCodec` 和 `ndjsonCodec`。只发送日志的 transport 默认使用它们：浏览器和 Node 的 HTTP、WebSocket、worker 以及 database transport 使用 `safeJsonEncoder`，Node 的 stdout 和 file transport 使用 `ndjsonEncoder`。 |
 | `fastEventJsonCodec(options)` | `@loggerjs/codecs` | 面向性能的 codec：原生快速路径、片段缓存（level、logger、tags、time）、扫描式字符串转义、扁平数据直接写入，以及 lean 信封选项。 |
 | `pinoCompatCodec(options)` / `pinoNdjsonProjector(options)` | `@loggerjs/codecs` | 用于迁移的 Pino 格式 NDJSON：`level`、`time`、可选的 `pid`/`hostname` 基础字段、`msg`、`err`，以及可选的、带保留键保护的根级数据合并。 |
 | `msgpackrCodec(options?)` | `@loggerjs/codecs` | 基于 `msgpackr` 的内置 MessagePack codec；返回 `Uint8Array`。仍支持传入 `{ pack, unpack }` 适配自定义 runtime。 |
 | `projectorCodec(options)` | `@loggerjs/codecs` | 通用的“投影 -> 序列化（-> 解析 -> 反投影）”适配器，用于自定义线上格式。 |
 | `otlpJsonCodec(options)` | `@loggerjs/otel` | 带 resource 属性的 OTLP/HTTP JSON 日志 payload。 |
+
+`decode()` 会校验它返回的每个事件，这部分校验在小体积打包产物中占比不小。从不读回日志的 transport 默认使用只编码的形式，因此只记录日志的应用不会打包这部分代码。需要读回事件的地方请使用完整的 codec，例如 `indexedDbTransport().query()`。
 
 ## 默认快速契约
 
@@ -3329,9 +3332,11 @@ record 快速路径不做路由过滤：路由只能由 processor 附加，而 r
 | 禁用级别的调用 | 一次数值比较，零分配 | 参考机器上约 3 ns |
 | record 分配 | 每条日志一个 record 对象；除非 middleware 显式克隆，否则不复制数据 | 已达成 |
 | Node lean NDJSON 路径 | 等价输出下与 pino 同一量级 | M1 Max 参考机器上约为 pino 吞吐量的 1.19 倍，M4 Pro 行上慢于 pino |
-| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 连同共享 chunk 约 21 KB gzip；经过 tree-shaking 和压缩后，`createLogger` 加 `consoleTransport` 约 6.3 KB gzip，加 `browserHttpTransport` 约 8.1 KB，加 `stdoutTransport` 约 7 KB |
+| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 连同共享 chunk 约 22 KB gzip；经过 tree-shaking 和压缩后，`createLogger` 加 `consoleTransport` 约 5.5 KB gzip，加 `browserHttpTransport` 约 7.8 KB，加 `stdoutTransport` 约 6.2 KB |
 
-`pnpm size:check` 对每个包入口以及上述三个最小应用 bundle 强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
+最小 bundle 中剩下的大部分是稳定的 `Logger` 本身：child logger、bindings 和环境 context、middleware 和 processor、integration 安装、`event()` 和 `capture()`、错误规范化、安全序列化，以及 `onDrop` 背后的投递记账。这些都属于 1.x API，所以要做到 3–4 KB，需要一个 API 更小的独立入口，而不是继续裁剪这一个。诊断在安装 sink 之前没有开销：Logger 直接检查 sink 绑定来守护埋点代码，没有任何代码给它赋值时，打包工具会把这部分去掉。
+
+`pnpm size:check` 对每个包入口以及上述三个最小应用 bundle 强制执行原始体积和 gzip 预算，并检查它们不包含 codec 的 decode 校验，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
 
 ### 决策：保留 record 管线，通过 codec 持有的预处理来优化
 
@@ -3597,8 +3602,8 @@ pnpm test:inventory:check
 | 指标 | 数量 |
 | --- | ---: |
 | Test files | 107 |
-| Test cases | 977 |
-| Passed | 977 |
+| Test cases | 979 |
+| Passed | 979 |
 | Failed | 0 |
 | Pending | 0 |
 | Todo | 0 |
@@ -3611,7 +3616,7 @@ pnpm test:inventory:check
 | @loggerjs/browser | 25 | 172 |
 | @loggerjs/cloudwatch | 1 | 11 |
 | @loggerjs/codecs | 3 | 42 |
-| @loggerjs/core | 23 | 432 |
+| @loggerjs/core | 23 | 434 |
 | @loggerjs/database | 1 | 6 |
 | @loggerjs/datadog | 1 | 7 |
 | @loggerjs/elastic | 1 | 10 |

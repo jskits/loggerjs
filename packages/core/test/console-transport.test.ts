@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   consoleTransport,
   recordToEvent,
+  safeJsonCodec,
   type Codec,
   type LogEvent,
   type TransportContext,
 } from "../src";
+import { setLoggerDiagnosticSink, type LoggerDiagnosticEvent } from "../src/diagnostics";
 import { getUnpatchedRegistry } from "../src/integration-api";
 
 function createEvent(patch: Partial<LogEvent> = {}): LogEvent {
@@ -74,6 +76,29 @@ describe("consoleTransport", () => {
 
     expect(codec.encode).toHaveBeenCalledWith(createEvent());
     expect(writer).toHaveBeenCalledWith('{"ok":true}');
+  });
+
+  it("encodes JSON mode like safeJsonCodec when no codec is configured", () => {
+    const writer = vi.fn<(...args: unknown[]) => void>();
+    registry.console.info = writer;
+    const circular: Record<string, unknown> = { orderId: "ord-1" };
+    circular.self = circular;
+    const event = createEvent({ data: circular });
+    const encodes: LoggerDiagnosticEvent[] = [];
+    const previous = setLoggerDiagnosticSink((diagnostic) => {
+      if (diagnostic.stage === "encode") encodes.push(diagnostic);
+    });
+    try {
+      consoleTransport({ pretty: false }).log?.(event, createContext());
+    } finally {
+      setLoggerDiagnosticSink(previous);
+    }
+
+    expect(writer).toHaveBeenCalledWith(safeJsonCodec().encode(event));
+    expect(encodes.map((diagnostic) => [diagnostic.codec, diagnostic.phase])).toEqual([
+      ["safe-json", "start"],
+      ["safe-json", "end"],
+    ]);
   });
 
   it("filters console capture loop events by default", () => {

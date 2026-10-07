@@ -9,8 +9,8 @@ import { rolldown } from "rolldown";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  // Retry-After handling (parseRetryAfter, httpStatusError, deferred batches) measures 101,185 raw and 22,314 gzip bytes with shared chunks.
-  ["@loggerjs/core", "packages/core/dist/index.js", 101_800, 22_500],
+  // Encode-only codecs and the internal diagnostics sink module measure 102,533 raw and 22,608 gzip bytes with shared chunks.
+  ["@loggerjs/core", "packages/core/dist/index.js", 103_000, 22_800],
   // Idempotency keys and resending held batches whole measure 150,638 raw and 31,414 gzip bytes with shared chunks.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 151_100, 31_600],
   // Idempotency keys for nodeHttpTransport measure 81,800 raw and 16,285 gzip bytes with shared chunks.
@@ -32,34 +32,38 @@ const budgets = [
 // start with. Package-entry budgets above cannot see regressions here, because
 // they measure every export whether or not an app imports it.
 const minimalPaths = [
-  // createLogger() plus consoleTransport() measures 19,500 raw and 6,303 gzip bytes.
+  // createLogger() plus consoleTransport() measures 16,616 raw and 5,503 gzip bytes.
   [
     "core logger + console",
     `import { createLogger } from "@loggerjs/core";
 import { consoleTransport } from "@loggerjs/core/transport-console";
 createLogger({ transports: [consoleTransport()] }).info("ready", { ok: true });`,
-    19_900,
-    6_400,
+    16_900,
+    5_600,
   ],
-  // createLogger() plus browserHttpTransport() measures 25,258 raw and 8,494 gzip bytes.
+  // createLogger() plus browserHttpTransport() measures 22,678 raw and 7,808 gzip bytes.
   [
     "browser logger + http",
     `import { createLogger } from "@loggerjs/core";
 import { browserHttpTransport } from "@loggerjs/browser/transport-http";
 createLogger({ transports: [browserHttpTransport({ url: "/logs" })] }).info("ready");`,
-    25_600,
-    8_600,
+    23_000,
+    7_900,
   ],
-  // createLogger() plus stdoutTransport() measures 21,065 raw and 6,872 gzip bytes.
+  // createLogger() plus stdoutTransport() measures 18,619 raw and 6,230 gzip bytes.
   [
     "node logger + stdout",
     `import { createLogger } from "@loggerjs/core";
 import { stdoutTransport } from "@loggerjs/node/transport-stdout";
 createLogger({ transports: [stdoutTransport()] }).info("ready");`,
-    21_500,
-    7_000,
+    18_900,
+    6_330,
   ],
 ];
+
+// Send-only transports default to the encode-only codecs, so an app that only
+// logs never ships the payload validation that decode() needs.
+const excludedFromMinimal = [["codec decode validation", "Invalid LoggerJS log event payload"]];
 
 // Resolve @loggerjs/* imports through each package's exports map to its built
 // ESM file, the way an application bundler would after installing it.
@@ -148,6 +152,9 @@ for (const [index, [name, , rawBudget, gzipBudget]] of minimalPaths.entries()) {
   const rawSize = code.byteLength;
   const gzipSize = gzipSync(code).byteLength;
   rows.push([name, rawSize, rawBudget, gzipSize, gzipBudget]);
+  for (const [label, marker] of excludedFromMinimal) {
+    if (code.includes(marker)) failures.push(`${name}: bundles the ${label}`);
+  }
 
   if (rawSize > rawBudget) {
     failures.push(`${name}: raw ${rawSize} bytes exceeds ${rawBudget} byte budget`);

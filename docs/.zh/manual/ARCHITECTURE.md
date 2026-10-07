@@ -354,9 +354,11 @@ record 快速路径不做路由过滤：路由只能由 processor 附加，而 r
 | 禁用级别的调用 | 一次数值比较，零分配 | 参考机器上约 3 ns |
 | record 分配 | 每条日志一个 record 对象；除非 middleware 显式克隆，否则不复制数据 | 已达成 |
 | Node lean NDJSON 路径 | 等价输出下与 pino 同一量级 | M1 Max 参考机器上约为 pino 吞吐量的 1.19 倍，M4 Pro 行上慢于 pino |
-| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 连同共享 chunk 约 21 KB gzip；经过 tree-shaking 和压缩后，`createLogger` 加 `consoleTransport` 约 6.3 KB gzip，加 `browserHttpTransport` 约 8.1 KB，加 `stdoutTransport` 约 7 KB |
+| core 体积 | 在平台无关的功能集允许范围内尽量小 | 完整 barrel 连同共享 chunk 约 22 KB gzip；经过 tree-shaking 和压缩后，`createLogger` 加 `consoleTransport` 约 5.5 KB gzip，加 `browserHttpTransport` 约 7.8 KB，加 `stdoutTransport` 约 6.2 KB |
 
-`pnpm size:check` 对每个包入口以及上述三个最小应用 bundle 强制执行原始体积和 gzip 预算，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
+最小 bundle 中剩下的大部分是稳定的 `Logger` 本身：child logger、bindings 和环境 context、middleware 和 processor、integration 安装、`event()` 和 `capture()`、错误规范化、安全序列化，以及 `onDrop` 背后的投递记账。这些都属于 1.x API，所以要做到 3–4 KB，需要一个 API 更小的独立入口，而不是继续裁剪这一个。诊断在安装 sink 之前没有开销：Logger 直接检查 sink 绑定来守护埋点代码，没有任何代码给它赋值时，打包工具会把这部分去掉。
+
+`pnpm size:check` 对每个包入口以及上述三个最小应用 bundle 强制执行原始体积和 gzip 预算，并检查它们不包含 codec 的 decode 校验，`pnpm bench:gate` 对禁用级别、入队、lean、prepared 和完整信封路径强制执行相对 pino 的配对 A/B 比值。基准同时在 Node 和真实浏览器中运行；见 [基准](BENCHMARKS.md) 和 [基准矩阵](BENCHMARK-MATRIX.md)。
 
 ### 决策：保留 record 管线，通过 codec 持有的预处理来优化
 

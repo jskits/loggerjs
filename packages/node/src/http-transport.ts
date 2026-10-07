@@ -1,7 +1,7 @@
 import {
   httpStatusError,
   batchTransport,
-  safeJsonCodec,
+  safeJsonEncoder,
   type BatchTransportOptions,
   type Codec,
   type EncodedPayload,
@@ -70,7 +70,7 @@ function idempotencyKeyHeaders(
 }
 
 export function nodeHttpTransport(options: NodeHttpTransportOptions): Transport {
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec ?? safeJsonEncoder();
   const fetchFn = options.fetchFn ?? globalThis.fetch?.bind(globalThis);
   const keyHeaders = idempotencyKeyHeaders(options.idempotencyKeyHeader);
   const timeoutMs = options.timeoutMs ?? 10_000;

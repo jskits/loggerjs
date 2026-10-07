@@ -1,6 +1,6 @@
 import { existsSync, renameSync, statSync, unlinkSync } from "fs";
 import {
-  ndjsonCodec,
+  ndjsonEncoder,
   toLevelValue,
   type Codec,
   type LogEvent,
@@ -60,7 +60,7 @@ function fileSize(path: string): number {
 export function rotatingFileTransport(
   options: RotatingFileTransportOptions,
 ): RotatingFileTransport {
-  const codec = options.codec ?? ndjsonCodec();
+  const codec = options.codec ?? ndjsonEncoder();
   const maxBytes = normalizePositiveInteger(options.maxBytes, 10 * 1024 * 1024);
   const maxFiles = normalizeNonNegativeInteger(options.maxFiles, 5);
   const archivePath = options.archivePath ?? defaultArchivePath;

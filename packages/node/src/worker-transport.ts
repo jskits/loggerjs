@@ -1,7 +1,7 @@
 import { Worker } from "node:worker_threads";
 import {
   incrementLoggerMetaCounter,
-  safeJsonCodec,
+  safeJsonEncoder,
   setLoggerMetaGauge,
   toLevelValue,
   type Codec,
@@ -109,7 +109,7 @@ function dropBatch(events: LogEvent[], reason: string) {
 }
 
 export function workerTransport(options: WorkerTransportOptions = {}): Transport {
-  const codec = options.codec ?? safeJsonCodec();
+  const codec = options.codec ?? safeJsonEncoder();
   const transportName = options.name ?? "worker";
   const fallback = options.fallback;
   const readyTimeoutMs = normalizePositiveTimeout(options.readyTimeoutMs);
