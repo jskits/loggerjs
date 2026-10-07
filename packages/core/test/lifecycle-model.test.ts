@@ -211,7 +211,7 @@ describe("logger lifecycle model", () => {
     expectConserved(ledger, seed);
   });
 
-  it.each(SEEDS)("counts every event retryTransport gives up on (seed %i)", async (seed) => {
+  it.each(SEEDS)("reports every event retryTransport gives up on (seed %i)", async (seed) => {
     const random = mulberry32(seed);
     const ledger = newLedger();
     const hung: string[] = [];
@@ -221,9 +221,13 @@ describe("logger lifecycle model", () => {
           maxRetries: between(random, 0, 3),
           retryBaseDelayMs: 1,
           retryMaxDelayMs: 2,
-          // Keep the breaker closed so each event gets its full retry budget.
-          circuitBreakerFailureThreshold: Number.POSITIVE_INFINITY,
+          // Some seeds open the circuit, so skipped events are covered too.
+          circuitBreakerFailureThreshold: between(random, 1, 6),
+          circuitBreakerResetMs: between(random, 1, 5),
           random,
+          onDrop: (event, reason) => {
+            ledger.dropped.set(event.id, reason);
+          },
         }),
         captureTransport(ledger),
       ],
@@ -238,12 +242,10 @@ describe("logger lifecycle model", () => {
     expect(hung).toEqual([]);
     expect(await settles(logger.close())).toBe(true);
 
-    // retryTransport has no drop callback: each event it gives up on is one
-    // transport.retry.exhausted count, and together with deliveries they
-    // must cover every emitted event exactly once.
-    const exhausted = getLoggerMetaStats()["transport.retry.exhausted"] ?? 0;
-    expect(ledger.delivered.size + exhausted).toBe(ledger.emitted.length);
-    expect([...ledger.delivered.values()].every((count) => count === 1)).toBe(true);
+    // Every event is delivered exactly once or reported through onDrop, and
+    // the drop counters agree with the callbacks.
+    expectConserved(ledger, seed);
+    expect(getLoggerMetaStats()["transport.dropped"] ?? 0).toBe(ledger.dropped.size);
   });
 
   it.each(SEEDS)(

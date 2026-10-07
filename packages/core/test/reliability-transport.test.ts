@@ -137,6 +137,30 @@ describe("fallbackTransport", () => {
     expect(fallbackLog).not.toHaveBeenCalled();
   });
 
+  it("reports events through onDrop when the fallback fails too", async () => {
+    resetLoggerMetaStats();
+    const dropped: Array<[string, string]> = [];
+    const transport = fallbackTransport(
+      {
+        name: "remote",
+        log() {
+          throw new Error("remote down");
+        },
+      },
+      {
+        name: "backup",
+        log() {
+          throw new Error("backup down");
+        },
+      },
+      { onDrop: (droppedEvent, reason) => dropped.push([droppedEvent.id, reason]) },
+    );
+
+    await expect(transport.log?.(event, createContext())).rejects.toThrow("backup down");
+    expect(dropped).toEqual([["evt-1", "fallback-failed"]]);
+    expect(getLoggerMetaStats()["transport.dropped.fallback-failed"]).toBe(1);
+  });
+
   it("delegates lifecycle hooks to primary and fallback transports", async () => {
     const calls: string[] = [];
     const primary: Transport = {
@@ -320,6 +344,116 @@ describe("retryTransport", () => {
       "transport.circuit.open": 1,
       "transport.circuit.skipped": 1,
     });
+  });
+
+  it("reports each event it gives up on through onDrop and still rejects", async () => {
+    resetLoggerMetaStats();
+    const dropped: Array<[string, string]> = [];
+    const failing: Transport = {
+      name: "remote",
+      writeBatch() {
+        throw new Error("remote down");
+      },
+    };
+    const transport = retryTransport(failing, {
+      maxRetries: 1,
+      retryBaseDelayMs: 0,
+      onDrop: (droppedEvent, reason) => dropped.push([droppedEvent.message, reason]),
+    });
+
+    await expect(transport.writeBatch?.([record, secondRecord], createContext())).rejects.toThrow(
+      "remote down",
+    );
+
+    expect(dropped).toEqual([
+      ["created", "retry-exhausted"],
+      ["updated", "retry-exhausted"],
+    ]);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.dropped": 2,
+      "transport.dropped.retry-exhausted": 2,
+    });
+  });
+
+  it("reports events skipped by an open circuit and by a failing fallback", async () => {
+    resetLoggerMetaStats();
+    const dropped: string[] = [];
+    const failing: Transport = {
+      name: "remote",
+      log() {
+        throw new Error("remote down");
+      },
+    };
+    const open = retryTransport(failing, {
+      maxRetries: 0,
+      circuitBreakerFailureThreshold: 1,
+      onDrop: (_event, reason) => dropped.push(reason),
+    });
+    await expect(open.log?.(event, createContext())).rejects.toThrow("remote down");
+    await expect(open.log?.(event, createContext())).rejects.toThrow("circuit is open");
+
+    const withFailingFallback = retryTransport(failing, {
+      maxRetries: 0,
+      fallback: { name: "backup", log: () => Promise.reject(new Error("backup down")) },
+      onDrop: (_event, reason) => dropped.push(reason),
+    });
+    await expect(withFailingFallback.log?.(event, createContext())).rejects.toThrow("backup down");
+
+    expect(dropped).toEqual(["retry-exhausted", "circuit-open", "fallback-failed"]);
+    expect(getLoggerMetaStats()).toMatchObject({
+      "transport.dropped.circuit-open": 1,
+      "transport.dropped.fallback-failed": 1,
+    });
+  });
+
+  it("counts dropped events without reporting an error when no onDrop is set", async () => {
+    resetLoggerMetaStats();
+    const errors: unknown[] = [];
+    const transport = retryTransport(
+      {
+        name: "remote",
+        log() {
+          throw new Error("remote down");
+        },
+      },
+      { maxRetries: 0 },
+    );
+
+    await expect(transport.log?.(event, createContext(errors))).rejects.toThrow("remote down");
+    expect(errors).toEqual([]);
+    expect(getLoggerMetaStats()).toMatchObject({ "transport.dropped.retry-exhausted": 1 });
+  });
+
+  it("keeps the delivery error when the onDrop callback throws", async () => {
+    const errors: unknown[] = [];
+    const details: unknown[] = [];
+    const context: TransportContext = {
+      ...createContext(errors),
+      reportInternalError(error, detail) {
+        errors.push(error);
+        details.push(detail);
+      },
+    };
+    const transport = retryTransport(
+      {
+        name: "remote",
+        log() {
+          throw new Error("remote down");
+        },
+      },
+      {
+        maxRetries: 0,
+        onDrop() {
+          throw new Error("callback failed");
+        },
+      },
+    );
+
+    await expect(transport.log?.(event, context)).rejects.toThrow("remote down");
+    expect(errors).toEqual([expect.objectContaining({ message: "callback failed" })]);
+    expect(details).toEqual([
+      { phase: "transport", transport: "retry(remote)", operation: "onDrop" },
+    ]);
   });
 
   it("keeps the circuit open only until the reset window elapses", async () => {

@@ -765,9 +765,14 @@ export declare function memoryTransport(options?: {
 ## transports/reliability.d.ts
 
 ```ts
-import type { Transport } from "../types.js";
+import type { LogEvent, Transport } from "../types.js";
 export type TransportOperation = "write" | "writeBatch" | "log" | "logBatch";
 export type RetryFallbackReason = "primary-error" | "circuit-open";
+/**
+ * Why a reliability wrapper gave up on events: retries ran out with no
+ * fallback, the circuit was open with no fallback, or the fallback failed too.
+ */
+export type ReliabilityDropReason = "retry-exhausted" | "circuit-open" | "fallback-failed";
 export interface RetryTransportOptions {
     name?: string;
     maxRetries?: number;
@@ -787,6 +792,12 @@ export interface RetryTransportOptions {
         operation: TransportOperation;
         error?: unknown;
     }) => void;
+    /**
+     * Called once per event when the wrapper gives up on a delivery. The
+     * delivery still rejects. If an outer transport retries rejected deliveries
+     * itself, those events can still arrive later.
+     */
+    onDrop?: (event: LogEvent, reason: ReliabilityDropReason) => void;
 }
 export interface FallbackTransportOptions {
     name?: string;
@@ -794,6 +805,8 @@ export interface FallbackTransportOptions {
         operation: TransportOperation;
         error: unknown;
     }) => void;
+    /** Called once per event when both the primary and the fallback fail. */
+    onDrop?: (event: LogEvent, reason: ReliabilityDropReason) => void;
 }
 export declare function fallbackTransport(primary: Transport, fallback: Transport, options?: FallbackTransportOptions): Transport;
 export declare function retryTransport(inner: Transport, options?: RetryTransportOptions): Transport;

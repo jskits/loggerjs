@@ -1011,8 +1011,8 @@ Transports are composable by default. Some transports include batching or durabl
 | `memoryTransport()` | Ring buffer of recent events (`maxEvents`, default 1000). Useful for diagnostics endpoints and tests. |
 | `testTransport()` | Assertion-friendly sink: snapshots, call stats, `waitFor()`/`waitForCount()`, injectable failures. |
 | `batchTransport(inner, options)` | Wraps any transport with batching, retry, and reliability controls (below). |
-| `retryTransport(inner, options)` | Wraps any transport with retries, exponential backoff, optional circuit breaker, and optional fallback. |
-| `fallbackTransport(primary, fallback)` | Sends to a fallback transport when the primary throws. |
+| `retryTransport(inner, options)` | Wraps any transport with retries, exponential backoff, optional circuit breaker, and optional fallback. `onDrop(event, reason)` reports each event it gives up on: `retry-exhausted` (no fallback), `circuit-open` (no fallback), or `fallback-failed`. |
+| `fallbackTransport(primary, fallback, options)` | Sends to a fallback transport when the primary throws. `onDrop(event, "fallback-failed")` reports events neither transport accepted. |
 
 ### `batchTransport` reliability options
 
@@ -1041,6 +1041,8 @@ Notes:
 - Drops are always counted in logger meta (`transport.dropped.*`); the `onDrop` event conversion only happens when a listener is registered.
 - A failed batch is re-queued at the head; the circuit breaker stops hammering a dead endpoint.
 - `close()` makes one final flush attempt, then stops the flush timer and always closes the inner transport. Records that could not be delivered, and records written after close, are counted as `transport.dropped.closed`; the final flush error is still thrown.
+
+`retryTransport()` and `fallbackTransport()` have no queue: when they give up, the delivery rejects, the events are counted in `transport.dropped.*`, and `onDrop` receives each one. A drop there is final from that wrapper's point of view; if an outer transport retries rejected deliveries itself (as `batchTransport()` re-queues a failed batch), the events can still arrive later. Use `batchTransport()`'s own retry options instead of nesting `retryTransport()` inside it.
 
 ## Pretty / Developer UX (`@loggerjs/pretty`)
 

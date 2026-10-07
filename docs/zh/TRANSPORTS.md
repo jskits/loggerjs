@@ -110,8 +110,8 @@ transport 默认是可组合的。有些 transport 内部自带批量或本地�
 | `memoryTransport()` | 保存最近事件的环形缓冲区（`maxEvents`，默认 1000）。适合诊断接口和测试。 |
 | `testTransport()` | 面向断言的 sink：快照、调用统计、`waitFor()`/`waitForCount()`、可注入的失败。 |
 | `batchTransport(inner, options)` | 为任意 transport 添加批量、重试和可靠性控制（见下文）。 |
-| `retryTransport(inner, options)` | 为任意 transport 添加重试、指数退避、可选熔断和可选回退。 |
-| `fallbackTransport(primary, fallback)` | 主 transport 抛错时改发到备用 transport。 |
+| `retryTransport(inner, options)` | 为任意 transport 添加重试、指数退避、可选熔断和可选回退。`onDrop(event, reason)` 会报告它放弃的每个事件：`retry-exhausted`（没有回退）、`circuit-open`（没有回退）或 `fallback-failed`。 |
+| `fallbackTransport(primary, fallback, options)` | 主 transport 抛错时改发到备用 transport。`onDrop(event, "fallback-failed")` 会报告两个 transport 都没有接收的事件。 |
 
 ### `batchTransport` 可靠性选项
 
@@ -140,6 +140,8 @@ batchTransport(inner, {
 - 丢弃总会计入 logger meta（`transport.dropped.*`）；只有注册了 `onDrop` 回调时，才会为它把 record 转换成 event。
 - 失败的批次会重新放回队首；熔断器可以避免不断请求一个已经挂掉的端点。
 - `close()` 会最后尝试 flush 一次，然后停止 flush 定时器，并且无论成败都会关闭内部 transport。未能投递的记录以及关闭后写入的记录都计为 `transport.dropped.closed`；最后一次 flush 的错误仍会抛出。
+
+`retryTransport()` 和 `fallbackTransport()` 没有队列：放弃投递时，这次投递会 reject，事件计入 `transport.dropped.*`，并逐个交给 `onDrop`。从该包装层的角度看这是最终的丢弃；如果外层 transport 自己还会重试被 reject 的投递（例如 `batchTransport()` 会把失败的批次重新入队），这些事件之后仍可能送达。请直接使用 `batchTransport()` 自带的重试选项，而不要在其中嵌套 `retryTransport()`。
 
 ## Pretty / 开发体验（`@loggerjs/pretty`）
 

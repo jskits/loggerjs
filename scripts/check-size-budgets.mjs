@@ -9,8 +9,8 @@ import { rolldown } from "rolldown";
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
-  // Normalizing Error cause chains for native JSON codecs measures 97,248 raw and 21,437 gzip bytes.
-  ["@loggerjs/core", "packages/core/dist/index.js", 98_000, 21_600],
+  // Drop reporting in retryTransport and fallbackTransport measures 98,910 raw and 21,643 gzip bytes with shared chunks.
+  ["@loggerjs/core", "packages/core/dist/index.js", 99_500, 21_800],
   // Entry plus shared chunks after splitting shared modules into chunks measures 148,718 raw and 30,850 gzip bytes.
   ["@loggerjs/browser", "packages/browser/dist/index.js", 149_000, 31_000],
   // Entry plus shared chunks after splitting shared modules into chunks measures 81,039 raw and 16,041 gzip bytes.

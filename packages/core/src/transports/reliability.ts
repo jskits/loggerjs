@@ -7,6 +7,12 @@ export type TransportOperation = "write" | "writeBatch" | "log" | "logBatch";
 
 export type RetryFallbackReason = "primary-error" | "circuit-open";
 
+/**
+ * Why a reliability wrapper gave up on events: retries ran out with no
+ * fallback, the circuit was open with no fallback, or the fallback failed too.
+ */
+export type ReliabilityDropReason = "retry-exhausted" | "circuit-open" | "fallback-failed";
+
 export interface RetryTransportOptions {
   name?: string;
   maxRetries?: number;
@@ -22,11 +28,19 @@ export interface RetryTransportOptions {
     operation: TransportOperation;
     error?: unknown;
   }) => void;
+  /**
+   * Called once per event when the wrapper gives up on a delivery. The
+   * delivery still rejects. If an outer transport retries rejected deliveries
+   * itself, those events can still arrive later.
+   */
+  onDrop?: (event: LogEvent, reason: ReliabilityDropReason) => void;
 }
 
 export interface FallbackTransportOptions {
   name?: string;
   onFallback?: (detail: { operation: TransportOperation; error: unknown }) => void;
+  /** Called once per event when both the primary and the fallback fail. */
+  onDrop?: (event: LogEvent, reason: ReliabilityDropReason) => void;
 }
 
 type TransportPayload = LogRecord | LogRecord[] | LogEvent | LogEvent[];
@@ -111,6 +125,45 @@ async function deliver(
   }
 }
 
+function payloadEvents(
+  operation: TransportOperation,
+  payload: TransportPayload,
+  context: TransportContext,
+): LogEvent[] {
+  if (operation === "write") return [context.toEvent(payload as LogRecord)];
+  if (operation === "writeBatch") return recordsToEvents(payload as LogRecord[], context);
+  if (operation === "log") return [payload as LogEvent];
+  return payload as LogEvent[];
+}
+
+// Counts given-up events like batchTransport does and hands each one to the
+// caller's onDrop, without letting a throwing callback replace the delivery
+// error the caller is about to see.
+function reportDrop(
+  transportName: string,
+  operation: TransportOperation,
+  payload: TransportPayload,
+  context: TransportContext,
+  reason: ReliabilityDropReason,
+  onDrop: ((event: LogEvent, reason: ReliabilityDropReason) => void) | undefined,
+) {
+  const events = payloadEvents(operation, payload, context);
+  incrementLoggerMetaCounter("transport.dropped", events.length);
+  incrementLoggerMetaCounter(`transport.dropped.${reason}`, events.length);
+  if (!onDrop) return;
+  for (const event of events) {
+    try {
+      onDrop(event, reason);
+    } catch (error) {
+      context.reportInternalError(error, {
+        phase: "transport",
+        transport: transportName,
+        operation: "onDrop",
+      });
+    }
+  }
+}
+
 // Tracks deliveries that have started but not settled, so flush() and close()
 // on a wrapper wait for them even when called directly rather than through a
 // logger.
@@ -165,7 +218,12 @@ export function fallbackTransport(
     } catch (error) {
       options.onFallback?.({ operation, error });
       reportFallback(context, primary.name ?? transportName, operation, fallback, error);
-      await deliver(fallback, operation, payload, context);
+      try {
+        await deliver(fallback, operation, payload, context);
+      } catch (fallbackError) {
+        reportDrop(transportName, operation, payload, context, "fallback-failed", options.onDrop);
+        throw fallbackError;
+      }
     }
   };
 
@@ -228,6 +286,8 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
     error?: unknown,
   ) => {
     if (!fallback) {
+      const dropReason = reason === "circuit-open" ? "circuit-open" : "retry-exhausted";
+      reportDrop(transportName, operation, payload, context, dropReason, options.onDrop);
       throw error ?? new Error(`loggerjs transport circuit is open: ${transportName}`);
     }
     incrementLoggerMetaCounter("transport.fallback");
@@ -240,7 +300,12 @@ export function retryTransport(inner: Transport, options: RetryTransportOptions 
         fallback: fallback.name,
       });
     }
-    await deliver(fallback, operation, payload, context);
+    try {
+      await deliver(fallback, operation, payload, context);
+    } catch (fallbackError) {
+      reportDrop(transportName, operation, payload, context, "fallback-failed", options.onDrop);
+      throw fallbackError;
+    }
   };
 
   const deliverWithRetry = async (
