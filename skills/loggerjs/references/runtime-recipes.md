@@ -35,10 +35,10 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
   createLogger,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor, sampleProcessor } from "@loggerjs/processors";
 
 export const logger = createLogger({

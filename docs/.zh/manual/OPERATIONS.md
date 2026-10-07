@@ -17,7 +17,7 @@
 示例：
 
 ```ts
-import { captureFetchIntegration } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const processors = [redactProcessor({ keys: ["password", "token", /secret/i] })];

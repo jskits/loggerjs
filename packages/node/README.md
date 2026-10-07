@@ -30,12 +30,12 @@ import {
   captureProcessIntegration,
   createLogger,
   installAsyncLocalStorageContext,
-  nodeCompressionPayloadTransform,
-  nodeFetchIntegration,
-  nodeHttpClientIntegration,
   nodeHttpTransport,
   stdoutTransport,
 } from "@loggerjs/node";
+import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
+import { nodeFetchIntegration } from "@loggerjs/node/integration-fetch";
+import { nodeHttpClientIntegration } from "@loggerjs/node/integration-http-client";
 
 installAsyncLocalStorageContext(); // once at startup — context follows async execution
 
@@ -67,7 +67,8 @@ fastify.register(fastifyIntegration(logger, { captureAll: true })); // Fastify p
 ### Other destinations
 
 ```ts
-import { nodeSyslogTransport, rotatingFileTransport } from "@loggerjs/node";
+import { rotatingFileTransport } from "@loggerjs/node";
+import { nodeSyslogTransport } from "@loggerjs/node/transport-syslog";
 
 nodeSyslogTransport({ host: "127.0.0.1", port: 514, facility: 16 });
 rotatingFileTransport({ path: "audit.log", maxBytes: 10 * 1024 * 1024 });

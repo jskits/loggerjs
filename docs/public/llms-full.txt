@@ -181,11 +181,11 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
   createLogger,
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({
@@ -1069,7 +1069,8 @@ File and stream destinations settle `flush()` and `close()` with the stream erro
 `nodeHttpTransport()` accepts `transformPayload` for post-codec wire transforms. Use `nodeCompressionPayloadTransform()` for gzip, brotli, or deflate:
 
 ```ts
-import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
+import { nodeHttpTransport } from "@loggerjs/node";
+import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
 
 nodeHttpTransport({
   url: "https://collector.example/logs",
@@ -1114,7 +1115,8 @@ For Node runtime diagnostics, call `installLoggerDiagnosticsChannel()` from `@lo
 `browserHttpTransport()` also accepts `transformPayload`. Use `browserCompressionPayloadTransform()` for browsers with `CompressionStream`:
 
 ```ts
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -1170,7 +1172,8 @@ import {
   composePayloadTransforms,
   encryptionPayloadTransform,
 } from "@loggerjs/core/payload-transforms";
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -1874,12 +1877,12 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
-  captureWebVitalsIntegration,
   createLogger,
   indexedDbBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
+import { captureWebVitalsIntegration } from "@loggerjs/browser/integration-web-vitals";
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const offlineQueue = indexedDbBrowserHttpOfflineQueue({
@@ -2205,7 +2208,7 @@ Recommended defaults:
 Example:
 
 ```ts
-import { captureFetchIntegration } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const processors = [redactProcessor({ keys: ["password", "token", /secret/i] })];
@@ -2994,6 +2997,52 @@ The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports be
 
 The `Integration`, `IntegrationSetupContext`, `Transport`, `Codec`, and other pipeline types stay in the root.
 
+## Browser and Node Root Imports in 1.0
+
+In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and the stable components: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations in the browser; `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, process capture, and AsyncLocalStorage context in Node. Since 0.7 their other root exports are marked `@deprecated`. Import them from their subpaths, together with their option types:
+
+| Browser exports | Import from |
+| --- | --- |
+| `browserBroadcastChannelTransport` | `@loggerjs/browser/transport-broadcast-channel` |
+| `browserCompressionPayloadTransform` | `@loggerjs/browser/payload-transforms` |
+| `browserServiceWorkerTransport` | `@loggerjs/browser/transport-service-worker` |
+| `browserWebSocketTransport` | `@loggerjs/browser/transport-websocket` |
+| `createLogZipBlob`, `downloadBlob`, `exportLogsToZip` | `@loggerjs/browser/export-zip` |
+| `captureFetchIntegration` | `@loggerjs/browser/integration-fetch` |
+| `captureXHRIntegration` | `@loggerjs/browser/integration-xhr` |
+| `captureFrameworkErrorsIntegration` | `@loggerjs/browser/integration-framework-errors` |
+| `nextRouterIntegration`, `nuxtRouterIntegration`, `reactRouterIntegration`, `vueRouterIntegration` | `@loggerjs/browser/integration-framework-routers` |
+| `captureReportingIntegration` | `@loggerjs/browser/integration-reporting` |
+| `captureRouterIntegration` | `@loggerjs/browser/integration-router` |
+| `captureRuntimeHostIntegration` | `@loggerjs/browser/integration-runtime-host` |
+| `captureServiceWorkerIntegration` | `@loggerjs/browser/integration-service-worker` |
+| `captureUserActionsIntegration` | `@loggerjs/browser/integration-user-actions` |
+| `captureWebSocketIntegration` | `@loggerjs/browser/integration-websocket` |
+| `captureWebVitalsIntegration` | `@loggerjs/browser/integration-web-vitals` |
+| `capturePerformanceIntegration`, `normalizeBrowserPerformanceEntry` | `@loggerjs/browser/integration-performance` |
+
+| Node exports | Import from |
+| --- | --- |
+| `nodeCompressionPayloadTransform` | `@loggerjs/node/payload-transforms` |
+| `formatSyslogMessage`, `nodeSyslogTransport` | `@loggerjs/node/transport-syslog` |
+| `workerTransport` | `@loggerjs/node/transport-worker` |
+| `bullMqIntegration` | `@loggerjs/node/integration-bullmq` |
+| `captureCliIntegration` | `@loggerjs/node/integration-cli` |
+| `databaseIntegration` | `@loggerjs/node/integration-database` |
+| `expressIntegration` | `@loggerjs/node/integration-express` |
+| `fastifyIntegration` | `@loggerjs/node/integration-fastify` |
+| `hapiIntegration` | `@loggerjs/node/integration-hapi` |
+| `koaIntegration` | `@loggerjs/node/integration-koa` |
+| `nestMiddlewareIntegration` | `@loggerjs/node/integration-nest` |
+| `nodeFetchIntegration` | `@loggerjs/node/integration-fetch` |
+| `nodeHttpClientIntegration` | `@loggerjs/node/integration-http-client` |
+| `prismaIntegration` | `@loggerjs/node/integration-prisma` |
+| `queueIntegration` | `@loggerjs/node/integration-queue` |
+| `redisIntegration` | `@loggerjs/node/integration-redis` |
+| `serverlessIntegration` | `@loggerjs/node/integration-serverless` |
+| `diagnosticsChannelIntegration` | `@loggerjs/node/integration-diagnostics` |
+| `installLoggerDiagnosticsChannel` | `@loggerjs/node/logger-diagnostics` |
+
 ## Package Imports
 
 Root package imports work everywhere:
@@ -3066,7 +3115,7 @@ Stable semantics include:
 Compatible exports stay documented and tested, but they are not frozen enough to be stable v1 candidates yet. Current compatible areas include:
 
 - Core modules that leave the root in 1.0: `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`. Their `@loggerjs/core` root re-exports are deprecated since 0.7 and removed in 1.0; import them from these subpaths. `pnpm verify:api-stability` only lets a root re-export less stable modules through deprecated specifiers.
-- Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Use the stable subpaths above when you need a v1 candidate compatibility boundary.
+- Browser and Node root packages (`@loggerjs/browser`, `@loggerjs/node`) are compatible convenience aggregators because they re-export both stable and compatible components. Since 0.7 their re-exports of compatible components are deprecated; in 1.0 the roots export only the core kernel and the stable browser or Node components and become stable. Import compatible components from their subpaths (see MIGRATION).
 - Browser secondary transports and collectors: BroadcastChannel, service worker, WebSocket, framework errors, framework routers, generic router capture, ReportingObserver, runtime host, service worker messages, user actions, and WebSocket capture.
 - Browser fetch/XHR capture, web vitals, performance entries, compression payload transforms, and support ZIP export.
 - Node syslog and worker transports, compression payload transforms, outgoing fetch/HTTP client capture, diagnostics_channel capture, and logger diagnostics.
@@ -3877,10 +3926,10 @@ Browser app:
 import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
-  captureFetchIntegration,
   createLogger,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 export const logger = createLogger({
@@ -4035,10 +4084,10 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
   createLogger,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor, sampleProcessor } from "@loggerjs/processors";
 
 export const logger = createLogger({

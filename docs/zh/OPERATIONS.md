@@ -23,7 +23,7 @@ description: "隐私、离线重放、崩溃路径、可靠性和 trace 关联�
 示例：
 
 ```ts
-import { captureFetchIntegration } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const processors = [redactProcessor({ keys: ["password", "token", /secret/i] })];

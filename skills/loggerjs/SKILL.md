@@ -90,10 +90,10 @@ Browser app:
 import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
-  captureFetchIntegration,
   createLogger,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 export const logger = createLogger({

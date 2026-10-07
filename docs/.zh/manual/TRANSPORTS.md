@@ -162,7 +162,8 @@ pretty transport 是显示用的 sink，不做批量、不重试、不持久化�
 `nodeHttpTransport()` 接受 `transformPayload`，在 codec 编码之后对线上 payload 做转换。gzip、brotli 或 deflate 压缩使用 `nodeCompressionPayloadTransform()`：
 
 ```ts
-import { nodeCompressionPayloadTransform, nodeHttpTransport } from "@loggerjs/node";
+import { nodeHttpTransport } from "@loggerjs/node";
+import { nodeCompressionPayloadTransform } from "@loggerjs/node/payload-transforms";
 
 nodeHttpTransport({
   url: "https://collector.example/logs",
@@ -207,7 +208,8 @@ worker 生命周期会更新标准的 transport 指标 `transport.ready.<name>` 
 `browserHttpTransport()` 同样接受 `transformPayload`。在支持 `CompressionStream` 的浏览器中使用 `browserCompressionPayloadTransform()`：
 
 ```ts
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",
@@ -263,7 +265,8 @@ import {
   composePayloadTransforms,
   encryptionPayloadTransform,
 } from "@loggerjs/core/payload-transforms";
-import { browserCompressionPayloadTransform, browserHttpTransport } from "@loggerjs/browser";
+import { browserHttpTransport } from "@loggerjs/browser";
+import { browserCompressionPayloadTransform } from "@loggerjs/browser/payload-transforms";
 
 browserHttpTransport({
   url: "/api/logs",

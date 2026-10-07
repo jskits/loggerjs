@@ -17,12 +17,12 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
-  captureWebVitalsIntegration,
   createLogger,
   indexedDbBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
+import { captureWebVitalsIntegration } from "@loggerjs/browser/integration-web-vitals";
 import { privacyGuardProcessor, redactProcessor } from "@loggerjs/processors";
 
 const offlineQueue = indexedDbBrowserHttpOfflineQueue({

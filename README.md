@@ -173,11 +173,11 @@ import {
   browserHttpTransport,
   captureBrowserErrorsIntegration,
   captureConsoleIntegration,
-  captureFetchIntegration,
   createLogger,
   memoryBrowserHttpOfflineQueue,
   pageLifecycleIntegration,
 } from "@loggerjs/browser";
+import { captureFetchIntegration } from "@loggerjs/browser/integration-fetch";
 import { redactProcessor } from "@loggerjs/processors";
 
 const logger = createLogger({

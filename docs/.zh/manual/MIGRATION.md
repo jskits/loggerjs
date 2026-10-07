@@ -177,6 +177,52 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 `Integration`、`IntegrationSetupContext`、`Transport`、`Codec` 等管线类型仍留在根入口。
 
+## 1.0 中 browser 和 node 根入口的导入
+
+1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。从 0.7 开始，根入口的其他导出已标为 `@deprecated`。请连同它们的选项类型一起改从子路径导入：
+
+| 浏览器端导出 | 导入路径 |
+| --- | --- |
+| `browserBroadcastChannelTransport` | `@loggerjs/browser/transport-broadcast-channel` |
+| `browserCompressionPayloadTransform` | `@loggerjs/browser/payload-transforms` |
+| `browserServiceWorkerTransport` | `@loggerjs/browser/transport-service-worker` |
+| `browserWebSocketTransport` | `@loggerjs/browser/transport-websocket` |
+| `createLogZipBlob`, `downloadBlob`, `exportLogsToZip` | `@loggerjs/browser/export-zip` |
+| `captureFetchIntegration` | `@loggerjs/browser/integration-fetch` |
+| `captureXHRIntegration` | `@loggerjs/browser/integration-xhr` |
+| `captureFrameworkErrorsIntegration` | `@loggerjs/browser/integration-framework-errors` |
+| `nextRouterIntegration`, `nuxtRouterIntegration`, `reactRouterIntegration`, `vueRouterIntegration` | `@loggerjs/browser/integration-framework-routers` |
+| `captureReportingIntegration` | `@loggerjs/browser/integration-reporting` |
+| `captureRouterIntegration` | `@loggerjs/browser/integration-router` |
+| `captureRuntimeHostIntegration` | `@loggerjs/browser/integration-runtime-host` |
+| `captureServiceWorkerIntegration` | `@loggerjs/browser/integration-service-worker` |
+| `captureUserActionsIntegration` | `@loggerjs/browser/integration-user-actions` |
+| `captureWebSocketIntegration` | `@loggerjs/browser/integration-websocket` |
+| `captureWebVitalsIntegration` | `@loggerjs/browser/integration-web-vitals` |
+| `capturePerformanceIntegration`, `normalizeBrowserPerformanceEntry` | `@loggerjs/browser/integration-performance` |
+
+| Node 端导出 | 导入路径 |
+| --- | --- |
+| `nodeCompressionPayloadTransform` | `@loggerjs/node/payload-transforms` |
+| `formatSyslogMessage`, `nodeSyslogTransport` | `@loggerjs/node/transport-syslog` |
+| `workerTransport` | `@loggerjs/node/transport-worker` |
+| `bullMqIntegration` | `@loggerjs/node/integration-bullmq` |
+| `captureCliIntegration` | `@loggerjs/node/integration-cli` |
+| `databaseIntegration` | `@loggerjs/node/integration-database` |
+| `expressIntegration` | `@loggerjs/node/integration-express` |
+| `fastifyIntegration` | `@loggerjs/node/integration-fastify` |
+| `hapiIntegration` | `@loggerjs/node/integration-hapi` |
+| `koaIntegration` | `@loggerjs/node/integration-koa` |
+| `nestMiddlewareIntegration` | `@loggerjs/node/integration-nest` |
+| `nodeFetchIntegration` | `@loggerjs/node/integration-fetch` |
+| `nodeHttpClientIntegration` | `@loggerjs/node/integration-http-client` |
+| `prismaIntegration` | `@loggerjs/node/integration-prisma` |
+| `queueIntegration` | `@loggerjs/node/integration-queue` |
+| `redisIntegration` | `@loggerjs/node/integration-redis` |
+| `serverlessIntegration` | `@loggerjs/node/integration-serverless` |
+| `diagnosticsChannelIntegration` | `@loggerjs/node/integration-diagnostics` |
+| `installLoggerDiagnosticsChannel` | `@loggerjs/node/logger-diagnostics` |
+
 ## 包导入
 
 根入口在任何环境都可用：
