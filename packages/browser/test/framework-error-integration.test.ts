@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { captureFrameworkErrorsIntegration } from "../src";
+import { captureFrameworkErrorsIntegration } from "../src/framework-error-integration";
 
 function createLogger(): LoggerLike {
   return {

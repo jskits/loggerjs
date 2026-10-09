@@ -21,9 +21,9 @@ Transport stability describes the public API promise, not an absolute delivery g
 
 | Level | Meaning |
 | --- | --- |
-| Stable | Intended for v1-compatible application use. Option names and high-level semantics are protected by API reports, tests, and docs. |
-| Compatible | Public and tested, but exact runtime behavior or message shape may still be tuned before v1. Use when the documented caveats fit your deployment. |
-| Experimental | Public and tested, but not part of the v1 compatibility promise yet. Names, options, payload mapping, or batching guidance may change before v1. |
+| Stable | Covered by the 1.x compatibility promise. Option names and high-level semantics are protected by API reports, tests, and docs. |
+| Compatible | Public and tested, but exact runtime behavior or message shape may still be tuned after a deprecation in an earlier minor. Use when the documented caveats fit your deployment. |
+| Experimental | Public and tested, with the least production use. Names, options, payload mapping, or batching guidance may change after a deprecation in an earlier minor. |
 | Runtime-dependent | Public API is stable, but practical reliability depends heavily on browser, worker, storage, network, SDK, or database behavior outside LoggerJS. Validate in your target environment. |
 | Test-only | Built for assertions and fixtures, not production delivery. |
 
@@ -37,7 +37,7 @@ Transport stability describes the public API promise, not an absolute delivery g
 | `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | Production local sinks with drain and crash-path behavior. |
 | `rotatingFileTransport()` | Stable | Local size rotation; use one writer process per file. |
 | `nodeHttpTransport()` | Stable | Self-wrapped batched HTTP delivery with shared reliability options. |
-| `otlpHttpTransport()` | Experimental | OTLP mapping is public and tested, but observability adapter packages are not frozen before v1. |
+| `otlpHttpTransport()` | Experimental | OTLP mapping is public and tested, but observability adapter packages have had the least production use. |
 | `nodeSyslogTransport()` | Compatible | Wire formatting is tested, but the transport is outside the v1 kernel until more deployments validate it; UDP/TCP reliability follows syslog transport semantics. |
 | `workerTransport()` | Compatible | Message protocol is public, but ready/ack/fallback lifecycle tuning may evolve. |
 | `browserHttpTransport()` | Stable | Primary browser remote transport; pagehide beacon remains best effort. |
@@ -46,9 +46,9 @@ Transport stability describes the public API promise, not an absolute delivery g
 | `browserWebSocketTransport()` | Compatible | Useful for live/debug channels; reconnection and final durability are caller-owned. |
 | `browserServiceWorkerTransport()` | Runtime-dependent | API is public, but delivery depends on service worker registration, activation, and lifetime. |
 | `browserBroadcastChannelTransport()` | Compatible | Same-origin tab fan-out is intentionally lossy and receiver-dependent. |
-| Datadog / Elastic / Loki / CloudWatch transports | Experimental | Wire payloads are tested, but vendor packages are not frozen before v1; production durability requires batching/retry around raw transports. |
-| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | Adapter contracts are public and tested, but SDK/provider mapping may still change before v1. |
-| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | Adapter APIs are public and tested, but driver transaction and schema expectations need more design-partner validation before v1. |
+| Datadog / Elastic / Loki / CloudWatch transports | Experimental | Wire payloads are tested, but vendor packages have had the least production use; production durability requires batching/retry around raw transports. |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | Adapter contracts are public and tested, but SDK/provider mapping may still change after a deprecation. |
+| `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | Adapter APIs are public and tested, but driver transaction and schema expectations need more design-partner validation. |
 
 ## Import Boundaries
 

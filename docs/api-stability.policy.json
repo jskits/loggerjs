@@ -11,6 +11,7 @@
       "./events"
     ],
     "@loggerjs/browser": [
+      ".",
       "./transport-http",
       "./offline-indexeddb",
       "./transport-indexeddb",
@@ -21,6 +22,7 @@
       "./integration-page-lifecycle"
     ],
     "@loggerjs/node": [
+      ".",
       "./transport-http",
       "./transport-file",
       "./transport-rotating-file",
@@ -32,7 +34,6 @@
   },
   "compatible": {
     "@loggerjs/browser": [
-      ".",
       "./transport-broadcast-channel",
       "./transport-service-worker",
       "./transport-websocket",
@@ -52,7 +53,6 @@
       "./integration-performance"
     ],
     "@loggerjs/node": [
-      ".",
       "./integration-cli",
       "./integration-koa",
       "./integration-nest",

@@ -1,6 +1,6 @@
 # Governance
 
-LoggerJS is currently maintained by the project owner with CODEOWNERS review boundaries. The goal before 1.0 is to make compatibility, security, and release decisions explicit enough for additional maintainers to participate safely.
+LoggerJS is maintained with CODEOWNERS review boundaries. Compatibility, security, and release decisions are written down so that additional maintainers can participate safely.
 
 ## Roles
 
@@ -18,7 +18,7 @@ LoggerJS is currently maintained by the project owner with CODEOWNERS review bou
 
 ## Current Expansion Policy
 
-LoggerJS is in a stabilization phase before v1. Prefer hardening existing transports, integrations, processors, docs, benchmarks, and runtime validation over adding more built-in components. A new built-in component should clear all of these gates before merge:
+LoggerJS favors stabilization over surface growth. Prefer hardening existing transports, integrations, processors, docs, benchmarks, and runtime validation over adding more built-in components. A new built-in component should clear all of these gates before merge:
 
 - it addresses a production use case not already covered by composition;
 - it stays in a runtime-appropriate package or a separate adapter package;
@@ -28,7 +28,7 @@ LoggerJS is in a stabilization phase before v1. Prefer hardening existing transp
 
 ## Releases
 
-Releases are versioned through Changesets and published by the maintainer. While LoggerJS is pre-1.0, breaking changes may still happen, but each release should document migration impact in package changelogs or release notes.
+Releases are versioned through Changesets and published by the maintainer. Stable APIs follow semantic versioning as described in `docs/API-STABILITY.md`, and every release documents migration impact in package changelogs or release notes.
 
 ## Adding Maintainers
 
@@ -51,7 +51,9 @@ A 1.0.0 release is a maintenance promise, not a feature milestone. Before taggin
 - **Failure evidence.** The failure-injection suites, the lifecycle model tests, the browser upgrade tests, and a 60-minute run of the `Soak` workflow pass on the release commit, and the Windows CI job is green.
 - **Node support.** `engines.node` and the lowest `ci.yml` node-compat version name a Node line that is still maintained upstream at release time.
 
-Support commitments after 1.0.0:
+**Status at 1.0.0.** The maintainer released 1.0.0 before two of these items were met. No design-partner project had run the kernel in production for eight weeks, so the stable set was chosen from the codebase rather than from observed usage. There is no second maintainer with npm publish access yet, so releases and security fixes still depend on one person. Both remain open goals. The failure-evidence and Node-support items were met on the release commit.
+
+Support commitments:
 
 - **Release lines.** The latest 1.x minor receives all fixes. The previous minor receives security and data-loss fixes for six months after the next minor ships.
 - **0.x.** When 1.0.0 ships, the last 0.x minor receives security fixes for three months. Earlier 0.x minors receive none.

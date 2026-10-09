@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@loggerjs/core": "workspace:*",
     "@loggerjs/node": "workspace:*",
     "@loggerjs/otel": "workspace:*"
   },

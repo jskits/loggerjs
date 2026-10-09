@@ -14,7 +14,7 @@ An Elasticsearch bulk transport for [LoggerJS](../../README.md). It builds `_bul
 ## Install
 
 ```bash
-npm install @loggerjs/elastic
+npm install @loggerjs/core @loggerjs/elastic
 ```
 
 ## Usage

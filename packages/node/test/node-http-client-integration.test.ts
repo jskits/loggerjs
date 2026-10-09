@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { nodeHttpClientIntegration, type NodeHttpModuleLike } from "../src";
+import {
+  nodeHttpClientIntegration,
+  type NodeHttpModuleLike,
+} from "../src/node-http-client-integration";
 
 function createLogger(): LoggerLike {
   return {

@@ -20,15 +20,15 @@ Integration stability describes the public setup/options contract and teardown b
 
 | Level | Meaning |
 | --- | --- |
-| Stable | Intended for v1-compatible application use. Option names, setup/teardown behavior, and high-level captured fields are protected. |
-| Compatible | Public and tested, but exact field shape or framework/runtime edge handling may still be refined before v1. |
+| Stable | Covered by the 1.x compatibility promise. Option names, setup/teardown behavior, and high-level captured fields are protected. |
+| Compatible | Public and tested, but exact field shape or framework/runtime edge handling may still be refined after a deprecation in an earlier minor. |
 | Runtime-dependent | Public API is stable, but the signal itself depends on platform support, browser policy, framework hooks, or deployment lifecycle behavior. |
 
 | Integration | Stability | Why |
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | Core browser capture primitive with loop prevention and teardown coverage. |
 | `captureBrowserErrorsIntegration()` | Stable | Standard browser error and rejection capture; CSP details vary by browser. |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | Request/response capture has explicit sanitization hooks, but the captured fields may still be refined before v1. |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | Request/response capture has explicit sanitization hooks, but the captured fields may still be refined after a deprecation. |
 | `pageLifecycleIntegration()` | Runtime-dependent | API is stable, but pagehide/visibility timing is browser-controlled and best effort. |
 | `captureWebVitalsIntegration()` | Runtime-dependent | Depends on PerformanceObserver and browser metric support. |
 | `capturePerformanceIntegration()` | Runtime-dependent | Entry availability differs by browser, permission policy, and page lifecycle. |

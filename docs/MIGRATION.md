@@ -159,9 +159,20 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 When you write a custom transport, implement `write`/`writeBatch` to receive `LogRecord`s on the fast path, or `log`/`logBatch` to receive projected `LogEvent`s. Wrap anything that does network I/O in `batchTransport()` for queue bounds, retry, byte limits, concurrency, and circuit breaking. See [TRANSPORTS.md](TRANSPORTS.md#writing-a-custom-transport).
 
-## Imports Leaving the Core Root in 1.0
+## Upgrading from 0.7 to 1.0
 
-The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports below still work from the root but are marked `@deprecated`, so editors flag them; import them from their subpath instead:
+1.0 removes what 0.7 deprecated and tightens the install requirements. Upgrade to the latest 0.7 first and fix the deprecation warnings your editor or `tsc` reports; every export 1.0 removes is marked `@deprecated` there. Then:
+
+1. **Use Node 22 or later.** Every package declares `engines.node: ">=22.0.0"`.
+2. **Install `@loggerjs/core` yourself.** Every other package takes it as a peer dependency with `^1.0.0`, so an application has exactly one copy, for example `npm install @loggerjs/core @loggerjs/node`. npm and pnpm add a missing peer automatically; Yarn does not. A library that builds on LoggerJS should declare `@loggerjs/core` as a peer dependency too.
+3. **Import moved exports from their subpaths.** The core root exports only the kernel, and the browser and Node roots export the kernel plus their stable components. The two sections below list the subpath for every removed export.
+4. **Upgrade every `@loggerjs/*` package at once.** All of them are 1.0.0. A 0.7 package depends on core 0.7 directly, so mixing it with 1.0 packages installs a second copy of core.
+
+[API-STABILITY](API-STABILITY.md) describes what 1.0 promises for each export.
+
+## Imports Removed from the Core Root in 1.0
+
+In 1.0 the `@loggerjs/core` root exports only the kernel. The exports below were deprecated in 0.7 and are no longer available from the root; import them from their subpath:
 
 | Exports | Import from |
 | --- | --- |
@@ -177,9 +188,9 @@ The `@loggerjs/core` root keeps only the kernel in 1.0. Since 0.7 the exports be
 
 The `Integration`, `IntegrationSetupContext`, `Transport`, `Codec`, and other pipeline types stay in the root.
 
-## Browser and Node Root Imports in 1.0
+## Browser and Node Root Imports Removed in 1.0
 
-In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and the stable components: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations in the browser; `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, process capture, and AsyncLocalStorage context in Node. Since 0.7 their other root exports are marked `@deprecated`. Import them from their subpaths, together with their option types:
+In 1.0 the `@loggerjs/browser` and `@loggerjs/node` roots export only the core kernel and the stable components: `browserHttpTransport`, the IndexedDB stores, `offlineFirstTransport`, and the console, error, context, and page-lifecycle integrations in the browser; `stdoutTransport`, `stderrTransport`, `fileTransport`, `rotatingFileTransport`, `nodeHttpTransport`, process capture, and AsyncLocalStorage context in Node. Their other root exports were deprecated in 0.7 and are removed. Import them from their subpaths, together with their option types:
 
 | Browser exports | Import from |
 | --- | --- |

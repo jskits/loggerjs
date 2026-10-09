@@ -153,14 +153,15 @@ for (const status of Object.keys(policy)) {
   if (!statuses.includes(status)) addFailure(`Unknown policy status "${status}"`);
 }
 
+// The page keeps one section per status in the policy file.
 for (const requiredText of [
   "api-stability.policy.json",
-  "Stable v1 Candidate",
-  "Compatible Public Surface",
-  "Experimental Before v1",
+  "\n## Stable\n",
+  "\n## Compatible\n",
+  "\n## Experimental\n",
 ]) {
   if (!docs.includes(requiredText))
-    addFailure(`docs/API-STABILITY.md must mention ${requiredText}`);
+    addFailure(`docs/API-STABILITY.md must contain ${JSON.stringify(requiredText)}`);
 }
 
 if (failures.length > 0) {

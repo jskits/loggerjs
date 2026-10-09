@@ -8,7 +8,7 @@ import {
   installLoggerDiagnosticsChannel,
   type LoggerDiagnosticsChannelModule,
   type LoggerDiagnosticsChannelPublisher,
-} from "../src";
+} from "../src/logger-diagnostics";
 
 function createDiagnosticsChannelModule(hasSubscribers = true): {
   diagnosticsChannel: LoggerDiagnosticsChannelModule;

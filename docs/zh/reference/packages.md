@@ -14,18 +14,18 @@ LoggerJS 以一组小包发布：无依赖 core 负责公共模型，平台包�
 | 包 | 说明 | Export subpaths | Runtime dependencies |
 | --- | --- | ---: | --- |
 | [`@loggerjs/core`](https://github.com/jskits/loggerjs/tree/main/packages/core) | Tiny isomorphic structured logger core for loggerjs. | 17 | None |
-| [`@loggerjs/browser`](https://github.com/jskits/loggerjs/tree/main/packages/browser) | Browser transports and integrations for loggerjs. | 26 | `@loggerjs/core` |
-| [`@loggerjs/node`](https://github.com/jskits/loggerjs/tree/main/packages/node) | Node.js transports and integrations for loggerjs. | 26 | `@loggerjs/core` |
-| [`@loggerjs/pretty`](https://github.com/jskits/loggerjs/tree/main/packages/pretty) | Pretty console and terminal output helpers for loggerjs. | 4 | `@loggerjs/core` |
-| [`@loggerjs/processors`](https://github.com/jskits/loggerjs/tree/main/packages/processors) | Reusable loggerjs event processors. | 1 | `@loggerjs/core` |
-| [`@loggerjs/codecs`](https://github.com/jskits/loggerjs/tree/main/packages/codecs) | Serialization codecs for loggerjs. | 1 | `@loggerjs/core`, `msgpackr` |
-| [`@loggerjs/otel`](https://github.com/jskits/loggerjs/tree/main/packages/otel) | OpenTelemetry mapping and OTLP JSON transport for loggerjs. | 5 | `@loggerjs/core` |
-| [`@loggerjs/sentry`](https://github.com/jskits/loggerjs/tree/main/packages/sentry) | Sentry adapter transport for loggerjs. | 2 | `@loggerjs/core` |
-| [`@loggerjs/datadog`](https://github.com/jskits/loggerjs/tree/main/packages/datadog) | Datadog Logs transport for loggerjs. | 2 | `@loggerjs/core` |
-| [`@loggerjs/elastic`](https://github.com/jskits/loggerjs/tree/main/packages/elastic) | Elasticsearch bulk transport for loggerjs. | 2 | `@loggerjs/core` |
-| [`@loggerjs/loki`](https://github.com/jskits/loggerjs/tree/main/packages/loki) | Grafana Loki transport for loggerjs. | 2 | `@loggerjs/core` |
-| [`@loggerjs/cloudwatch`](https://github.com/jskits/loggerjs/tree/main/packages/cloudwatch) | Amazon CloudWatch Logs transport for loggerjs. | 2 | `@loggerjs/core` |
-| [`@loggerjs/database`](https://github.com/jskits/loggerjs/tree/main/packages/database) | SQLite, PostgreSQL, and custom database transports for loggerjs. | 4 | `@loggerjs/core` |
+| [`@loggerjs/browser`](https://github.com/jskits/loggerjs/tree/main/packages/browser) | Browser transports and integrations for loggerjs. | 26 | None |
+| [`@loggerjs/node`](https://github.com/jskits/loggerjs/tree/main/packages/node) | Node.js transports and integrations for loggerjs. | 26 | None |
+| [`@loggerjs/pretty`](https://github.com/jskits/loggerjs/tree/main/packages/pretty) | Pretty console and terminal output helpers for loggerjs. | 4 | None |
+| [`@loggerjs/processors`](https://github.com/jskits/loggerjs/tree/main/packages/processors) | Reusable loggerjs event processors. | 1 | None |
+| [`@loggerjs/codecs`](https://github.com/jskits/loggerjs/tree/main/packages/codecs) | Serialization codecs for loggerjs. | 1 | `msgpackr` |
+| [`@loggerjs/otel`](https://github.com/jskits/loggerjs/tree/main/packages/otel) | OpenTelemetry mapping and OTLP JSON transport for loggerjs. | 5 | None |
+| [`@loggerjs/sentry`](https://github.com/jskits/loggerjs/tree/main/packages/sentry) | Sentry adapter transport for loggerjs. | 2 | None |
+| [`@loggerjs/datadog`](https://github.com/jskits/loggerjs/tree/main/packages/datadog) | Datadog Logs transport for loggerjs. | 2 | None |
+| [`@loggerjs/elastic`](https://github.com/jskits/loggerjs/tree/main/packages/elastic) | Elasticsearch bulk transport for loggerjs. | 2 | None |
+| [`@loggerjs/loki`](https://github.com/jskits/loggerjs/tree/main/packages/loki) | Grafana Loki transport for loggerjs. | 2 | None |
+| [`@loggerjs/cloudwatch`](https://github.com/jskits/loggerjs/tree/main/packages/cloudwatch) | Amazon CloudWatch Logs transport for loggerjs. | 2 | None |
+| [`@loggerjs/database`](https://github.com/jskits/loggerjs/tree/main/packages/database) | SQLite, PostgreSQL, and custom database transports for loggerjs. | 4 | None |
 
 ## @loggerjs/core
 
@@ -47,7 +47,7 @@ Browser transports and integrations for loggerjs.
 - README：[packages/browser/README.md](https://github.com/jskits/loggerjs/blob/main/packages/browser/README.md)
 - API 报告：[@loggerjs/browser](/zh/reference/api/browser)
 - Export subpaths：`.`, `./transport-http`, `./payload-transforms`, `./transport-broadcast-channel`, `./transport-service-worker`, `./transport-websocket`, `./offline-indexeddb`, `./transport-indexeddb`, `./offline-first-transport`, `./export-zip`, `./integration-console`, `./integration-context`, `./integration-errors`, `./integration-fetch`, `./integration-xhr`, `./integration-framework-errors`, `./integration-framework-routers`, `./integration-reporting`, `./integration-router`, `./integration-runtime-host`, `./integration-service-worker`, `./integration-user-actions`, `./integration-websocket`, `./integration-web-vitals`, `./integration-performance`, `./integration-page-lifecycle`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/node
 
@@ -58,7 +58,7 @@ Node.js transports and integrations for loggerjs.
 - README：[packages/node/README.md](https://github.com/jskits/loggerjs/blob/main/packages/node/README.md)
 - API 报告：[@loggerjs/node](/zh/reference/api/node)
 - Export subpaths：`.`, `./transport-http`, `./payload-transforms`, `./transport-file`, `./transport-rotating-file`, `./transport-stdout`, `./transport-syslog`, `./transport-worker`, `./integration-process`, `./integration-cli`, `./integration-koa`, `./integration-nest`, `./integration-hapi`, `./integration-prisma`, `./integration-redis`, `./integration-queue`, `./integration-bullmq`, `./integration-serverless`, `./integration-database`, `./integration-express`, `./integration-fastify`, `./integration-fetch`, `./integration-http-client`, `./integration-diagnostics`, `./logger-diagnostics`, `./context`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/pretty
 
@@ -69,7 +69,7 @@ Pretty console and terminal output helpers for loggerjs.
 - README：[packages/pretty/README.md](https://github.com/jskits/loggerjs/blob/main/packages/pretty/README.md)
 - API 报告：[@loggerjs/pretty](/zh/reference/api/pretty)
 - Export subpaths：`.`, `./formatter`, `./transport-console`, `./transport-stream`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/processors
 
@@ -80,7 +80,7 @@ Reusable loggerjs event processors.
 - README：[packages/processors/README.md](https://github.com/jskits/loggerjs/blob/main/packages/processors/README.md)
 - API 报告：[@loggerjs/processors](/zh/reference/api/processors)
 - Export subpaths：`.`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/codecs
 
@@ -91,7 +91,7 @@ Serialization codecs for loggerjs.
 - README：[packages/codecs/README.md](https://github.com/jskits/loggerjs/blob/main/packages/codecs/README.md)
 - API 报告：[@loggerjs/codecs](/zh/reference/api/codecs)
 - Export subpaths：`.`
-- Runtime dependencies：`@loggerjs/core`, `msgpackr`
+- Runtime dependencies：`msgpackr`
 
 ## @loggerjs/otel
 
@@ -102,7 +102,7 @@ OpenTelemetry mapping and OTLP JSON transport for loggerjs.
 - README：[packages/otel/README.md](https://github.com/jskits/loggerjs/blob/main/packages/otel/README.md)
 - API 报告：[@loggerjs/otel](/zh/reference/api/otel)
 - Export subpaths：`.`, `./transport-http`, `./codec-otlp-json`, `./trace`, `./log-bridge`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/sentry
 
@@ -113,7 +113,7 @@ Sentry adapter transport for loggerjs.
 - README：[packages/sentry/README.md](https://github.com/jskits/loggerjs/blob/main/packages/sentry/README.md)
 - API 报告：[@loggerjs/sentry](/zh/reference/api/sentry)
 - Export subpaths：`.`, `./transport`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/datadog
 
@@ -124,7 +124,7 @@ Datadog Logs transport for loggerjs.
 - README：[packages/datadog/README.md](https://github.com/jskits/loggerjs/blob/main/packages/datadog/README.md)
 - API 报告：[@loggerjs/datadog](/zh/reference/api/datadog)
 - Export subpaths：`.`, `./transport`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/elastic
 
@@ -135,7 +135,7 @@ Elasticsearch bulk transport for loggerjs.
 - README：[packages/elastic/README.md](https://github.com/jskits/loggerjs/blob/main/packages/elastic/README.md)
 - API 报告：[@loggerjs/elastic](/zh/reference/api/elastic)
 - Export subpaths：`.`, `./transport`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/loki
 
@@ -146,7 +146,7 @@ Grafana Loki transport for loggerjs.
 - README：[packages/loki/README.md](https://github.com/jskits/loggerjs/blob/main/packages/loki/README.md)
 - API 报告：[@loggerjs/loki](/zh/reference/api/loki)
 - Export subpaths：`.`, `./transport`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/cloudwatch
 
@@ -157,7 +157,7 @@ Amazon CloudWatch Logs transport for loggerjs.
 - README：[packages/cloudwatch/README.md](https://github.com/jskits/loggerjs/blob/main/packages/cloudwatch/README.md)
 - API 报告：[@loggerjs/cloudwatch](/zh/reference/api/cloudwatch)
 - Export subpaths：`.`, `./transport`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None
 
 ## @loggerjs/database
 
@@ -168,4 +168,4 @@ SQLite, PostgreSQL, and custom database transports for loggerjs.
 - README：[packages/database/README.md](https://github.com/jskits/loggerjs/blob/main/packages/database/README.md)
 - API 报告：[@loggerjs/database](/zh/reference/api/database)
 - Export subpaths：`.`, `./transport`, `./sqlite`, `./postgres`
-- Runtime dependencies：`@loggerjs/core`
+- Runtime dependencies：None

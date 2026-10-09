@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { captureWebSocketIntegration, type BrowserCapturedWebSocketLike } from "../src";
+import {
+  captureWebSocketIntegration,
+  type BrowserCapturedWebSocketLike,
+} from "../src/websocket-integration";
 
 type Listener = EventListenerOrEventListenerObject;
 

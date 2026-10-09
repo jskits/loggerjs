@@ -32,22 +32,22 @@ Use the smallest package set that matches the target runtime and delivery path.
 Use the package manager already used by the repo.
 
 ```bash
-npm install @loggerjs/node @loggerjs/processors
-pnpm add @loggerjs/node @loggerjs/processors
-yarn add @loggerjs/node @loggerjs/processors
-bun add @loggerjs/node @loggerjs/processors
+npm install @loggerjs/core @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
+yarn add @loggerjs/core @loggerjs/node @loggerjs/processors
+bun add @loggerjs/core @loggerjs/node @loggerjs/processors
 ```
 
 For browsers:
 
 ```bash
-npm install @loggerjs/browser @loggerjs/processors
+npm install @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
-For libraries:
+For libraries, declare `@loggerjs/core` as a peer dependency so the application provides the one copy every package shares:
 
 ```bash
-npm install @loggerjs/core
+npm install --save-peer @loggerjs/core
 ```
 
 ## Selection Rules

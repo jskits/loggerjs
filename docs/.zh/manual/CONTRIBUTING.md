@@ -13,7 +13,7 @@ pnpm check     # 完整门禁，push 前运行
 
 - **仓库开发**：使用 Node `>=22.13.0`。根目录 `package.json` 的 `engines` 字段和本地工具链都以此为下限。
 - **完整 CI 门禁**：在 Node 22 和 24 上运行 `pnpm check`，发布构建使用 Node 24。
-- **已发布包的运行时兼容性**：打包后的产物会以消费方身份在 Node 20.19.0、22 和 24 上做冒烟测试。Node 20.19.0 是 Node 使用者的运行时兼容下限，但并不会降低仓库开发工具链的要求。
+- **已发布包的运行时兼容性**：打包后的产物会以消费方身份在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试。Node 22.0.0 是 Node 使用者的运行时兼容下限，但并不会降低仓库开发工具链的要求。
 
 ## 仓库布局
 
@@ -56,7 +56,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 ## 工程约定
 
 - **core 保持平台无关**：不使用 DOM 类型和 Node 内置模块，通过 `globalThis` 做特性检测。公开类型必须在没有 `lib.dom` 的情况下也能编译。
-- **v1 之前优先求稳，而不是扩大 API**：先加固现有的 transport 和 integration。新增内置组件需要有生产用例、放在合适的运行时包中，并附带测试、稳定性文档、导入边界文档和体积预算数据。
+- **优先求稳，而不是扩大 API**：先加固现有的 transport 和 integration。新增内置组件需要有生产用例、放在合适的运行时包中，并附带测试、稳定性文档、导入边界文档和体积预算数据。
 - **管线永远不向应用抛错。** middleware、processor、codec 和 transport 都做了错误隔离，失败通过 `onInternalError` 和 meta 计数上报。新代码必须保持这一点。
 - **codec 不得丢日志**：对有风险的编码做保护，失败时回退到 `safeJsonStringify`，并在 meta 中计数。
 - **共享对象被冻结，只能替换，不能原地修改**（`record.tags`、`record.ctx`）。

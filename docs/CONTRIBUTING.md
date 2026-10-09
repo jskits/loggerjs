@@ -13,7 +13,7 @@ pnpm check     # the full gate — run before pushing
 
 - **Repository development:** use Node `>=22.13.0`. The root `package.json` `engines` field and local tooling are intentionally set to this floor.
 - **Full CI gate:** runs `pnpm check` on Node 22 and 24, with releases built on Node 24.
-- **Published package runtime compatibility:** packed packages are smoke-tested as consumers on Node 20.19.0, 22, and 24. Node 20.19.0 is the runtime compatibility floor for Node consumers; it does not lower the repo development toolchain requirement.
+- **Published package runtime compatibility:** packed packages are smoke-tested as consumers on Node 22.0.0, the latest Node 22, and Node 24. Node 22.0.0 is the runtime compatibility floor for Node consumers; it does not lower the repo development toolchain requirement.
 
 ## Repository Layout
 
@@ -56,7 +56,7 @@ Turbo orchestrates `build`/`test`/`typecheck` with caching; scope work with `pnp
 ## Engineering Conventions
 
 - **Core stays platform-neutral**: no DOM types, no Node built-ins, feature-detect via `globalThis`. The public type surface must compile without `lib.dom`.
-- **Prefer stabilization over surface expansion before v1**: harden existing transports/integrations first. A new built-in component needs a production use case, runtime-appropriate package placement, tests, stability docs, import-boundary docs, and size-budget evidence.
+- **Prefer stabilization over surface expansion**: harden existing transports/integrations first. A new built-in component needs a production use case, runtime-appropriate package placement, tests, stability docs, import-boundary docs, and size-budget evidence.
 - **The pipeline never throws into the app.** Middleware, processors, codecs, and transports are error-isolated; failures report through `onInternalError` and meta counters. New code keeps that property.
 - **Codecs must not lose logs**: wrap risky encodes and fall back to `safeJsonStringify`; count fallbacks in meta.
 - **Shared objects are frozen, replaced not mutated** (`record.tags`, `record.ctx`).

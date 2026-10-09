@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type IntegrationSetupContext, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { databaseIntegration, type DatabaseClientLike } from "../src";
+import { databaseIntegration, type DatabaseClientLike } from "../src/database-integration";
 
 function createLogger(): LoggerLike {
   return {

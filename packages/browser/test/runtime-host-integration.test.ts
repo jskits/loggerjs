@@ -5,7 +5,7 @@ import {
   captureRuntimeHostIntegration,
   type BrowserExtensionRuntimeLike,
   type ElectronIpcRendererLike,
-} from "../src";
+} from "../src/runtime-host-integration";
 
 function createLogger(): LoggerLike {
   return {

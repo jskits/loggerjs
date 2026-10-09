@@ -159,9 +159,20 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 编写自定义 transport 时，实现 `write`/`writeBatch` 可以在快速路径上接收 `LogRecord`，实现 `log`/`logBatch` 则接收投影后的 `LogEvent`。凡是涉及网络 I/O 的 transport，都应使用 `batchTransport()` 包装，以获得队列上限、重试、字节限制、并发和熔断能力。见 [传输](TRANSPORTS.md#编写自定义-transport)。
 
-## 1.0 移出 core 根入口的导出
+## 从 0.7 升级到 1.0
 
-1.0 起 `@loggerjs/core` 根入口只保留内核。从 0.7 开始，下列导出仍可从根入口使用，但已标为 `@deprecated`，编辑器会给出提示；请改从对应子路径导入：
+1.0 删除了 0.7 中标为 deprecated 的内容，并收紧了安装要求。请先升级到最新的 0.7，修复编辑器或 `tsc` 报告的 deprecation 警告；1.0 删除的每个导出在 0.7 中都已标为 `@deprecated`。然后：
+
+1. **使用 Node 22 或更高版本。** 所有包都声明了 `engines.node: ">=22.0.0"`。
+2. **自行安装 `@loggerjs/core`。** 其他所有包都把它作为 peer dependency，范围是 `^1.0.0`，以保证应用中只有一份 core，例如 `npm install @loggerjs/core @loggerjs/node`。npm 和 pnpm 会自动安装缺失的 peer，Yarn 不会。基于 LoggerJS 构建的库也应把 `@loggerjs/core` 声明为 peer dependency。
+3. **从子路径导入被移走的导出。** core 根入口只导出内核，browser 和 node 根入口只导出内核加上各自的 stable 组件。下面两节列出了每个被删除导出对应的子路径。
+4. **同时升级所有 `@loggerjs/*` 包。** 它们都是 1.0.0。0.7 的包直接依赖 core 0.7，与 1.0 的包混用会安装第二份 core。
+
+[API 稳定性](API-STABILITY.md) 说明了 1.0 对每个导出的承诺。
+
+## 1.0 从 core 根入口删除的导出
+
+1.0 起 `@loggerjs/core` 根入口只导出内核。下列导出在 0.7 标为 deprecated，现已无法从根入口使用；请从对应子路径导入：
 
 | 导出 | 导入路径 |
 | --- | --- |
@@ -177,9 +188,9 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 `Integration`、`IntegrationSetupContext`、`Transport`、`Codec` 等管线类型仍留在根入口。
 
-## 1.0 中 browser 和 node 根入口的导入
+## 1.0 从 browser 和 node 根入口删除的导出
 
-1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。从 0.7 开始，根入口的其他导出已标为 `@deprecated`。请连同它们的选项类型一起改从子路径导入：
+1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。根入口的其他导出在 0.7 标为 deprecated，现已删除。请连同它们的选项类型一起从子路径导入：
 
 | 浏览器端导出 | 导入路径 |
 | --- | --- |

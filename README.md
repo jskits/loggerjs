@@ -13,7 +13,7 @@
 [![license](https://img.shields.io/npm/l/@loggerjs/core)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.base.json)
 [![core dependencies](https://img.shields.io/badge/core_deps-0-44CC11)](packages/core/package.json)
-[![Node runtime](https://img.shields.io/badge/runtime_Node-%E2%89%A520.19-339933?logo=node.js&logoColor=white)](.github/workflows/ci.yml)
+[![Node runtime](https://img.shields.io/badge/runtime_Node-%E2%89%A522-339933?logo=node.js&logoColor=white)](.github/workflows/ci.yml)
 [![modules](https://img.shields.io/badge/modules-ESM%20%2B%20CJS-F7DF1E)](#packages)
 
 [Getting Started](docs/GETTING-STARTED.md) · [Concepts](docs/CONCEPTS.md) · [Transports](docs/TRANSPORTS.md) · [Pretty](docs/PRETTY.md) · [Integrations](docs/INTEGRATIONS.md) · [Benchmarks](docs/BENCHMARKS.md) · [Comparison](docs/COMPARISON.md) · [AI Skill](docs/AI-SKILL.md) · [Architecture](docs/ARCHITECTURE.md)
@@ -97,14 +97,14 @@ Crash-path `flushSync`, beacon on page close, offline replay, batch retry with c
 
 ## Install
 
-Pick the package for your platform. Each platform package **re-exports all of `@loggerjs/core`**, so one install per app is enough to start.
+Pick the package for your platform. Each platform package **re-exports the `@loggerjs/core` kernel**, so one install per app is enough to start.
 
 ```bash
 # Node services
-npm install @loggerjs/node @loggerjs/processors
+npm install @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-npm install @loggerjs/browser @loggerjs/processors
+npm install @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
 <sub>Using pnpm or yarn? Swap `npm install` for `pnpm add` / `yarn add`. Add vendor packages (`@loggerjs/otel`, `@loggerjs/sentry`, `@loggerjs/datadog`, …) only when you deliver to that destination.</sub>
@@ -478,7 +478,7 @@ On the direct Node JSON path loggerjs and pino are in the same class — on the 
 | [Performance](docs/PERFORMANCE.md)               | Tuning guide: fast path, codec choice, batching                                 |
 | [Operations](docs/OPERATIONS.md)                 | Privacy defaults, offline queues, crash paths, delivery reliability             |
 | [Production Recipes](docs/PRODUCTION-RECIPES.md) | Browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments                |
-| [API Stability](docs/API-STABILITY.md)           | v1 stable API subset and pre-1.0 compatibility policy                           |
+| [API Stability](docs/API-STABILITY.md)           | Stable, compatible, and experimental tiers and the SemVer promise               |
 | [Benchmarks](docs/BENCHMARKS.md)                 | Methodology, measured snapshot, regression gate, size budgets                   |
 | [Comparison](docs/COMPARISON.md)                 | How LoggerJS compares with Pino, Winston, LogTape, Bunyan, and lighter tools    |
 | [Migration](docs/MIGRATION.md)                   | Coming from pino, winston, or console.log                                       |
@@ -491,7 +491,7 @@ Runnable examples live in [`examples/`](examples): [Node basics](examples/node-b
 
 ## Development
 
-Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 20.19, 22, and 24**; Node 20.19 is the runtime compatibility floor, not the repo toolchain floor. Browser code targets **Chrome and Edge 103, Firefox 100, and Safari 16** or later. From 1.0 the Node floor is 22, and the support windows in [GOVERNANCE](GOVERNANCE.md) and [SECURITY](SECURITY.md) apply.
+Use **Node >=22.13** for repository development and the full `pnpm check` gate. Published packages are smoke-tested as packed consumers on **Node 22.0, the latest Node 22, and Node 24**; Node 22 is the runtime compatibility floor, not the repo toolchain floor. Browser code targets **Chrome and Edge 103, Firefox 100, and Safari 16** or later. The support windows in [GOVERNANCE](GOVERNANCE.md) and [SECURITY](SECURITY.md) apply.
 
 ```bash
 pnpm install

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { type LoggerLike } from "@loggerjs/core";
-import { serverlessIntegration } from "../src";
+import { serverlessIntegration } from "../src/serverless-integration";
 
 function createLogger(): LoggerLike {
   return {

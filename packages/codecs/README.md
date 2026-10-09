@@ -14,7 +14,7 @@ Optional codecs for [LoggerJS](../../README.md) that go beyond the JSON/NDJSON c
 ## Install
 
 ```bash
-npm install @loggerjs/codecs
+npm install @loggerjs/core @loggerjs/codecs
 ```
 
 ## Usage

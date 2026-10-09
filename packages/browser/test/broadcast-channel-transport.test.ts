@@ -6,7 +6,10 @@ import {
   type LogEvent,
   type TransportContext,
 } from "@loggerjs/core";
-import { browserBroadcastChannelTransport, type BrowserBroadcastChannelLike } from "../src";
+import {
+  browserBroadcastChannelTransport,
+  type BrowserBroadcastChannelLike,
+} from "../src/broadcast-channel-transport";
 
 const event: LogEvent = {
   id: "evt-1",

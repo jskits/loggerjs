@@ -14,7 +14,7 @@ An Amazon CloudWatch Logs (`PutLogEvents`) transport for [LoggerJS](../../README
 ## Install
 
 ```bash
-npm install @loggerjs/cloudwatch
+npm install @loggerjs/core @loggerjs/cloudwatch
 ```
 
 ## Usage

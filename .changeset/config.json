@@ -8,10 +8,13 @@
   ],
   "commit": false,
   "fixed": [],
-  "linked": [],
+  "linked": [["@loggerjs/core", "@loggerjs/browser", "@loggerjs/node", "@loggerjs/pretty"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [],
-  "bumpVersionsWithWorkspaceProtocolOnly": true
+  "bumpVersionsWithWorkspaceProtocolOnly": true,
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LogEvent } from "@loggerjs/core";
 import type { IndexedDbTransportQueryOptions } from "../src";
-import { createLogZipBlob, downloadBlob, exportLogsToZip } from "../src";
+import { createLogZipBlob, downloadBlob, exportLogsToZip } from "../src/zip-export";
 
 const LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
 const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;

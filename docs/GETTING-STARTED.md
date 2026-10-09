@@ -4,18 +4,18 @@ LoggerJS is an isomorphic structured logging SDK. The same core API runs in Node
 
 ## Install
 
-Pick the package for your platform. Each platform package re-exports everything from `@loggerjs/core`, so one install is enough to start.
+Pick the package for your platform. Each platform package re-exports the `@loggerjs/core` kernel, so one install is enough to start. Every LoggerJS package takes `@loggerjs/core` as a peer dependency so an application has exactly one copy of it; install it alongside, as below (npm and pnpm add a missing peer automatically, Yarn does not).
 
 ```bash
 # Node services
-pnpm add @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-pnpm add @loggerjs/browser @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
-All packages ship ESM and CJS entry points with full TypeScript declarations. For Node consumers, packed packages are smoke-tested on Node 20.19.0, 22, and
-24. Repository development uses Node >=22.13.0 for the full toolchain. Browser code targets Chrome and Edge 103, Firefox 100, and Safari 16 or later; 1.0 raises the Node floor to 22 (see the support commitments in GOVERNANCE).
+All packages ship ESM and CJS entry points with full TypeScript declarations. For Node consumers, packed packages are smoke-tested on Node 22.0.0, the latest
+Node 22, and Node 24; Node 22 is the floor. Repository development uses Node >=22.13.0 for the full toolchain. Browser code targets Chrome and Edge 103, Firefox 100, and Safari 16 or later (see the support commitments in GOVERNANCE).
 
 ## First Logger (Node)
 
@@ -195,5 +195,5 @@ For crash paths, transports that support it expose `flushSync()`; see [OPERATION
 - [PERFORMANCE.md](PERFORMANCE.md) — configuring for throughput.
 - [OPERATIONS.md](OPERATIONS.md) — privacy, offline queues, crash paths.
 - [PRODUCTION-RECIPES.md](PRODUCTION-RECIPES.md) — browser HTTP/offline, Node stdout+OTLP, Loki/Datadog deployments.
-- [API-STABILITY.md](API-STABILITY.md) — v1 stable API subset and pre-1.0 compatibility policy.
+- [API-STABILITY.md](API-STABILITY.md) — stable, compatible, and experimental tiers and the SemVer promise.
 - [MIGRATION.md](MIGRATION.md) — coming from pino, winston, or console.

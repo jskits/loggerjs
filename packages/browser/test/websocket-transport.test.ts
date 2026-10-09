@@ -13,7 +13,7 @@ import {
   type BrowserWebSocketFactory,
   type BrowserWebSocketLike,
   type BrowserWebSocketPayload,
-} from "../src";
+} from "../src/websocket-transport";
 
 const textCodec: Codec<BrowserWebSocketPayload> = {
   name: "text",

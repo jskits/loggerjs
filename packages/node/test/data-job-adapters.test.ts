@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { type CaptureInput, type LoggerLike } from "@loggerjs/core";
 import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
-import { bullMqIntegration, prismaIntegration, redisIntegration } from "../src";
+import { bullMqIntegration } from "../src/bullmq-integration";
+import { prismaIntegration } from "../src/prisma-integration";
+import { redisIntegration } from "../src/redis-integration";
 
 function createLogger(): LoggerLike {
   return {

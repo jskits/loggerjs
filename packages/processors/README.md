@@ -14,7 +14,7 @@ Synchronous, error-isolated steps that run inside the [LoggerJS](../../README.md
 ## Install
 
 ```bash
-npm install @loggerjs/processors
+npm install @loggerjs/core @loggerjs/processors
 ```
 
 ## Usage

@@ -115,17 +115,17 @@ LoggerJS 是一个同构的结构化日志 SDK。同一套 core API 可以运行
 
 ## 安装
 
-按运行平台选择包。每个平台包都会重新导出 `@loggerjs/core` 的全部内容，所以安装一个平台包就足以开始使用。
+按运行平台选择包。每个平台包都会重新导出 `@loggerjs/core` 的内核，所以安装一个平台包就足以开始使用。所有 LoggerJS 包都把 `@loggerjs/core` 作为 peer dependency，以保证应用中只有一份 core；请像下面这样一并安装它（npm 和 pnpm 会自动安装缺失的 peer，Yarn 不会）。
 
 ```bash
 # Node services
-pnpm add @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
 
 # Browser apps
-pnpm add @loggerjs/browser @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
-所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 20.19.0、22 和 24 上做冒烟测试。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上；1.0 会把 Node 下限提高到 22（见 GOVERNANCE 中的支持承诺）。
+所有包都提供 ESM 和 CJS 入口，并带完整 TypeScript 声明。对于 Node 使用者，发布的包会在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试；Node 22 是最低版本。仓库开发使用 Node >=22.13.0 来运行完整工具链。浏览器端代码的目标环境是 Chrome 和 Edge 103、Firefox 100、Safari 16 及以上（见 GOVERNANCE 中的支持承诺）。
 
 ## 第一个 Logger（Node）
 
@@ -305,7 +305,7 @@ await logger.close(); // tear down integrations, close transports
 - [性能](PERFORMANCE.md)：如何按吞吐量配置。
 - [运维](OPERATIONS.md)：隐私、离线队列和崩溃路径。
 - [生产配方](PRODUCTION-RECIPES.md)：浏览器 HTTP/离线、Node stdout+OTLP、Loki/Datadog 部署。
-- [API 稳定性](API-STABILITY.md)：v1 稳定 API 子集和 pre-1.0 兼容策略。
+- [API 稳定性](API-STABILITY.md)：stable、compatible 和 experimental 分级以及语义化版本承诺。
 - [迁移](MIGRATION.md)：从 pino、winston 或 console 迁移。
 
 ## 相关链接
@@ -545,9 +545,9 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 
 | 级别 | 含义 |
 | --- | --- |
-| Stable | 计划作为 v1 兼容的应用 API。选项名和高层语义受 API 报告、测试和文档保护。 |
-| Compatible | 公开且有测试，但在 v1 之前，具体运行时行为或消息结构仍可能调整。文档中的注意事项符合你的部署场景时再使用。 |
-| Experimental | 公开且有测试，但尚不属于 v1 兼容承诺。名称、选项、payload 映射或批量建议在 v1 之前都可能变化。 |
+| Stable | 受 1.x 兼容承诺保护。选项名和高层语义受 API 报告、测试和文档保护。 |
+| Compatible | 公开且有测试，但具体运行时行为或消息结构仍可能在更早的 minor 中先弃用后再调整。文档中的注意事项符合你的部署场景时再使用。 |
+| Experimental | 公开且有测试，生产使用最少。名称、选项、payload 映射或批量建议可能在更早的 minor 中先弃用后再变化。 |
 | Runtime-dependent | 公开 API 稳定，但实际可靠性很大程度上取决于 LoggerJS 之外的浏览器、worker、存储、网络、SDK 或数据库行为。请在目标环境中验证。 |
 | Test-only | 为断言和测试夹具而设计，不用于生产投递。 |
 
@@ -561,7 +561,7 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `stdoutTransport()` / `stderrTransport()` / `fileTransport()` | Stable | 生产用本地 sink，具备 drain 和崩溃路径处理。 |
 | `rotatingFileTransport()` | Stable | 本地按大小轮转；每个文件只应有一个写入进程。 |
 | `nodeHttpTransport()` | Stable | 内置批量包装的 HTTP 投递，使用共享的可靠性选项。 |
-| `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包在 v1 之前不冻结。 |
+| `otlpHttpTransport()` | Experimental | OTLP 映射公开且有测试，但可观测性适配包的生产使用最少。 |
 | `nodeSyslogTransport()` | Compatible | 消息格式有测试覆盖，但在更多部署验证之前不属于 v1 内核；UDP/TCP 的可靠性遵循 syslog 传输本身的语义。 |
 | `workerTransport()` | Compatible | 消息协议公开，但 ready/ack/回退等生命周期细节可能继续调整。 |
 | `browserHttpTransport()` | Stable | 主要的浏览器远程 transport；pagehide 时的 Beacon 仍是尽力而为。 |
@@ -570,8 +570,8 @@ transport 的稳定性描述的是公开 API 的承诺，而不是绝对的投�
 | `browserWebSocketTransport()` | Compatible | 适合实时/调试通道；重连和最终持久性由调用方负责。 |
 | `browserServiceWorkerTransport()` | Runtime-dependent | API 公开，但投递取决于 service worker 的注册、激活和生命周期。 |
 | `browserBroadcastChannelTransport()` | Compatible | 同源标签页之间的分发本身就可能丢失，并取决于是否有接收方。 |
-| Datadog / Elastic / Loki / CloudWatch transports | Experimental | 线上 payload 有测试，但厂商包在 v1 之前不冻结；生产环境需要在原始 transport 外包一层批量/重试才能保证持久性。 |
-| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | 适配器契约公开且有测试，但 SDK/provider 映射在 v1 之前仍可能变化。 |
+| Datadog / Elastic / Loki / CloudWatch transports | Experimental | 线上 payload 有测试，但厂商包的生产使用最少；生产环境需要在原始 transport 外包一层批量/重试才能保证持久性。 |
+| `sentryTransport()` / `openTelemetryLogBridgeTransport()` | Experimental | 适配器契约公开且有测试，但 SDK/provider 映射仍可能在弃用之后变化。 |
 | `databaseTransport()` / `sqliteTransport()` / `postgresTransport()` | Experimental | 适配器 API 公开且有测试，但驱动事务和表结构约定还需要更多真实用户验证。 |
 
 ## 导入边界
@@ -1127,15 +1127,15 @@ integration 的稳定性描述的是公开的 setup/选项契约和拆除行为�
 
 | 级别 | 含义 |
 | --- | --- |
-| Stable | 计划作为 v1 兼容的应用 API。选项名、setup/拆除行为以及采集字段的整体结构受保护。 |
-| Compatible | 公开且有测试，但在 v1 之前，具体字段结构或框架/运行时边界情况的处理仍可能细化。 |
+| Stable | 受 1.x 兼容承诺保护。选项名、setup/拆除行为以及采集字段的整体结构受保护。 |
+| Compatible | 公开且有测试，但具体字段结构或框架/运行时边界情况的处理仍可能在更早的 minor 中先弃用后再细化。 |
 | Runtime-dependent | 公开 API 稳定，但信号本身取决于平台支持、浏览器策略、框架钩子或部署生命周期。 |
 
 | Integration | 稳定性 | 原因 |
 | --- | --- | --- |
 | `captureConsoleIntegration()` | Stable | 核心的浏览器采集能力，具备防回环和拆除测试。 |
 | `captureBrowserErrorsIntegration()` | Stable | 标准的浏览器错误和 rejection 采集；CSP 细节因浏览器而异。 |
-| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | 请求/响应采集提供显式的数据清洗钩子，但 v1 之前采集字段仍可能调整。 |
+| `captureFetchIntegration()` / `captureXHRIntegration()` | Compatible | 请求/响应采集提供显式的数据清洗钩子，但采集字段仍可能在弃用之后调整。 |
 | `pageLifecycleIntegration()` | Runtime-dependent | API 稳定，但 pagehide/visibility 的触发时机由浏览器决定，只能尽力而为。 |
 | `captureWebVitalsIntegration()` | Runtime-dependent | 依赖 PerformanceObserver 和浏览器对各项指标的支持。 |
 | `capturePerformanceIntegration()` | Runtime-dependent | 能拿到哪些 entry 取决于浏览器、权限策略和页面生命周期。 |
@@ -2209,7 +2209,7 @@ pnpm bench:matrix:aggregate -- benchmarks/matrix --out docs/BENCHMARK-MATRIX.md
 
 `pnpm bench:matrix` 封装了 `BENCH_AB=1 BENCH_JSON=1` 测试框架，会运行多次，记录 CPU、操作系统、Node、依赖版本和 Git 等元数据，并默认把 JSON 和 Markdown 结果写到 `benchmarks/matrix/`。该目录被 git 忽略，因为它存放的是本地证据。只提交经过有意整理的汇总结果，例如 [基准矩阵](BENCHMARK-MATRIX.md)。做跨机器的性能表述时，应引用仓库中的这份矩阵。
 
-需要非 Apple Silicon 和多 Node 版本的证据时，手动运行 GitHub Actions workflow `Benchmark Matrix`。它会在 Linux x64 上为 Node 20.19.0、22 和 24 采集数据，并上传汇总的 Markdown 产物供检查。只有在核对过 JSON 产物和 runner 元数据之后，才提交汇总结果。
+需要非 Apple Silicon 和多 Node 版本的证据时，手动运行 GitHub Actions workflow `Benchmark Matrix`。它会在 Linux x64 上为 Node 22 和 24 采集数据，并上传汇总的 Markdown 产物供检查。只有在核对过 JSON 产物和 runner 元数据之后，才提交汇总结果。
 
 使用矩阵中的结论时要谨慎：它只能证明表中列出的机器、运行时和依赖组合，不能推广到未来所有的 CPU、Node/V8 版本或 pino 版本。
 
@@ -2731,9 +2731,20 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 编写自定义 transport 时，实现 `write`/`writeBatch` 可以在快速路径上接收 `LogRecord`，实现 `log`/`logBatch` 则接收投影后的 `LogEvent`。凡是涉及网络 I/O 的 transport，都应使用 `batchTransport()` 包装，以获得队列上限、重试、字节限制、并发和熔断能力。见 [传输](TRANSPORTS.md#编写自定义-transport)。
 
-## 1.0 移出 core 根入口的导出
+## 从 0.7 升级到 1.0
 
-1.0 起 `@loggerjs/core` 根入口只保留内核。从 0.7 开始，下列导出仍可从根入口使用，但已标为 `@deprecated`，编辑器会给出提示；请改从对应子路径导入：
+1.0 删除了 0.7 中标为 deprecated 的内容，并收紧了安装要求。请先升级到最新的 0.7，修复编辑器或 `tsc` 报告的 deprecation 警告；1.0 删除的每个导出在 0.7 中都已标为 `@deprecated`。然后：
+
+1. **使用 Node 22 或更高版本。** 所有包都声明了 `engines.node: ">=22.0.0"`。
+2. **自行安装 `@loggerjs/core`。** 其他所有包都把它作为 peer dependency，范围是 `^1.0.0`，以保证应用中只有一份 core，例如 `npm install @loggerjs/core @loggerjs/node`。npm 和 pnpm 会自动安装缺失的 peer，Yarn 不会。基于 LoggerJS 构建的库也应把 `@loggerjs/core` 声明为 peer dependency。
+3. **从子路径导入被移走的导出。** core 根入口只导出内核，browser 和 node 根入口只导出内核加上各自的 stable 组件。下面两节列出了每个被删除导出对应的子路径。
+4. **同时升级所有 `@loggerjs/*` 包。** 它们都是 1.0.0。0.7 的包直接依赖 core 0.7，与 1.0 的包混用会安装第二份 core。
+
+[API 稳定性](API-STABILITY.md) 说明了 1.0 对每个导出的承诺。
+
+## 1.0 从 core 根入口删除的导出
+
+1.0 起 `@loggerjs/core` 根入口只导出内核。下列导出在 0.7 标为 deprecated，现已无法从根入口使用；请从对应子路径导入：
 
 | 导出 | 导入路径 |
 | --- | --- |
@@ -2749,9 +2760,9 @@ browserHttpTransport({ url: "/api/logs", codec: safeJsonCodec() });
 
 `Integration`、`IntegrationSetupContext`、`Transport`、`Codec` 等管线类型仍留在根入口。
 
-## 1.0 中 browser 和 node 根入口的导入
+## 1.0 从 browser 和 node 根入口删除的导出
 
-1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。从 0.7 开始，根入口的其他导出已标为 `@deprecated`。请连同它们的选项类型一起改从子路径导入：
+1.0 起 `@loggerjs/browser` 和 `@loggerjs/node` 根入口只导出 core 内核和 stable 组件：浏览器端是 `browserHttpTransport`、IndexedDB 存储、`offlineFirstTransport`，以及 console、error、context、page-lifecycle integration；Node 端是 `stdoutTransport`、`stderrTransport`、`fileTransport`、`rotatingFileTransport`、`nodeHttpTransport`、进程采集和 AsyncLocalStorage context。根入口的其他导出在 0.7 标为 deprecated，现已删除。请连同它们的选项类型一起从子路径导入：
 
 | 浏览器端导出 | 导入路径 |
 | --- | --- |
@@ -2832,35 +2843,35 @@ description: "v1 稳定 API 子集和 pre-1.0 兼容策略。"
 
 # API 稳定性
 
-LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记录了每一个导出的 TypeScript 声明，但这并不表示每个导出符号都已经作为 v1 API 冻结。
+LoggerJS 1.0 让所有 `@loggerjs/*` 包都进入 1.x，但一个导出承诺多少取决于它的分级。仓库中的 `api-reports/` 文件记录了每一个导出的 TypeScript 声明；本页说明每个导出属于哪个分级。
 
 本页是写给人看的稳定性约定。机器可读的分级位于 [`docs/api-stability.policy.json`](https://github.com/jskits/loggerjs/blob/main/docs/api-stability.policy.json)；如果某个包的导出没有列入该文件，`pnpm verify:api-stability` 会失败。
 
 ## 当前策略
 
-在 v1 之前，项目选择收窄兼容承诺，而不是冻结整个仓库。稳定范围被有意限定为一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。v1 冻结应当在早期合作用户把这个内核真正跑在生产环境、并根据实际使用情况裁剪其余部分之后进行，而不是之前。
+稳定范围是一个内核：core 的 logger 模型和管线契约、主要的浏览器和 Node 投递路径、主要的浏览器采集 integration、Node 进程采集与 context，以及 pretty 输出。1.0 发布时，早期合作用户还没有在生产环境中运行过这个内核（见 `GOVERNANCE.md`），因此 compatible 和 experimental 组件哪些升级、调整或弃用，仍由真实使用情况决定。
 
-其他部分同样可能是公开的、经过测试且可用的，但并非都属于 v1 兼容承诺。尤其是厂商、可观测性和数据库相关的包，在获得更多真实使用和故障场景验证之前，仍保持实验状态。
+其他部分仍然公开、有测试、有文档，只是承诺更弱：Compatible 的导出和 Experimental 的包需要先在更早的 minor 中弃用才能变更，而不必等到下一个 major。厂商、可观测性和数据库相关的包保持 Experimental，直到真实使用和故障场景验证足以支持把它们升级。
 
 ## 状态分级
 
 | 状态 | 含义 |
 | --- | --- |
-| Stable v1 Candidate | 计划原样带入 v1：不删除、不重命名、不破坏签名，安全、数据丢失或线上协议正确性修复除外。允许新增。 |
-| Compatible Public Surface | 公开且有测试，但还没有稳定到 v1 候选的程度。v1 之前的 minor 版本可能调整选项名、采集字段或运行时边界行为，并在发布说明中注明。 |
-| Experimental Before v1 | 公开的包或子路径，在 v1 之前可能变化。当前行为满足需求时可以使用，但不要把它们当作已冻结的兼容契约。 |
+| Stable | 受语义化版本保护：同一个 major 内不删除、不重命名、不破坏签名，安全、数据丢失或线上协议正确性修复除外。新增内容在 minor 中发布。 |
+| Compatible | 公开且有测试。只有在更早的 minor 已经将其标为 deprecated 并给出迁移路径之后，后续 minor 才能修改该导出。 |
+| Experimental | 生产使用最少的包。它们遵循 Compatible 规则：破坏性变更需要先在更早的 minor 中弃用。当前行为满足需求时可以使用。 |
 
 内部源码路径、`dist` 文件路径、生成的 bundle 结构、私有类字段，以及只能从测试中推断出的行为，在任何状态下都不属于公开 API。
 
-## Stable v1 Candidate
+## Stable
 
 稳定的导出记录在 `api-stability.policy.json` 中。当前稳定的包和入口如下：
 
 | 包 | 稳定范围 |
 | --- | --- |
 | `@loggerjs/core` | 根入口内核（`createLogger`/`Logger`、`getLogger`/`configure`、级别、类型、record 与 event 转换、环境 context、类型化事件、middleware、meta 计数器、错误与安全序列化工具、JSON codec，以及 console、memory、batch、reliability transport），以及 `middleware`、`codec-json`、`context`、`events`、`transport-console`、`transport-batch`、`transport-reliability` 子路径。 |
-| `@loggerjs/browser` | `transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
-| `@loggerjs/node` | `transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
+| `@loggerjs/browser` | 根入口（core 内核加上本行的 stable 组件）、`transport-http`、`offline-indexeddb`、`transport-indexeddb`、`offline-first-transport`，以及 console、error、context、page-lifecycle integration。 |
+| `@loggerjs/node` | 根入口（core 内核加上本行的 stable 组件）、`transport-stdout`、`transport-file`、`transport-rotating-file`、`transport-http`、`integration-process`，以及 AsyncLocalStorage `context`。 |
 | `@loggerjs/pretty` | 根入口、formatter、console transport 和 stream transport。 |
 
 稳定的语义包括：
@@ -2873,23 +2884,22 @@ LoggerJS 仍处于 1.0 之前的阶段。仓库中的 `api-reports/` 文件记�
 - middleware、processor、codec、integration 和 transport 的错误与应用代码隔离。
 - 序列化仍由 transport 负责；middleware 和 processor 处理的始终是结构化的值。
 
-## Compatible Public Surface
+## Compatible
 
-Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选的程度。当前属于 Compatible 的部分包括：
+Compatible 的导出同样有文档和测试，但它们通过 minor 中的 deprecation 来变更，而不必等到下一个 major。当前属于 Compatible 的部分包括：
 
-- 将在 1.0 移出根入口的 core 模块：`@loggerjs/core/trace-propagation`、`semantic-events`、`payload-transforms`、`diagnostics`、`integration-api`、`event-route`、`codec-metrics`、`codec-prepared` 和 `transport-test`。它们在 `@loggerjs/core` 根入口的 re-export 从 0.7 起标为 deprecated，并在 1.0 删除；请改从这些子路径导入。`pnpm verify:api-stability` 只允许根入口通过 deprecated 的导出项转导出稳定性更低的模块。
-- browser 和 node 的根入口（`@loggerjs/browser`、`@loggerjs/node`）属于 Compatible 的便捷聚合入口，因为它们同时重新导出了稳定和 Compatible 的组件。需要 v1 候选级别的兼容边界时，请优先使用上面列出的稳定子路径。从 0.7 起，它们对 compatible 组件的 re-export 已标为 deprecated；1.0 起根入口只导出 core 内核和 browser 或 Node 的 stable 组件，并成为 stable。请改从子路径导入 compatible 组件（见迁移说明）。
+- 不在根入口中的 core 模块：`@loggerjs/core/trace-propagation`、`semantic-events`、`payload-transforms`、`diagnostics`、`integration-api`、`event-route`、`codec-metrics`、`codec-prepared` 和 `transport-test`。它们在 `@loggerjs/core` 根入口的 re-export 在 0.7 标为 deprecated，并已在 1.0 删除；请从这些子路径导入。`pnpm verify:api-stability` 只允许根入口通过 deprecated 的导出项转导出稳定性更低的模块。
 - 浏览器的次要 transport 和采集器：BroadcastChannel、service worker、WebSocket、框架错误、框架路由、通用路由采集、ReportingObserver、运行时宿主、service worker 消息、用户操作和 WebSocket 采集。
 - 浏览器的 fetch/XHR 采集、web vitals、performance 条目、压缩 payload 转换和支持日志 ZIP 导出。
 - Node 的 syslog 和 worker transport、压缩 payload 转换、出站 fetch/HTTP client 采集、diagnostics_channel 采集和 logger 诊断。
 - Node 的框架和数据类 integration：Express、Fastify、Koa、Nest、Hapi、Prisma、Redis、通用队列、BullMQ、serverless 生命周期、数据库方法包装和 CLI 采集。
 - `@loggerjs/processors` 和 `@loggerjs/codecs` 目录。单个 processor 和 codec 都很小也很有用，但在真实使用表明哪些真正重要之前冻结约一百个导出，只会锁定错误的那部分。
 
-在 1.0 之前，这些公开的导入路径会继续保留，但具体的采集字段、钩子覆盖范围和边界行为仍可能调整。如果真实使用表明当前 API 过于宽泛，这些部分也是 v1 之前收窄命名或降低承诺的合适位置。
+它们的导入路径在同一个 major 内保持可用。采集字段、钩子覆盖范围和边界行为可以在 deprecation 之后调整，哪些组件升级为 Stable 由真实使用情况决定。
 
-## Experimental Before v1
+## Experimental
 
-以下包之所以公开，是因为它们对集成测试和早期使用者有用，但它们不属于 v1 兼容承诺：
+以下包之所以公开，是因为它们对集成测试和早期使用者有用，但它们的生产使用最少：
 
 | 包类别 | 实验性导出 |
 | --- | --- |
@@ -2897,7 +2907,7 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 | 厂商协议 transport | `@loggerjs/datadog/*`, `@loggerjs/elastic/*`, `@loggerjs/loki/*`, `@loggerjs/cloudwatch/*` |
 | 数据库 transport | `@loggerjs/database/*` |
 
-实验性不等于没有测试。它的意思是：如果早期合作用户或真实端点表明有更好的设计，v1 之前的 minor 版本可能调整选项名、payload 映射、重试预期、批量建议或子路径结构。
+实验性不等于没有测试。它的意思是：如果早期合作用户或真实端点表明有更好的设计，选项名、payload 映射、重试预期、批量建议或子路径结构仍可能变化：要么在更早的 minor 中先弃用，要么在厂商端点变化、旧映射失效时通过 patch 修正，这属于线上协议正确性修复。
 
 原始的厂商 transport 本身不具备持久性。生产投递应使用 `batchTransport()` 和 `retryTransport()` 包装，或者投递到一个自己负责排队、重试、认证和退避的收集端点。
 
@@ -2912,35 +2922,21 @@ Compatible 的导出同样有文档和测试，但还没有稳定到 v1 候选�
 
 ## 变更策略
 
-对于 Stable v1 Candidate API：
+一个包的语义化版本保证只覆盖其中的 Stable 导出。其他层级在 1.x 包里保持各自的规则：
 
-- v1 之前不会有意删除、重命名或破坏签名，除非同时提供弃用说明和迁移路径。
-- 允许新增：新的选项、字段、重载、processor、transport、integration 和子路径。
-- 影响投递、隐私或性能的默认值变化，需要更新文档并写入发布说明。
-- 安全修复、数据丢失修复和厂商线上协议正确性修复可能改变边界情况下的行为，发布说明中必须写明。
-
-对于 Compatible 和 Experimental API：
-
-- 公开导出仍然保持类型检查、测试、API 报告和文档齐全。
-- v1 之前的 minor 版本可以调整名称、选项、字段结构或具体行为。
-- 破坏性变更仍应附带发布说明和迁移指南，因为“公开”不等于“可以随意丢弃”。
-
-## 1.0 之后的 SemVer
-
-从 1.0 开始，一个包的语义化版本保证只覆盖其中的 Stable 导出。其他层级在 1.x 包里保持各自的规则：
-
-- **Stable：** 同一个 major 内不删除、不重命名、不破坏签名。新增内容在 minor 中发布。除安全、数据丢失或线上协议正确性修复外，行为变化需要发 major。
+- **Stable：** 同一个 major 内不删除、不重命名、不破坏签名。删除一个 stable 导出，需要先在某个 minor 中标为 deprecated，再在下一个 major 中删除。新增内容在 minor 中发布：新的选项、字段、重载、processor、transport、integration 和子路径。除安全、数据丢失或线上协议正确性修复外，行为变化需要发 major，而这些修复必须在发布说明中写明。
 - **Compatible：** 只有在更早的 minor 已将其标为 `@deprecated` 并给出迁移路径之后，后续 minor 才能修改该导出，且发布说明必须写明。
-- **Experimental：** 这些包在升级前一直停留在 0.x，因此其 minor 可以修改任何内容，但需附带发布说明。
+- **Experimental：** 适用 Compatible 规则：破坏性变更需要先在更早的 minor 中弃用并给出迁移路径，且发布说明必须写明。厂商端点的线上协议正确性修复是例外，与 Stable 导出相同。
 
-把剩余的 compatible 组件拆成独立的包，可以消除 `@loggerjs/browser` 和 `@loggerjs/node` 内部的分层，但在 1.0 之前代价太大。
+无论哪个层级，影响投递、隐私或性能的默认值都只能在更新文档并写入发布说明后变更；公开导出始终保持类型检查、测试、API 报告和文档齐全，因为“公开”不等于“可以随意丢弃”。
 
-## 1.0 的版本策略
+把剩余的 compatible 组件拆成独立的包，可以消除 `@loggerjs/browser` 和 `@loggerjs/node` 内部的分层；这仍是以后某个 major 的可选方案。
 
-- `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起升到 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
-- `@loggerjs/processors` 和 `@loggerjs/codecs` 留在 0.x，直到 design partner 的使用情况表明哪些 processor 和 codec 值得保留。在 1.0 冻结它们的目录，等于承诺了尚未经过验证的稳定性。
-- `@loggerjs/otel`、`@loggerjs/sentry`、`@loggerjs/datadog`、`@loggerjs/elastic`、`@loggerjs/loki`、`@loggerjs/cloudwatch` 和 `@loggerjs/database` 作为 experimental 留在 0.x，按各自的节奏发版。
-- 从 1.0 开始，除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。内核包使用 `^1.0.0`；0.x 的包接受 `^0.7.0 || ^1.0.0`，这样这次调整不会把它们强行升到 1.0。
+## 包的版本
+
+- `@loggerjs/core`、`@loggerjs/browser`、`@loggerjs/node` 和 `@loggerjs/pretty` 承载 stable 内核。它们一起进入 1.0，并组成 Changesets 的 `linked` 组，版本号同步变化，用户不需要对照兼容表。
+- 其他包（`@loggerjs/processors`、`@loggerjs/codecs`、可观测性适配器、厂商 transport 和 `@loggerjs/database`）与内核一起进入 1.0.0，之后按各自的节奏发版，因此某个 processor、codec 或厂商适配器可以单独发 minor 或 major，而不影响内核。它们不在 linked 组中：Changesets 按组内最高版本计算 linked 发布，一个适配器的 major 会把 core 也推到同一个 major。
+- 除 core 外的所有包都把 `@loggerjs/core` 声明为 peer dependency，范围是 `^1.0.0`，让一个应用只安装一份 core，前面提到的多副本问题只会出现在真正彼此独立的 bundle 之间。Changesets 启用了 `onlyUpdatePeerDependentsWhenOutOfRange`，因此只要 core 的新版本仍在这个范围内，就不会强制发布每个包；`pnpm pack:check` 会检查这些范围。
 
 ## 新增公开 API
 
@@ -3403,7 +3399,7 @@ pnpm check     # 完整门禁，push 前运行
 
 - **仓库开发**：使用 Node `>=22.13.0`。根目录 `package.json` 的 `engines` 字段和本地工具链都以此为下限。
 - **完整 CI 门禁**：在 Node 22 和 24 上运行 `pnpm check`，发布构建使用 Node 24。
-- **已发布包的运行时兼容性**：打包后的产物会以消费方身份在 Node 20.19.0、22 和 24 上做冒烟测试。Node 20.19.0 是 Node 使用者的运行时兼容下限，但并不会降低仓库开发工具链的要求。
+- **已发布包的运行时兼容性**：打包后的产物会以消费方身份在 Node 22.0.0、最新的 Node 22 和 Node 24 上做冒烟测试。Node 22.0.0 是 Node 使用者的运行时兼容下限，但并不会降低仓库开发工具链的要求。
 
 ## 仓库布局
 
@@ -3446,7 +3442,7 @@ Turbo 负责带缓存地编排 `build`/`test`/`typecheck`；可以用 `pnpm exec
 ## 工程约定
 
 - **core 保持平台无关**：不使用 DOM 类型和 Node 内置模块，通过 `globalThis` 做特性检测。公开类型必须在没有 `lib.dom` 的情况下也能编译。
-- **v1 之前优先求稳，而不是扩大 API**：先加固现有的 transport 和 integration。新增内置组件需要有生产用例、放在合适的运行时包中，并附带测试、稳定性文档、导入边界文档和体积预算数据。
+- **优先求稳，而不是扩大 API**：先加固现有的 transport 和 integration。新增内置组件需要有生产用例、放在合适的运行时包中，并附带测试、稳定性文档、导入边界文档和体积预算数据。
 - **管线永远不向应用抛错。** middleware、processor、codec 和 transport 都做了错误隔离，失败通过 `onInternalError` 和 meta 计数上报。新代码必须保持这一点。
 - **codec 不得丢日志**：对有风险的编码做保护，失败时回退到 `safeJsonStringify`，并在 meta 中计数。
 - **共享对象被冻结，只能替换，不能原地修改**（`record.tags`、`record.ctx`）。
@@ -3533,7 +3529,7 @@ changeset publish --tag canary
 
 ## 每次发版
 
-- 在发版提交上手动运行 `Soak` workflow，设置更长时长（例如 60 分钟），确认两个浸泡测试都通过。
+- 在发版提交上手动运行 `Soak` workflow，设置更长时长（major 版本用 60 分钟），确认两个浸泡测试都通过。每个浸泡测试在单独的 job 中运行，超时上限为 90 分钟。
 - 审查 `packages/*/test/golden/` 下的任何 diff：它会改变收集端收到的内容，需要写进发版说明。
 - 发布之后，把 `examples/browser-basic/package.json` 中的 `@loggerjs/browser-previous` 指向刚发布的版本，让升级测试始终打开上一个已发布版本写入的数据，并把 `pnpm-workspace.yaml` 中 `minimumReleaseAgeExclude` 的精确版本替换为该别名现在安装的版本。
 
@@ -3805,7 +3801,7 @@ LoggerJS is an isomorphic structured logging toolkit: a zero-dependency core plu
    - Prefer `@loggerjs/node` for Node services/CLIs, `@loggerjs/browser` for frontend apps, and `@loggerjs/core` for runtime-neutral libraries.
 3. Add one centralized logger module per runtime boundary.
    - Keep app code importing from the local logger module, not directly from many LoggerJS package paths.
-   - Platform packages re-export core APIs, so start with one platform package unless a vendor or processor package is needed.
+   - Platform packages re-export the core kernel, so start with one platform package unless a vendor or processor package is needed.
 4. Configure production safety before broad rollout.
    - Read `references/production-checklist.md` before adding browser delivery, vendor delivery, persistent queues, or automatic capture.
    - Add redaction/privacy processors before transports that leave the process.
@@ -3956,22 +3952,22 @@ Use the smallest package set that matches the target runtime and delivery path.
 Use the package manager already used by the repo.
 
 ```bash
-npm install @loggerjs/node @loggerjs/processors
-pnpm add @loggerjs/node @loggerjs/processors
-yarn add @loggerjs/node @loggerjs/processors
-bun add @loggerjs/node @loggerjs/processors
+npm install @loggerjs/core @loggerjs/node @loggerjs/processors
+pnpm add @loggerjs/core @loggerjs/node @loggerjs/processors
+yarn add @loggerjs/core @loggerjs/node @loggerjs/processors
+bun add @loggerjs/core @loggerjs/node @loggerjs/processors
 ```
 
 For browsers:
 
 ```bash
-npm install @loggerjs/browser @loggerjs/processors
+npm install @loggerjs/core @loggerjs/browser @loggerjs/processors
 ```
 
-For libraries:
+For libraries, declare `@loggerjs/core` as a peer dependency so the application provides the one copy every package shares:
 
 ```bash
-npm install @loggerjs/core
+npm install --save-peer @loggerjs/core
 ```
 
 ## Selection Rules

@@ -3,7 +3,7 @@ import {
   applyPayloadTransforms,
   encodedPayloadToUint8Array,
 } from "@loggerjs/core/payload-transforms";
-import { browserCompressionPayloadTransform } from "../src";
+import { browserCompressionPayloadTransform } from "../src/payload-transforms";
 
 afterEach(() => {
   vi.unstubAllGlobals();

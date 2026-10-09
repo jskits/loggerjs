@@ -14,7 +14,7 @@ A Sentry adapter transport for [LoggerJS](../../README.md). It uses the Sentry S
 ## Install
 
 ```bash
-npm install @loggerjs/sentry
+npm install @loggerjs/core @loggerjs/sentry
 ```
 
 `@sentry/core` (`>=8 <11`) is a **peer dependency**. Pass the Sentry object (browser or Node SDK) your application uses.

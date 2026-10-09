@@ -4,7 +4,7 @@ import { createIntegrationSetupContext } from "@loggerjs/core/integration-api";
 import {
   captureServiceWorkerIntegration,
   type BrowserServiceWorkerContainerEventsLike,
-} from "../src";
+} from "../src/service-worker-integration";
 
 type Listener = EventListenerOrEventListenerObject;
 
