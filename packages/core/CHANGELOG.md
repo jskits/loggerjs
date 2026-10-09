@@ -1,5 +1,15 @@
 # @loggerjs/core
 
+## 1.0.0
+
+### Major Changes
+
+- The `@loggerjs/core` root now exports only the kernel. The 54 exports deprecated in 0.7 are removed from the root: trace propagation, semantic events, payload transforms, diagnostics, integration helpers, event routes, `metricsCodec`, `createPreparedRecordEncoder`, and `testTransport`. Import them from `@loggerjs/core/trace-propagation`, `semantic-events`, `payload-transforms`, `diagnostics`, `integration-api`, `event-route`, `codec-metrics`, `codec-prepared`, and `transport-test`; the migration guide maps every export to its subpath.
+
+- Require Node 22 or later: every package declares `engines.node: ">=22.0.0"`, and CI smoke-tests the packed packages on Node 22.0.0, the latest Node 22, and Node 24. Node 20 is no longer supported. Each Node line a major ships with stays supported for that whole major (see GOVERNANCE).
+
+- LoggerJS 1.0. Every `@loggerjs/*` package moves to 1.0.0. Semantic versioning covers Stable exports: no removals, renames, or signature breaks within a major. Compatible exports and Experimental packages change only after a deprecation in an earlier minor. The support windows in GOVERNANCE and SECURITY now apply to every package: the previous minor gets security and data-loss fixes for six months after the next minor ships, the last 0.x minor gets security fixes for three months, and every Node line and browser baseline a major ships with stays supported for that whole major.
+
 ## 0.7.0
 
 ### Minor Changes
