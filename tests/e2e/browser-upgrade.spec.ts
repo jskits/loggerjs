@@ -7,7 +7,9 @@ import type { PreviousReleaseFixture } from "../../examples/browser-basic/src/e2
 // upgrade: the persisted IndexedDB formats are a compatibility contract that
 // TypeScript API reports cannot see. The previous release is installed in
 // examples/browser-basic as @loggerjs/browser-previous; bump that alias to
-// the last published version when releasing.
+// the last published version when releasing. Since 1.0 it runs against the
+// workspace core, its peer dependency; the browser package owns the stored
+// formats checked here, and golden tests pin core's codec output.
 
 async function openFixture(page: Page, name: string, global: string) {
   await page.route(`**/${name}.html`, async (route) => {
