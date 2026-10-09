@@ -16,9 +16,20 @@ permissions:
   contents: read
 
 jobs:
+  # One job per soak, so each gets the full timeout: a 60-minute run of both,
+  # as GOVERNANCE asks for a release, would not fit in one 90-minute job.
   soak:
+    name: soak (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: logger pipeline
+            script: scripts/soak-logger.mjs
+          - name: transports with injected collector faults
+            script: scripts/soak-transports.mjs
     env:
       LOGGERJS_SOAK_DURATION_MS: ${{ (inputs.duration_minutes || '20') }}
     steps:
@@ -37,7 +48,5 @@ jobs:
       - run: pnpm build
       - name: Convert minutes to milliseconds
         run: echo "LOGGERJS_SOAK_DURATION_MS=$(( LOGGERJS_SOAK_DURATION_MS * 60000 ))" >> "$GITHUB_ENV"
-      - name: Logger pipeline soak
-        run: node --expose-gc scripts/soak-logger.mjs
-      - name: Transport soak with injected collector faults
-        run: node --expose-gc scripts/soak-transports.mjs
+      - name: Soak
+        run: node --expose-gc ${{ matrix.script }}
