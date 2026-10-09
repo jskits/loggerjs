@@ -45,7 +45,7 @@ changeset publish --tag canary
 
 - 在发版提交上手动运行 `Soak` workflow，设置更长时长（major 版本用 60 分钟），确认两个浸泡测试都通过。每个浸泡测试在单独的 job 中运行，超时上限为 90 分钟。
 - 审查 `packages/*/test/golden/` 下的任何 diff：它会改变收集端收到的内容，需要写进发版说明。
-- 发布之后，把 `examples/browser-basic/package.json` 中的 `@loggerjs/browser-previous` 指向刚发布的版本，让升级测试始终打开上一个已发布版本写入的数据，并把 `pnpm-workspace.yaml` 中 `minimumReleaseAgeExclude` 的精确版本替换为该别名现在安装的版本。
+- 发布之后，把 `examples/browser-basic/package.json` 中的 `@loggerjs/browser-previous` 指向刚发布的版本，让升级测试始终打开上一个已发布版本写入的数据，并把 `pnpm-workspace.yaml` 中 `minimumReleaseAgeExclude` 的精确版本替换为该别名现在安装的版本。从 1.0 开始只有 browser 包：core 是它的 peer dependency，所以该别名使用工作区里的 core。
 
 ## npm 发布
 

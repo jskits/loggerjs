@@ -109,8 +109,8 @@ importers:
         version: link:../../packages/processors
     devDependencies:
       '@loggerjs/browser-previous':
-        specifier: npm:@loggerjs/browser@0.7.0
-        version: '@loggerjs/browser@0.7.0'
+        specifier: npm:@loggerjs/browser@1.0.0
+        version: '@loggerjs/browser@1.0.0(@loggerjs/core@packages+core)'
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -1367,13 +1367,11 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@loggerjs/browser@0.7.0':
-    resolution: {integrity: sha512-KvlIGYt4t6yFOGJ0oIgp2ivLvIiMmhGfkLFXklxTOYDBHogbaFZ+1+/u1EOrPR+3wjphllpwCVYVBmKVrjNbyg==}
-    engines: {node: '>=20.19.0'}
-
-  '@loggerjs/core@0.7.0':
-    resolution: {integrity: sha512-z3uZ848mXmkgxqiUazjxB9VDqmfywGvCvscSFfffxbVnbdoST3YikfJuGa+dbDwxwen4+Z+KYGMPbambXijWDw==}
-    engines: {node: '>=20.19.0'}
+  '@loggerjs/browser@1.0.0':
+    resolution: {integrity: sha512-UET0oIHUjz8ttn5LNXPl7oOD6g5XCEXvGjMIZEs9WXiiceZzi52+CxqvFosrLoPjr6AL38QIsV9lcgBYynRXtw==}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@loggerjs/core': ^1.0.0
 
   '@logtape/logtape@2.1.5':
     resolution: {integrity: sha512-59fyskQ9hR5mYQP9YMznZDtwRS4gIN7VIJkoRe0SLTmU+BQGaSP1s+ve8r+Binj1m6jNpwlF7yu9fz2/asSFLw==}
@@ -5355,11 +5353,9 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@loggerjs/browser@0.7.0':
+  '@loggerjs/browser@1.0.0(@loggerjs/core@packages+core)':
     dependencies:
-      '@loggerjs/core': 0.7.0
-
-  '@loggerjs/core@0.7.0': {}
+      '@loggerjs/core': link:packages/core
 
   '@logtape/logtape@2.1.5': {}
 
