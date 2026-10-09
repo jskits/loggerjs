@@ -91,5 +91,17 @@ jobs:
 
       - name: Push release tags
         run: |
+          # changeset tag creates annotated tags, which need a committer
+          # identity. The runner has none, and changeset tag ignores git tag
+          # failures, so set one and check that every package tag exists.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           pnpm exec changeset tag
+          for manifest in packages/*/package.json; do
+            tag="$(node -p "const p = require('./$manifest'); p.private ? '' : p.name + '@' + p.version")"
+            if [ -n "$tag" ] && ! git rev-parse --quiet --verify "refs/tags/$tag" > /dev/null; then
+              echo "::error title=Missing package tag::changeset tag did not create $tag"
+              exit 1
+            fi
+          done
           git push origin 'refs/tags/@loggerjs/*:refs/tags/@loggerjs/*'
