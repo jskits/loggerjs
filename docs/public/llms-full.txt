@@ -3749,6 +3749,7 @@ Before a release that adds a public transport or integration subpath, verify the
 - Run the `Soak` workflow manually with a longer duration (60 minutes for a major) on the release commit and check both soaks pass. Each soak runs in its own job with a 90-minute timeout.
 - Review any diff under `packages/*/test/golden/`: it changes what collectors receive and belongs in the release notes.
 - After publishing, point `@loggerjs/browser-previous` in `examples/browser-basic/package.json` at the version just released, so the upgrade tests keep opening data written by the last published release, and replace the exact versions under `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` with the ones the alias now installs. Since 1.0 that is only the browser package: core is its peer dependency, so the alias uses the workspace core.
+- After the release workflow succeeds, create the GitHub Release for the tag without creating a new one, for example `gh release create v1.2.0 --verify-tag --title 1.2.0 --latest --notes "**Full Changelog**: https://github.com/jskits/loggerjs/compare/v1.1.0...v1.2.0"`. Every published version has one. npm can take several minutes to show a new version everywhere, so check the registry until every package reports it before announcing the release.
 
 ## NPM Publishing
 
