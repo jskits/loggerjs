@@ -13,6 +13,10 @@ class FakeRequest<T> {
   error: Error | null = null;
   private listeners = new Map<string, Array<(event: Event) => void>>();
 
+  constructor(private readonly requestTransaction?: FakeTransaction) {
+    requestTransaction?.startRequest();
+  }
+
   addEventListener(type: string, listener: (event: Event) => void) {
     const listeners = this.listeners.get(type) ?? [];
     listeners.push(listener);
@@ -25,7 +29,15 @@ class FakeRequest<T> {
 
   succeed(value: T) {
     this.result = value;
-    queueMicrotask(() => this.dispatch("success"));
+    queueMicrotask(() => {
+      this.dispatch("success");
+      this.requestTransaction?.finishRequest();
+    });
+  }
+
+  fail(error: Error) {
+    this.error = error;
+    queueMicrotask(() => this.dispatch("error"));
   }
 }
 
@@ -129,6 +141,7 @@ class FakeCursor {
   }
 
   continue() {
+    this.transaction?.startRequest();
     this.index += 1;
     const next =
       this.index >= this.items.length
@@ -142,14 +155,12 @@ class FakeCursor {
             this.transaction,
           );
     this.request.succeed(next as unknown as IDBCursorWithValue | null);
-    this.transaction?.completeSoon();
   }
 
   delete() {
-    const request = new FakeRequest<undefined>();
+    const request = new FakeRequest<undefined>(this.transaction);
     this.storeState.records.delete(String(valueForKeyPath(this.value, this.storeState.keyPath)));
     request.succeed(undefined);
-    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
   }
 }
@@ -182,11 +193,10 @@ function createCursorRequest(
   items: FakeRecord[],
   transaction?: FakeTransaction,
 ) {
-  const request = new FakeRequest<IDBCursorWithValue | null>();
+  const request = new FakeRequest<IDBCursorWithValue | null>(transaction);
   const cursor =
     items.length === 0 ? null : new FakeCursor(state, storeState, items, 0, request, transaction);
   request.succeed(cursor as unknown as IDBCursorWithValue | null);
-  transaction?.completeSoon();
   return request as unknown as IDBRequest<IDBCursorWithValue | null>;
 }
 
@@ -217,12 +227,11 @@ class FakeObjectStore<T extends FakeRecord = FakeRecord> {
   }
 
   put(item: T) {
-    const request = new FakeRequest<IDBValidKey>();
+    const request = new FakeRequest<IDBValidKey>(this.transaction);
     const write = () => {
       const key = valueForKeyPath(item, this.storeState.keyPath);
       this.storeState.records.set(String(key), item);
       request.succeed(key);
-      this.transaction?.completeSoon();
     };
     if (this.state.putGate) {
       void this.state.putGate.then(write);
@@ -233,24 +242,21 @@ class FakeObjectStore<T extends FakeRecord = FakeRecord> {
   }
 
   get(id: IDBValidKey) {
-    const request = new FakeRequest<T | undefined>();
+    const request = new FakeRequest<T | undefined>(this.transaction);
     request.succeed(this.storeState.records.get(String(id)));
-    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<T | undefined>;
   }
 
   getAll() {
-    const request = new FakeRequest<T[]>();
+    const request = new FakeRequest<T[]>(this.transaction);
     this.storeState.getAllCalls += 1;
     request.succeed([...this.storeState.records.values()]);
-    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<T[]>;
   }
 
   count() {
-    const request = new FakeRequest<number>();
+    const request = new FakeRequest<number>(this.transaction);
     request.succeed(this.storeState.records.size);
-    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<number>;
   }
 
@@ -271,18 +277,16 @@ class FakeObjectStore<T extends FakeRecord = FakeRecord> {
   }
 
   delete(id: IDBValidKey) {
-    const request = new FakeRequest<undefined>();
+    const request = new FakeRequest<undefined>(this.transaction);
     this.storeState.records.delete(String(id));
     request.succeed(undefined);
-    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
   }
 
   clear() {
-    const request = new FakeRequest<undefined>();
+    const request = new FakeRequest<undefined>(this.transaction);
     this.storeState.records.clear();
     request.succeed(undefined);
-    this.transaction?.completeSoon();
     return request as unknown as IDBRequest<undefined>;
   }
 }
@@ -290,9 +294,24 @@ class FakeObjectStore<T extends FakeRecord = FakeRecord> {
 class FakeTransaction {
   error: Error | null = null;
   private completed = false;
+  private pendingRequests = 0;
+  private completionTimer?: ReturnType<typeof setTimeout>;
   private readonly listeners = new Map<string, Array<() => void>>();
 
-  constructor(private readonly state: FakeState) {}
+  constructor(private readonly state: FakeState) {
+    this.completeSoon();
+  }
+
+  startRequest() {
+    this.pendingRequests += 1;
+    clearTimeout(this.completionTimer);
+    this.completionTimer = undefined;
+  }
+
+  finishRequest() {
+    this.pendingRequests -= 1;
+    this.completeSoon();
+  }
 
   addEventListener(type: string, listener: () => void) {
     const listeners = this.listeners.get(type) ?? [];
@@ -303,16 +322,19 @@ class FakeTransaction {
   abort() {
     if (this.completed) return;
     this.completed = true;
-    this.dispatch("abort");
+    clearTimeout(this.completionTimer);
+    queueMicrotask(() => this.dispatch("abort"));
   }
 
   completeSoon() {
-    if (this.completed) return;
-    queueMicrotask(() => {
+    if (this.completed || this.pendingRequests > 0 || this.completionTimer !== undefined) return;
+    // Requests queued by a success callback's async continuation still belong
+    // to this transaction; a completed request alone must not commit it.
+    this.completionTimer = setTimeout(() => {
       if (this.completed) return;
       this.completed = true;
       this.dispatch("complete");
-    });
+    }, 0);
   }
 
   private dispatch(type: string) {
@@ -577,6 +599,57 @@ describe("indexedDbTransport", () => {
       ["second", "quota"],
     ]);
     expect(getLoggerMetaStats()["transport.indexeddb.dropped.quota"]).toBe(2);
+    await transport.close?.();
+  });
+
+  it.each(["count", "sessions"] as const)(
+    "preserves synchronous %s errors without leaving an unhandled transaction rejection",
+    async (operation) => {
+      const idb = new FakeIndexedDB();
+      const transport = indexedDbTransport({ indexedDB: idb as unknown as IDBFactory });
+      const error = new Error(`${operation} failed`);
+      const fail = () => {
+        throw error;
+      };
+      const method =
+        operation === "count"
+          ? vi.spyOn(FakeObjectStore.prototype, "count").mockImplementation(fail)
+          : vi.spyOn(FakeIndex.prototype, "openCursor").mockImplementation(fail);
+
+      await expect(transport[operation]()).rejects.toBe(error);
+      method.mockRestore();
+      // Give the aborted transaction a turn to reject. Vitest must not report
+      // an unhandled rejection after the public operation was already caught.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(await transport.count()).toBe(0);
+      await transport.close?.();
+    },
+  );
+
+  it("preserves asynchronous request errors without leaving an unhandled transaction rejection", async () => {
+    const idb = new FakeIndexedDB();
+    const dropped: Array<[string, string]> = [];
+    const transport = indexedDbTransport({
+      flushIntervalMs: 10_000,
+      indexedDB: idb as unknown as IDBFactory,
+      onDrop: (dropEvent, reason) => dropped.push([dropEvent.id, reason]),
+    });
+    const error = new DOMException("request failed", "UnknownError");
+    const get = vi.spyOn(FakeObjectStore.prototype, "get").mockImplementation(() => {
+      const request = new FakeRequest<IndexedDbLogEntry | IndexedDbLogSession | undefined>();
+      request.fail(error);
+      return request as unknown as IDBRequest<IndexedDbLogEntry | IndexedDbLogSession | undefined>;
+    });
+
+    transport.log?.(event("first", 1), context);
+    await expect(transport.flush?.()).rejects.toBe(error);
+    get.mockRestore();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(dropped).toEqual([["first", "write-failed"]]);
+    expect(transport.stats()).toMatchObject({ dropped: 1, flushErrors: 1, persisted: 0 });
+    expect(await transport.count()).toBe(0);
+    await transport.close?.();
   });
 
   it("closes its connection when another tab upgrades the database and reopens later", async () => {

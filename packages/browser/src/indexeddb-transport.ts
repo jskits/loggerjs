@@ -333,7 +333,7 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
 }
 
 function transactionToPromise(transaction: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
+  const settled = new Promise<void>((resolve, reject) => {
     transaction.addEventListener("complete", () => resolve(), { once: true });
     transaction.addEventListener(
       "abort",
@@ -346,6 +346,10 @@ function transactionToPromise(transaction: IDBTransaction): Promise<void> {
       { once: true },
     );
   });
+  // A request can fail before its caller awaits transaction settlement. Observe
+  // that rejection immediately, but return the original promise to preserve it.
+  void settled.catch(() => undefined);
+  return settled;
 }
 
 function payloadByteLength(payload: string | Uint8Array): number {
