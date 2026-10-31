@@ -1,5 +1,13 @@
 # @loggerjs/node
 
+## 1.0.1
+
+### Patch Changes
+
+- Version alignment for package release `1.0.1`. No Node.js runtime source changes are included in this release.
+- Updated dependencies:
+  - @loggerjs/core@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

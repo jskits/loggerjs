@@ -1,5 +1,13 @@
 # @loggerjs/browser
 
+## 1.0.1
+
+### Patch Changes
+
+- Handle IndexedDB transaction rejections when a request or operation fails before transaction settlement is awaited. This prevents extra unhandled rejections and error-capture feedback loops in `indexedDbTransport()` while preserving the original operation errors and transaction failures.
+- Updated dependencies:
+  - @loggerjs/core@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

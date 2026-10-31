@@ -1,5 +1,11 @@
 # @loggerjs/core
 
+## 1.0.1
+
+### Patch Changes
+
+- Version alignment for package release `1.0.1`. No core runtime source changes are included in this release.
+
 ## 1.0.0
 
 ### Major Changes
